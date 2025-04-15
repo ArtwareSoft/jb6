@@ -1,0 +1,11 @@
+<script type="module">
+    import { comp } from '../plugins/core/jb-core.js'
+    const test1 = comp('test1', {
+        params: [
+            {id: 'title', as: 'string'}
+        ],
+        impl: 'hello %$title%'
+    })
+    console.log(test1.calc('mukki'))
+
+</script>
