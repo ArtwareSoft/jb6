@@ -1,5 +1,5 @@
 import { component } from './jb-core.js'
-import { log, logError } from './spy.js'
+import { log, logError } from './logger.js'
 import { resolveFinishedPromise, asArray, RT_types } from './core-utils.js'
 
 export function val(ref) {

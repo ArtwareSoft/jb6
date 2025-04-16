@@ -1,6 +1,6 @@
 import { RT_types, isRefType, resolveFinishedPromise } from './core-utils.js'
 import { val, objHandler, isRef, calcVar } from './db.js'
-import { log, logError } from './spy.js'
+import { log, logError } from './logger.js'
 
 const tostring = RT_types.string, tonumber = RT_types.number
 

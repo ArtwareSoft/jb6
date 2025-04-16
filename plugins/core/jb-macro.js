@@ -1,6 +1,6 @@
 import {jb, run} from './jb-core.js'
 import { isPrimitiveValue, asArray, path, unique } from './core-utils.js'
-import { logError } from './spy.js'
+import { logError } from './logger.js'
 
 const isMacro = Symbol.for('isMacro')
 const OrigValues = Symbol.for('OrigValues')
