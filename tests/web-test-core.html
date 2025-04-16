@@ -1,11 +1,18 @@
 <script type="module">
-    import { comp } from '../plugins/core/jb-core.js'
-    const test1 = comp('test1', {
+    import { Data, Action } from '../plugins/core/jb-core.js'
+    const test1 = Data('test1', {
         params: [
-            {id: 'title', as: 'string'}
+            {id: 'title', as: 'string', defaultValue : 'test1'}
         ],
         impl: 'hello %$title%'
     })
-    console.log(test1.calc('mukki'))
+    const test2 = Data('test2', {
+        params: [
+            {id: 'title', as: 'string'}
+        ],
+        impl: test1('t2 %$title%')
+    })
+
+    console.log(test2.calc('test2'))
 
 </script>

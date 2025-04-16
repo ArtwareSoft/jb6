@@ -110,12 +110,10 @@ export function resolveProfileTop(id, comp, {tgpModel} = {}) {
       // fix as boolean params to have type: 'boolean'
       if (p.as == 'boolean' && ['boolean','ref'].indexOf(p.type) == -1) p.type = 'boolean<>'
       const t1 = (p.type || '').replace(/\[\]/g,'') || 'data<>'
-      if (t1.indexOf(',') != -1)
-        return logError(`resolveProfileTop - ${p.id} param in ${id} can not have multiple types`,{t1})
       p.$type = t1.indexOf('<') == -1 ? `${t1}<${comp.$dsl}>` : t1
     })
 
-    const type = comp.type || (isPrimitiveValue(comp.impl) || typeof comp.impl == 'function') && 'data<>'
+    const type = comp.type || 'data<>'
     if (type) {
       comp.$type = type.indexOf('<') == -1 ? `${type}<${comp.$dsl}>` : type
       const fullId = comp.$$ = `${comp.$type}${id}`
@@ -177,14 +175,15 @@ function resolveCompWithId(id, {dslType, silent, tgpModel, parentProp, parent, t
     if (comps[id]) return comps[id]
     if (comps[(dslType||'')+id]) return comps[(dslType||'')+id]
 
-    const moreTypesFromProp = path(parentProp,'moreTypes') || ''
+    //const moreTypesFromProp = path(parentProp,'moreTypes') || ''
     const typeFromParent = parentProp && parentProp.typeAsParent === true && parentType
     const dynamicTypeFromParent = parentProp && typeof parentProp.typeAsParent == 'function' 
       && parentProp.typeAsParent(parentType)
     const byTypeRules = [dynamicTypeFromParent,typeFromParent,dslType].filter(x=>x).join(',').split(',').filter(x=>x)
       .flatMap(t=>moreTypesByTypeRules(t)).join(',')
 
-    const allTypes = unique([moreTypesFromProp,byTypeRules,dynamicTypeFromParent,typeFromParent,dslType,'test<>','data<>','action<>'].filter(x=>x).join(',').split(',').filter(x=>x))
+    // moreTypesFromProp, ,'test<>','data<>','action<>'
+    const allTypes = unique([byTypeRules,dynamicTypeFromParent,typeFromParent,dslType].filter(x=>x).join(',').split(',').filter(x=>x))
     const byFullId = allTypes.map(t=>comps[t+id]).find(x=>x)
     if (byFullId)
       return byFullId

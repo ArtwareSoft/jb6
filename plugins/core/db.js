@@ -116,7 +116,8 @@ export const pathOfRef = ref => safeRefCall(ref, h=>h.pathOfRef(ref))
 export const refOfPath = path => watchableHandlers.reduce((res,h) => res || h.refOfPath(path),null)
 export const canChangeDB = ctx => !ctx.probe || ctx.vars.testID
 
-export function calcVar(varname, {ctx, args, jstype}) {
+export function calcVar(varname, ctx, {isRef}) {
+  const { tgpCtx: { args }} = ctx
   let res
   if (args !== undefined)
     res = args[varname]
@@ -124,9 +125,9 @@ export function calcVar(varname, {ctx, args, jstype}) {
     res = ctx.vars[varname]
   else if (resources && resources[varname] !== undefined) {
     useResourcesHandler(h => h.makeWatchable(varname))
-    res = isRefType(jstype) ? useResourcesHandler(h=>h.refOfPath([varname])) : resource(varname)
+    res = isRef ? useResourcesHandler(h=>h.refOfPath([varname])) : resource(varname)
   } else if (consts && consts[varname] !== undefined)
-    res = isRefType(jstype) ? simpleValueByRefHandler.objectProperty(consts,varname) : res = consts[varname]
+    res = isRef ? simpleValueByRefHandler.objectProperty(consts,varname) : res = consts[varname]
 
   return resolveFinishedPromise(res)
 }

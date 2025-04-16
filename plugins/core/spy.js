@@ -1,7 +1,9 @@
+import { path } from './core-utils.js'
+
 export function log(logName, record, options) { jb.spy && jb.spy.enabled && jb.spy.log(logName, record, options) }
 
 export function logError(err,logObj) {
-  const ctx = jb.path(logObj,'ctx')
+  const ctx = path(logObj,'ctx')
   const stack = ctx && jb.utils.callStack(ctx)
   jb.frame.window && jb.frame.console.error('%c Error: ','color: red', err, stack, logObj)
   const errObj = { err , ...logObj, stack}

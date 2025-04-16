@@ -43,7 +43,7 @@ function asComp($$) {
     }
 }
 
-export function comp(id, comp, {plugin,dsl} = {}) {
+export function component(id, comp, {plugin,dsl} = {}) {
     comp.$dsl = dsl || ''
     if (comp.type == 'any') jb.genericCompIds[id] = true
   
@@ -52,34 +52,25 @@ export function comp(id, comp, {plugin,dsl} = {}) {
     return registerProxy(id)
 }
 
-export function component(id, _comp, {plugin,dsl} = {}) {
-    return comp(id, _comp, {plugin,dsl})
-}
 
-export function DataFunc(id, _comp, {plugin} = {}) {
-    return comp(id,{..._comp, type: 'data'}, {plugin, dsl:''})
-}
-
-export function Action(id, _comp, {plugin} = {}) {
-    return comp(id,{..._comp, type: 'action'}, {plugin, dsl:''})
-}
-
-export function run(profile, ctx = { vars: {}}, args, tgpCtx = new TgpCtx(), settings) {
+export function run(profile, ctx, settings) {
+    ctx = ctx || { tgpCtx : new TgpCtx() }
+    const { data, vars, tgpCtx } = ctx
     const {openExpression, openArray, openObj, openComp} = settings || {openExpression: true, openArray: true, openObj: false, openComp: true}
     if (typeof profile == 'string' && openExpression)
-        return toRTType(calc(profile, ctx, args, tgpCtx))
+        return toRTType(calc(profile, ctx))
     if (Array.isArray(profile) && openArray)
-        return profile.map((p,i) => run(p,ctx,args,tgpCtx.innerDataPath(i), settings))
+        return profile.map((p,i) => run(p, { data, vars, tgpCtx: tgpCtx.innerDataPath(i)}, settings))
     if (profile && profile.$$ && openComp) {
         const comp = asComp(profile.$$)
-        const ret = comp.runProfile(profile, ctx, args, tgpCtx, settings)
+        const ret = comp.runTopProfile(profile, ctx, settings)
         return toRTType(ret)
     }
     if (typeof profile == 'function') {
-        return profile(ctx,ctx.vars, args)
+        return profile(ctx,ctx.vars, tgpCtx.args)
     }
     if (profile && typeof profile == 'object' && openObj) {
-        return Object.fromEntries(Object.entries(profile).map(([id,p]) =>[id,run(p,ctx,args,tgpCtx.innerDataPath(id), settings)]))
+        return Object.fromEntries(Object.entries(profile).map(([id,p]) =>[id,run(p, { data, vars, tgpCtx: tgpCtx.innerDataPath(i)}, settings)]))
     }
     return profile
 
@@ -89,33 +80,24 @@ export function run(profile, ctx = { vars: {}}, args, tgpCtx = new TgpCtx(), set
     }
 }
 
-function mergeCtx(callerCtx, creatorCtx) {
-    if (callerCtx == null) return creatorCtx
-    const noOfVars = Object.keys(callerCtx.vars || []).length
-    if (noOfVars == 0 && callerCtx.data == null)
-        return creatorCtx
-    return (noOfVars == 0) ? { data: callerCtx.data, vars: creatorCtx.vars }
-     : {data: callerCtx.data == null ? creatorCtx.data: callerCtx.data, vars: {...creatorCtx.vars, ...callerCtx.vars}}
-}
-
 class TgpCtx {
     constructor(tgpCtx = {}) {
         Object.assign(this,tgpCtx)
-        this.stack = this.stack || []
     }
     innerDataPath(path) {
-        return new TgpCtx({...this, path: `${this.path}~${path}`, parentParam: {$type: 'data<>'} })
+        return new TgpCtx({...this, path: `${this.path}~${path}`, parentParam: {$type: 'data<>'}, profile: 'data path' })
     }
-    innerParam(parentParam) {
-        return new TgpCtx({...this, path: `${this.path}~${parentParam.id}`, parentParam})
+    innerParam(parentParam, profile) {
+        return new TgpCtx({...this, path: `${this.path}~${parentParam.id}`, parentParam, profile})
     }
-    newComp(comp, compArgs) {
+    callCtx(callerCtx) {
+        return new TgpCtx({...this, path: `${this.path}~${parentParam.id}`, callerStack: [...(this.callerStack||[]), callerCtx]})
+    }
+    newComp(comp, args) {
         return new TgpCtx({...this, 
             path: `${comp.$$}.impl`, 
-            stack: [...this.stack, this.path],
-            callerCtx: this,
-            argsCtx: Object.fromEntries(Object.entries(compArgs).map(([id,val]) => [id,typeof val == 'function' && val.tgpCtx])
-                .filter(([id,val]) =>val))
+            creatorStack: [...(this.creatorStack || []), this.path],
+            args
         })
     }
 }
@@ -128,10 +110,12 @@ class TgpComp {
         this._params = this._params || (this.params || []).map(p=>new param(p))
         return this._params
     }
-    runProfile(profile, ctx, args, tgpCtx, settings) {
-        const compArgs = Object.fromEntries(this.calcParams().map(p =>[p.id, p.resolve(profile, ctx, args, tgpCtx, settings)]))
+    runTopProfile(profile, ctx, settings) {
+        const compArgs = Object.fromEntries(this.calcParams().map(p =>[p.id, p.resolve(profile, ctx, settings)]))
         if (this.impl == null) return compArgs
-        return run(this.impl, ctx, compArgs, tgpCtx.newComp(this,compArgs), settings)
+        const { data, vars, tgpCtx } = ctx
+
+        return run(this.impl, { data, vars, tgpCtx: tgpCtx.newComp(this,compArgs)}, settings)
     }
 }
 
@@ -139,18 +123,42 @@ class param {
     constructor(_param) {
         Object.assign(this,_param)
     }
-    resolve(profile, creatorCtx, creatorArgs, tgpCtx, settings) {
+    resolve(profile, creatorCtx, settings) {
         if (this.dynamic == true) {
             function res(callerCtx) {
-               return run(profile[this.id], mergeCtx(callerCtx, creatorCtx), creatorArgs, tgpCtx.innerParam(this), settings)
+               const ctx = { ...mergeDataCtx(callerCtx, creatorCtx), tgpCtx: creatorCtx.tgpCtx.callerCtx(callerCtx).innerParam(this,profile) }
+               return run(profile[this.id], ctx , settings)
             }
-            res.tgpCtx = tgpCtx
+            res.creatorCtx = creatorCtx
             res.profile = profile
             return res
         }
-        return run(profile[this.id], creatorCtx, creatorArgs, tgpCtx.innerParam(this), settings )
+        const { data, vars, tgpCtx } = creatorCtx
+
+        return run(profile[this.id], { data, vars, tgpCtx: tgpCtx.innerParam(this, profile)}, settings )
+
+        function mergeDataCtx(caller, {data, vars}) {
+            if (caller == null) return {data, vars}
+            const noOfVars = Object.keys(caller.vars || []).length
+            if (noOfVars == 0 && caller.data == null)
+                return {data, vars}
+            return (noOfVars == 0) ? { data: caller.data, vars }
+             : {data: caller.data == null ? data : caller.data, vars: {...vars, ...caller.vars}}
+        }
     }
-}    
+}
+
+// core types: Data and action
+
+export function Data(id, comp, {plugin} = {}) {
+    return component(id,{...comp, type: 'data'}, {plugin, dsl:''})
+}
+
+export function Action(id, comp, {plugin} = {}) {
+    return component(id,{...comp, type: 'action'}, {plugin, dsl:''})
+}
+
+// core comps are still here beacuse of initializtion order
 
 component('isRef', {
   type: 'boolean',
