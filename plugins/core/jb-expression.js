@@ -1,8 +1,28 @@
-import { RT_types, isRefType, resolveFinishedPromise } from './core-utils.js'
-import { val, objHandler, isRef, calcVar } from './db.js'
+import { RT_types, utils } from './core-utils.js'
 import { log, logError } from './logger.js'
+import { onInjectExtension } from './jb-core.js'
+const {isRefType, resolveFinishedPromise, toString, toNumber} = utils
 
-const tostring = RT_types.string, tonumber = RT_types.number
+let val = x=>x
+let objHandler = () => null
+let isRef = () => false
+let consts = {}
+let calcVar = (varname, ctx) => {
+    const { tgpCtx: { args }} = ctx
+    const res = args && args[varname] != undefined && args[varname] 
+      || ctx.vars[varname] != undefined && ctx.vars[varname] 
+      || consts[varname] != undefined && consts[varname]
+  
+    return resolveFinishedPromise(res)
+}
+
+onInjectExtension('db', (ext) => {
+    consts = ext.consts || consts
+    val = ext.val || val
+    objHandler = ext.objHandler || objHandler
+    isRef = ext.isRef || isRef
+    calcVar = ext.calcVar || calcVar
+})
 
 export function calc(_exp, ctx, overrideParentParam ) {
     const { tgpCtx : {parentParam } } = ctx
@@ -25,12 +45,12 @@ export function calc(_exp, ctx, overrideParentParam ) {
     if (exp.lastIndexOf('{%') == 0 && exp.indexOf('%}') == exp.length-2) // just one exp filling all string
       return expPart(exp.substring(2,exp.length-2))
   
-    exp = exp.replace(/{%(.*?)%}/g, (match,contents) => tostring(expPart(contents,{ as: 'string'})))
-    exp = exp.replace(/{\?(.*?)\?}/g, (match,contents) => tostring(conditionalExp(contents)))
+    exp = exp.replace(/{%(.*?)%}/g, (match,contents) => toString(expPart(contents,{ as: 'string'})))
+    exp = exp.replace(/{\?(.*?)\?}/g, (match,contents) => toString(conditionalExp(contents)))
     if (exp.match(/^%[^%;{}\s><"']*%$/)) // must be after the {% replacer
       return expPart(exp.substring(1,exp.length-1))
   
-    exp = exp.replace(/%([^%;{}\s><"']*)%/g, (match,contents) => tostring(expPart(contents,{as: 'string'})))
+    exp = exp.replace(/%([^%;{}\s><"']*)%/g, (match,contents) => toString(expPart(contents,{as: 'string'})))
     return exp
 
     function expPart(expressionPart, _parentParam) {
@@ -39,7 +59,7 @@ export function calc(_exp, ctx, overrideParentParam ) {
     function conditionalExp(exp) {
       // check variable value - if not empty return all exp, otherwise empty
       const match = exp.match(/%([^%;{}\s><"']*)%/)
-      if (match && tostring(expPart(match[1])))
+      if (match && toString(expPart(match[1])))
         return calc(exp, ctx, { as: 'string' })
       else
         return ''
@@ -101,7 +121,7 @@ function evalExpressionPart(expressionPart, ctx, overrideParentParam ) {
 function implicitlyCreateInnerObject(parent,prop,refHandler) {
     log('core innerObject created',{parent,prop,refHandler})
     parent[prop] = {}
-    refHandler.refreshMapDown && refHandler.refreshMapDown(parent)
+    refHandler?.refreshMapDown && refHandler.refreshMapDown(parent)
     return parent[prop]
 }
 
@@ -124,9 +144,9 @@ export function calcBool(exp, ctx) {
       if (isRef(ref))
         return ref
       
-      const _val = tostring(ref)
+      const _val = toString(ref)
       if (typeof _val == 'boolean') return _val
-      const asString = tostring(_val)
+      const asString = toString(_val)
       return !!asString && asString != 'false'
     }
     if (parts.length != 4)
@@ -154,9 +174,9 @@ export function calcBool(exp, ctx) {
     }
 
     function doCalcString(exp) {
-        return tostring(calc(trim(exp), ctx, {as: 'string'} ))
+        return toString(calc(trim(exp), ctx, {as: 'string'} ))
     }
     function doCalcNumber(exp) {
-        return tonumber(calc(trim(exp), ctx, {as: 'number'}))
+        return toNumber(calc(trim(exp), ctx, {as: 'number'}))
     }
 }

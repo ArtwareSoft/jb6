@@ -1,6 +1,11 @@
-import { val, asRef } from './db.js'
+import { onInjectExtension } from './jb-core.js'
+import { logError } from './logger.js'
 
-export const isPrimitiveValue = val => ['string','boolean','number'].indexOf(typeof val) != -1
+const isPrimitiveValue = val => ['string','boolean','number'].indexOf(typeof val) != -1
+
+let val = x => x
+let asRef = () => logError('asRef. extension db/writable.js was not loaded',{})
+onInjectExtension('db', (ext) => { val = ext.val, asRef = ext.asRef })
 
 export const RT_types = {
     asIs: x => x,
@@ -55,15 +60,15 @@ export const RT_types = {
     }
 }
 
-export const isRefType = jstype => jstype === 'ref' || jstype === 'ref[]'
+const isRefType = jstype => jstype === 'ref' || jstype === 'ref[]'
 
-export function resolveFinishedPromise(val) {
+function resolveFinishedPromise(val) {
     if (val && typeof val == 'object' && val._state == 1) // finished promise
       return val._result
     return val
 }
 
-export const unique = (ar,f) => {
+const unique = (ar,f) => {
     const keys = {}, res = []
     ar.forEach(x =>{
       const key = f ? f(x) : x
@@ -73,22 +78,14 @@ export const unique = (ar,f) => {
     return res
 }
 
-export const asArray = v => v == null ? [] : (Array.isArray(v) ? v : [v])
+const asArray = v => v == null ? [] : (Array.isArray(v) ? v : [v])
+const toArray = RT_types.array
+const toString = RT_types.string
+const toNumber = RT_types.number
+const toJstype = (val,type) => RT_types[type](val)
 
-export const path = (object,_path,value) => {
-    if (!object) return object
-    let cur = object
-    if (typeof _path === 'string') _path = _path.split('.')
-    _path = asArray(_path)
-
-    if (typeof value == 'undefined') {  // get
-      return _path.reduce((o,k)=>o && o[k], object)
-    } else { // set
-      for(let i=0;i<_path.length;i++)
-        if (i == _path.length-1)
-          cur[_path[i]] = value
-        else
-          cur = cur[_path[i]] = cur[_path[i]] || {}
-      return value
-    }
+export const utils = { 
+    isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toJstype,
+    val: x=>val(x)
 }
+

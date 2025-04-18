@@ -7,13 +7,14 @@
         ],
         impl: 'hello %$title%'
     })
-    const test2 = Data('test2', {
+    const test2 = Data({
         params: [
             {id: 'title', as: 'string'}
         ],
         impl: test1('t2 %$title%')
     })
 
-    console.log(test2.calc('test2'))
+    console.log(test1.$run())
+    console.log(test2.$run('test2'))
 
 </script>

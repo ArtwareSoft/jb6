@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+	.test-button { opacity: 0 }
+	.test-button:hover { opacity: 1 }
+</style>
+</head>
+<body>
+	<div id="remoteTests"> </div>
+
+	<div id="mem"> </div>
+	<div id="testElem"> </div>
+	<div id="show"> </div>
+ <script type="module">
+    import {} from '../packages/common-tests.js'
+    import {runTests} from '../plugins/testers/run-tests-in-browser.js'
+    const urlQuery = prop => (location.href.match(new RegExp(prop + '=([^&]*)')) || [])[1]
+//			jb.spy.initSpyByUrl()
+    const params = { 
+        testType: '',
+        show: window.location.href.indexOf('&show') != -1,
+        showOnly: window.location.href.indexOf('&showOnly') != -1,
+        specificTest: urlQuery('test'),
+        notPattern: urlQuery('not'),
+        top: window.location.href.match(/\btop\b/),
+        onlyTest: urlQuery('show') == 'onlyTest',
+        ...jb.objFromEntries(['repo','rerun','pattern','take','remoteTests'].map(x=>[x,urlQuery(x)]))
+    }
+	runTests(params)
+  </script>
+</body>
+</html>
