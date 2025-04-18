@@ -1,12 +1,13 @@
-import { utils as core_utils } from '../core/core-utils'
-import { log, logError, logException } from '../core/logger'
+import { utils as core_utils } from '../core/core-utils.js'
+import { log, logError, logException } from '../core/logger.js'
+
 const delay = (mSec,res) => new Promise(r=>setTimeout(()=>r(res),mSec))
 
 const path = (object,_path,value) => {
     if (!object) return object
     let cur = object
     if (typeof _path === 'string') _path = _path.split('.')
-    _path = asArray(_path)
+    _path = core_utils.asArray(_path)
 
     if (typeof value == 'undefined') {  // get
       return _path.reduce((o,k)=>o && o[k], object)
@@ -20,21 +21,19 @@ const path = (object,_path,value) => {
     }
 }
 
-const isPromise = v => v && v != null && typeof v.then === 'function'
-
 function isDelayed(v) {
   if (!v || v.constructor === {}.constructor || Array.isArray(v)) return
-  return typeof v === 'object' ? isPromise(v) : typeof v === 'function' && isCallbag(v)
+  return typeof v === 'object' ? core_utils.isPromise(v) : typeof v === 'function' && isCallbag(v)
 }
 
-function waitForInnerElements(item, {passRx} = {}) { // resolve promises in array and double promise (via array), passRx - do not wait for reactive data to end, and pass it as is
-  if (isPromise(item))
+function waitForInnerElements(item, {passRx} = {}) { // resolve promises in array and double promise (via array), passRx - does not wait for reactive data to end, and pass it as is
+  if (core_utils.isPromise(item))
     return item.then(r=>waitForInnerElements(r,{passRx}))
   if (!passRx && isCallbag(item))
     return callbagToPromiseArray(item)
 
   if (Array.isArray(item)) {
-    if (! item.find(v=> isCallbag(v) || isPromise(v))) return item
+    if (! item.find(v=> isCallbag(v) || core_utils.isPromise(v))) return item
     return Promise.all(item.map(x=>waitForInnerElements(x,{passRx}))).then(items=>items.flatMap(x=>x))
   }
   return item
@@ -61,5 +60,23 @@ const subscribe = (source, callback) => {
   })
 }
 
-export const utils = { ...core_utils, unique, delay, path, isPromise, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe
+const isObject = o => o != null && typeof o === 'object'
+const isEmpty = o => Object.keys(o).length === 0
+
+function objectDiff(newObj, orig) {
+    if (orig === newObj) return {}
+    if (!isObject(orig) || !isObject(newObj)) return newObj
+    const deletedValues = Object.keys(orig).reduce((acc, key) =>
+        newObj.hasOwnProperty(key) ? acc : { ...acc, [key]: '__undefined'}
+    , {})
+
+    return Object.keys(newObj).reduce((acc, key) => {
+      if (!orig.hasOwnProperty(key)) return { ...acc, [key]: newObj[key] } // return added r key
+      const difference = objectDiff(newObj[key], orig[key])
+      if (isObject(difference) && isEmpty(difference)) return acc // return no diff
+      return { ...acc, [key]: difference } // return updated key
+    }, deletedValues)
+}
+
+export const utils = { ...core_utils, delay, path, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff
     , log, logError, logException }

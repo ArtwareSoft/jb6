@@ -1,7 +1,36 @@
-import { Data, Var } from './jb-core.js'
 import { Test } from '../../testers/tester.js'
 import { dataTest } from '../../testers/data-tester.js'
-import { pipeline, equals, delay, join } from '../../common/common.js'
+import { utils, pipeline, filter, contains, equals, delay, join, Var, Data, Const, property, obj, prop } from '../../common/jb-common.js'
+
+Const('person', {
+    name: 'Homer Simpson',
+    male: true,
+    isMale: 'yes',
+    age: 42
+})
+
+Const('peopleWithChildren', [
+  {
+    name: 'Homer',
+    children: [{name: 'Bart'}, {name: 'Lisa'}],
+  },
+  {
+    name: 'Marge',
+    children: [{name: 'Bart'}, {name: 'Lisa'}],
+  }
+])
+
+Const('personWithChildren', {
+    name: "Homer Simpson",
+    children: [{ name: 'Bart' }, { name: 'Lisa' }, { name: 'Maggie' } ],
+    friends: [{ name: 'Barnie' } ],
+})
+  
+Const('people', [
+    {name: 'Homer Simpson', age: 42, male: true},
+    {name: 'Marge Simpson', age: 38, male: false},
+    {name: 'Bart Simpson', age: 12, male: true}
+])
 
 Test('coreTest.datum2', {
   impl: dataTest(pipeline('%%', { data: 'hello' }), equals('hello'))
@@ -11,55 +40,44 @@ Test('coreTest.propertyPassive', {
   impl: dataTest(property('name', obj(prop('name', 'homer')), { useRef: true }), equals('homer'))
 })
 
-Test('test.withDefaultValueComp', {
+const withDefaultValueComp = Data({
   params: [
     {id: 'val', defaultValue: pipeline('5')}
   ],
   impl: '%$val%'
 })
+
 Test('coreTest.DefaultValueComp', {
-  impl: dataTest(test.withDefaultValueComp(), equals(5))
+  impl: dataTest(withDefaultValueComp(), equals(5))
 })
 
-Data('test.getAsBool', {
+const getAsBool = Data({
   params: [
     {id: 'val', as: 'boolean', type: 'boolean'}
   ],
   impl: (ctx,{val}) => val
 })
 
-Test('coreTest.getRefValueAsBoolean', {
-  impl: dataTest(test.getAsBool('%$person/male%'), ({data}) => data === true)
-})
-
 Test('coreTest.getExpValueAsBoolean', {
-  impl: dataTest(test.getAsBool('%$person/name%==Homer Simpson'), ({data}) => data === true)
+  impl: dataTest(getAsBool('%$person/name%==Homer Simpson'), ({data}) => data === true)
 })
 
 Test('coreTest.getValueViaBooleanTypeVar', {
   impl: dataTest({
     vars: [Var('a', 'false')],
-    calculate: test.getAsBool('%$a%'),
+    calculate: getAsBool('%$a%'),
     expectedResult: ({data}) => data === false
   })
 })
 
-Test('coreTest.ctx.expOfRefWithBooleanType', {
-  impl: dataTest({
-    vars: [Var('a', 'false')],
-    calculate: ctx => ctx.exp('%$person/male%','boolean'),
-    expectedResult: ({data}) => data === true
-  })
-})
-
-Data('coreTest.nullParamPt', {
+const nullParamPt = Data({
   params: [
     {id: 'tst1', as: 'string'}
   ],
-  impl: (ctx,tst1) => tst1
+  impl: (ctx,{tst1}) => tst1
 })
 Test('coreTest.emptyParamAsString', {
-  impl: dataTest(coreTest.nullParamPt(), ctx => ctx.data == '' && ctx.data != null)
+  impl: dataTest(nullParamPt(), ctx => ctx.data == '' && ctx.data != null)
 })
 
 Test('coreTest.asArrayBug', {
@@ -87,45 +105,93 @@ Test('coreTest.asyncVar', {
   impl: dataTest(pipeline(Var('b', 5), Var('a', delay(1, 3), { async: true }), '%$a%,%$b%'), equals('3,5'))
 })
 
-// Test('coreTest.waitForInnerElements.promiseInArray', {
-//   impl: dataTest(()=> [jb.delay(1,1)], equals(()=>[1]))
-// })
+Test('coreTest.waitForInnerElements.promiseInArray', {
+  impl: dataTest(()=> [utils.delay(1,1)], equals(()=>[1]))
+})
 
-// Test('coreTest.waitForInnerElements.doublePromiseInArray', {
-//   impl: dataTest(()=> [jb.delay(1).then(()=>[jb.delay(1,5)])], equals(5))
-// })
+Test('coreTest.waitForInnerElements.doublePromiseInArray', {
+  impl: dataTest(()=> [utils.delay(1).then(()=>[utils.delay(1,5)])], equals(5))
+})
 
-// Test('coreTest.waitForInnerElements.cb', {
-//   impl: dataTest(()=> [jb.callbag.fromIter([1,2])], equals(()=>[1,2]))
-// })
-
-// Test('coreTest.waitForInnerElements.cbAndPromise', {
-//   impl: dataTest(()=> [jb.callbag.fromIter([1,2]),jb.delay(1).then(()=>jb.callbag.fromIter([3])),jb.callbag.fromIter([4,5])], equals(()=>[1,2,3,4,5]))
-// })
-
-// Test('coreTest.waitForInnerElements.cb', {
-//   impl: dataTest(rx.pipe(source.data([1,2])), equals(()=>[1,2]))
-// })
-
-Data('test.withArrayParam', {
+const withArrayParam = Data({
   params: [
     {id: 'arr', type: 't1[]'}
   ],
-  impl: '%$arr%'
+  impl: '$debugger:%$arr%'
 })
 
-Data('test.withArrayParam2', {
+const withArrayParam2 = Data({
   params: [
     {id: 'arr', type: 't1[]'}
   ],
-  impl: test.withArrayParam('$debugger:%$arr%')
+  impl: withArrayParam('$debugger:%$arr%')
 })
 
-Data('test.t1', {
+const t1 = Data({
   type: 't1',
   impl: 'txt'
 })
 
 Test('coreTest.usingArrayParam', {
-  impl: dataTest(test.withArrayParam2(test.t1(), test.t1()), equals(join(','), 'txt,txt'))
+  impl: dataTest(withArrayParam2(t1(), t1()), equals(join(','), 'txt,txt'))
+})
+
+Test('expTest.select', {
+  impl: dataTest({
+    calculate: pipeline('%$peopleWithChildren%', pipeline(Var('parent'), '%children%', '%name% is child of %$parent/name%'), join()),
+    expectedResult: equals(
+      'Bart is child of Homer,Lisa is child of Homer,Bart is child of Marge,Lisa is child of Marge'
+    )
+  })
+})
+
+Test('expTest.boolean', {
+  impl: dataTest(pipeline('%$people%', filter('%age%==42'), '%name%'), contains('Homer'))
+})
+
+Test('expTest.dynamicExp', {
+  impl: dataTest(pipeline('name','%$people/{%%}%'), contains('Homer'))
+})
+
+Test('expTest.expWithArray', {
+  impl: dataTest('%$personWithChildren/children[0]/name%', equals('Bart'))
+})
+
+Test('expTest.arrayLength', {
+  impl: dataTest('%$personWithChildren/children/length%', equals(3))
+})
+
+Test('expTest.stringLength', {
+  impl: dataTest('%$personWithChildren/name/length%', equals(13))
+})
+
+Test('expTest.activateMethod', {
+  impl: dataTest({
+    vars: [
+      Var('o1', () => ({ f1: () => ({a:5}) }))
+    ],
+    calculate: '%$o1/f1()/a%',
+    expectedResult: equals(5)
+  })
+})
+
+Test('expTest.conditionalText', {
+  impl: dataTest({
+    vars: [
+      Var('full', 'full'),
+      Var('empty', '')
+    ],
+    calculate: '{?%$full% is full?}{?%$empty% is empty?}',
+    expectedResult: equals('full is full')
+  })
+})
+
+Test('expTest.expWithArrayVar', {
+  impl: dataTest({
+    vars: [
+      Var('children', '%$personWithChildren/children%')
+    ],
+    calculate: '%$children[0]/name%',
+    expectedResult: equals('Bart')
+  })
 })

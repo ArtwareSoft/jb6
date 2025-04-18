@@ -1,5 +1,6 @@
-import { jb, component, Any } from './jb-core.js'
+import { jb, Component, Any, Data } from './jb-core.js'
 import { logError, log as _log } from './logger.js'
+import { registerProxy } from './jb-macro.js'
 
 export const typeAdapter = Any('typeAdapter', {
   params: [
@@ -24,7 +25,7 @@ export const TBD = Any('TBD', {
   impl: 'TBD'
 })
 
-export const Var = Component('Var', {
+Component('Var', {
   type: 'var',
   isSystem: true,
   params: [
@@ -37,8 +38,10 @@ export const Var = Component('Var', {
     result.$vars.push(self)
   }
 })
+export const Var = registerProxy('Var')
+jb.comps.Var = jb.comps['var<>Var']
 
-export const unknownCmp = Component('unknownCmp', {
+Component('unknownCmp', {
   type: 'system',
   isSystem: true,
   params: [
@@ -46,6 +49,7 @@ export const unknownCmp = Component('unknownCmp', {
   ],
   macro: (result, self) => jb.comps[self.id] = { impl: ctx => logError(`comp ${self.id} is not defined`,{ctx})}
 })
+export const unknownCmp = registerProxy('unknownCmp')
 
 export const runCtx = Any('runCtx', {
   type: 'any',

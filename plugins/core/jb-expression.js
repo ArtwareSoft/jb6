@@ -1,34 +1,31 @@
-import { RT_types, utils } from './core-utils.js'
+import { RT_types, utils, consts } from './core-utils.js'
 import { log, logError } from './logger.js'
-import { onInjectExtension } from './jb-core.js'
+import { jb } from './jb-core.js'
 const {isRefType, resolveFinishedPromise, toString, toNumber} = utils
 
-let val = x=>x
-let objHandler = () => null
-let isRef = () => false
-let consts = {}
-let calcVar = (varname, ctx) => {
-    const { tgpCtx: { args }} = ctx
-    const res = args && args[varname] != undefined && args[varname] 
-      || ctx.vars[varname] != undefined && ctx.vars[varname] 
-      || consts[varname] != undefined && consts[varname]
-  
-    return resolveFinishedPromise(res)
+const val = v => jb.ext.db ? jb.ext.db.val(v) : v
+const isRef = v => jb.ext.db ? jb.ext.db.isRef(v) : false
+const objHandler = v => jb.ext.db ? jb.ext.db.objHandler(v) : null
+
+const calcVar = (varname, ctx) => {
+    if (jb.ext.db)
+        return jb.ext.db.calcVar(varname,ctx)
+    const { tgpCtx: { args }} = ctx  
+    return resolveFinishedPromise(doCalc())
+
+    function doCalc() {
+        if (args && args[varname] != undefined) return args[varname]
+        if (ctx.vars[varname] != undefined) return ctx.vars[varname] 
+        if (consts[varname] != undefined) return consts[varname]
+    }
 }
 
-onInjectExtension('db', (ext) => {
-    consts = ext.consts || consts
-    val = ext.val || val
-    objHandler = ext.objHandler || objHandler
-    isRef = ext.isRef || isRef
-    calcVar = ext.calcVar || calcVar
-})
-
 export function calc(_exp, ctx, overrideParentParam ) {
-    const { tgpCtx : {parentParam } } = ctx
+    const { tgpCtx : {parentParam: ctxParentParam } } = ctx
+    const parentParam = overrideParentParam || ctxParentParam
     const jstype = parentParam?.ref ? 'ref' : parentParam?.as
     let exp = '' + _exp
-    if (jstype == 'boolean') return calcBool(exp, ctx)
+    if (jstype == 'boolean') return calcBool(exp, ctx, parentParam)
     if (exp.indexOf('$debugger:') == 0) {
       debugger
       exp = exp.split('$debugger:')[1]
@@ -54,20 +51,20 @@ export function calc(_exp, ctx, overrideParentParam ) {
     return exp
 
     function expPart(expressionPart, _parentParam) {
-      return resolveFinishedPromise(evalExpressionPart(expressionPart,ctx, _parentParam || overrideParentParam || parentParam))
+      return resolveFinishedPromise(evalExpressionPart(expressionPart,ctx, _parentParam || parentParam))
     }
     function conditionalExp(exp) {
       // check variable value - if not empty return all exp, otherwise empty
       const match = exp.match(/%([^%;{}\s><"']*)%/)
-      if (match && toString(expPart(match[1])))
+      if (match && toString(expPart(match[1], { as: 'string' })))
         return calc(exp, ctx, { as: 'string' })
       else
         return ''
     }
 }
 
-function evalExpressionPart(expressionPart, ctx, overrideParentParam ) {
-    const jstype = overrideParentParam?.ref ? 'ref' : overrideParentParam?.as
+function evalExpressionPart(expressionPart, ctx, calculatedParentParam ) {
+    const jstype = calculatedParentParam?.ref ? 'ref' : calculatedParentParam?.as
     // example: %$person.name%.
   
     const parts = expressionPart.split(/[./[]/)
@@ -125,7 +122,7 @@ function implicitlyCreateInnerObject(parent,prop,refHandler) {
     return parent[prop]
 }
 
-export function calcBool(exp, ctx) {
+export function calcBool(exp, ctx, parentParam) {
     if (exp.indexOf('$debugger:') == 0) {
       debugger
       exp = exp.split('$debugger:')[1]
@@ -140,7 +137,7 @@ export function calcBool(exp, ctx) {
       return !calcBool(exp.substring(1), ctx)
     const parts = exp.match(/(.+)(==|!=|<|>|>=|<=|\^=|\$=)(.+)/)
     if (!parts) {
-      const ref = calc(exp, ctx)
+      const ref = calc(exp, ctx, {as: parentParam?.ref ? 'ref' : 'string'})
       if (isRef(ref))
         return ref
       

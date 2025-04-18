@@ -1,7 +1,7 @@
 import { jb } from '../core/jb-core.js'
 
-let enabled = false, spyParam, _obs
-const logs = [], enrichers = []
+let enabled = false, spyParam, _obs, enrichers = []
+const logs = []
 let counters = {}, locations = {}
 let includeLogs = {error: true}
 const settings = { 
@@ -9,12 +9,10 @@ const settings = {
     MAX_LOG_SIZE: 10000
 }
 
-export const spy = { logs, clear, log, initSpy, spyParamInUrl, registerEnrichers, search, isEnabled: () => enabled} // for console and tests use
-
-notifyInjectExtension('logger', {spy}, 1)
+export const spy = jb.ext.spy = { logs, clear, log, setLogs, initSpy, initSpyByUrl, registerEnrichers, search, isEnabled: () => enabled} // for console and tests use
 
 export function initSpy({spyParam: _spyParam}) {
-    if (!spyParam) return
+    if (!_spyParam) return
     spyParam = _spyParam
     enabled = true
     _obs = _obs || jb.callbag?.subject()
@@ -22,20 +20,18 @@ export function initSpy({spyParam: _spyParam}) {
     return spy
 }
 
-export function initSpyByUrl() {
-    return initSpy({spyParam : spyParamInUrl() })
-}
-
-function spyParamInUrl() {
-    const getUrl = () => { try { return globalHost.location?.href } catch(e) {} }
-    const getParentUrl = () => { try { return globalHost.parent?.location?.href } catch(e) {} }
-    const getSpyParam = url => (url.match('[?&]spy=([^&]+)') || ['', ''])[1]
-    return globalHost.jbUri == 'studio' && (getUrl().match('[?&]sspy=([^&]+)') || ['', ''])[1] || 
-        getSpyParam(getParentUrl() || '') || getSpyParam(getUrl() || '')
+function initSpyByUrl() {
+    return initSpy({spyParam : new URLSearchParams(globalThis.location.href).get('spy') })
 }
 
 const memoryUsage = () => globalThis.performance?.memory?.usedJSHeapSize
-    
+
+function setLogs(_spyParam) {
+    enabled = true
+    spyParam = _spyParam
+    calcIncludeLogsFromSpyParam()
+}
+
 function calcIncludeLogsFromSpyParam() {
     const includeLogsFromParam = (spyParam || '').split(',').filter(x => x[0] !== '-').filter(x => x)
     const excludeLogsFromParam = (spyParam || '').split(',').filter(x => x[0] === '-').map(x => x.slice(1))
@@ -60,9 +56,9 @@ function log(logNames, _record, {takeFrom} = {}) {
     updateCounters(logNames)
     updateLocations(logNames,takeFrom)
     if (!shouldLog(logNames, _record)) return
-    const now = Date.now()
+    const now = new Date()
     const index = logs.length
-    const { tgpCtx: { callerStack, creatorStack }} = _record?.ctx || {}
+    const { tgpCtx: { callerStack, creatorStack }} = _record?.ctx || {tgpCtx:{}}
     const record = {
         logNames,
         ..._record,
@@ -73,7 +69,7 @@ function log(logNames, _record, {takeFrom} = {}) {
         callerStack, creatorStack,
         activeElem: globalThis.document?.activeElement,
         $attsOrder: _record && Object.keys(_record),
-        time: now
+        time: now.getTime()
     }
     if (logs.length > 0 && globalThis.document?.activeElement != logs[index-1].activeElem) {
         logs[index-1].logNames += ' focus'

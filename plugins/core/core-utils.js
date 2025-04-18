@@ -1,11 +1,24 @@
-import { onInjectExtension } from './jb-core.js'
+import { jb } from './jb-core.js'
 import { logError } from './logger.js'
 
 const isPrimitiveValue = val => ['string','boolean','number'].indexOf(typeof val) != -1
 
-let val = x => x
-let asRef = () => logError('asRef. extension db/writable.js was not loaded',{})
-onInjectExtension('db', (ext) => { val = ext.val, asRef = ext.asRef })
+const val = v => jb.ext.db ? jb.ext.db.val(v) : v
+const asRef = v => jb.ext.db ? jb.ext.db.asRef(v) : logError('asRef. extension db/writable.js was not loaded',{})
+
+export const consts = {}
+export function Const(id, val) {
+    const passiveSym = Symbol.for('passive')
+    consts[id] = markAsPassive(val || {})
+
+    function markAsPassive(obj) {
+        if (obj && typeof obj == 'object') {
+            obj[passiveSym] = true
+            Object.values(obj).forEach(v=>markAsPassive(v))
+        }
+        return obj
+    }    
+}
 
 export const RT_types = {
     asIs: x => x,
@@ -77,15 +90,18 @@ const unique = (ar,f) => {
     })
     return res
 }
+const isPromise = v => v && v != null && typeof v.then === 'function'
+
 
 const asArray = v => v == null ? [] : (Array.isArray(v) ? v : [v])
 const toArray = RT_types.array
 const toString = RT_types.string
 const toNumber = RT_types.number
+const toSingle = RT_types.single
 const toJstype = (val,type) => RT_types[type](val)
 
 export const utils = { 
-    isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toJstype,
+    isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype,
     val: x=>val(x)
 }
 

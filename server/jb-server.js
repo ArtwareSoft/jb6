@@ -10,6 +10,7 @@ const port = 8083
 
 app.use('/plugins', express.static(path.join(__dirname, '../plugins')))
 app.use('/tests', express.static(path.join(__dirname, '../tests')))
+app.use('/packages', express.static(path.join(__dirname, '../packages')))
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`)

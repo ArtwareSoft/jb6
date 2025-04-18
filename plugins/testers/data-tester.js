@@ -1,6 +1,6 @@
-import { Test, countersErrors } from './tester'
-import { delay, waitForInnerElements, path } from '../common/common-utils'
-import { log, logException } from '../core/logger'
+import { Test, countersErrors } from './tester.js'
+import { utils } from '../common/common-utils.js'
+import { spy } from '../logger/spy.js'
 
 export const dataTest = Test('dataTest', {
   params: [
@@ -20,13 +20,12 @@ export const dataTest = Test('dataTest', {
 		const {testID,singleTest,uiTest}  = ctxToUse.vars
 		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 5000 : null
 		const _timeout = singleTest ? Math.max(1000,timeout) : (remoteTimeout || timeout)
-        const spy = jb.ext.spy
-		spy?.setLogs(spy+',error')
+		_spy && spy.setLogs(_spy+',error')
 		let result = null
 		try {
 			const testRes = await Promise.race([ 
 				(async() => {
-					await delay(_timeout)
+					await utils.delay(_timeout)
 					return {testFailure: `timeout ${_timeout}mSec`}
 				})(),
 				(async() => {
@@ -37,23 +36,23 @@ export const dataTest = Test('dataTest', {
 					} catch (e) {
 						res = [{testFailure: e}]	
 					}
-					const _res = await waitForInnerElements(res)
+					const _res = await utils.waitForInnerElements(res)
 					return _res
 				})()
 			])
-			let testFailure = path(testRes,'0.testFailure') || testRes?.testFailure
+			let testFailure = utils.path(testRes,'0.testFailure') || testRes?.testFailure
 			const countersErr = countersErrors(expectedCounters,allowError)
 			const expectedResultCtx = ctxToUse.setData(testRes)
 			const expectedResultRes = !testFailure && await expectedResult(expectedResultCtx)
 			testFailure = expectedResultRes?.testFailure
 			const success = !! (expectedResultRes && !countersErr && !testFailure)
-			log('check test result',{testRes, success,expectedResultRes, testFailure, countersErr, expectedResultCtx})
+			utils.log('check test result',{testRes, success,expectedResultRes, testFailure, countersErr, expectedResultCtx})
 			result = { id: testID, success, reason: countersErr || testFailure, ...(includeTestRes ? testRes : {})}
 		} catch (e) {
-			logException(e,'error in test',{ctx})
+			utils.logException(e,'error in test',{ctx})
 			result = { testID, success: false, reason: 'Exception ' + e}
 		} finally {
-			spy?.setLogs('error')
+			_spy && spy.setLogs('error')
 			const doNotClean = ctx.probe || singleTest
 			if (!doNotClean) await (!singleTest && cleanUp())
 		} 

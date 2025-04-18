@@ -1,7 +1,6 @@
-import { Boolean, Data, notifyInjectExtension, jb } from '../core/jb-core.js'
+import { Boolean, Data, jb } from '../core/jb-core.js'
 import { log, logError } from '../core/logger.js'
-import { resolveFinishedPromise, asArray, toArray } from '../core/core-utils.js'
-import { consts } from './consts.js'
+import { resolveFinishedPromise, asArray, toArray, consts } from '../core/core-utils.js'
 
 export function Writable(id, val) {
     resource(id,val)
@@ -78,7 +77,7 @@ function refHandler(ref) {
     return watchableHandlers.find(handler => handler.isRef(ref))
 }
 
-const db = {
+const db = jb.ext.db = {
     objHandler,
     val(ref) {
         if (ref == null || typeof ref != 'object') return ref
@@ -110,22 +109,20 @@ const db = {
     refOfPath: path => watchableHandlers.reduce((res,h) => res || h.refOfPath(path),null),
 
     calcVar(varname, ctx, {isRef}) {
-      const { tgpCtx: { args }} = ctx
-      let res = args && args[varname] != undefined && args[varname] || ctx.vars[varname] != undefined && ctx.vars[varname] 
-     
-      if (res == undefined) {
-        if (resources[varname] !== undefined) {
-            useResourcesHandler(h => h.makeWatchable(varname))
-            res = isRef ? useResourcesHandler(h=>h.refOfPath([varname])) : resource(varname)
-        } else if (consts[varname] !== undefined) {
-            res = isRef ? simpleValueByRefHandler.objectProperty(consts,varname) : res = consts[varname]
+        const { tgpCtx: { args }} = ctx  
+        return resolveFinishedPromise(doCalc())
+        
+        function doCalc() {
+            if (args && args[varname] != undefined) return args[varname]
+            if (ctx.vars[varname] != undefined) return ctx.vars[varname] 
+            if (consts[varname] != undefined) return consts[varname]
+            if (resources[varname] !== undefined) {
+                useResourcesHandler(h => h.makeWatchable(varname))
+                return isRef ? useResourcesHandler(h=>h.refOfPath([varname])) : resource(varname)
+            }
         }
-      }
-      return resolveFinishedPromise(res)
-    }    
+    }
 }
-
-notifyInjectExtension('db', db, 2)
 
 export const isRef = Boolean('isRef', {
   params: [
@@ -227,7 +224,7 @@ export const getOrCreate = Data('getOrCreate', {
     let val = utils.val(writeTo)
     if (val == null) {
       val = await calcValue()
-      jb.db.writeValue(writeTo,val,ctx)
+      db.writeValue(writeTo,val,ctx)
     }
     return val
   }

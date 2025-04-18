@@ -14,20 +14,19 @@
 	<div id="testElem"> </div>
 	<div id="show"> </div>
  <script type="module">
-    import {} from '../packages/common-tests.js'
+    import {} from '../packages/all-tests.js'
     import {runTests} from '../plugins/testers/run-tests-in-browser.js'
-    const urlQuery = prop => (location.href.match(new RegExp(prop + '=([^&]*)')) || [])[1]
-//			jb.spy.initSpyByUrl()
+    import {spy} from '../plugins/logger/spy.js'
+    const urlQuery = prop => new URLSearchParams(window.location.search).get(prop)
     const params = { 
-        testType: '',
-        show: window.location.href.indexOf('&show') != -1,
-        showOnly: window.location.href.indexOf('&showOnly') != -1,
+        show: urlQuery('show') != null,
+        showOnly: urlQuery('showOnly') != null,
         specificTest: urlQuery('test'),
         notPattern: urlQuery('not'),
-        top: window.location.href.match(/\btop\b/),
         onlyTest: urlQuery('show') == 'onlyTest',
-        ...jb.objFromEntries(['repo','rerun','pattern','take','remoteTests'].map(x=>[x,urlQuery(x)]))
+        ...Object.fromEntries(['repo','rerun','pattern','take','remoteTests'].map(x=>[x,urlQuery(x)]))
     }
+    spy.initSpyByUrl()
 	runTests(params)
   </script>
 </body>

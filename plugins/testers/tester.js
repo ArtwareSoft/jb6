@@ -1,6 +1,6 @@
-import { component, Ctx, jb } from '../core/jb-core'
-import { log } from '../core/logger'
-import { spy } from '../logger/spy'
+import { Ctx, jb, onInjectExtension, Component } from '../core/jb-core.js'
+import { log } from '../core/logger.js'
+import { spy } from '../logger/spy.js'
 
 export function Test(id, comp, {plugin} = {}) {
     return Component(id,{...comp, type: 'test'}, {plugin, dsl:''})
@@ -28,7 +28,7 @@ onInjectExtension('tests', ext => {
 
 async function cleanBeforeRun() {
     cleaners.forEach(c=>c())
-    if (!spy.isEnabled() && !spy.spyParamInUrl())
+    if (!spy.isEnabled())
         spy.initSpy({spyParam: 'test'})
     spy.clear()
 }
@@ -36,7 +36,7 @@ async function cleanBeforeRun() {
 export async function runTest(testID,{fullTestId, singleTest} = {}) {
     const profile = jb.comps[fullTestId]
     const tstCtx = new Ctx().setVars({ testID, fullTestId,singleTest })
-    const start = Date().now()
+    const start = Date.now()
     await !singleTest && cleanBeforeRun()
     log('start test',{testID})
     let res = null
@@ -45,7 +45,7 @@ export async function runTest(testID,{fullTestId, singleTest} = {}) {
     } catch (e) {
         res = { success: false, reason: e}
     }
-    res.duration = Date().now() - start
+    res.duration = Date.now() - start
     log('end test',{testID,res})
     if (!singleTest && !profile.doNotTerminateWorkers)
         await jb.jbm?.terminateAllChildren(tstCtx)		

@@ -154,7 +154,7 @@ function calcDslType(fullId) {
     return (fullId || '').split('>')[0] + '>'
 }
 
-function resolveProfile(prof, { expectedType, parent, parentProp, tgpModel, topComp, parentType, remoteCode} = {}) {
+export function resolveProfile(prof, { expectedType, parent, parentProp, tgpModel, topComp, parentType, remoteCode} = {}) {
     if (!prof || !prof.constructor || ['Object','Array'].indexOf(prof.constructor.name) == -1) return prof
     const typeFromParent = expectedType == '$asParent<>' ? (parentType || calcDslType(parent?.$$)) : expectedType
     const typeFromAdapter = parent?.$ == 'typeAdapter' && parent.fromType

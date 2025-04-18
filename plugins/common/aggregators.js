@@ -1,9 +1,5 @@
-import { Data, Component } from '../core/jb-core'
-import { utils } from './common-utils'
-
-export function Aggregator(id, comp, {plugin} = {}) {
-    return Component(id,{...comp, type: 'data', aggregator: true}, {plugin, dsl:''})
-}
+import { Data, Aggregator, Component } from './jb-common.js'
+import { utils } from './common-utils.js'
 
 export const aggregate = Aggregator('aggregate', {
   description: 'in pipeline, calc function on all items, rather then one by one',

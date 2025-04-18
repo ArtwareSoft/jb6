@@ -1,11 +1,12 @@
 import { utils } from './common-utils.js'
-import { Action, Data, Boolean, Any, DefComponents, Component } from '../core/jb-core.js'
+import { Action, Data, Boolean, Any, DefComponents, Component, jb } from '../core/jb-core.js'
+import { Const } from '../core/core-utils.js'
 import { If, typeAdapter, Var, log } from '../core/core-components.js'
 
-export { If, typeAdapter, Var, log, Action, Data, Boolean, Component, utils }
+export { If, typeAdapter, Var, log, Const, Action, Data, Boolean, Component, utils }
 
 export const pipeline = Data('pipeline', {
-  description: 'flat map data arrays one after the other, do not wait for promises and rx',
+  description: 'flat map data arrays one after the other, does not wait for promises and rx',
   params: [
     {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
     {id: 'items', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
@@ -33,6 +34,10 @@ export const pipe = Data('pipe', {
   }
 })
 
+export function Aggregator(id, comp, {plugin} = {}) {
+    return Component(id,{...comp, type: 'data', aggregator: true}, {plugin, dsl:''})
+}
+
 export const join = Aggregator('join', {
   params: [
     {id: 'separator', as: 'string', defaultValue: ','},
@@ -42,7 +47,7 @@ export const join = Aggregator('join', {
     {id: 'itemText', as: 'string', dynamic: true, defaultValue: '%%'}
   ],
   impl: (ctx,{ separator,prefix,suffix,items,itemText}) => {
-		const itemToText = ctx.tgpCtx.profile.itemText ?	item => itemText(ctx.setData(item)) :	item => jb.tostring(item);	// performance
+		const itemToText = ctx.tgpCtx.profile.itemText ? item => itemText(ctx.setData(item)) : item => utils.toString(item)
 		return prefix + items.map(itemToText).join(separator) + suffix;
 	}
 })
@@ -51,7 +56,7 @@ export const filter = Aggregator('filter', {
   params: [
     {id: 'filter', type: 'boolean', as: 'boolean', dynamic: true, mandatory: true}
   ],
-  impl: (ctx, {filter}) => utils.toArray(ctx.data).filter(item => filter(ctx,item))
+  impl: (ctx, {filter}) => utils.toArray(ctx.data).filter(item => filter(ctx.setData(item)))
 })
 
 export const list = Data('list', {
@@ -187,7 +192,7 @@ export const property = Data('property', {
     {id: 'ofObj', defaultValue: '%%'},
     {id: 'useRef', as: 'boolean', type: 'boolean<>'}
   ],
-  impl: (ctx, {prop, ofObj: obj, useRef}) => useRef ? jb.db.objectProperty(obj,prop,ctx) : obj[prop]
+  impl: (ctx, {prop, ofObj: obj, useRef}) => useRef && jb.ext.db ? jb.ext.db.objectProperty(obj,prop,ctx) : obj[prop]
 })
 
 export const indexOf = Data('indexOf', {
@@ -275,7 +280,7 @@ Data('extendWithIndex', {
   params: [
     {id: 'props', type: 'prop[]', mandatory: true, defaultValue: []}
   ],
-  impl: (ctx, {properties}) => jb.toarray(ctx.data).map((item,i) =>
+  impl: (ctx, {properties}) => utils.toArray(ctx.data).map((item,i) =>
 			Object.assign({}, item, Object.fromEntries(properties.map(p=>[p.name, utils.toJstype(p.val(ctx.setData(item).setVars({index:i})),p.type)]))))
 })
 
@@ -379,7 +384,7 @@ export const equals = Boolean('equals', {
   ],
   impl: (ctx, {item1, item2}) => {
     return typeof item1 == 'object' && typeof item1 == 'object' ? Object.keys(utils.objectDiff(item1,item2)||[]).length == 0 
-      : jb.tosingle(item1) == jb.tosingle(item2)
+      : utils.toSingle(item1) == utils.toSingle(item2)
   }
 })
 
@@ -563,20 +568,20 @@ export const waitFor = Data('waitFor', {
   ],
   impl: (ctx, {check, interval, timeout, logOnError}) => {
     if (!timeout) 
-      return jb.logError('waitFor no timeout',{ctx})
+      return utils.logError('waitFor no timeout',{ctx})
     let waitingForPromise, timesoFar = 0
     return new Promise((resolve,reject) => {
         const toRelease = setInterval(() => {
             timesoFar += interval
             if (timesoFar >= timeout) {
               clearInterval(toRelease)
-              jb.log('waitFor timeout',{ctx})
-              logOnError() && jb.logError(logOnError() + ` timeout: ${timeout}, waitingTime: ${timesoFar}`,{ctx})
+              utils.log('waitFor timeout',{ctx})
+              logOnError() && utils.logError(logOnError() + ` timeout: ${timeout}, waitingTime: ${timesoFar}`,{ctx})
               reject('timeout')
             }
             if (waitingForPromise) return
             const v = check()
-            jb.log('waitFor check',{v, ctx})
+            utils.log('waitFor check',{v, ctx})
             if (utils.isPromise(v)) {
               waitingForPromise = true
               v.then(_v=> {
@@ -627,7 +632,7 @@ export const contains = Boolean('contains', {
   impl: (ctx, {text, allText, anyOrder}) => {
     let prevIndex = -1
     for(let i=0;i<text.length;i++) {
-      const newIndex = allText.indexOf(jb.tostring(text[i]),prevIndex+1)
+      const newIndex = allText.indexOf(utils.toString(text[i]),prevIndex+1)
       if (newIndex == -1) return false
       prevIndex = anyOrder ? -1 : newIndex
     }
@@ -638,7 +643,7 @@ export const contains = Boolean('contains', {
 function runAsAggregator(ctx, profile,i, dataArray,profiles) {
     if (!profile || profile.$disabled) return dataArray
     const parentParam = (i < profiles.length - 1) ? { as: 'array'} : (ctx.parentParam || {}) // use parent param for last element to convert to client needs
-    if (jb.comps[profile.$$]?.aggregator)
+    if ((jb.comps[profile.$$] || profile.$$)?.aggregator)
       return ctx.setData(utils.asArray(dataArray)).runInner(profile, parentParam, `items~${i}`)
     return utils.asArray(dataArray)
       .map(item => ctx.setData(item).runInner(profile, parentParam, `items~${i}`))
