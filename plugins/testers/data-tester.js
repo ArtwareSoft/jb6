@@ -1,6 +1,10 @@
-import { Test, countersErrors } from './tester.js'
+import { Test, Usage, countersErrors } from './tester.js'
 import { utils } from '../common/common-utils.js'
+import { jb, Data, TgpType } from '../core/jb-core.js'
+import { Var } from '../core/core-components.js'
+import { Const } from '../core/core-utils.js'
 import { spy } from '../logger/spy.js'
+export { jb, Test, Usage, Data, utils, Var, Const, TgpType }
 
 export const dataTest = Test('dataTest', {
   params: [

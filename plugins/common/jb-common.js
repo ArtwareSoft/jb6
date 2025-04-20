@@ -1,9 +1,9 @@
 import { utils } from './common-utils.js'
-import { Action, Data, Boolean, Any, DefComponents, Component, jb } from '../core/jb-core.js'
+import { TgpType, Action, Data, Boolean, Any, DefComponents, Component, jb } from '../core/jb-core.js'
 import { Const } from '../core/core-utils.js'
 import { If, typeAdapter, Var, log } from '../core/core-components.js'
 
-export { If, typeAdapter, Var, log, Const, Action, Data, Boolean, Component, utils }
+export { If, typeAdapter, Var, log, Const, TgpType, Action, Data, Boolean, Component, utils }
 
 export const pipeline = Data('pipeline', {
   description: 'flat map data arrays one after the other, does not wait for promises and rx',
@@ -34,9 +34,7 @@ export const pipe = Data('pipe', {
   }
 })
 
-export function Aggregator(id, comp, {plugin} = {}) {
-    return Component(id,{...comp, type: 'data', aggregator: true}, {plugin, dsl:''})
-}
+export const Aggregator = TgpType('data', { aggregator: true})
 
 export const join = Aggregator('join', {
   params: [

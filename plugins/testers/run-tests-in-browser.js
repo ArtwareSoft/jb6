@@ -36,6 +36,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
 
     let tests = globalsOfType('test<>')
         .filter(id =>!specificTest || id == specificTest)
+        .filter(id => !jb.comps[`test<>${id}`]?.doNotRunInTests)
         .filter(id =>!pattern || id.match(pattern))
         .filter(id =>!notPattern || !id.match(notPattern))
         .map(id => ({testID:id}) ) // put in object to assign to groups

@@ -1,10 +1,9 @@
-import { Ctx, jb, onInjectExtension, Component } from '../core/jb-core.js'
+import { Ctx, jb, onInjectExtension, TgpType } from '../core/jb-core.js'
 import { log } from '../core/logger.js'
 import { spy } from '../logger/spy.js'
 
-export function Test(id, comp, {plugin} = {}) {
-    return Component(id,{...comp, type: 'test'}, {plugin, dsl:''})
-}
+export const Test = TgpType('test')
+export const Usage = TgpType('test', {doNotRunInTests: true})
 
 export function countersErrors(expectedCounters,allowError) {
     if (!spy.isEnabled()) return ''

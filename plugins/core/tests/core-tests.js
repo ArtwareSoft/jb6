@@ -1,6 +1,5 @@
-import { Test } from '../../testers/tester.js'
-import { dataTest } from '../../testers/data-tester.js'
-import { utils, pipeline, filter, contains, equals, delay, join, Var, Data, Const, property, obj, prop } from '../../common/jb-common.js'
+import { Test, Usage, dataTest, Data, Var, Const } from '../../testers/data-tester.js'
+import { utils, pipeline, filter, contains, equals, delay, join, property, obj, prop } from '../../common/jb-common.js'
 
 Const('person', {
     name: 'Homer Simpson',
@@ -117,14 +116,14 @@ const withArrayParam = Data({
   params: [
     {id: 'arr', type: 't1[]'}
   ],
-  impl: '$debugger:%$arr%'
+  impl: '%$arr%'
 })
 
 const withArrayParam2 = Data({
   params: [
     {id: 'arr', type: 't1[]'}
   ],
-  impl: withArrayParam('$debugger:%$arr%')
+  impl: withArrayParam('%$arr%')
 })
 
 const t1 = Data({

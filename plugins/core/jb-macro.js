@@ -1,18 +1,20 @@
-import {jb, run, TgpComp} from './jb-core.js'
+import {jb, TgpComp} from './jb-core.js'
 import { utils } from './core-utils.js'
 import { logError } from './logger.js'
 
-const isMacro = Symbol.for('isMacro')
+export const isMacro = Symbol.for('isMacro')
 const asTgpComp = Symbol.for('asTgpComp')
 const OrigValues = Symbol.for('OrigValues')
 
+export const titleToId = id => id.split('.')[0].replace(/-([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
+
 export function registerProxy(id) {
-    const proxyId = id.split('.')[0].replace(/-([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
+    const proxyId = titleToId(id)
     return jb.proxies[proxyId] = jb.proxies[proxyId] || proxy(proxyId)
 }
 export const typeRules = [{ isOf: ['data<>','boolean<>'] }]
 
-function proxy(id) {
+export function proxy(id) {
   return new Proxy(() => 0, {
       get: (o, p) => {  
         return p === isMacro? true : getInnerMacro(id, p)
@@ -108,13 +110,13 @@ function argsToProfile(cmpId, comp, args, topComp) {
     }
 }
 
-const systemProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//' ]
+export const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//' ]
 const richSystemProps = [ {id: 'data', $type: 'data<>'}] 
 
 export function resolveProfileTop(id, comp, {tgpModel} = {}) {  
     const comps = tgpModel && tgpModel.comps || jb.comps
     ;(comp.params || []).forEach(p=> {
-      if (systemProps.includes(p.id))
+      if (sysProps.includes(p.id))
         return logError(`resolveProfileTop - can not use system prop ${p.id} as param name in ${id}`,{comp})
       // fix as boolean params to have type: 'boolean'
       if (p.as == 'boolean' && ['boolean','ref'].indexOf(p.type) == -1) p.type = 'boolean<>'
@@ -156,10 +158,12 @@ function calcDslType(fullId) {
 
 export function resolveProfile(prof, { expectedType, parent, parentProp, tgpModel, topComp, parentType, remoteCode} = {}) {
     if (!prof || !prof.constructor || ['Object','Array'].indexOf(prof.constructor.name) == -1) return prof
+    const typeSysType = tgpModel?.comps[`tgpType<>${parent?.$}`]
+    const implType = expectedType == '$implType<>' && `${typeSysType.type}<${typeSysType.dsl||''}>`
     const typeFromParent = expectedType == '$asParent<>' ? (parentType || calcDslType(parent?.$$)) : expectedType
     const typeFromAdapter = parent?.$ == 'typeAdapter' && parent.fromType
     const fromFullId = calcDslType(prof.$$)
-    const dslType = typeFromAdapter || typeFromParent || fromFullId
+    const dslType = implType || typeFromAdapter || typeFromParent || fromFullId
     if (dslType?.indexOf('<') == -1) debugger
     const comp = prof.$ instanceof TgpComp ? prof.$
         : resolveCompWithId(prof.$$ || prof.$, { dslType, parent, parentProp, tgpModel, topComp, parentType, remoteCode })

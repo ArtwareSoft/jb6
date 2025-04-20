@@ -51,12 +51,12 @@ function asComp($$) {
 export function Component(...args) {
     if (typeof args[0] != 'string') {
         const comp = args[0]
-        comp.$dsl = args[1]?.dsl || ''
+        comp.$dsl = comp.dsl || ''
         return tgpCompProxy(resolveComp(new TgpComp(resolveProfileTop('anonymous', comp))))
     }
 
-    const [id, comp, {plugin,dsl} = {}] = args
-    comp.$dsl = dsl || ''
+    const [id, comp] = args
+    comp.$dsl = comp.dsl || ''
     if (comp.type == 'any') jb.genericCompIds[id] = true
     comp.$location = calcSourceLocation(new Error().stack.split(/\r|\n/)) || {}
   
@@ -242,23 +242,18 @@ export function notifyInjectExtension(ext, extObj, level=1) {
 export function globalsOfType(type) {
     return Object.keys(jb.comps).filter(k=>k.startsWith(type)).filter(k=>!(jb.comps[k].params || []).length).map(k=>k.split('>').pop())
 }
+
+export const TgpType = (type, extraCompProps) => {
+    const ret = (id, comp) => Component(id,{...comp, type, ...extraCompProps})
+    ret.type = type
+    return ret
+}
+
 // core types: Data and action
-
-export function Any(id, comp, {plugin} = {}) {
-    return Component(id,{...comp, type: 'any'}, {plugin, dsl:''})
-}
-
-export function Data(id, comp, {plugin} = {}) {
-    return Component(id,{...comp, type: 'data'}, {plugin, dsl:''})
-}
-
-export function Boolean(id, comp, {plugin} = {}) {
-    return Component(id,{...comp, type: 'boolean'}, {plugin, dsl:''})
-}
-
-export function Action(id, comp, {plugin} = {}) {
-    return Component(id,{...comp, type: 'action'}, {plugin, dsl:''})
-}
+export const Any = TgpType('any')
+export const Data = TgpType('data')
+export const Boolean = TgpType('boolean')
+export const Action = TgpType('action')
 
 export function DefComponents(items,def) { items.forEach(item=>def(item)) }
 

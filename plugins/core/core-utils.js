@@ -92,6 +92,14 @@ const unique = (ar,f) => {
 }
 const isPromise = v => v && v != null && typeof v.then === 'function'
 
+function compName(profile) {
+  const res = profile.$$?.$$ || profile.$$
+  if (typeof res != 'string') debugger
+  return res
+}
+const compParams = comp => comp?.params || []
+const parentPath = path => path.split('~').slice(0,-1).join('~')
+
 
 const asArray = v => v == null ? [] : (Array.isArray(v) ? v : [v])
 const toArray = RT_types.array
@@ -101,7 +109,8 @@ const toSingle = RT_types.single
 const toJstype = (val,type) => RT_types[type](val)
 
 export const utils = { 
-    isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype,
+    isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
+    compName, compParams, parentPath,
     val: x=>val(x)
 }
 
