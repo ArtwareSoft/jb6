@@ -124,7 +124,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
     }
 
     function fixPropName(prop) {
-      if (prop == '$vars') return 'vars'
+      //if (prop == 'vars') return 'vars'
       return prop.match(/^[$a-zA-Z_][a-zA-Z0-9_]*$/) ? prop : `'${prop}'`
     }
 
@@ -177,7 +177,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
           {token: macro + '(', action: singleInArray ? `prependPT!${path}` : firstInArray ? `prependPT!${parentPath}` : `setPT!${path}`},
           {token: '', action: `endToken!${path}`},
           {token: '', action: `edit!${path}`},
-          {token: '', action: `addProp!${path}`},
+          //{token: '', action: `addProp!${path}`},
           ...(argsByValue.length && !mixedFold ? [{token: newLine(), action: actionForFirstArgByValue}] : []),
           ..._argsByValue,
           ...propsByNameSection,
@@ -233,7 +233,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
       paramsByValue = params
       paramsByName = []
     }
-    if (profile[param0.id] === undefined || profile.$vars && !hasParamAsArray) {
+    if (profile[param0.id] === undefined || profile.vars && !hasParamAsArray) {
       paramsByValue = []
       paramsByName = params.slice(0)
     }
@@ -243,9 +243,9 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
       paramsByName = params.slice(0)
     }
 
-    const varArgs = (profile.$vars || []).map(({name, val, async},i) => ({innerPath: `$vars~${i}`, val: {$$: 'var<>Var', name, val,async, ...calcArrayPos(i,profile.$vars) }}))
+    const varArgs = utils.asArray(profile.vars).map(({name, val, async},i) => ({innerPath: `vars~${i}`, val: {$$: 'var<>Var', name, val,async, ...calcArrayPos(i,profile.vars) }}))
     const varsByValue = hasParamAsArray ? varArgs : []
-    const varsByName = hasParamAsArray ? [] : ['$vars']
+    const varsByName = hasParamAsArray ? [] : ['vars']
     const systemProps = [...varsByName, ...sysProps].flatMap(p=>profile[p] ? [{innerPath: p, val: profile[p]}] : [])
 
     const propsByName = systemProps.concat(paramsByName.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode }))).filter(({val})=>val !== undefined)
@@ -260,7 +260,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
       : secondParamAsArray ? secondParamVal.map((val,i) => ({innerPath: param1.id + '~' + i, val, ...calcArrayPos(i,secondParamVal)}))
       : []
 
-    const varsLength = varsByValue.length ? calcArrayProps(varsByValue.map(x=>x.val),`${path}~$vars`).len : 0
+    const varsLength = varsByValue.length ? calcArrayProps(varsByValue.map(x=>x.val),`${path}~vars`).len : 0
     const paramsAsArrayLength = singleFirstParamAsArray ? calcValueProps(firstParamVal,`${path}~${param0.id}`, {parentParam: param0}).len
       : firstParamAsArray ? calcArrayProps(argsOfParamAsArray.map(x=>x.val),`${path}~${param0.id}`).len 
       : secondParamAsArray ? calcValueProps(firstParamVal,`${path}~${param0.id}`, {parentParam: param0}).len
@@ -363,7 +363,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
     const str = putNewLinesInString ? _str : _str.replace(/\n/g,'\\n')
 
     const parentPath = path.split('~').slice(0,-1).join('~')
-    const listBegin = [ {token: '', action: `begin!${path}`}, {token: delim, action: `addProp!${parentPath}`}, {token: '', action: `edit!${path}`} ]
+    const listBegin = [ {token: '', action: `begin!${path}`}, {token: delim, action1: `addProp!${parentPath}`}, {token: '', action: `edit!${path}`} ]
     const listEnd = str.length == 0 ? [ {token: delim, action: `setPT!${path}`}]
       : [ {token: str.slice(0,1), action: `setPT!${path}`}, {token: str.slice(1) + delim, action: `insideText!${path}`}]
     const tokens = [ 

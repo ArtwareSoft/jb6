@@ -4,7 +4,7 @@ import { logError } from './logger.js'
 
 export const isMacro = Symbol.for('isMacro')
 const asTgpComp = Symbol.for('asTgpComp')
-const OrigValues = Symbol.for('OrigValues')
+export const OrigValues = Symbol.for('OrigValues')
 
 export const titleToId = id => id.split('.')[0].replace(/-([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
 
@@ -54,24 +54,33 @@ function getInnerMacro(ns, innerId) {
   }
 }
 
+function compName(profile) {
+  return profile.$$?.$$ || profile.$?.$$ || profile.$$
+}
+
 function splitSystemArgs(allArgs) {
   const args = [], system = {}
   allArgs.forEach(arg => {
-      if (arg && typeof arg === 'object' && (jb.comps[arg.$] || {}).isSystem)
-          jb.comps[arg.$].macro(system, arg)
-      else if (arg && typeof arg === 'object' && (jb.comps[arg.$] || {}).isMacro)
-          args.push(jb.comps[arg.$].macro(arg))
+      const comp = jb.comps[arg.$] || jb.comps[compName(arg)]
+      if (arg && typeof arg === 'object' && comp?.isSystem)
+          comp?.macro(system, arg)
+      else if (arg && typeof arg === 'object' && comp?.isMacro)
+          args.push(comp.macro(arg))
       else
           args.push(arg)
   })
   if (args.length == 1 && typeof args[0] === 'object') {
-      utils.asArray(args[0].vars).forEach(arg => jb.comps[arg.$].macro(system, arg))
+      utils.asArray(args[0].vars).forEach(arg => (jb.comps[arg.$] || jb.comps[compName(arg)]).macro(system, arg))
       delete args[0].vars
   }
   return { args, system }
 }
 
-function argsToProfile(cmpId, comp, args, topComp) {
+const astNode = Symbol.for('astNode')
+
+function argsToProfile(prof, comp) {
+    const cmpId = prof.$
+    const args = prof.$unresolved
     if (args.length == 0)
         return { $: cmpId }        
     if (!comp)
@@ -105,13 +114,13 @@ function argsToProfile(cmpId, comp, args, topComp) {
         : secondParamAsArray ? { [param0.id] : argsByValue[0], [param1.id] : argsByValue.slice(1) } 
         : Object.fromEntries(argsByValue.map((v,i) => [params[i].id, v]))
     return { $: cmpId,
-        ...(varArgs.length ? {$vars: varArgs} : {}),
+        ...(varArgs.length ? {vars: varArgs} : {}),
         ...propsByValue, ...propsByName
     }
 }
 
 export const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//' ]
-const richSystemProps = [ {id: 'data', $type: 'data<>'}] 
+export const systemParams = [ {id: 'data', $type: 'data<>'}, {id: 'vars', $type: 'var<>'}] 
 
 export function resolveProfileTop(id, comp, {tgpModel} = {}) {  
     const comps = tgpModel && tgpModel.comps || jb.comps
@@ -171,16 +180,17 @@ export function resolveProfile(prof, { expectedType, parent, parentProp, tgpMode
       prof.$$ = prof.$ instanceof TgpComp ? prof.$ : comp.$$
 
     if (prof.$unresolved && comp) {
-        Object.assign(prof, argsToProfile(prof.$, comp, prof.$unresolved, topComp))
+        Object.assign(prof, { ... argsToProfile(prof, comp, {topComp, parentProp, parent}), [astNode] : prof[astNode] })
         if (OrigValues) prof[OrigValues] = prof.$unresolved
         delete prof.$unresolved
     }
     if (Array.isArray(prof)) {
       prof.forEach(v=>resolveProfile(v, { expectedType: dslType, parent, parentProp, topComp, tgpModel, parentType, remoteCode}))
     } else if (comp && prof.$ != 'asIs') {
-      ;[...(comp.params || []), ...richSystemProps].forEach(p=> 
+      ;[...(comp.params || []), ...systemParams].forEach(p=> 
           resolveProfile(prof[p.id], { expectedType: p.$type, parentType: dslType, parent: prof, parentProp: p, topComp, tgpModel, remoteCode}))
-      resolveProfile(prof.$vars, {tgpModel, topComp, expectedType: 'var<>', remoteCode})
+      // resolveProfile(prof.data, {tgpModel, topComp, expectedType: 'data<>', remoteCode})
+      // resolveProfile(prof.vars, {tgpModel, topComp, expectedType: 'var<>', remoteCode})
       if (prof.$ == 'object')
         Object.values(prof).forEach(v=>resolveProfile(v, {tgpModel, topComp, expectedType: 'data<>', remoteCode}))
     } else if (!comp && prof.$) {

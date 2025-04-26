@@ -3,7 +3,7 @@ import { TgpType, Action, Data, Boolean, Any, DefComponents, Component, jb } fro
 import { Const } from '../core/core-utils.js'
 import { If, typeAdapter, Var, log } from '../core/core-components.js'
 
-export { If, typeAdapter, Var, log, Const, TgpType, Action, Data, Boolean, Component, utils }
+export { If, typeAdapter, Var, log, Const, TgpType, Action, Data, Boolean, Component, utils, jb }
 
 export const pipeline = Data('pipeline', {
   description: 'flat map data arrays one after the other, does not wait for promises and rx',
@@ -520,7 +520,7 @@ export const Case = Component('Case', {
   ]
 })
 
-export const actionSwitch = Action('action.switch', {
+export const actionSwitch = Action('actionSwitch', {
   params: [
     {id: 'cases', type: 'action.switch-case[]', as: 'array', mandatory: true, defaultValue: []},
     {id: 'defaultAction', type: 'action', dynamic: true}
@@ -534,7 +534,7 @@ export const actionSwitch = Action('action.switch', {
   }
 })
 
-export const actionSwitchCase = Component('action.switchCase', {
+export const actionSwitchCase = Component('actionSwitchCase', {
     type: 'action.switch-case',
     params: [
     {id: 'condition', type: 'boolean', as: 'boolean', mandatory: true, dynamic: true},

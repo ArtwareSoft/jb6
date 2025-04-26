@@ -1,6 +1,5 @@
-import { proxy, resolveProfile } from '../../core/jb-macro.js'
+import { proxy, resolveProfile, resolveProfileTop } from '../../core/jb-macro.js'
 import { TgpComp } from '../../core/jb-core.js'
-import { } from '../../core/tgp-meta.js'
 import { Data, jb, utils } from '../../common/common-utils.js'
 import { offsetToLineCol } from '../text-editor/tgp-text-editor.js'
 import { parse } from '/libs/acorn.mjs'
@@ -8,17 +7,17 @@ import { parse } from '/libs/acorn.mjs'
 export async function calcTgpModelData({ filePath }) {
   if (!filePath) return {}
 
-  const codeMap = new Map()   // url → source text
-  const visited = new Set()   // urls seen
+  const codeMap = {}
+  const visited = {}  // urls seen
 
   // 1) Crawl + collect all modules via import/dynamic import
   await (async function crawl(url) {
-    if (visited.has(url)) return
-    visited.add(url)
+    if (visited[url]) return
+    visited[url] = true
     const res = await fetch(url)
     if (!res.ok) throw new Error(`fetch ${url} → ${res.status}`)
     const src = await res.text()
-    codeMap.set(url, src)
+    codeMap[url] = src
 
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
@@ -33,56 +32,55 @@ export async function calcTgpModelData({ filePath }) {
 	await Promise.all(imports.map(url=>crawl(url)))
   })(filePath)
 
+  const tgpTypes = { Component: []} 
+  const comps     = {}
+
+  // phase 0 - meta urls
+  {
+    const src = await fetch('/plugins/core/tgp-meta.js').then(x=>x.text())
+    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+    ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
+      .flatMap(n => n.declaration.declarations)
+      .forEach(decl => {
+        const comp = astToObj(decl.init.arguments[1])
+        comps[`${comp.type}<>${decl.id.name}`] = comp
+      })
+  }
+
   // 2) Phase 1: find all `export const X = TgpType(...)`
-  const tgpTypes = {} 
-  Array.from(codeMap.entries()).forEach(([url, src]) => {
+  Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
     ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
       .flatMap(n => n.declaration.declarations)
       .filter(d => d.init?.type === 'CallExpression' && d.init.callee.type === 'Identifier' && d.init.callee.name === 'TgpType' 
-		&& d.init.arguments[0]?.type === 'Literal')
+    		  && d.init.arguments[0]?.type === 'Literal')
       .forEach(d => tgpTypes[d.id.name] = d.init.arguments.map(astToObj))
   })
 
-  const comps     = {}
   let typeRules   = []
-
-  function parseCompDec(decl, url, src) {
-    const init = decl.init
-    if ( init?.type !== 'CallExpression' || init.callee.type !== 'Identifier' || !tgpTypes[init.callee.name]) return
-
-    const [type, optNode] = tgpTypes[init.callee.name]
-    const extra    = astToObj(optNode)
-    const dsl      = extra?.dsl || ''
-    const exportName = decl.id.name
-
-    let shortId, comp
-    if (init.arguments[0].type === 'Literal') {
-      shortId = init.arguments[0].value
-      if (shortId !== exportName)
-        utils.logError(`calcTgpModelData id mismatch ${shortId} ${exportName}`,{ url, ...offsetToLineCol(src, init.arguments[0].start) })
-      comp = astToObj(init.arguments[1])
-    } else {
-      shortId = exportName
-      comp = astToObj(init.arguments[0])
-    }
-
-    comp.$location = { path: url, ...offsetToLineCol(src, init.start) }
-    comps[`${type}<${dsl}>${shortId}`] = comp
-	utils.asArray(comp.moreTypes).forEach(t=>comps[`${t}${shortId}`] = comp)
-  }
+  Object.entries(tgpTypes).forEach(([compDefName,typeDef]) => {
+    comps[`tgpType<>${compDefName}`] = new TgpComp({
+      ...resolveProfile(proxy('tgpType')(...typeDef), {expectedType: 'tgpType<>', tgpModel: {comps}}),
+      params: comps['tgpType<>tgpType'].params
+    })
+    comps[`tgpCompDef<>${compDefName}`] = new TgpComp({ 
+      ...resolveProfile(proxy('tgpCompDef')(...typeDef), {expectedType: 'tgpCompDef<>', tgpModel: {comps}}),
+      params: comps['tgpCompDef<>tgpCompDef'].params
+    })
+  })
+  //comps[`tgpCompDef<>Componenet`] = comps[`tgpCompDef<>tgpCompDef`]
 
   // 3) Phase 2a: non-exported in the entry file only
   {
-    const src = codeMap.get(filePath)
+    const src = codeMap[filePath]
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
     ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations)
 		.forEach(decl => parseCompDec(decl, filePath, src))
   }
 
   // 4) Phase 2b: exported components + typeRules in all files
-  Array.from(codeMap.entries()).forEach(([url, src]) => {
+  Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
     ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
@@ -96,16 +94,32 @@ export async function calcTgpModelData({ filePath }) {
       })
   })
 
-  const compDefParams = jb.comps['tgpComp<>component'].params
-  Object.entries(tgpTypes).forEach(([compDefName,typeDef]) => {
-	comps[`tgpType<>${compDefName}`] = new TgpComp(resolveProfile(proxy('tgpType')(...typeDef), {expectedType: 'tgpType<>'}))
-	comps[`tgpCompDef<>${compDefName}`] = new TgpComp({ 
-		...resolveProfile(proxy('tgpCompDef')(...typeDef), {expectedType: 'tgpCompDef<>'}),
-		params: compDefParams
-	})
-  })
+  return { tgpTypes, comps, typeRules, files: Object.keys(visited) }
 
-  return { tgpTypes, comps, typeRules }
+  function parseCompDec(decl, url, src) {
+    const init = decl.init
+    if ( init?.type !== 'CallExpression' || init.callee.type !== 'Identifier' || !tgpTypes[init.callee.name]) return
+
+	const tgpType = init.callee.name
+    const {type, dsl = ''} = comps[`tgpType<>${tgpType}`]
+    const exportName = decl.id.name
+
+    let shortId, comp
+    if (init.arguments[0].type === 'Literal') {
+      shortId = init.arguments[0].value
+      if (shortId !== exportName)
+        utils.logError(`calcTgpModelData id mismatch ${shortId} ${exportName}`,{ url, ...offsetToLineCol(src, init.arguments[0].start) })
+      comp = astToObj(init.arguments[1])
+    } else {
+      shortId = exportName
+      comp = astToObj(init.arguments[0])
+    }
+
+    const location = { path: url, ...offsetToLineCol(src, init.start) }
+	const resolvedComp = resolveProfileTop(shortId, {location, type, $dsl: dsl, ...comp },{tgpModel: {comps}})
+	comps[resolvedComp.$$] = resolvedComp
+	utils.asArray(comp.moreTypes).forEach(t=>comps[`${t}${shortId}`] = resolvedComp)
+  }
 }
 
 
@@ -114,25 +128,18 @@ export const astNode = Symbol.for('astNode')
 export function astToTgpObj(node) {
 	if (!node) return undefined
 	switch (node.type) {
-	  case 'Literal':
-		return node.value
-	  case 'ObjectExpression': {
-		const obj = {}
-		for (const prop of node.properties) {
-		  const key = prop.key.type === 'Identifier' 
-			? prop.key.name 
-			: prop.key.value
-		  obj[key] = astToTgpObj(prop.value)
-		}
-		return attachNode(obj)
-	  }
+	  case 'Literal': return node.value
+	  case 'ObjectExpression': return attachNode(
+			Object.fromEntries(node.properties.map(p=>[p.key.type === 'Identifier' ? p.key.name : p.key.value, astToTgpObj(p.value)])))
 	  case 'ArrayExpression': return attachNode(node.elements.map(el => astToTgpObj(el)))
 	  case 'UnaryExpression': return attachNode(node.operator === '-' ? -astToTgpObj(node.argument) : astToTgpObj(node.argument))
-	  case 'ExpressionStatement': return astToTgpObj(node.expression)
-	  case 'CallExpression': return attachNode(proxy(node.callee.name)(...node.arguments.map(astToTgpObj)))
+	  case 'ExpressionStatement': return attachNode(astToTgpObj(node.expression))
+	  case 'CallExpression': {
+      const args = node.arguments.map(x=> astToTgpObj(x))
+      return attachNode(proxy(node.callee.name)(...args))
+    }
 
-	  default:
-		return undefined
+	  default: return undefined
 	}
 
 	function attachNode(res) {
@@ -140,8 +147,6 @@ export function astToTgpObj(node) {
 		return res
 	}
 }
-// const x = astToTgpObj(parse(`dataTest(property('name', obj(prop('name', 'homer')), { useRef: true }), equals('homer'))`).body[0])
-// console.log(x)
 
 function astToObj(node) {
   if (!node) return undefined

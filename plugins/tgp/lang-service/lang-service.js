@@ -223,7 +223,7 @@ export class tgpModelForLangService {
     compNameOfPath(path) {
         if (path.indexOf('~') == -1)
             return 'jbComponent'
-        if (path.match(/~\$vars$/)) 
+        if (path.match(/~\vars$/)) 
             return
         return utils.compName(this.valOfPath(path))
     }

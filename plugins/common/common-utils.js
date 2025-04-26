@@ -81,5 +81,39 @@ function objectDiff(newObj, orig) {
     }, deletedValues)
 }
 
-export const utils = { ...core_utils, delay, path, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff
-    , log, logError, logException }
+
+export function sortedArraysDiff(newArr, oldArr, compareFn) {
+  const inserted = [], updated  = [], deleted  = []
+  let i = 0, j = 0
+
+  while (i < oldArr.length || j < newArr.length) {
+    if (i >= oldArr.length) {
+      inserted.push(...newArr.slice(j))
+      break
+    }
+    if (j >= newArr.length) {
+      deleted.push(...oldArr.slice(i))
+      break
+    }
+
+    const a = oldArr[i]
+    const b = newArr[j]
+    const cmp = compareFn(a, b)
+
+    if (cmp < 0) {           // a < b  → present only in oldArr
+      deleted.push(a)
+      i++
+    } else if (cmp > 0) {    // a > b  → present only in newArr
+      inserted.push(b)
+      j++
+    } else {                 // same key
+      i++
+      j++
+    }
+  }
+
+  return { inserted, updated, deleted }
+}
+
+export const utils = { ...core_utils, delay, path, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, 
+    objectDiff, sortedArraysDiff, log, logError, logException }

@@ -1,6 +1,14 @@
 import express from 'express'
+import child from 'child_process'
+
 import path from 'path'
 import { fileURLToPath } from 'url'
+import dotenv from 'dotenv'
+dotenv.config();
+
+const settings = {
+  open_editor_cmd: process.env.open_editor_cmd || 'code -r -g '
+};
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -16,3 +24,11 @@ app.use('/libs', express.static(path.join(__dirname, '../libs')))
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`)
 })
+
+app.get('/gotoSource', (req, res) => {
+  const cmd = [settings.open_editor_cmd,req.query.filePos].join(' ')
+  console.log(cmd)
+  child.exec(cmd,{})
+  res.status(200).send('cmd')
+})
+

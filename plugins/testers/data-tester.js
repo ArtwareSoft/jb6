@@ -1,8 +1,5 @@
 import { Test, Usage, countersErrors } from './tester.js'
-import { utils } from '../common/common-utils.js'
-import { jb, Data, TgpType } from '../core/jb-core.js'
-import { Var } from '../core/core-components.js'
-import { Const } from '../core/core-utils.js'
+import { utils, jb, Data, TgpType, Var, Const } from '../common/jb-common.js'
 import { spy } from '../logger/spy.js'
 export { jb, Test, Usage, Data, utils, Var, Const, TgpType }
 

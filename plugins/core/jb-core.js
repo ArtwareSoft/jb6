@@ -66,15 +66,16 @@ export function Component(...args) {
 }
 
 export function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArray: false, openObj: false, openComp: true}) {
-    if (profile.$vars && !settings.resolvedCtx)
-        ctx = ctx.extendWithVars(profile.$vars)
-    if (utils.isPromise(ctx))
+    // changing context with data and vars
+    if (profile.vars && !settings.resolvedCtx)
+        ctx = ctx.extendWithVarsScript(profile.vars)
+    if (utils.isPromise(ctx)) // handling a-synch vars
         return ctx.then(resolvedCtx => run(profile,resolvedCtx,{...settings, resolvedCtx: true}))
     delete settings.resolvedCtx
-
-    const { tgpCtx } = ctx
     if (profile.data != null)
         ctx = ctx.setData(profile.data)
+
+    const { tgpCtx } = ctx
 
     const {openExpression, openArray, openObj, openComp} = settings
     if (typeof profile == 'string' && openExpression)
@@ -155,17 +156,17 @@ export class Ctx {
     runInner(profile, parentParam, innerPath) {
         return run(profile, this.setTgpCtx(new TgpCtx({...this.tgpCtx, path: `${this.path}~${innerPath}`, parentParam, profile})))
     }
-    extendWithVars($vars) {
+    extendWithVarsScript(vars) {
         const runInnerPathForVar = (profile = ({data}) => data, index, ctx) =>
-            run(profile, ctx.setTgpCtx(new TgpCtx({...ctx.TgpCtx, path: `${this.path}~$vars~${index}~val`, parentParam: {$type: 'data<>'} })))
+            run(profile, ctx.setTgpCtx(new TgpCtx({...ctx.TgpCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<>'} })))
 
-        $vars = utils.asArray($vars)
-        if ($vars.find(x=>x.async))
-            return $vars.reduce( async (ctx,{name,val},i) => {
+        vars = utils.asArray(vars)
+        if (vars.find(x=>x.async))
+            return vars.reduce( async (ctx,{name,val},i) => {
               const _ctx = await ctx
               return _ctx.setVars({[name]: await runInnerPathForVar(val, i, _ctx)})
             } , this)
-        return $vars.reduce((ctx,{name,val},i) => ctx.setVars({[name]: runInnerPathForVar(val, i, ctx)}), this )        
+        return vars.reduce((ctx,{name,val},i) => ctx.setVars({[name]: runInnerPathForVar(val, i, ctx)}), this )        
     }
 }
 
@@ -259,7 +260,9 @@ export function DefComponents(items,def) { items.forEach(item=>def(item)) }
 
 function calcSourceLocation(errStack) {
     try {
-        const line = errStack.map(x=>x.trim()).filter(x=>x && !x.match(/^Error/) && !x.match(/at Object.component|at component|at extension/)).shift()
+        const takeOutHostNameAndPort = /\/\/[^\/:]+(:\d+)?\//
+        const line = errStack.map(x=>x.trim().replace(takeOutHostNameAndPort,'/'))
+            .filter(x=>x && !x.match(/^Error/) && !x.match(/jb-core.js/)).shift()
         const location = line ? (line.split('at ').pop().split('eval (').pop().split(' (').pop().match(/\\?([^:]+):([^:]+):[^:]+$/) || ['','','','']).slice(1,3) : ['','']
         location[0] = location[0].split('?')[0]
         if (location[0].match(/jb-loader.js/)) debugger

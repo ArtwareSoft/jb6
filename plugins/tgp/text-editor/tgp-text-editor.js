@@ -1,7 +1,8 @@
-import { jb } from '../../core/jb-core.js'
-import { astToTgpObj } from '../model-data/tgp-model-data.js'
-import { resolveProfile } from '../../core/jb-macro.js'
+import { jb, utils } from '../../common/common-utils.js'
+import { astToTgpObj, astNode } from '../model-data/tgp-model-data.js'
+import { resolveProfile, systemParams, OrigValues } from '../../core/jb-macro.js'
 import { parse } from '/libs/acorn.mjs'
+
 
 const visitedPaths = [] 
 let currentVisited = 0
@@ -89,6 +90,150 @@ export function deltaFileContent(compText, newCompText, compLine) {
     }
 }
 
+export function calcCompActionMap(compText, tgpModel) {
+    return parseProfile(compText, {$$: 'tgpCompDef<>tgpCompDef', tgpType: 'tgpCompDef<>', tgpModel, basePath: utils.compName(topComp)})
+}
+
+export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = '', $$}) {
+    const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0])
+    resolveProfile(topComp,{tgpModel, expectedType: tgpType, topComp})
+    topComp.$$ = $$ || `${tgpType}${topComp.$}`
+    const actionMap = []
+    calcActionMap(topComp,basePath,topComp[astNode])
+
+    return actionMap
+
+    function calcActionMap(prof,path,ast) {
+        if (!ast) return // injected secondParamAsArray
+        actionMap.push({ action: `begin!${path}`, from: ast.start, to: ast.start })
+
+        if (utils.isPrimitiveValue(prof)) {
+            actionMap.push({ action: `beginToken!${path}`, from: ast.start, to: ast.start })
+            actionMap.push({ action: `endToken!${path}`, from: ast.end, to: ast.end })
+            actionMap.push({ action: `end!${path}`, from: ast.end, to: ast.end })
+            if (typeof prof == 'string') {
+                actionMap.push({ action: `setPT!${path}`, from: ast.start+1, to: ast.start+2 })
+                actionMap.push({ action: `edit!${path}`, from: ast.start+1, to: ast.start+1 })
+                actionMap.push({ action: `insideText!${path}`, from: ast.start+2, to: ast.end });
+            } else { // token (number or bool)
+                actionMap.push({ action: `setPT!${path}`, from: ast.start, to: ast.start+1 })
+                actionMap.push({ action: `edit!${path}`, from: ast.start, to: ast.start })
+                actionMap.push({ action: `insideToken!${path}`, from: ast.start+1, to: ast.end });
+            }
+            return
+        }
+
+        if (Array.isArray(prof)) {
+            const primitivesAst = Object.fromEntries(calcPrimitivesByValue(prof) || [])
+            const delimiters =  ast.elements.slice(1).map((dl, i) => ({start: ast.elements[i].end, end: dl.start }))
+
+            const paramId = path.split('~').pop()
+            actionMap.push({ action: `propInfo!${path}`, from: ast.start, to: ast.start+1 })
+            actionMap.push({ action: `prependPT!${path}`, from: ast.start+1, to: ast.start+1 })
+            actionMap.push({ action: `appendPT!${path}`, from: ast.end-1, to: ast.end })
+            delimiters.forEach((dl,i) => actionMap.push({ action: `insertPT!${path}~${i}`, from: dl.start, to: dl.end }))
+            actionMap.push({ action: `end!${path}`, from: ast.end-1, to: ast.end-1 })
+            prof.forEach((val,i) => calcActionMap(val,`${path}~${i}`, primitivesAst[`${paramId}~${i}`] || val[astNode]))
+
+        } else { // profile
+            const primitivesAst = Object.fromEntries(calcPrimitivesByValue(prof) || [])
+            const expressionAst = ast.type == 'CallExpression' ? ast : ast.expression
+            const astArgs = expressionAst.arguments
+            const delimiters = ast.type == 'ExpressionStatement' ? astArgs.filter(n => n.value == ',')
+                : astArgs.slice(1).map((dl, i) => ({start: astArgs[i].end, end: dl.start }))
+
+            const endOfPTName = expressionAst.callee.end + 1
+            actionMap.push({ action: `beginToken!${path}`, from: ast.start, to: ast.start })
+            actionMap.push({ action: `endToken!${path}`, from: endOfPTName, to: endOfPTName })    
+            actionMap.push({ action: `setPT!${path}`, from: ast.start, to: endOfPTName })
+            actionMap.push({ action: `edit!${path}`, from: endOfPTName, to: endOfPTName })
+            actionMap.push({ action: `addProp!${path}`, from: endOfPTName, to: endOfPTName, source: 'profile-begin' })
+            actionMap.push({ action: `addProp!${path}`, from: ast.end - 1, to: ast.end, source: 'profile-end'  })
+            actionMap.push({ action: `end!${path}`, from: ast.end, to: ast.end })
+
+            const paramsByNameAst = astArgs.filter(n=>n.type=='ObjectExpression')[0]
+            if (paramsByNameAst) {
+                actionMap.push({ action: `addProp!${path}`, from: paramsByNameAst.start-2, to: paramsByNameAst.start, source: 'byName-begin' })
+                const firstPropStart = paramsByNameAst.properties?.[0]?.start
+                firstPropStart && actionMap.push({ action: `addProp!${path}`, from: paramsByNameAst.start, to: firstPropStart, source: 'byName-begin2' })
+                actionMap.push({ action: `addProp!${path}`, from: paramsByNameAst.end-2, to: paramsByNameAst.end, source: 'byName-end' })
+                const props = paramsByNameAst?.properties || [];
+                props.forEach(prop => actionMap.push({ action: `propInfo!${path}~${prop.key.name}`, from: prop.start, to: prop.value.start }))
+                if (props.length > 1)
+                    props.slice(1).forEach((prop, i) => actionMap.push({ action: `addProp!${path}`, from: props[i].end, to: prop.start, source: 'props' }))
+            }
+            const params = [...utils.compParams(tgpModel.comps[utils.compName(prof)]), ...systemParams]
+            const param0 = params[0] || {}, param1 = params[1] || {}
+            const firstParamAsArray = (param0.type||'').indexOf('[]') != -1 && !param0.byName
+            const secondParamAsArray = param1.secondParamAsArray
+            if (!firstParamAsArray && !secondParamAsArray)
+                delimiters.forEach(dl => actionMap.push({ action: `addProp!${path}`, from: dl.start, to: dl.end, source: 'delimiters' }))
+            if (firstParamAsArray) {
+                const firstParamPath = `${path}~${param0.id}`
+                actionMap.push({ action: `prependPT!${firstParamPath}`, from: endOfPTName+1, to: endOfPTName+1 })
+                const endOfParamArrayArea = paramsByNameAst ? paramsByNameAst.start -1 : ast.end-1
+                actionMap.push({ action: `appendPT!${firstParamPath}`, from: endOfParamArrayArea, to: endOfParamArrayArea })
+                delimiters.forEach((dl, i) => actionMap.push({ action: `insertPT!${firstParamPath}~${i}`, from: dl.start, to: dl.end }))
+            }
+            if (secondParamAsArray && delimiters.length) {
+                const secParamPath = `${path}~${param1.id}`
+                const startParamArrayArea = delimiters[0].end+1
+                actionMap.push({ action: `prependPT!${secParamPath}`, from: startParamArrayArea, to: startParamArrayArea })
+                const endOfParamArrayArea = paramsByNameAst ? paramsByNameAst.start -1 : ast.end-1
+                actionMap.push({ action: `appendPT!${secParamPath}`, from: endOfParamArrayArea, to: endOfParamArrayArea })
+                delimiters.slice(1).forEach((dl, i) => actionMap.push({ action: `insertPT!${secParamPath}~${i}`, from: dl.start, to: dl.end }))
+            }
+            params.map(p=>({id:p.id, val: prof[p.id]})).filter(({val}) => val != null)
+                .forEach(({id,val}) => calcActionMap(val, `${path}~${id}`, primitivesAst[id] || val[astNode]))
+        }
+    }
+
+    function calcPrimitivesByValue(prof) {
+        const comp = typeof prof.$$ == 'string' ? tgpModel.comps[prof.$$] : prof.$$
+        const args = prof[OrigValues]
+        const ast = prof[astNode]
+        if (!args || args.length == 0 || !comp || prof.$ == 'asIs') return
+
+        const lastArg = args[args.length-1]
+        const lastArgIsByName = lastArg && typeof lastArg == 'object' && !Array.isArray(lastArg) && !lastArg.$
+        const argsByValue = lastArgIsByName ? args.slice(0,-1) : args
+        const propsByName = lastArgIsByName ? lastArg : {}
+        const onlyByName = lastArgIsByName && args.length == 1
+        const params = [...(comp.params || []), ...systemParams]
+        const param0 = params[0] || {}, param1 = params[1] || {}
+        const firstParamAsArray = (param0.type||'').indexOf('[]') != -1 && !param0.byName
+        const secondParamAsArray = param1.secondParamAsArray
+        const argsAst = ast.arguments || ast.expression.arguments
+    
+        if (!lastArgIsByName) {
+            if (firstParamAsArray) 
+                return params.length > 1 && args.length == 1 
+                    ? [param0.id, argsAst[0] ,args[0]] 
+                    : args.map.map((v,i) => [`${param0.id}~${i}`, argsAst[i], v])
+            if (secondParamAsArray)  return [
+                [param0.id, argsAst[0], args[0]], 
+                ...args.slice(1).map((v,i) => [`${param1.id}~${i}`, argsAst[i+1], v])
+                ]
+    
+            if (comp.macroByValue || params.length < 3)
+                return args.filter((_, i) => params[i]).map((arg, i) => [params[i].id, argsAst[i], arg])
+        }
+    
+        const propsByValue = onlyByName ? []
+            : firstParamAsArray ? argsByValue.map((v,i) => [`${param0.id}~${i}`, argsAst[i], v])
+            : secondParamAsArray ? [ 
+                [param0.id, argsAst[0] ,argsByValue[0]],
+                ...argsByValue.slice(1).map((v,i) => [`${param1.id}~${i}`, argsAst[i+1], v])
+            ]
+            : argsByValue.map((v,i) => [params[i].id, argsAst[i],v])
+
+        const paramsByNameAst = argsAst.filter(n=>n.type=='ObjectExpression')[0]
+        const propsPrimitivesByName =  Object.entries(propsByName).filter(e=>utils.isPrimitiveValue(e[1]))
+            .map(([k,v])=> [k,paramsByNameAst.properties.find(p=>p.key.name == k).value, v])
+        return [...propsByValue, ...propsPrimitivesByName].filter(v=>utils.isPrimitiveValue(v[2])).map(x=>x.slice(0,2))
+    }   
+}
+
 export function closestComp(docText, cursorLine, cursorCol, filePath) {
     const ast = parse(docText, { ecmaVersion:'latest', sourceType:'module' })
     const offset = lineColToOffset(docText,{line: cursorLine, col: cursorCol})
@@ -100,96 +245,3 @@ export function closestComp(docText, cursorLine, cursorCol, filePath) {
     const compText = docText.slice(node.start,node.end)
     return { compText, compLine, inCompOffset: offset - node.start, shortId, cursorLine, cursorCol, filePath}
 }
-
-export function parseComp(docProps, tgpModel) {
-    const unresolved = astToTgpObj(parse(docProps.compText).body[0])
-    const prof = resolveProfile(unresolved,{tgpModel, expectedType: 'tgpCompDef<>'})
-
-    const actionMap = {}
-    return { ...docProps, actionMap, type: prof.$type }
-
-
-    //const code = '{\n' + compText.split('\n').slice(1).join('\n').slice(0, -1)
-//    const cursorPos = offsetToLineCol(compText, inCompOffset)
-    const {compId, comp, compProps, type} = parseProfile(compText,tgpModel)
-    // if (errors) {
-    //     utils.logError('calcCompProps evalProfileDef', { compId, compText, shortId, plugin })
-    //     return ({...docProps, compId, comp, errors, pluginDsl, compDsl})
-    // }
-    // if (!compId)
-    //     return { errors: ['can not determine compId'], shortId, plugin }
-
-    // const { text, actionMap, startOffset } = prettyPrintWithPositions(comp, { initialPath: compId, tgpModel })
-    // const lastToken = Object.values(actionMap).filter(x=>x.action.indexOf('Token!') != -1 && x.from < inCompOffset).sort((x,y)=>x.from-y.from).pop()
-    // const pathByToken = lastToken && lastToken.action.startsWith('beginToken!') && lastToken.action.split('!').pop()
-    // const path = pathByToken || actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
-    //         .map(e => e.action.split('!').pop())[0] || compId
-    // const compProps = (code != text) ? { path, formattedText: text, reformatEdits: deltaFileContent(code, text, compLine) }
-    //     : { time: new Date().getTime(), text, path, actionMap, startOffset, plugin, tgpModel, compId, comp }
-
-    //return { ...docProps, ...compProps, ...tgpModelErrors, fileDsl, type: tgpModel.paramType(path) }
-}
-
-
-
-/*
-export function evalProfileDef(id, code, pluginId, fileDsl, tgpModel, { cursorPos, fixed, forceLocalSuggestions } = {}) {
-    const plugin = utils.path(tgpModel, ['plugins', pluginId])
-    const proxies = utils.path(plugin, 'proxies') ? jb.objFromEntries(plugin.proxies.map(id => jb.macro.registerProxy(id))) : jb.macro.proxies
-    const context = { jb, ...proxies, dsl: x => jb.dsl(x), component: (id,comp) => jb.component(id,comp, { plugin, fileDsl }) }
-    try {
-        const f = eval(`(function(${Object.keys(context)}) {return ${code}\n})`)
-        const res = f(...Object.values(context))
-        if (!id) return { res }
-
-        const comp = res
-        const type = comp.type || ''
-        const pluginDsl = plugin.dsl
-        const dsl = fileDsl || pluginDsl || type.indexOf('<') != -1 && type.split(/<|>/)[1]
-        comp.$dsl = dsl
-        const compId = jb.utils.resolveSingleComp(comp, id, { tgpModel, dsl })
-        comp.$location = utils.path(tgpModel,[compId,'$location'])
-        comp.$comp = true
-        if (forceLocalSuggestions && jb.plugins[pluginId]) {
-            const compToRun = f(...Object.values(context))
-            jb.comps[compId] = compToRun
-            compToRun.$dsl = dsl
-            compToRun.$plugin = pluginId
-            jb.utils.resolveSingleComp(compToRun, id, {dsl})
-            compToRun.$location = utils.path(jb.comps,[compId,'$location'])
-        }
-        return tgpModel.currentComp = { comp, compId, pluginDsl, compDsl: dsl }
-    } catch (e) {
-        if (fixed)
-            return { compilationFailure: true, errors: [e] }
-        const newCode = cursorPos && fixCode()
-        if (!newCode)
-            return { compilationFailure: true, errors: [e] }
-        return evalProfileDef(id, newCode, pluginId, fileDsl, tgpModel, { cursorPos, fixed: true })
-    }
-
-    function fixCode() {
-        const lines = code.split('\n')
-        const { line, col } = cursorPos
-        const currentLine = lines[line]
-        const fixedLine = currentLine && fixLineAtCursor(currentLine, col)
-        if (currentLine && fixedLine != currentLine)
-            return lines.map((l, i) => i == line ? fixedLine : l).join('\n')
-    }
-
-    function fixLineAtCursor(line, pos) {
-        const rest = line.slice(pos)
-        const to = pos + (rest.match(/^[a-zA-Z0-9$_\.]+/) || [''])[0].length
-        const from = pos - (line.slice(0, pos).match(/[a-zA-Z0-9$_\.]+$/) || [''])[0].length
-        const word = line.slice(from, to)
-        const noCommaNoParan = rest.match(/^[a-zA-Z0-9$_\.]*\s*$/)
-        const func = rest.match(/^[a-zA-Z0-9$_\.]*\s*\(/)
-        const replaceWith = noCommaNoParan ? 'TBD(),' : func ? isValidFunc(word) ? word : 'TBD' : 'TBD()'
-        return line.slice(0, from) + replaceWith + line.slice(to)
-    }
-    function isValidFunc(f) {
-        return f.trim() != '' && (jb.macro.proxies[f] || jb.frame[f])
-    }
-}
-
-*/

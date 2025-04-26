@@ -25,7 +25,7 @@ export const TBD = Any('TBD', {
   impl: 'TBD'
 })
 
-Component('Var', {
+export const Var = Component('Var', {
   type: 'var',
   isSystem: true,
   params: [
@@ -34,11 +34,11 @@ Component('Var', {
     {id: 'async', as: 'boolean', type: 'boolean<>'}
   ],
   macro: (result, self) => {
-    result.$vars = result.$vars || []
-    result.$vars.push(self)
+    result.vars = result.vars || []
+    result.vars.push(self)
   }
 })
-export const Var = registerProxy('Var')
+//export const Var22 = registerProxy('Var')
 jb.comps.Var = jb.comps['var<>Var']
 
 Component('unknownCmp', {

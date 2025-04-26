@@ -1,13 +1,14 @@
 import { Component } from './jb-core.js'
 
-Component('component', {
-  type: 'tgpComp',
+export const tgpCompDef = Component('tgpCompDef', {
+  type: 'tgpCompDef',
   params: [
     {id: 'id', as: 'string', mandatory: true},
     {id: 'type', as: 'string', byName: true},
     {id: 'dsl', as: 'string'},
     {id: 'category', as: 'string'},
     {id: 'description', as: 'string'},
+    {id: 'location' },
     {id: 'params', type: 'tgpParam[]'},
     {id: 'impl', type: '$implType<>', dynamicType: '%type%', mandatory: true}
   ]
@@ -21,15 +22,7 @@ export const tgpType = Component('tgpType', {
   ]
 })
 
-export const tgpCompDef = Component('tgpCompDef', {
-  type: 'tgpCompDef',
-  params: [
-    {id: 'type', as: 'string', mandatory: true},
-    {id: 'dsl', as: 'string', byName: true}
-  ]
-})
-
-Component('param', {
+export const param = Component('param', {
   type: 'tgpParam',
   singleInType: true,
   params: [

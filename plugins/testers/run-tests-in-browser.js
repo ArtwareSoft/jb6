@@ -12,7 +12,11 @@ let success_counter= 0, fail_counter = 0
 const startTime = Date.now()
 const usedJSHeapSize = () => (globalThis.performance?.memory.usedJSHeapSize || 0) / 1000000
 
-globalThis.goto_editor = (id,repo) => fetch(`/?op=gotoSource&comp=${id}&repo=${repo}`)
+globalThis.goto_editor = (fullTestId,repo) => {
+    const loc = jb.comps[fullTestId]?.$location
+    const filePos = `.${loc?.path}:${loc?.line}`
+    fetch(`/gotoSource?filePos=${filePos}`)
+}
 globalThis.hide_success_lines = () => globalThis.document.querySelectorAll('.success').forEach(e=>e.style.display = 'none')
 globalThis.profileSingleTest = fullTestId => new Ctx().setVars({fullTestId, testID: fullTestId.split('>').pop()}).run({$: fullTestId})
 
@@ -29,6 +33,7 @@ function addHTML(el,html,{beforeResult} = {}) {
 export function spyParamForTest(testID) {
     return testID.match(/uiTest|[Ww]idget/) ? 'test,uiTest,headless' : 'test'
 }
+
 
 export async function runTests({specificTest,show,pattern,notPattern,take,remoteTests,repo,onlyTest,top,coveredTestsOf,showOnly}) {
     let index = 1
@@ -101,7 +106,7 @@ function testResultHtml(res, repo) {
         <a href="${baseUrl}/tests.html?test=${testID}${_repo}&show&spy=${spyParamForTest(testID)}" style="color:${success ? 'green' : 'red'}">${testID}</a>
         <span> ${duration}mSec</span> 
         ${coveredTests}
-        <a class="test-button" href="javascript:goto_editor('${testID}','${repo||''}')">src</a>
+        <a class="test-button" href="javascript:goto_editor('${fullTestId}','${repo||''}')">src</a>
         <a class="test-button" href="${studioUrl}">studio</a>
         <a class="test-button" href="javascript:profileSingleTest('${fullTestId}')">profile</a>
         <span>${reason||''}</span>
