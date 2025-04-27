@@ -1,5 +1,5 @@
-import { proxy, resolveProfile, resolveProfileTop } from '../../core/jb-macro.js'
-import { TgpComp } from '../../core/jb-core.js'
+import { asJbComp, resolveProfileArgs, resolveProfileTop, splitSystemArgs } from '../../core/jb-macro.js'
+import { TgpType} from '../../core/tgp.js'
 import { Data, jb, utils } from '../../common/common-utils.js'
 import { offsetToLineCol } from '../text-editor/tgp-text-editor.js'
 import { parse } from '/libs/acorn.mjs'
@@ -32,18 +32,19 @@ export async function calcTgpModelData({ filePath }) {
 	await Promise.all(imports.map(url=>crawl(url)))
   })(filePath)
 
-  const tgpTypes = { Component: []} 
+  const tgpTypes = {} 
   const comps     = {}
 
   // phase 0 - meta urls
   {
-    const src = await fetch('/plugins/core/tgp-meta.js').then(x=>x.text())
+    const src = await fetch('/plugins/core/tgp.js').then(x=>x.text())
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
     ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
       .flatMap(n => n.declaration.declarations)
+      .filter(decl=> decl.init?.callee?.name == 'Component' || decl.init?.callee?.name == 'CompDef')
       .forEach(decl => {
-        const comp = astToObj(decl.init.arguments[1])
-        comps[`${comp.type}<>${decl.id.name}`] = comp
+        const comp = astToObj(decl.init.arguments[0])
+        comps[comp.id] = comp
       })
   }
 
@@ -55,20 +56,22 @@ export async function calcTgpModelData({ filePath }) {
       .flatMap(n => n.declaration.declarations)
       .filter(d => d.init?.type === 'CallExpression' && d.init.callee.type === 'Identifier' && d.init.callee.name === 'TgpType' 
     		  && d.init.arguments[0]?.type === 'Literal')
-      .forEach(d => tgpTypes[d.id.name] = d.init.arguments.map(astToObj))
+      .forEach(d => tgpTypes[d.id.name] = TgpType(...d.init.arguments.map(astToObj)))
   })
 
   let typeRules   = []
-  Object.entries(tgpTypes).forEach(([compDefName,typeDef]) => {
-    comps[`tgpType<>${compDefName}`] = new TgpComp({
-      ...resolveProfile(proxy('tgpType')(...typeDef), {expectedType: 'tgpType<>', tgpModel: {comps}}),
-      params: comps['tgpType<>tgpType'].params
-    })
-    comps[`tgpCompDef<>${compDefName}`] = new TgpComp({ 
-      ...resolveProfile(proxy('tgpCompDef')(...typeDef), {expectedType: 'tgpCompDef<>', tgpModel: {comps}}),
-      params: comps['tgpCompDef<>tgpCompDef'].params
-    })
-  })
+  //const typeFactories = Object.fromEntries(Object.entries(tgpTypes).map(([compDefName,typeDef]) => [compDefName, TgpType(...typeDef)]))
+  //debugger
+  // Object.entries(tgpTypes).forEach(([compDefName,typeDef]) => {
+  //   comps[`tgpType<>${compDefName}`] = new jbComp({
+  //     ...resolveProfileArgs(proxy('tgpType')(...typeDef), {expectedType: 'tgpType<>', tgpModel: {comps}}),
+  //     params: comps['tgpType<>tgpType'].params
+  //   })
+  //   comps[`tgpCompDef<>${compDefName}`] = new jbComp({ 
+  //     ...resolveProfileArgs(proxy('tgpCompDef')(...typeDef), {expectedType: 'tgpCompDef<>', tgpModel: {comps}}),
+  //     params: comps['tgpCompDef<>tgpCompDef'].params
+  //   })
+  // })
   //comps[`tgpCompDef<>Componenet`] = comps[`tgpCompDef<>tgpCompDef`]
 
   // 3) Phase 2a: non-exported in the entry file only
@@ -80,7 +83,7 @@ export async function calcTgpModelData({ filePath }) {
   }
 
   // 4) Phase 2b: exported components + typeRules in all files
-  Object.entries(codeMap).forEach(([url, src]) => {
+  Object.entries(codeMap).filter(e=>!e[0].match(/tgp-meta.js$/)).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
     ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
@@ -100,8 +103,7 @@ export async function calcTgpModelData({ filePath }) {
     const init = decl.init
     if ( init?.type !== 'CallExpression' || init.callee.type !== 'Identifier' || !tgpTypes[init.callee.name]) return
 
-	const tgpType = init.callee.name
-    const {type, dsl = ''} = comps[`tgpType<>${tgpType}`]
+	  const tgpType = init.callee.name
     const exportName = decl.id.name
 
     let shortId, comp
@@ -115,10 +117,13 @@ export async function calcTgpModelData({ filePath }) {
       comp = astToObj(init.arguments[0])
     }
 
-    const location = { path: url, ...offsetToLineCol(src, init.start) }
-	const resolvedComp = resolveProfileTop(shortId, {location, type, $dsl: dsl, ...comp },{tgpModel: {comps}})
-	comps[resolvedComp.$$] = resolvedComp
-	utils.asArray(comp.moreTypes).forEach(t=>comps[`${t}${shortId}`] = resolvedComp)
+    const $location = { path: url, ...offsetToLineCol(src, init.start) }
+    const jbComp = tgpTypes[tgpType](shortId,{$location, ...comp })[asJbComp]
+    comps[jbComp.id] = jbComp
+
+    // const resolvedComp = resolveProfileTop({location, type, $dsl: dsl, ...comp })
+    // comps[resolvedComp.id] = resolvedComp
+    // utils.asArray(comp.moreTypes).forEach(t=>comps[`${t}${shortId}`] = resolvedComp)
   }
 }
 
@@ -194,3 +199,20 @@ Data('tgpModelData.byFilePath', {
   ],
   impl: ({},{filePath}) => calcTgpModelData({filePath})
 })
+
+export function proxy(id) {
+  return new Proxy(() => 0, {
+      get: (o, p) => {  
+        return p === isMacro? true : getInnerMacro(id, p)
+      },
+      apply: function (target, thisArg, allArgs) {
+        return calcArgs(id, allArgs)
+      }
+  })
+}
+
+function calcArgs(id, allArgs) {
+  const actualId = id[0] == '_' ? id.slice(1) : id
+  const { args, system } = splitSystemArgs(allArgs)
+  return { $: actualId, $unresolvedArgs: args, ...system, ...(id[0] == '_' ? {$disabled:true} : {} ) }
+}

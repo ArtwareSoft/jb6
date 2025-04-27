@@ -1,9 +1,8 @@
-import { utils } from './common-utils.js'
-import { TgpType, Action, Data, Boolean, Any, DefComponents, Component, jb } from '../core/jb-core.js'
-import { Const } from '../core/core-utils.js'
-import { If, typeAdapter, Var, log } from '../core/core-components.js'
+import { utils, Const } from './common-utils.js'
+import { TgpType, Action, Data, Boolean, Any, DefComponents, jb, Var } from '../core/tgp.js'
+import { If, typeAdapter, log } from '../core/core-components.js'
 
-export { If, typeAdapter, Var, log, Const, TgpType, Action, Data, Boolean, Component, utils, jb }
+export { If, typeAdapter, Var, log, Const, TgpType, Action, Data, Boolean, utils, jb }
 
 export const pipeline = Data('pipeline', {
   description: 'flat map data arrays one after the other, does not wait for promises and rx',
@@ -11,8 +10,8 @@ export const pipeline = Data('pipeline', {
     {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
     {id: 'items', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
-  impl: (ctx, { source } ) => utils.asArray(ctx.tgpCtx.profile.items).reduce( (dataArray,prof,index) => 
-    runAsAggregator(ctx, prof,index,dataArray, utils.asArray(ctx.tgpCtx.profile.items)), source())
+  impl: (ctx, { source } ) => utils.asArray(ctx.jbCtx.profile.items).reduce( (dataArray,prof,index) => 
+    runAsAggregator(ctx, prof,index,dataArray, utils.asArray(ctx.jbCtx.profile.items)), source())
 })
 
 export const pipe = Data('pipe', {
@@ -21,7 +20,7 @@ export const pipe = Data('pipe', {
     {id: 'items', type: 'data[]', dynamic: true, mandatory: true, composite: true}
   ],
   impl: async ctx => {
-    const profiles = utils.asArray(ctx.tgpCtx.profile.items)
+    const profiles = utils.asArray(ctx.jbCtx.profile.items)
     const source = ctx.runInner(profiles[0], profiles.length == 1 ? ctx.parentParam : null, `items~0`)
     const _res = profiles.slice(1).reduce( async (pr,prof,index) => {
       const dataArray = await utils.waitForInnerElements(pr)
@@ -45,7 +44,7 @@ export const join = Aggregator('join', {
     {id: 'itemText', as: 'string', dynamic: true, defaultValue: '%%'}
   ],
   impl: (ctx,{ separator,prefix,suffix,items,itemText}) => {
-		const itemToText = ctx.tgpCtx.profile.itemText ? item => itemText(ctx.setData(item)) : item => utils.toString(item)
+		const itemToText = ctx.jbCtx.profile.itemText ? item => itemText(ctx.setData(item)) : item => utils.toString(item)
 		return prefix + items.map(itemToText).join(separator) + suffix;
 	}
 })
@@ -224,7 +223,7 @@ export const dynamicObject = Data('dynamicObject', {
 
 export const objFromVars = Data('objFromVars', {
   params: [
-    {id: 'vars', type: 'data[]', mandatory: true, as: 'array', description: 'names of vars'},
+    {id: 'Vars', type: 'data[]', mandatory: true, as: 'array', description: 'names of vars'},
   ],
   impl: (ctx, {vars}) => vars.reduce((acc,id)=>({ ...acc, [id]: ctx.vars[id] }),{})
 })
@@ -282,8 +281,8 @@ Data('extendWithIndex', {
 			Object.assign({}, item, Object.fromEntries(properties.map(p=>[p.name, utils.toJstype(p.val(ctx.setData(item).setVars({index:i})),p.type)]))))
 })
 
-export const prop = Component('prop', {
-  type: 'prop',
+export const Prop = TgpType('prop')
+export const prop = Prop('prop', {
   params: [
     { id: 'name', as: 'string', mandatory: true },
     { id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '' },
@@ -305,7 +304,7 @@ export const and = Boolean('and', {
   params: [
     {id: 'items', type: 'boolean[]', ignore: true, mandatory: true, composite: true}
   ],
-  impl: ctx => (ctx.tgpCtx.profile.items || []).reduce(
+  impl: ctx => (ctx.jbCtx.profile.items || []).reduce(
     (res,item,i) => res && ctx.runInner(item, { type: 'boolean' }, `items~${i}`), true)
 })
 
@@ -315,7 +314,7 @@ export const or = Boolean('or', {
   params: [
     {id: 'items', type: 'boolean[]', ignore: true, mandatory: true, composite: true}
   ],
-  impl: ctx => (ctx.tgpCtx.profile.items || []).reduce(
+  impl: ctx => (ctx.jbCtx.profile.items || []).reduce(
     (res,item,i) => res || ctx.runInner(item, { type: 'boolean' }, `items~${i}`), false)
 })
 
@@ -332,7 +331,7 @@ export const between = Data('between', {
 
 export const object = Data('object', {
   impl: ctx => {
-    const obj = ctx.tgpCtx.profile.$object || ctx.tgpCtx.profile
+    const obj = ctx.jbCtx.profile.$object || ctx.jbCtx.profile
     if (Array.isArray(obj)) return obj
 
     const result = {}
@@ -399,8 +398,8 @@ export const runActions = Action('runActions', {
     {id: 'actions', type: 'action[]', dynamic: true, composite: true, mandatory: true}
   ],
   impl: ctx => {
-    if (!ctx.tgpCtx.profile) debugger;
-    const actions = utils.asArray(ctx.tgpCtx.profile.actions).filter(x=>x)
+    if (!ctx.jbCtx.profile) debugger;
+    const actions = utils.asArray(ctx.jbCtx.profile.actions).filter(x=>x)
     return actions.reduce((pr,action,index) =>
         pr.finally(function runActions() {return ctx.runInner(action, { as: 'single'}, `items~${index}` ) })
       ,Promise.resolve())
@@ -512,8 +511,8 @@ export const Switch = Data('Switch', {
   }
 })
 
-export const Case = Component('Case', {
-  type: 'switch-case',
+export const SwitchCase = TgpType('switch-case')
+export const Case = SwitchCase('Case', {
   params: [
     {id: 'condition', type: 'boolean', mandatory: true, dynamic: true},
     {id: 'value', mandatory: true, dynamic: true}
@@ -534,8 +533,8 @@ export const actionSwitch = Action('actionSwitch', {
   }
 })
 
-export const actionSwitchCase = Component('actionSwitchCase', {
-    type: 'action.switch-case',
+export const ActionSwitchCase = TgpType('action-switch-case')
+export const actionSwitchCase = ActionSwitchCase('actionSwitchCase', {
     params: [
     {id: 'condition', type: 'boolean', as: 'boolean', mandatory: true, dynamic: true},
     {id: 'action', type: 'action', mandatory: true, dynamic: true}
@@ -641,7 +640,7 @@ export const contains = Boolean('contains', {
 function runAsAggregator(ctx, profile,i, dataArray,profiles) {
     if (!profile || profile.$disabled) return dataArray
     const parentParam = (i < profiles.length - 1) ? { as: 'array'} : (ctx.parentParam || {}) // use parent param for last element to convert to client needs
-    if ((jb.comps[profile.$$] || profile.$$)?.aggregator)
+    if (profile.$?.aggregator)
       return ctx.setData(utils.asArray(dataArray)).runInner(profile, parentParam, `items~${i}`)
     return utils.asArray(dataArray)
       .map(item => ctx.setData(item).runInner(profile, parentParam, `items~${i}`))

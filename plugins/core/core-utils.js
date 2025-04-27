@@ -93,10 +93,9 @@ const unique = (ar,f) => {
 const isPromise = v => v && v != null && typeof v.then === 'function'
 
 function compName(profile) {
-  const res = profile.$$?.$$ || profile.$$
-  if (typeof res != 'string') debugger
-  return res
+  return profile.$?.id || profile.$$
 }
+
 const compParams = comp => comp?.params || []
 const parentPath = path => path.split('~').slice(0,-1).join('~')
 

@@ -1,4 +1,4 @@
-import { Boolean, Data, jb } from '../core/jb-core.js'
+import { Boolean, Data, jb } from '../core/tgp.js'
 import { log, logError } from '../core/logger.js'
 import { resolveFinishedPromise, asArray, toArray, consts } from '../core/core-utils.js'
 
@@ -109,7 +109,7 @@ const db = jb.ext.db = {
     refOfPath: path => watchableHandlers.reduce((res,h) => res || h.refOfPath(path),null),
 
     calcVar(varname, ctx, {isRef}) {
-        const { tgpCtx: { args }} = ctx  
+        const { jbCtx: { args }} = ctx  
         return resolveFinishedPromise(doCalc())
         
         function doCalc() {
@@ -148,8 +148,8 @@ export const writeValue = Action('writeValue', {
   impl: (ctx,{to,value,noNotifications}) => {
     if (!db.isRef(to)) {
       debugger
-      ctx.run(ctx.tgpCtx.profile.to,{as: 'ref'}) // for debug
-      return jb.logError(`can not write to: ${ctx.tgpCtx.profile.to}`, {ctx})
+      ctx.run(ctx.jbCtx.profile.to,{as: 'ref'}) // for debug
+      return jb.logError(`can not write to: ${ctx.jbCtx.profile.to}`, {ctx})
     }
     const val = jb.val(value)
     if (jb.utils.isPromise(val))

@@ -1,6 +1,7 @@
 import { jb, utils } from '../../common/common-utils.js'
 import { astToTgpObj, astNode } from '../model-data/tgp-model-data.js'
-import { resolveProfile, systemParams, OrigValues } from '../../core/jb-macro.js'
+import { systemParams, OrigArgs } from '../../core/jb-macro.js'
+import { resolveProfileTypes } from './resolve-types.js'
 import { parse } from '/libs/acorn.mjs'
 
 
@@ -96,7 +97,7 @@ export function calcCompActionMap(compText, tgpModel) {
 
 export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = '', $$}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0])
-    resolveProfile(topComp,{tgpModel, expectedType: tgpType, topComp})
+    resolveProfileTypes(topComp,{tgpModel, expectedType: tgpType, topComp})
     topComp.$$ = $$ || `${tgpType}${topComp.$}`
     const actionMap = []
     calcActionMap(topComp,basePath,topComp[astNode])
@@ -136,7 +137,8 @@ export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = ''
             prof.forEach((val,i) => calcActionMap(val,`${path}~${i}`, primitivesAst[`${paramId}~${i}`] || val[astNode]))
 
         } else { // profile
-            const primitivesAst = Object.fromEntries(calcPrimitivesByValue(prof) || [])
+            const primByVal = calcPrimitivesByValue(prof)
+            const primitivesAst = Object.fromEntries(primByVal || [])
             const expressionAst = ast.type == 'CallExpression' ? ast : ast.expression
             const astArgs = expressionAst.arguments
             const delimiters = ast.type == 'ExpressionStatement' ? astArgs.filter(n => n.value == ',')
@@ -190,7 +192,7 @@ export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = ''
 
     function calcPrimitivesByValue(prof) {
         const comp = typeof prof.$$ == 'string' ? tgpModel.comps[prof.$$] : prof.$$
-        const args = prof[OrigValues]
+        const args = prof[OrigArgs]
         const ast = prof[astNode]
         if (!args || args.length == 0 || !comp || prof.$ == 'asIs') return
 
@@ -207,16 +209,15 @@ export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = ''
     
         if (!lastArgIsByName) {
             if (firstParamAsArray) 
-                return params.length > 1 && args.length == 1 
-                    ? [param0.id, argsAst[0] ,args[0]] 
-                    : args.map.map((v,i) => [`${param0.id}~${i}`, argsAst[i], v])
+                return params.length > 1 && args.length == 1 ? [[param0.id, argsAst[0]]]
+                    : args.map((v,i) => [`${param0.id}~${i}`, argsAst[i]])
             if (secondParamAsArray)  return [
-                [param0.id, argsAst[0], args[0]], 
-                ...args.slice(1).map((v,i) => [`${param1.id}~${i}`, argsAst[i+1], v])
+                [param0.id, argsAst[0]], 
+                ...args.slice(1).map((v,i) => [`${param1.id}~${i}`, argsAst[i+1]])
                 ]
     
             if (comp.macroByValue || params.length < 3)
-                return args.filter((_, i) => params[i]).map((arg, i) => [params[i].id, argsAst[i], arg])
+                return args.filter((_, i) => params[i]).map((arg, i) => [params[i].id, argsAst[i]])
         }
     
         const propsByValue = onlyByName ? []

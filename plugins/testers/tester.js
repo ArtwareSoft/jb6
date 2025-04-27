@@ -1,6 +1,7 @@
-import { Ctx, jb, onInjectExtension, TgpType } from '../core/jb-core.js'
+import { Ctx, jb, onInjectExtension, TgpType } from '../core/tgp.js'
 import { log } from '../core/logger.js'
 import { spy } from '../logger/spy.js'
+import { asJbComp } from '../core/jb-macro.js'
 
 export const Test = TgpType('test')
 export const Usage = TgpType('test', {doNotRunInTests: true})
@@ -33,20 +34,20 @@ async function cleanBeforeRun() {
 }
 
 export async function runTest(testID,{fullTestId, singleTest} = {}) {
-    const profile = jb.comps[fullTestId]
-    const tstCtx = new Ctx().setVars({ testID, fullTestId,singleTest })
-    const start = Date.now()
     await !singleTest && cleanBeforeRun()
+    const jbComp = Test[testID][asJbComp]
     log('start test',{testID})
     let res = null
+    const start = Date.now()
     try {
-        res = await tstCtx.run({$:fullTestId})
+        const ctx = new Ctx().setVars({ testID, fullTestId,singleTest })
+        res = await jbComp.runProfile({}, ctx)
     } catch (e) {
         res = { success: false, reason: e}
     }
     res.duration = Date.now() - start
     log('end test',{testID,res})
-    if (!singleTest && !profile.doNotTerminateWorkers)
+    if (!singleTest && !jbComp.doNotTerminateWorkers)
         await jb.jbm?.terminateAllChildren(tstCtx)		
     return res
 }

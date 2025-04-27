@@ -1,6 +1,5 @@
-import { jb, Component, Any, Data } from './jb-core.js'
+import { jb, Any, Data } from './tgp.js'
 import { logError, log as _log } from './logger.js'
-import { registerProxy } from './jb-macro.js'
 
 export const typeAdapter = Any('typeAdapter', {
   params: [
@@ -25,38 +24,38 @@ export const TBD = Any('TBD', {
   impl: 'TBD'
 })
 
-export const Var = Component('Var', {
-  type: 'var',
-  isSystem: true,
-  params: [
-    {id: 'name', as: 'string', mandatory: true},
-    {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
-    {id: 'async', as: 'boolean', type: 'boolean<>'}
-  ],
-  macro: (result, self) => {
-    result.vars = result.vars || []
-    result.vars.push(self)
-  }
-})
-//export const Var22 = registerProxy('Var')
-jb.comps.Var = jb.comps['var<>Var']
+// export const Var = Component('Var', {
+//   type: 'var',
+//   isSystem: true,
+//   params: [
+//     {id: 'name', as: 'string', mandatory: true},
+//     {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
+//     {id: 'async', as: 'boolean', type: 'boolean<>'}
+//   ],
+//   macro: (result, self) => {
+//     result.vars = result.vars || []
+//     result.vars.push(self)
+//   }
+// })
+// //export const Var22 = registerProxy('Var')
+// jb.comps.Var = jb.comps['var<>Var']
 
-Component('unknownCmp', {
-  type: 'system',
-  isSystem: true,
-  params: [
-    {id: 'id', as: 'string', mandatory: true}
-  ],
-  macro: (result, self) => jb.comps[self.id] = { impl: ctx => logError(`comp ${self.id} is not defined`,{ctx})}
-})
-export const unknownCmp = registerProxy('unknownCmp')
+// Component('unknownCmp', {
+//   type: 'system',
+//   isSystem: true,
+//   params: [
+//     {id: 'id', as: 'string', mandatory: true}
+//   ],
+//   macro: (result, self) => jb.comps[self.id] = { impl: ctx => logError(`comp ${self.id} is not defined`,{ctx})}
+// })
+//export const unknownCmp = registerProxy('unknownCmp')
 
 export const runCtx = Any('runCtx', {
   type: 'any',
   hidden: true,
   params: [
     {id: 'path', as: 'string'},
-    {id: 'vars'},
+    {id: 'Vars'},
     {id: 'profile'}
   ]
 })

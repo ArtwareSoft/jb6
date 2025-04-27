@@ -1,4 +1,4 @@
-import { Data, Aggregator, Component } from './jb-common.js'
+import { Data, Aggregator } from './jb-common.js'
 import { utils } from './common-utils.js'
 
 export const aggregate = Aggregator('aggregate', {

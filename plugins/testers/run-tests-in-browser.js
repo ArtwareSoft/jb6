@@ -1,8 +1,10 @@
-import { runTest } from './tester.js'
+import { runTest, Test } from './tester.js'
 import { utils } from '../common/common-utils.js'
-import { Ctx, jb, run, globalsOfType } from '../core/jb-core.js'
+import { Ctx, jb, run, globalsOfType } from '../core/tgp.js'
 import { spy } from '../logger/spy.js'
+import { asJbComp } from '../core/jb-macro.js'
 globalThis.spy = spy
+globalThis.jb = jb
 
 spy.registerEnrichers([
     r => r.logNames == 'check test result' && ({ props: {success: r.success, data: r.expectedResultCtx.data, id: r.expectedResultCtx.vars.testId }}),
@@ -13,12 +15,15 @@ const startTime = Date.now()
 const usedJSHeapSize = () => (globalThis.performance?.memory.usedJSHeapSize || 0) / 1000000
 
 globalThis.goto_editor = (fullTestId,repo) => {
-    const loc = jb.comps[fullTestId]?.$location
+    const loc = Test[fullTestId]?.$location
     const filePos = `.${loc?.path}:${loc?.line}`
     fetch(`/gotoSource?filePos=${filePos}`)
 }
 globalThis.hide_success_lines = () => globalThis.document.querySelectorAll('.success').forEach(e=>e.style.display = 'none')
-globalThis.profileSingleTest = fullTestId => new Ctx().setVars({fullTestId, testID: fullTestId.split('>').pop()}).run({$: fullTestId})
+globalThis.profileSingleTest = testID => {
+    const ctx = new Ctx().setVars({ testID })
+    Test[testID][asJbComp]?.runProfile({}, ctx)
+}
 
 function addHTML(el,html,{beforeResult} = {}) {
     const elem = document.createElement('div')
@@ -39,9 +44,9 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
     let index = 1
     specificTest = specificTest && decodeURIComponent(specificTest).split('>').pop()
 
-    let tests = globalsOfType('test<>')
+    let tests = globalsOfType(Test)
         .filter(id =>!specificTest || id == specificTest)
-        .filter(id => !jb.comps[`test<>${id}`]?.doNotRunInTests)
+        .filter(id => !Test[id][asJbComp]?.doNotRunInTests)
         .filter(id =>!pattern || id.match(pattern))
         .filter(id =>!notPattern || !id.match(notPattern))
         .map(id => ({testID:id}) ) // put in object to assign to groups
@@ -92,8 +97,8 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
 
 function testResultHtml(res, repo) {
     const baseUrl = globalThis.location.href.split('/tests.html')[0]
-    const {fullTestId, success, duration, reason, testID} = res
-    const testComp = jb.comps[fullTestId]
+    const { success, duration, reason, testID} = res
+    const testComp = Test[testID][asJbComp]
     //    const location = testComp.$location || {}
     // const sourceCode = JSON.stringify(run(typeAdapter('source-code<loader>', test({
     //     filePath: () => location.path, repo: () => location.repo
@@ -106,9 +111,9 @@ function testResultHtml(res, repo) {
         <a href="${baseUrl}/tests.html?test=${testID}${_repo}&show&spy=${spyParamForTest(testID)}" style="color:${success ? 'green' : 'red'}">${testID}</a>
         <span> ${duration}mSec</span> 
         ${coveredTests}
-        <a class="test-button" href="javascript:goto_editor('${fullTestId}','${repo||''}')">src</a>
+        <a class="test-button" href="javascript:goto_editor('${testID}','${repo||''}')">src</a>
         <a class="test-button" href="${studioUrl}">studio</a>
-        <a class="test-button" href="javascript:profileSingleTest('${fullTestId}')">profile</a>
+        <a class="test-button" href="javascript:profileSingleTest('${testID}')">profile</a>
         <span>${reason||''}</span>
         </div>`
 }

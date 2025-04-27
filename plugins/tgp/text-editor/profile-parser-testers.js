@@ -1,27 +1,27 @@
 import { Test, dataTest, utils } from '../../testers/data-tester.js'
 import { prettyPrintWithPositions } from '../formatter/pretty-print.js'
-import { resolveProfile } from '../../core/jb-macro.js'
+import { resolveProfileArgs } from '../../core/jb-macro.js'
 import { calcProfileActionMap } from './tgp-text-editor.js'
 import { calcTgpModelData } from '../model-data/tgp-model-data.js'
-export { Test }
+export { Test, dataTest }
 
 let testTgpModel
-function getTgpModle() {
+function getTgpModel() {
   return testTgpModel ??= calcTgpModelData({filePath: '/plugins/tgp/text-editor/profile-parser-tests.js'})
 }
 
 export const actionMapTest = Test('actionMapTest', {
   macroByValue: true,
   params: [
-    {id: 'profile', type: 'any'},
+    {id: 'profile' },
     {id: 'expectedType', as: 'string'},
     {id: 'path', as: 'string'},
     {id: 'expectedPos', as: 'string'}
   ],
   impl: dataTest({
-    calculate: ({},{},{profile, expectedType}) => getTgpModle().then(tgpModel => {
+    calculate: ({},{},{profile, expectedType}) => getTgpModel().then(tgpModel => {
       const { text: compText, actionMap} = typeof profile == 'string' ? { text: profile, actionMap: [] } 
-        :  prettyPrintWithPositions(resolveProfile(profile, {expectedType}))
+        :  prettyPrintWithPositions(resolveProfileArgs(profile, {expectedType}), {tgpModel} )
       const actionMapFromParse = calcProfileActionMap(compText, {tgpModel, tgpType: expectedType} )
         .map(e=>({from: e.from, to: e.to,action: e.action, source: e.source})) // for debug to match actionMap
       return { actionMap, actionMapFromParse, compText }

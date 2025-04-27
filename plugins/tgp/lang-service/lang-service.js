@@ -1,4 +1,4 @@
-import { resolveComp, isMacro}  from '../../core/jb-macro.js'
+import { resolveCompArgs, isMacro}  from '../../core/jb-macro.js'
 import { utils, Data, jb, Ctx, DefComponents } from '../../common/common-utils.js'
 import { calcTgpModelData } from '../model-data/tgp-model-data.js'
 import { tgpEditorHost, offsetToLineCol, parseComp, deltaFileContent, filePosOfPath, calcHash } from '../text-editor/tgp-text-editor.js'
@@ -206,7 +206,7 @@ function setOp(path, value, srcCtx) {
 
 function cloneProfile(prof) {
 	if (!prof || utils.isPrimitiveValue(prof) || typeof prof == 'function') return prof
-	const keys = [...Object.keys(prof),jb.core.OrigValues]
+	const keys = [...Object.keys(prof),jb.core.OrigArgs]
 	return Object.fromEntries(keys.map(k=>[k,cloneProfile(prof[k])]))
 }
 
@@ -394,7 +394,7 @@ export function editAndCursorOfCompletionItem(item) {
     const opOnComp = {}
     utils.path(opOnComp,path.split('~').slice(1),op) // create op as nested object
     const newComp = update(comp,opOnComp)
-    resolveComp(newComp,{tgpModel})
+    resolveCompArgs(newComp,{tgpModel})
     const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
     const edit = deltaFileContent(text, newRes.text , compLine)
 

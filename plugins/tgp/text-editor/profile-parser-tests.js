@@ -1,8 +1,14 @@
-import { Test, actionMapTest} from './profile-parser-testers.js'
-import { prettyPrintWithPositions, prettyPrint} from '../formatter/pretty-print.js'
+import { actionMapTest} from './profile-parser-testers.js'
+import { Test, dataTest } from '../../testers/data-tester.js'
+
+import { prettyPrintWithPositions, prettyPrint, prettyPrintComp} from '../formatter/pretty-print.js'
 import { getPosOfPath} from './tgp-text-editor.js'
-import { jb } from '../../core/jb-core.js'
-import { pipeline, split, Var, list, Data } from '../../common/jb-common.js'
+import { jb, asComp } from '../../core/jb-macro.js'
+import { Data, Boolean, Var } from '../../common/jb-common.js'
+import { Control } from '../../testers/ui-dsl/ui.js'
+const { group, text, controlWithCondition } = Control
+const { pipeline, split, list } = Data
+const { equals, contains } = Boolean
 
 Test('actionMapTest.simple', {
   impl: actionMapTest(() => split(',' , {text: '%%', part: 'first'}), 'data<>', 'propInfo!~part', '29,35')
@@ -20,17 +26,14 @@ Test('actionMapTest.varsPathInPipeline', {
   impl: actionMapTest(() => pipeline(Var('a', 'b'),''), 'data<>', 'edit!~vars~0~val', '19,19')
 })
 
-/*
-
-Data('actionMapTest.singleParamByNameComp', {
+const singleParamByNameComp = Data('singleParamByNameComp', {
   params: [
     {id: 'p1', as: 'boolean', type: 'boolean<>', byName: true}
   ]
 })
 
-
 Test('actionMapTest.singleParamByName', {
-  impl: actionMapTest(() => pipeline(actionMapTest.singleParamByNameComp({p1: true})), 'data<>', 'begin!~source~p1', '48,48')
+  impl: actionMapTest(() => pipeline(singleParamByNameComp({p1: true})), 'data<>', 'begin!~source~p1', '37,37')
 })
 
 Test('actionMapTest.secondParamAsArray', {
@@ -51,24 +54,23 @@ Test('actionMapTest.secondParamAsArrayWithLongVars', {
 })
 
 Test('actionMapTest.asyncVar', {
-  impl: actionMapTest(() => pipeline(Var('a',3, {async: true})), 'data<>', 'begin!~vars~0~async', '30,30')
+  impl: actionMapTest(() => pipeline(Var('a',3, {async: true}),''), 'data<>', 'begin!~vars~0~async', '30,30')
 })
 
 
 Test('actionMapTest.prependInGroup', {
-  impl: actionMapTest(() => group(text(''), text('')), 'control<>', 'prependPT!~controls', '6,11')
+  impl: actionMapTest(() => group(text(''), text('')), 'control<ui>', 'prependPT!~controls', '6,11')
 })
 
 Test('actionMapTest.prependSingleInArrayPath', {
-  impl: actionMapTest(() => group(text('')), 'control<>', 'prependPT!~controls', '6,11')
+  impl: actionMapTest(() => group(text('')), 'control<ui>', 'prependPT!~controls', '6,11')
 })
 
 Test('actionMapTest.singleInArrayPath', {
-  impl: actionMapTest(() => group(text('')), 'control<>', 'begin!~controls~text', '11,11')
+  impl: actionMapTest(() => group(text('')), 'control<ui>', 'begin!~controls~text', '11,11')
 })
 
-
-Data('actionMapTest.multiLineExample', {
+const multiLineExample = Control('multiLineExample', {
   params: [
     {id: 'param1'}
   ],
@@ -80,24 +82,25 @@ Data('actionMapTest.multiLineExample', {
 })
 
 Test('actionMapTest.multiLine.prepend', {
-  impl: actionMapTest(() => jb.comps['control<>actionMapTest.multiLineExample'], 'control<>', 'prependPT!~impl~controls', '93,98')
+  impl: actionMapTest(() => asComp(multiLineExample), 'control<ui>', 'prependPT!~impl~controls', '93,98')
 })
 
 Test('actionMapTest.param', {
   impl: dataTest({
-    calculate: () => prettyPrintComp('actionMapTest.multiLineExample',jb.comps['control<>actionMapTest.multiLineExample']),
+    calculate: () => prettyPrintComp('multiLineExample',jb.comps['control<ui>multiLineExample']),
     expectedResult: contains(`{id: 'param1'}`)
   })
 })
 
 Test('actionMapTest.multiLine.implBegin', {
-  impl: actionMapTest(() => jb.comps['control<>actionMapTest.multiLineExample'], 'control<>', 'begin!~impl', '87,87')
+  impl: actionMapTest(() => jb.comps['control<ui>multiLineExample'], 'control<ui>', 'begin!~impl', '87,87')
 })
 
 Test('actionMapTest.multiLine.implEnd', {
-  impl: actionMapTest(() => jb.comps['control<>actionMapTest.multiLineExample'], 'control<>', 'end!~impl', '216,216')
+  impl: actionMapTest(() => jb.comps['control<ui>multiLineExample'], 'control<ui>', 'end!~impl', '216,216')
 })
 
+/*
 Data('actionMapTest.dslNameOverideExample', {
   type: 'settlement<location>',
   impl: pipeline({ state: israel() })
@@ -120,7 +123,7 @@ Test('actionMapTest.remark.pipeline', {
 
 Test('actionMapTest.newLinesInCode', {
   impl: dataTest({
-    calculate: () => prettyPrint(html(`<div>\n</div>`),{type: 'control<>'}),
+    calculate: () => prettyPrint(html(`<div>\n</div>`),{type: 'control<ui>'}),
     expectedResult: equals('html(`<div>\n</div>`)')
   })
 })
@@ -128,7 +131,7 @@ Test('actionMapTest.newLinesInCode', {
 Test('actionMapTest.Positions.closeArray', {
   impl: actionMapTest({
     profile: () => text('hey', { features: [css.color('green'), css.color('green')] }), 
-    expectedType: 'control<>',
+    expectedType: 'control<ui>',
     path: 'end!~features',
     expectedPos: '65,65'
   })
@@ -236,5 +239,4 @@ Test('actionMapTest.vars', {
     contains(`Var('items', [{id: 1}, {id: 2}])`)
   )
 })
-
 */

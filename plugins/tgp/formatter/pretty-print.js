@@ -1,6 +1,5 @@
-import { Data, jb}  from '../../core/jb-core.js'
-import { resolveComp, resolveProfile, titleToId, sysProps, isMacro}  from '../../core/jb-macro.js'
-import { utils } from '../../common/common-utils.js'
+import { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, asJbComp}  from '../../core/jb-macro.js'
+import { utils, Data, jb } from '../../common/common-utils.js'
 
 Data('prettyPrint', {
   params: [
@@ -9,17 +8,14 @@ Data('prettyPrint', {
     {id: 'noMacros', as: 'boolean', type: 'boolean'},
     {id: 'type', as: 'string'}
   ],
-  impl: (ctx,{profile}) => prettyPrint(utils.val(profile),{ ...ctx.tgpCtx.args })
+  impl: (ctx,{profile}) => prettyPrint(utils.val(profile),{ ...ctx.jbCtx.args })
 })
 
 const emptyLineWithSpaces = Array.from(new Array(200)).map(_=>' ').join('')
 
 export function prettyPrintComp(compId,comp,settings={}) {
-  if (comp) {
     return `${compHeader(compId)}${prettyPrint(comp,{ initialPath: compId, ...settings })})`
-  }
 }
-
 export function prettyPrint(val,settings = {}) {
   if (val == null) return ''
   return prettyPrintWithPositions(val,settings).text;
@@ -30,6 +26,9 @@ function compHeader(compId) {
 }
 
 export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros,singleLine, depth, tgpModel, type} = {}) {
+  if (val[asJbComp]) {
+    debugger
+  }
   const props = {}
   const startOffset = val.$comp ? compHeader(fullPTId(val)).length : 0
 
@@ -37,8 +36,8 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
     return { text: val != null && val.toString ? val.toString() : JSON.stringify(val), map: {} }
   if (type)
     val.$type = type
-  if (val.$unresolved)
-    val.$comp ? resolveComp(val,{tgpModel}) : resolveProfile(val,{tgpModel, expectedType: type})
+  if (val.$unresolvedArgs)
+    val.$comp ? resolveCompArgs(val,{tgpModel}) : resolveProfileArgs(val,{tgpModel, expectedType: type})
 
   // first phase - fill the props[path] dictionary with shortest lengths. also composite with innerVals, primitives with tokens(token,action)
   calcValueProps(val,initialPath) 
@@ -194,7 +193,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
     if (noMacros)
       return asIsProps(profile,path)
     if (profile.$ == 'asIs') {
-      resolveProfile(profile)
+      resolveProfileArgs(profile)
       const content = prettyPrint(profile.$asIs,{noMacros: true})
       const tokens = [ 
         {token: 'asIs(', action: `begin!${path}`}, {token: '', action: `edit!${path}`},
@@ -209,10 +208,11 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
       ;(cleaned.params||[]).forEach(p => delete p.$type)
       return asIsProps(cleaned,path)
     }
-    if (!profile.$$)
-      return asIsProps(profile,path)
     const fullptId = utils.compName(profile)
-    const comp = tgpModel ? tgpModel.comps[fullptId] : jb.comps[fullptId]
+    if (!fullptId)
+      return asIsProps(profile,path)
+
+    const comp = tgpModel?.comps[fullptId]
     const id = fullptId.split('>').pop()                
     const macro = titleToId(id)
 

@@ -13,7 +13,7 @@ running a profile means
 2. calling the profile with the args, the default behavior of profile run is just to return the args
 
 ctx is { data, vars } that can be used in extend during RT
-tgpCtx { path, stack, compCtx, argsCtxs}
+jbCtx { path, stack, compCtx, argsCtxs}
 
 TGP stands for Types, Generic Classes, and profiles.
 Generic classes and global profiles are implemented by comp. any comps and profile should have a type.
@@ -22,47 +22,19 @@ DataFunc and Action are core types in the '' dsl
 types are organized in DSLs.
 so a full comp id is in the format: type<dsl>id
 
-dynamic function 'hold' and keeps the args until called by client with ctx. it has the creator tgpCtx, the creator ctx and the caller ctx to merge.
+dynamic function 'hold' and keeps the args until called by client with ctx. it has the creator jbCtx, the creator ctx and the caller ctx to merge.
 }
 */
-import { registerProxy, resolveProfileTop, resolveComp, tgpCompProxy, resolveProfile } from './jb-macro.js'
+import { resolveCompArgs, resolveProfileArgs, asComp, jbCompProxy, resolveProfileTop } from './jb-macro.js'
 import { RT_types, utils } from './core-utils.js'
 import { calc } from './jb-expression.js'
 
 export const jb = globalThis._jb = {
-    comps: {},
+//    comps: {},
+    types: {},
     proxies: {},
-    genericCompIds: {},
+//    genericCompIds: {},
     ext: {}
-}
-
-function asComp($$) {
-    if (typeof $$ == 'string') {
-        if (!jb.comps[$$]?.$resolvedInner)
-            resolveComp(jb.comps[$$])
-        return jb.comps[$$]
-    } else {
-        if (!$$?.$resolvedInner)
-            resolveComp($$)
-        return $$
-    }
-}
-
-export function Component(...args) {
-    if (typeof args[0] != 'string') {
-        const comp = args[0]
-        comp.$dsl = comp.dsl || ''
-        return tgpCompProxy(resolveComp(new TgpComp(resolveProfileTop('anonymous', comp))))
-    }
-
-    const [id, comp] = args
-    comp.$dsl = comp.dsl || ''
-    if (comp.type == 'any') jb.genericCompIds[id] = true
-    comp.$location = calcSourceLocation(new Error().stack.split(/\r|\n/)) || {}
-  
-    registerProxy(id)
-    const resolved = resolveProfileTop(id, comp)
-    return tgpCompProxy(jb.comps[resolved.$$] = new TgpComp(resolved))
 }
 
 export function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArray: false, openObj: false, openComp: true}) {
@@ -75,28 +47,29 @@ export function run(profile, ctx = new Ctx(), settings = {openExpression: true, 
     if (profile.data != null)
         ctx = ctx.setData(profile.data)
 
-    const { tgpCtx } = ctx
+    const { jbCtx } = ctx
 
     const {openExpression, openArray, openObj, openComp} = settings
     if (typeof profile == 'string' && openExpression)
-        return toRTType(tgpCtx.parentParam, calc(profile, ctx))
+        return toRTType(jbCtx.parentParam, calc(profile, ctx))
     if (Array.isArray(profile) && openArray)
-        return profile.map((p,i) => run(p, ctx.setTgpCtx(tgpCtx.innerDataPath(i)), settings))
-    const arrayType = (tgpCtx.parentParam?.type || '').indexOf('[]') != -1
+        return profile.map((p,i) => run(p, ctx.setTgpCtx(jbCtx.innerDataPath(i)), settings))
+    const arrayType = (jbCtx.parentParam?.type || '').indexOf('[]') != -1
     if (arrayType && Array.isArray(profile)) // array param
         return profile.flatMap(p => run(p, ctx, settings))
-    if (profile && profile.$$ && openComp) {
-        const comp = asComp(profile.$$)
+    //const pt = profile.$$ || profile.$
+    if (profile && profile.$ && openComp) {
+        const comp = asComp(profile.$) // also lazy resolve
         const ret = comp.runProfile(profile, ctx, settings)
-        return toRTType(tgpCtx.parentParam, ret)
+        return toRTType(jbCtx.parentParam, ret)
     }
     if (typeof profile == 'function' && profile.compFunc)
-        return profile(ctx, tgpCtx.args)
+        return profile(ctx, jbCtx.args)
     if (typeof profile == 'function')
-        return profile(ctx, ctx.vars, tgpCtx.args)
+        return profile(ctx, ctx.vars, jbCtx.args)
     
     if (profile && typeof profile == 'object' && openObj) {
-        return Object.fromEntries(Object.entries(profile).map(([id,p]) =>[id,run(p, ctx.setTgpCtx(tgpCtx.innerDataPath(i)), settings)]))
+        return Object.fromEntries(Object.entries(profile).map(([id,p]) =>[id,run(p, ctx.setTgpCtx(jbCtx.innerDataPath(i)), settings)]))
     }
     return profile
 }
@@ -107,25 +80,25 @@ function toRTType(parentParam, value) {
     return value
 }
 
-class TgpCtx {
-    constructor(tgpCtx = {}) {
-        Object.assign(this,tgpCtx)
+class JBCtx {
+    constructor(jbCtx = {}) {
+        Object.assign(this,jbCtx)
     }
     innerDataPath(path) {
-        return new TgpCtx({...this, path: `${this.path}~${path}`, parentParam: {$type: 'data<>'}, profile: 'data path' })
+        return new JBCtx({...this, path: `${this.path}~${path}`, parentParam: {$type: 'data<>'}, profile: 'data path' })
     }
     innerParam(parentParam, profile) {
-        return new TgpCtx({...this, path: `${this.path}~${parentParam.id}`, parentParam, profile: profile[parentParam.id]})
+        return new JBCtx({...this, path: `${this.path}~${parentParam.id}`, parentParam, profile: profile[parentParam.id]})
     }
     paramDefaultValue(path, parentParam) {
-        return new TgpCtx({...this, creatorStack: [...(this.creatorStack || []), this.path, path], path, parentParam, profile: parentParam.defaultValue})
+        return new JBCtx({...this, creatorStack: [...(this.creatorStack || []), this.path, path], path, parentParam, profile: parentParam.defaultValue})
     }
     callCtx(callerCtx) {
-        return new TgpCtx({...this, path: `${this.path}~${parentParam.id}`, callerStack: [...(this.callerStack||[]), callerCtx]})
+        return new JBCtx({...this, path: `${this.path}~${parentParam.id}`, callerStack: [...(this.callerStack||[]), callerCtx]})
     }
     newComp(comp, args) {
-        return new TgpCtx({...this, 
-            path: `${comp.$$}.impl`, 
+        return new JBCtx({...this, 
+            path: `${comp.id}.impl`, 
             creatorStack: [...(this.creatorStack || []), this.path],
             args
         })
@@ -133,32 +106,32 @@ class TgpCtx {
 }
 
 export class Ctx {
-    constructor({data,vars = {}, tgpCtx = new TgpCtx()} = {}) {
+    constructor({data,vars = {}, jbCtx = new JBCtx()} = {}) {
         this.data = data
         this.vars = vars
-        this.tgpCtx = tgpCtx
+        this.jbCtx = jbCtx
     }
     setData(data) {
-        return new Ctx({data,vars: this.vars, tgpCtx: this.tgpCtx})
+        return new Ctx({data,vars: this.vars, jbCtx: this.jbCtx})
     }
     setVars(vars) {
-        return new Ctx({data: this.data, vars: {...this.vars, ...vars}, tgpCtx: this.tgpCtx})
+        return new Ctx({data: this.data, vars: {...this.vars, ...vars}, jbCtx: this.jbCtx})
     }
-    setTgpCtx(tgpCtx) {
-        return new Ctx({data: this.data, vars: this.vars, tgpCtx})
+    setTgpCtx(jbCtx) {
+        return new Ctx({data: this.data, vars: this.vars, jbCtx})
     }
     run(profile) {
-        return run(resolveProfile(profile),this)
+        return run(resolveProfileArgs(profile),this)
     }
     exp(exp,jstype) { 
-        return calc(exp, this.setTgpCtx(new TgpCtx({...this.tgpCtx, parentParam: {as: jstype}}))) 
+        return calc(exp, this.setTgpCtx(new JBCtx({...this.jbCtx, parentParam: {as: jstype}}))) 
     }
     runInner(profile, parentParam, innerPath) {
-        return run(profile, this.setTgpCtx(new TgpCtx({...this.tgpCtx, path: `${this.path}~${innerPath}`, parentParam, profile})))
+        return run(profile, this.setTgpCtx(new JBCtx({...this.jbCtx, path: `${this.path}~${innerPath}`, parentParam, profile})))
     }
     extendWithVarsScript(vars) {
         const runInnerPathForVar = (profile = ({data}) => data, index, ctx) =>
-            run(profile, ctx.setTgpCtx(new TgpCtx({...ctx.TgpCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<>'} })))
+            run(profile, ctx.setTgpCtx(new JBCtx({...ctx.JBCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<>'} })))
 
         vars = utils.asArray(vars)
         if (vars.find(x=>x.async))
@@ -170,12 +143,12 @@ export class Ctx {
     }
 }
 
-export class TgpComp {
+export class jbComp {
     constructor(compData) {
         Object.assign(this, compData)
     }
     calcParams() {
-        this._params = this._params || (this.params || []).map(p=>new param(p, this.$$))
+        this._params = this._params || (this.params || []).map(p=>new param(p, this.id))
         return this._params
     }
     runProfile(profile, ctx = new Ctx(), settings) {
@@ -183,7 +156,9 @@ export class TgpComp {
         if (this.impl == null) return compArgs
         if (typeof this.impl == 'function')
             this.impl.compFunc = true
-        return run(this.impl, ctx.setTgpCtx(ctx.tgpCtx.newComp(this,compArgs)), settings)
+        if (!this?.$resolvedInner)
+            resolveCompArgs(this)
+        return run(this.impl, ctx.setTgpCtx(ctx.jbCtx.newComp(this,compArgs)), settings)
     }
 }
 
@@ -196,8 +171,8 @@ class param {
         const doResolve = ctxToUse => {
             const value = profile[this.id] == null && this.defaultValue == null ? null 
                 : profile[this.id] == null && this.defaultValue != null ? run(this.defaultValue, 
-                    ctxToUse.setTgpCtx(ctxToUse.tgpCtx.paramDefaultValue(`${this.path}~defaultValue`, this)), settings )
-                : run(profile[this.id], ctxToUse.setTgpCtx(ctxToUse.tgpCtx.innerParam(this, profile)), settings )
+                    ctxToUse.setTgpCtx(ctxToUse.jbCtx.paramDefaultValue(`${this.path}~defaultValue`, this)), settings )
+                : run(profile[this.id], ctxToUse.setTgpCtx(ctxToUse.jbCtx.innerParam(this, profile)), settings )
             return toRTType(this, value)
         }
 
@@ -224,51 +199,17 @@ class param {
     }
 }
 
-const extHandlers = {}
-const notifications = []
-export function onInjectExtension(ext, handler) {
-    setTimeout(() => {
-        extHandlers[ext] = extHandlers[ext] || []
-        extHandlers[ext].push(handler)
-        // notify older notifications
-        notifications.filter(n=>n.ext == ext).forEach(({extObj, level})=>handler(extObj, level))
-    },0)
-}
-
-export function notifyInjectExtension(ext, extObj, level=1) {
-    (extHandlers[ext] || []).forEach(h=>h(extObj, level))
-    notifications.push({ext, extObj, level})
-}
-
-export function globalsOfType(type) {
-    return Object.keys(jb.comps).filter(k=>k.startsWith(type)).filter(k=>!(jb.comps[k].params || []).length).map(k=>k.split('>').pop())
-}
-
-export const TgpType = (type, extraCompProps) => {
-    const ret = (id, comp) => Component(id,{...comp, type, ...extraCompProps})
-    ret.type = type
-    return ret
-}
-
-// core types: Data and action
-export const Any = TgpType('any')
-export const Data = TgpType('data')
-export const Boolean = TgpType('boolean')
-export const Action = TgpType('action')
-
-export function DefComponents(items,def) { items.forEach(item=>def(item)) }
-
-function calcSourceLocation(errStack) {
-    try {
-        const takeOutHostNameAndPort = /\/\/[^\/:]+(:\d+)?\//
-        const line = errStack.map(x=>x.trim().replace(takeOutHostNameAndPort,'/'))
-            .filter(x=>x && !x.match(/^Error/) && !x.match(/jb-core.js/)).shift()
-        const location = line ? (line.split('at ').pop().split('eval (').pop().split(' (').pop().match(/\\?([^:]+):([^:]+):[^:]+$/) || ['','','','']).slice(1,3) : ['','']
-        location[0] = location[0].split('?')[0]
-        if (location[0].match(/jb-loader.js/)) debugger
-        const path = location[0]
-        return { path, line: location[1] }
-    } catch(e) {
-      console.log(e)
-    }      
-}
+export const Var = jbCompProxy(new jbComp(resolveProfileTop({
+    id: 'var<>Var',
+    type: 'var<>',
+    isSystem: true,
+    params: [
+        {id: 'name', as: 'string', mandatory: true},
+        {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
+        {id: 'async', as: 'boolean', type: 'boolean<>'}
+    ],
+    macro: (result, self) => {
+        result.vars = result.vars || []
+        result.vars.push(self)
+    }
+})))

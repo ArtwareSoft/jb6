@@ -22,6 +22,15 @@ const button = Control({
     ]
 })
 
+export const controlWithCondition = Control('controlWithCondition', {
+    macroByValue: true,
+    params: [
+        {id: 'condition', type: 'boolean', dynamic: true, mandatory: true, as: 'boolean'},
+        {id: 'control', type: 'control', mandatory: true, dynamic: true, composite: true},
+        {id: 'title', as: 'string'}
+    ]
+})
+
 export const text = Control('text', {
     params: [
         {id: 'text', as: 'ref', mandatory: true, templateValue: 'my text', dynamic: true},

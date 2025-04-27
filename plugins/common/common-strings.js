@@ -41,8 +41,8 @@ export const removeSuffixRegex = Data('removeSuffixRegex', {
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
   impl: (ctx, {suffix, text}) => {
-    ctx.tgpCtx.profile.prefixRegexp = ctx.tgpCtx.profile.prefixRegexp || new RegExp(suffix+'$');
-    const m = (text||'').match(ctx.tgpCtx.profile.prefixRegexp);
+    ctx.jbCtx.profile.prefixRegexp = ctx.jbCtx.profile.prefixRegexp || new RegExp(suffix+'$');
+    const m = (text||'').match(ctx.jbCtx.profile.prefixRegexp);
     return (m && (text||'').substring(m.index+1)) || text;
   }
 })

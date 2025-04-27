@@ -10,7 +10,7 @@ const objHandler = v => jb.ext.db ? jb.ext.db.objHandler(v) : null
 const calcVar = (varname, ctx) => {
     if (jb.ext.db)
         return jb.ext.db.calcVar(varname,ctx)
-    const { tgpCtx: { args }} = ctx  
+    const { jbCtx: { args }} = ctx  
     return resolveFinishedPromise(doCalc())
 
     function doCalc() {
@@ -21,7 +21,7 @@ const calcVar = (varname, ctx) => {
 }
 
 export function calc(_exp, ctx, overrideParentParam ) {
-    const { tgpCtx : {parentParam: ctxParentParam } } = ctx
+    const { jbCtx : {parentParam: ctxParentParam } } = ctx
     const parentParam = overrideParentParam || ctxParentParam
     const jstype = parentParam?.ref ? 'ref' : parentParam?.as
     let exp = '' + _exp
@@ -81,8 +81,8 @@ function evalExpressionPart(expressionPart, ctx, calculatedParentParam ) {
         return pipe(input,subExp.slice(0,-2),last,first,true)
       if (first && subExp.charAt(0) == '$' && subExp.length > 1) {
         const ret = calcVar(subExp.substr(1), ctx, {isRef: isRefType(last && jstype)})
-        // const _ctx = ret.creatorCtx ? { data: ctx.data, vars: ctx.vars, tgpCtx: ret.creatorCtx } : ctx
-        //const _ctx = ctx // TODO: fix it. ret && ret.runCtx ? new jb.core.jbCtx(ctx, { cmpCtx: ret.runCtx, forcePath: ret.srcPath}) : ctx
+        // const _ctx = ret.creatorCtx ? { data: ctx.data, vars: ctx.vars, jbCtx: ret.creatorCtx } : ctx
+        //const _ctx = ctx // TODO: fix it. ret && ret.runCtx ? new jb.core.JBCtx(ctx, { cmpCtx: ret.runCtx, forcePath: ret.srcPath}) : ctx
         return typeof ret === 'function' && invokeFunc ? ret(ctx) : ret
       }
       const obj = val(input)

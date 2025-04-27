@@ -6,7 +6,7 @@ export function log(logNames, logObj) {
 
 export function logError(err,logObj) {
   const { ctx, url, line, col } = logObj || {}
-  const { tgpCtx: { callerStack, creatorStack }} = ctx || { tgpCtx: {} }
+  const { jbCtx: { callerStack, creatorStack }} = ctx || { jbCtx: {} }
   const srcLink = url && globalThis.window ? `${window.location.origin}${url}:${line+1}:${col} ` : ''
   globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, callerStack, creatorStack)
   const errObj = { err , ...logObj, callerStack, creatorStack}

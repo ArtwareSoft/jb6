@@ -39,7 +39,7 @@ Test('coreTest.propertyPassive', {
   impl: dataTest(property('name', obj(prop('name', 'homer')), { useRef: true }), equals('homer'))
 })
 
-const withDefaultValueComp = Data({
+const withDefaultValueComp = Data('withDefaultValueComp', {
   params: [
     {id: 'val', defaultValue: pipeline('5')}
   ],

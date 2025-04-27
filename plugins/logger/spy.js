@@ -58,7 +58,7 @@ function log(logNames, _record, {takeFrom} = {}) {
     if (!shouldLog(logNames, _record)) return
     const now = new Date()
     const index = logs.length
-    const { tgpCtx: { callerStack, creatorStack }} = _record?.ctx || {tgpCtx:{}}
+    const { jbCtx: { callerStack, creatorStack }} = _record?.ctx || {jbCtx:{}}
     const record = {
         logNames,
         ..._record,

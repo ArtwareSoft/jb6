@@ -1,5 +1,4 @@
-import { Data, jb}  from '../../core/jb-core.js'
-import { utils } from '../../common/common-utils.js'
+import { utils, Data, jb } from '../../common/common-utils.js'
 
 const statistics = {}
 function calcRefs() {
