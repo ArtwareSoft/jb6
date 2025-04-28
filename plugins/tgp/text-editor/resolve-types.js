@@ -56,7 +56,7 @@ function resolveCompTypeWithId(id, {dslType, silent, tgpModel, parentProp, paren
     const comps = tgpModel?.comps
     //if (id == 'css' && parent && parent.$ == 'text') debugger
 
-    if (jb.types['any<>'][id])
+    if (jb.tgp[''].any[id])
       return comps['any<>'+id]
     if (comps[id]) return comps[id]
     if (comps[(dslType||'')+id]) return comps[(dslType||'')+id]

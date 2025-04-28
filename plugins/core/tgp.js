@@ -3,6 +3,8 @@ import { asJbComp, jbCompProxy, resolveProfileTop, argsToProfile, OrigArgs, syst
 import { logError } from './logger.js'
 export { jb, Ctx, run, Var }
 
+jb.tgp = {}
+
 jb.ext.tgp = {
   resloveParam(p, jbComp) {
     if (p.as == 'boolean' && ['boolean','ref'].indexOf(p.type) == -1) 
@@ -38,7 +40,8 @@ export function Component(comp) {
 }
 
 export const TgpType = (type, extraCompProps) => {
-  const typeWithDsl = `${type}<${extraCompProps?.dsl || ''}>`
+  const dsl = extraCompProps?.dsl || ''
+  const typeWithDsl = `${type}<${dsl}>`
   const tgpType = (arg0,arg1) => {
     let [shortId,comp] = ['',null]
     if (typeof arg0 == 'string')
@@ -47,15 +50,16 @@ export const TgpType = (type, extraCompProps) => {
       comp = arg0
 
     const id = shortId ? `${typeWithDsl}${shortId}` : ''
-    return jb.types[typeWithDsl][shortId] = tgpType[shortId] = Component({...comp, id, type, ...extraCompProps})
+    return jb.tgp[dsl][type][shortId] = tgpType[shortId] = Component({...comp, id, type, ...extraCompProps})
   }
   tgpType.type = type
   tgpType.typeWithDsl = typeWithDsl
-  jb.types[typeWithDsl] = {}
+  jb.tgp[dsl] = jb.tgp[dsl] || {}
+  jb.tgp[dsl][type] = {}
   return tgpType
 }
 
-export function globalsOfType(tgpType) {
+export function globalsOfType(tgpType) { // not via tgpModel
   return Object.keys(tgpType).map(x=>tgpType[x]).map(x=>x[asJbComp]).filter(x=>x)
     .filter(x=>!(x.params || []).length).map(({id})=>id.split('>').pop())
 }

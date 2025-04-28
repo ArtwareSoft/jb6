@@ -30,10 +30,7 @@ import { RT_types, utils } from './core-utils.js'
 import { calc } from './jb-expression.js'
 
 export const jb = globalThis._jb = {
-//    comps: {},
-    types: {},
     proxies: {},
-//    genericCompIds: {},
     ext: {}
 }
 

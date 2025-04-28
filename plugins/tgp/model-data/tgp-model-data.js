@@ -33,7 +33,7 @@ export async function calcTgpModelData({ filePath }) {
   })(filePath)
 
   const tgpTypes = {} 
-  const comps     = {}
+  const comps  = {}
 
   // phase 0 - meta urls
   {
@@ -97,7 +97,7 @@ export async function calcTgpModelData({ filePath }) {
       })
   })
 
-  return { tgpTypes, comps, typeRules, files: Object.keys(visited) }
+  return { comps, typeRules, files: Object.keys(visited) }
 
   function parseCompDec(decl, url, src) {
     const init = decl.init

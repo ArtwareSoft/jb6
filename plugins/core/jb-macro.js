@@ -113,7 +113,7 @@ export const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'va
 export const systemParams = [ {id: 'data', $type: 'data<>'}, {id: 'vars', $type: 'var<>'}] 
 
 export function resolveProfileTop(comp, {id} = {}) {  
-//    const comps = tgpModel && tgpModel.comps || jb.comps
+//    const comps = tgpModel?.comps
     ;(comp.params || []).forEach(p=> {
       if (sysProps.includes(p.id))
         return logError(`resolveProfileTop - can not use system prop ${p.id} as param name in ${id || comp.id}`,{comp})

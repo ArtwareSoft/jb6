@@ -24,32 +24,6 @@ export const TBD = Any('TBD', {
   impl: 'TBD'
 })
 
-// export const Var = Component('Var', {
-//   type: 'var',
-//   isSystem: true,
-//   params: [
-//     {id: 'name', as: 'string', mandatory: true},
-//     {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
-//     {id: 'async', as: 'boolean', type: 'boolean<>'}
-//   ],
-//   macro: (result, self) => {
-//     result.vars = result.vars || []
-//     result.vars.push(self)
-//   }
-// })
-// //export const Var22 = registerProxy('Var')
-// jb.comps.Var = jb.comps['var<>Var']
-
-// Component('unknownCmp', {
-//   type: 'system',
-//   isSystem: true,
-//   params: [
-//     {id: 'id', as: 'string', mandatory: true}
-//   ],
-//   macro: (result, self) => jb.comps[self.id] = { impl: ctx => logError(`comp ${self.id} is not defined`,{ctx})}
-// })
-//export const unknownCmp = registerProxy('unknownCmp')
-
 export const runCtx = Any('runCtx', {
   type: 'any',
   hidden: true,

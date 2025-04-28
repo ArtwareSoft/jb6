@@ -1,9 +1,10 @@
 import { utils, Data, jb } from '../../common/common-utils.js'
 
-const statistics = {}
+const refs = {}, comps = {}
 function calcRefs() {
-  if (Object.keys(statistics).length) return
-  const refs = {}, comps = jb.comps;
+  if (Object.keys(comps).length) return
+  comps = Object.fromEntries(Object.entries(jb.tgp).flatMap(([dsl,types]) => 
+    Object.entries(types).flatMap(([type,tgpType]) => Object.entries(tgpType).map(([id,comp]) => [`${type}<${dsl}>${id}`, comp]))))
 
   Object.keys(comps).filter(k=>comps[k]).forEach(k=>
     refs[k] = {
@@ -14,7 +15,6 @@ function calcRefs() {
     refs[k].refs.forEach(cross=>
       refs[cross] && refs[cross].by.push(k))
   )
-  statistics = refs
 
   function calcRefs(profile) {
     if (profile == null || typeof profile != 'object') return [];
@@ -27,8 +27,8 @@ export function circuitOptions(compId) {
   const shortId = compId.split('>').pop().split('.').pop()
   const candidates = {[compId]: true}
   while (expand()) {}
-  const comps = Object.keys(candidates).filter(compId => noOpenParams(compId))
-  return comps.sort((x,y) => mark(y) - mark(x)).map(id=>({id, shortId: id.split('>').pop(), location: jb.comps[id].$location}))
+  const _comps = Object.keys(candidates).filter(compId => noOpenParams(compId))
+  return _comps.sort((x,y) => mark(y) - mark(x)).map(id=>({id, shortId: id.split('>').pop(), location: comps[id].$location}))
 
   function mark(id) {
     if (id.match(/^test<>/) && id.indexOf(shortId) != -1) return 20
@@ -37,20 +37,16 @@ export function circuitOptions(compId) {
   }
 
   function noOpenParams(id) {
-    return (jb.comps[id].params || []).filter(p=>!p.defaultValue).length == 0
+    return (comps[id].params || []).filter(p=>!p.defaultValue).length == 0
   }
 
   function expand() {
     const length_before = Object.keys(candidates).length
     Object.keys(candidates).forEach(k=> 
-      statistics[k] && (statistics[k].by || []).forEach(caller=>candidates[caller] = true))
+      refs[k] && (refs[k].by || []).forEach(caller=>candidates[caller] = true))
     return Object.keys(candidates).length > length_before
   }
 }
-
-Data('tgp.allComps', {
-  impl: () => Object.keys(jb.comps)
-})
 
 Data('tgp.componentStatistics', {
   params: [
@@ -59,10 +55,10 @@ Data('tgp.componentStatistics', {
   impl: (ctx,cmpId) => {
 	  calcRefs()
 
-    const cmp = jb.comps[cmpId]
-    const cmpRefs = statistics[cmpId] || {}
+    const cmp = comps[cmpId]
+    const cmpRefs = refs[cmpId] || {}
     if (!cmp) return {}
-    const asStr = '' //utils.prettyPrint(cmp.impl || '',{comps: jb.comps})
+    const asStr = '' //utils.prettyPrint(cmp.impl || '',{comps: comps})
 
     return {
       id: cmpId,
@@ -86,7 +82,7 @@ Data('tgp.references', {
   impl: (ctx,path) => {
 	  if (path.indexOf('~') != -1) return [];
 
-    return Object.entries(jb.comps)
+    return Object.entries(comps)
     	.map(e=>({id: e[0], refs: refs(e[1].impl,`${e[0]}~impl`)}))
       .filter(e=>e.refs.length > 0)
 
