@@ -1,7 +1,7 @@
 import { jb, utils } from '../../common/common-utils.js'
 import { astToTgpObj, astNode } from '../model-data/tgp-model-data.js'
 import { systemParams, OrigArgs } from '../../core/jb-macro.js'
-import { resolveProfileTypes } from './resolve-types.js'
+import { resolveProfileTypes, primitivesAst } from './resolve-types.js'
 import { parse } from '/libs/acorn.mjs'
 
 
@@ -105,7 +105,8 @@ export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = ''
     return actionMap
 
     function calcActionMap(prof,path,ast) {
-        if (!ast) return // injected secondParamAsArray
+        if (!ast) 
+            { return } // injected secondParamAsArray
         actionMap.push({ action: `begin!${path}`, from: ast.start, to: ast.start })
 
         if (utils.isPrimitiveValue(prof)) {
@@ -125,20 +126,16 @@ export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = ''
         }
 
         if (Array.isArray(prof)) {
-            const primitivesAst = Object.fromEntries(calcPrimitivesByValue(prof) || [])
             const delimiters =  ast.elements.slice(1).map((dl, i) => ({start: ast.elements[i].end, end: dl.start }))
 
-            const paramId = path.split('~').pop()
             actionMap.push({ action: `propInfo!${path}`, from: ast.start, to: ast.start+1 })
             actionMap.push({ action: `prependPT!${path}`, from: ast.start+1, to: ast.start+1 })
             actionMap.push({ action: `appendPT!${path}`, from: ast.end-1, to: ast.end })
             delimiters.forEach((dl,i) => actionMap.push({ action: `insertPT!${path}~${i}`, from: dl.start, to: dl.end }))
             actionMap.push({ action: `end!${path}`, from: ast.end-1, to: ast.end-1 })
-            prof.forEach((val,i) => calcActionMap(val,`${path}~${i}`, primitivesAst[`${paramId}~${i}`] || val[astNode]))
+            prof.forEach((val,i) => calcActionMap(val,`${path}~${i}`, prof[primitivesAst][i] || val[astNode]))
 
         } else { // profile
-            const primByVal = calcPrimitivesByValue(prof)
-            const primitivesAst = Object.fromEntries(primByVal || [])
             const expressionAst = ast.type == 'CallExpression' ? ast : ast.expression
             const astArgs = expressionAst.arguments
             const delimiters = ast.type == 'ExpressionStatement' ? astArgs.filter(n => n.value == ',')
@@ -159,7 +156,7 @@ export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = ''
                 const firstPropStart = paramsByNameAst.properties?.[0]?.start
                 firstPropStart && actionMap.push({ action: `addProp!${path}`, from: paramsByNameAst.start, to: firstPropStart, source: 'byName-begin2' })
                 actionMap.push({ action: `addProp!${path}`, from: paramsByNameAst.end-2, to: paramsByNameAst.end, source: 'byName-end' })
-                const props = paramsByNameAst?.properties || [];
+                const props = paramsByNameAst?.properties || []
                 props.forEach(prop => actionMap.push({ action: `propInfo!${path}~${prop.key.name}`, from: prop.start, to: prop.value.start }))
                 if (props.length > 1)
                     props.slice(1).forEach((prop, i) => actionMap.push({ action: `addProp!${path}`, from: props[i].end, to: prop.start, source: 'props' }))
@@ -186,53 +183,9 @@ export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = ''
                 delimiters.slice(1).forEach((dl, i) => actionMap.push({ action: `insertPT!${secParamPath}~${i}`, from: dl.start, to: dl.end }))
             }
             params.map(p=>({id:p.id, val: prof[p.id]})).filter(({val}) => val != null)
-                .forEach(({id,val}) => calcActionMap(val, `${path}~${id}`, primitivesAst[id] || val[astNode]))
+                .forEach(({id,val}) => calcActionMap(val, `${path}~${id}`, prof[primitivesAst][id] || val[astNode]))
         }
     }
-
-    function calcPrimitivesByValue(prof) {
-        const comp = typeof prof.$$ == 'string' ? tgpModel.comps[prof.$$] : prof.$$
-        const args = prof[OrigArgs]
-        const ast = prof[astNode]
-        if (!args || args.length == 0 || !comp || prof.$ == 'asIs') return
-
-        const lastArg = args[args.length-1]
-        const lastArgIsByName = lastArg && typeof lastArg == 'object' && !Array.isArray(lastArg) && !lastArg.$
-        const argsByValue = lastArgIsByName ? args.slice(0,-1) : args
-        const propsByName = lastArgIsByName ? lastArg : {}
-        const onlyByName = lastArgIsByName && args.length == 1
-        const params = [...(comp.params || []), ...systemParams]
-        const param0 = params[0] || {}, param1 = params[1] || {}
-        const firstParamAsArray = (param0.type||'').indexOf('[]') != -1 && !param0.byName
-        const secondParamAsArray = param1.secondParamAsArray
-        const argsAst = ast.arguments || ast.expression.arguments
-    
-        if (!lastArgIsByName) {
-            if (firstParamAsArray) 
-                return params.length > 1 && args.length == 1 ? [[param0.id, argsAst[0]]]
-                    : args.map((v,i) => [`${param0.id}~${i}`, argsAst[i]])
-            if (secondParamAsArray)  return [
-                [param0.id, argsAst[0]], 
-                ...args.slice(1).map((v,i) => [`${param1.id}~${i}`, argsAst[i+1]])
-                ]
-    
-            if (comp.macroByValue || params.length < 3)
-                return args.filter((_, i) => params[i]).map((arg, i) => [params[i].id, argsAst[i]])
-        }
-    
-        const propsByValue = onlyByName ? []
-            : firstParamAsArray ? argsByValue.map((v,i) => [`${param0.id}~${i}`, argsAst[i], v])
-            : secondParamAsArray ? [ 
-                [param0.id, argsAst[0] ,argsByValue[0]],
-                ...argsByValue.slice(1).map((v,i) => [`${param1.id}~${i}`, argsAst[i+1], v])
-            ]
-            : argsByValue.map((v,i) => [params[i].id, argsAst[i],v])
-
-        const paramsByNameAst = argsAst.filter(n=>n.type=='ObjectExpression')[0]
-        const propsPrimitivesByName =  Object.entries(propsByName).filter(e=>utils.isPrimitiveValue(e[1]))
-            .map(([k,v])=> [k,paramsByNameAst.properties.find(p=>p.key.name == k).value, v])
-        return [...propsByValue, ...propsPrimitivesByName].filter(v=>utils.isPrimitiveValue(v[2])).map(x=>x.slice(0,2))
-    }   
 }
 
 export function closestComp(docText, cursorLine, cursorCol, filePath) {

@@ -3,8 +3,8 @@ import { Test, dataTest } from '../../testers/data-tester.js'
 
 import { prettyPrintWithPositions, prettyPrint, prettyPrintComp} from '../formatter/pretty-print.js'
 import { getPosOfPath} from './tgp-text-editor.js'
-import { jb, asComp } from '../../core/jb-macro.js'
-import { Data, Boolean, Var } from '../../common/jb-common.js'
+import { asComp } from '../../core/jb-macro.js'
+import { jb, Data, Boolean, Var } from '../../common/jb-common.js'
 import { Control } from '../../testers/ui-dsl/ui.js'
 const { group, text, controlWithCondition } = Control
 const { pipeline, split, list } = Data
@@ -19,21 +19,21 @@ Test('actionMapTest.varsPath', {
 })
 
 Test('actionMapTest.varsPathSingleVar', {
-  impl: actionMapTest(() => split({vars: Var('a', 'b')}), 'data<>', 'edit!~vars~0~val', '27,27')
+  impl: actionMapTest(() => split({vars: Var('a', 'b')}), 'data<>', 'edit!~vars~val', '26,26')
 })
 
 Test('actionMapTest.varsPathInPipeline', {
-  impl: actionMapTest(() => pipeline(Var('a', 'b'),''), 'data<>', 'edit!~vars~0~val', '19,19')
+  impl: actionMapTest(() => pipeline(Var('a', 'b'),'hello'), 'data<>', 'edit!~vars~0~val', '19,19')
 })
 
-const singleParamByNameComp = Data('singleParamByNameComp', {
+const singleParamByNameComp = Data({
   params: [
     {id: 'p1', as: 'boolean', type: 'boolean<>', byName: true}
   ]
 })
 
 Test('actionMapTest.singleParamByName', {
-  impl: actionMapTest(() => pipeline(singleParamByNameComp({p1: true})), 'data<>', 'begin!~source~p1', '37,37')
+  impl: actionMapTest('pipeline(singleParamByNameComp({p1: true}))', 'data<>', 'begin!~source~p1', '36,36')
 })
 
 Test('actionMapTest.secondParamAsArray', {
@@ -56,7 +56,6 @@ Test('actionMapTest.secondParamAsArrayWithLongVars', {
 Test('actionMapTest.asyncVar', {
   impl: actionMapTest(() => pipeline(Var('a',3, {async: true}),''), 'data<>', 'begin!~vars~0~async', '30,30')
 })
-
 
 Test('actionMapTest.prependInGroup', {
   impl: actionMapTest(() => group(text(''), text('')), 'control<ui>', 'prependPT!~controls', '6,11')

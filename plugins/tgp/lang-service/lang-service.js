@@ -111,7 +111,7 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
 
 function newProfile(comp, {basedOnPath, basedOnVal} = {}) {
 	const currentVal = basedOnVal != null ?  basedOnVal : (basedOnPath && valOfPath(basedOnPath))
-	const result = { $$: comp.$$, $type: comp.$type	}
+	const result = { $$: comp.id, $type: comp.$type	}
 	let cursorPath = '', whereToLand = 'edit'
 	const composite = utils.compParams(comp).find(p=>p.composite)
 	utils.compParams(comp).forEach(p=>{
@@ -327,7 +327,7 @@ async function compId(ctx) {
     const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
         .map(e => e.action).filter(e => e.indexOf('edit!') != 0 && e.indexOf('begin!') != 0 && e.indexOf('end!') != 0)
     if (actions.length == 0 && comp) 
-        return { comp: comp.$$}
+        return { comp: comp.id}
     if (actions.length == 0) return []
     const priorities = ['addProp']
     const sortedActions = utils.unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
@@ -340,7 +340,7 @@ async function compReferences(ctx) {
     const { comp, prop, reformatEdits } = ctx.data
     if (reformatEdits)
         return [{...ctx.data}]
-    const paths = Object.values(jb.comps).flatMap(comp=>scanForPath(comp,comp.$$ || ''))
+    const paths = Object.values(jb.comps).flatMap(comp=>scanForPath(comp,comp.id || ''))
     return paths.map(path=>filePosOfPath(path))
 
     function scanForPath(profile,path) {

@@ -199,14 +199,9 @@ class param {
 export const Var = jbCompProxy(new jbComp(resolveProfileTop({
     id: 'var<>Var',
     type: 'var<>',
-    isSystem: true,
     params: [
         {id: 'name', as: 'string', mandatory: true},
         {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
         {id: 'async', as: 'boolean', type: 'boolean<>'}
-    ],
-    macro: (result, self) => {
-        result.vars = result.vars || []
-        result.vars.push(self)
-    }
+    ]
 })))

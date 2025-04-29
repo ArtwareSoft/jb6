@@ -15,7 +15,7 @@ const startTime = Date.now()
 const usedJSHeapSize = () => (globalThis.performance?.memory.usedJSHeapSize || 0) / 1000000
 
 globalThis.goto_editor = (fullTestId,repo) => {
-    const loc = Test[fullTestId]?.$location
+    const loc = Test[fullTestId][asJbComp].$location
     const filePos = `.${loc?.path}:${loc?.line}`
     fetch(`/gotoSource?filePos=${filePos}`)
 }

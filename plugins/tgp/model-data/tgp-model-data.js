@@ -1,8 +1,11 @@
-import { asJbComp, resolveProfileArgs, resolveProfileTop, splitSystemArgs } from '../../core/jb-macro.js'
+import { asJbComp, resolveProfileArgs, resolveProfileTop } from '../../core/jb-macro.js'
 import { TgpType} from '../../core/tgp.js'
 import { Data, jb, utils } from '../../common/common-utils.js'
 import { offsetToLineCol } from '../text-editor/tgp-text-editor.js'
 import { parse } from '/libs/acorn.mjs'
+
+// calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
+// it is used by language services and wrapped by the class tgpModelForLangService
 
 export async function calcTgpModelData({ filePath }) {
   if (!filePath) return {}
@@ -27,13 +30,23 @@ export async function calcTgpModelData({ filePath }) {
 	  ...ast.body.filter(n => n.type === 'ExpressionStatement').map(n => n.expression)
       	.filter(ex => ex.type === 'CallExpression' && ex.callee.type === 'Import')
       	.map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(url, rel))
-	]
+	  ].filter(x=>!x.match(/^\/libs\//))
 
 	await Promise.all(imports.map(url=>crawl(url)))
   })(filePath)
 
   const tgpTypes = {} 
-  const comps  = {}
+  const comps  = {
+    'var<>Var': {
+        id: 'var<>Var',
+        type: 'var<>',
+        params: [
+            {id: 'name', as: 'string', mandatory: true},
+            {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
+            {id: 'async', as: 'boolean', type: 'boolean<>'}
+        ],
+    }
+  }
 
   // phase 0 - meta urls
   {
@@ -118,8 +131,8 @@ export async function calcTgpModelData({ filePath }) {
     }
 
     const $location = { path: url, ...offsetToLineCol(src, init.start) }
-    const jbComp = tgpTypes[tgpType](shortId,{$location, ...comp })[asJbComp]
-    comps[jbComp.id] = jbComp
+    const id = shortId ? `${tgpTypes[tgpType].typeWithDsl}${shortId}` : ''
+    comps[id] = resolveProfileTop({...comp, id, type: tgpType, $location})
 
     // const resolvedComp = resolveProfileTop({location, type, $dsl: dsl, ...comp })
     // comps[resolvedComp.id] = resolvedComp
@@ -140,8 +153,8 @@ export function astToTgpObj(node) {
 	  case 'UnaryExpression': return attachNode(node.operator === '-' ? -astToTgpObj(node.argument) : astToTgpObj(node.argument))
 	  case 'ExpressionStatement': return attachNode(astToTgpObj(node.expression))
 	  case 'CallExpression': {
-      const args = node.arguments.map(x=> astToTgpObj(x))
-      return attachNode(proxy(node.callee.name)(...args))
+      const $unresolvedArgs = node.arguments.map(x=> astToTgpObj(x))
+      return attachNode({$: node.callee.name, $unresolvedArgs})
     }
 
 	  default: return undefined
@@ -199,20 +212,3 @@ Data('tgpModelData.byFilePath', {
   ],
   impl: ({},{filePath}) => calcTgpModelData({filePath})
 })
-
-export function proxy(id) {
-  return new Proxy(() => 0, {
-      get: (o, p) => {  
-        return p === isMacro? true : getInnerMacro(id, p)
-      },
-      apply: function (target, thisArg, allArgs) {
-        return calcArgs(id, allArgs)
-      }
-  })
-}
-
-function calcArgs(id, allArgs) {
-  const actualId = id[0] == '_' ? id.slice(1) : id
-  const { args, system } = splitSystemArgs(allArgs)
-  return { $: actualId, $unresolvedArgs: args, ...system, ...(id[0] == '_' ? {$disabled:true} : {} ) }
-}

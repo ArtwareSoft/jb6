@@ -1,16 +1,16 @@
 import { jb, Ctx, run, jbComp, Var } from './jb-core.js'
-import { asJbComp, jbCompProxy, resolveProfileTop, argsToProfile, OrigArgs, systemParams } from './jb-macro.js'
+import { asJbComp, jbCompProxy, resolveProfileTop } from './jb-macro.js'
 import { logError } from './logger.js'
 export { jb, Ctx, run, Var }
 
 jb.tgp = {}
 
 jb.ext.tgp = {
-  resloveParam(p, jbComp) {
+  resloveParam(p, comp) {
     if (p.as == 'boolean' && ['boolean','ref'].indexOf(p.type) == -1) 
       p.type = 'boolean<>'
     const t1 = (p.type || '').replace(/\[\]/g,'') || 'data<>'
-    p.$type = t1.indexOf('<') == -1 ? `${t1}<${jbComp.dsl}>` : t1
+    p.$type = t1.indexOf('<') == -1 ? `${t1}<${comp.dsl || ''}>` : t1
   },
   validateTgpTypes(profile) {
 

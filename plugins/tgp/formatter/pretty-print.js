@@ -245,8 +245,8 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
 
     const varArgs = utils.asArray(profile.vars).map(({name, val, async},i) => ({innerPath: `vars~${i}`, val: {$$: 'var<>Var', name, val,async, ...calcArrayPos(i,profile.vars) }}))
     const varsByValue = hasParamAsArray ? varArgs : []
-    const varsByName = hasParamAsArray ? [] : ['vars']
-    const systemProps = [...varsByName, ...sysProps].flatMap(p=>profile[p] ? [{innerPath: p, val: profile[p]}] : [])
+    //const varsByName = hasParamAsArray ? [] : ['vars']
+    const systemProps = sysProps.filter(p=>p != 'vars' || !varsByValue.length).flatMap(p=>profile[p] ? [{innerPath: p, val: profile[p]}] : [])
 
     const propsByName = systemProps.concat(paramsByName.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode }))).filter(({val})=>val !== undefined)
     const propsByValue = paramsByValue.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode})).filter(({val})=>val !== undefined)

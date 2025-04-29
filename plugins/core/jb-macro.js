@@ -1,11 +1,12 @@
-import {jb, jbComp} from './jb-core.js'
-import { utils } from './core-utils.js'
+import { jb } from './jb-core.js'
 import { logError } from './logger.js'
 
-export { jb }
 export const isMacro = Symbol.for('isMacro')
 export const asJbComp = Symbol.for('asJbComp')
 export const OrigArgs = Symbol.for('OrigArgs')
+
+export const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
+export const systemParams = [ {id: 'data', $type: 'data<>'}, {id: 'vars', $type: 'var<>'}] 
 
 export const titleToId = id => id.split('.')[0].replace(/-([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
 
@@ -26,15 +27,10 @@ export function jbCompProxy(jbComp) {
       
         return p === asJbComp && jbComp
       },
-      apply: function (target, thisArg, allArgs) {
-        return calcArgs(jbComp, allArgs)
+      apply: function (target, thisArg, $unresolvedArgs) {
+        return { $: jbComp, $unresolvedArgs }
       }
   })
-}
-
-function calcArgs(jbComp, allArgs) {
-    const { args, system } = splitSystemArgs(allArgs)
-    return { $: jbComp, $unresolvedArgs: args, ...system }
 }
 
 // function getInnerMacro(ns, innerId) {
@@ -47,35 +43,24 @@ function calcArgs(jbComp, allArgs) {
 //   }
 // }
 
-export function splitSystemArgs(allArgs) {
+function splitSystemArgs(allArgs) {
   const args = [], system = {}
   allArgs.forEach(arg => {
       const comp = arg.$
-      if (arg && typeof arg === 'object' && comp?.isSystem)
-          comp?.macro(system, arg)
-      else if (arg && typeof arg === 'object' && comp?.isMacro)
-          args.push(comp.macro(arg))
-      else
-          args.push(arg)
-  })
-  if (args.length == 1 && typeof args[0] === 'object') {
-      utils.asArray(args[0].vars).forEach(arg => {
+      if (comp?.id == 'var<>Var') { // Var in pipeline
         system.vars = system.vars || []
         system.vars.push(arg)
-      })
-      delete args[0].vars
-  }
+      } else {
+         args.push(arg)
+      }
+  })
   return { args, system }
 }
 
-export function argsToProfile(prof, comp) {
-    const cmpId = prof.$
-    const args = prof.$unresolvedArgs
-    if (args.length == 0)
-        return { $: cmpId }        
-    if (!comp)
-        return { $: cmpId, $unresolvedArgs: args }
-    if (cmpId == 'asIs') return { $: 'asIs', $asIs: args[0] }
+function argsToProfile(prof, comp) {
+    const { args, system } = splitSystemArgs(prof.$unresolvedArgs)
+    if (args.length == 0) return {}
+
     const lastArg = args[args.length-1]
     const lastArgIsByName = lastArg && typeof lastArg == 'object' && !Array.isArray(lastArg) && !lastArg.$
     const argsByValue = lastArgIsByName ? args.slice(0,-1) : args
@@ -88,12 +73,12 @@ export function argsToProfile(prof, comp) {
 
     if (!lastArgIsByName) {
         if (firstParamAsArray)
-            return { $: cmpId, [param0.id]: params.length > 1 && args.length == 1 ? args[0] : args }
+            return { ...system, [param0.id]: params.length > 1 && args.length == 1 ? args[0] : args }
         if (secondParamAsArray)
-            return { $: cmpId, [param0.id]: args[0], [param1.id] : args.slice(1) }
+            return { ...system, [param0.id]: args[0], [param1.id] : args.slice(1) }
 
         if (comp.macroByValue || params.length < 3)
-            return { $: cmpId, ...Object.fromEntries(args.filter((_, i) => params[i]).map((arg, i) => [params[i].id, arg])) }
+            return { ...system, ...Object.fromEntries(args.filter((_, i) => params[i]).map((arg, i) => [params[i].id, arg])) }
     }
 
     const varArgs = []
@@ -103,14 +88,11 @@ export function argsToProfile(prof, comp) {
         : firstParamAsArray ? { [param0.id] : argsByValue }
         : secondParamAsArray ? { [param0.id] : argsByValue[0], [param1.id] : argsByValue.slice(1) } 
         : Object.fromEntries(argsByValue.map((v,i) => [params[i].id, v]))
-    return { $: cmpId,
+    return { ...system,
         ...(varArgs.length ? {vars: varArgs} : {}),
         ...propsByValue, ...propsByName
     }
 }
-
-export const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
-export const systemParams = [ {id: 'data', $type: 'data<>'}, {id: 'vars', $type: 'var<>'}] 
 
 export function resolveProfileTop(comp, {id} = {}) {  
 //    const comps = tgpModel?.comps
@@ -151,8 +133,8 @@ export function resolveProfileArgs(prof) {
   // if (!(comp instanceof jbComp))
   //   return // logError('resolveProfileArgs - expecting jbComp at $', {prof})
   if (prof.$unresolvedArgs && comp) {
-      Object.assign(prof, { ... argsToProfile(prof, comp)})
-      if (OrigArgs) prof[OrigArgs] = prof.$unresolvedArgs
+      Object.assign(prof, argsToProfile(prof, comp))
+      prof[OrigArgs] = prof.$unresolvedArgs
       delete prof.$unresolvedArgs
   }
   if (Array.isArray(prof)) {

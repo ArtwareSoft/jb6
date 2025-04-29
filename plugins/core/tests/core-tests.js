@@ -81,11 +81,8 @@ Test('coreTest.emptyParamAsString', {
 
 Test('coreTest.asArrayBug', {
   impl: dataTest({
-    vars: [
-      Var('items', [{id: 1}, {id: 2}])
-    ],
-    calculate: ctx =>                                                                                                                                                                                                
-      ctx.exp('%$items/id%','array'),
+    vars: Var('items', [{id: 1}, {id: 2}]),
+    calculate: ctx => ctx.exp('%$items/id%','array'),
     expectedResult: ctx => ctx.data[0] == 1 && !Array.isArray(ctx.data[0])
   })
 })
