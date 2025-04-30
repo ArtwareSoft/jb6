@@ -94,26 +94,12 @@ function argsToProfile(prof, comp) {
     }
 }
 
-export function resolveProfileTop(comp, {id} = {}) {  
-//    const comps = tgpModel?.comps
+export function resolveProfileTop(comp) {
+    jb.ext.tgp?.resolveProfileTop(comp)
     ;(comp.params || []).forEach(p=> {
       if (sysProps.includes(p.id))
-        return logError(`resolveProfileTop - can not use system prop ${p.id} as param name in ${id || comp.id}`,{comp})
-      jb.ext.tgp?.resloveParam(p, comp)
+        return logError(`resolveProfileTop - can not use system prop ${p.id} as param name in ${comp.id||''}`,{comp})
     })
-
-    // const type = comp.type || 'data<>'
-    // if (type) {
-    //   comp.$type = type.indexOf('<') == -1 ? `${type}<${comp.$dsl}>` : type
-    //   if (id != 'anonymous') {
-    //     const fullId = comp.$fullId = `${comp.$type}${id}`
-    //     const existingComp = comps[fullId]
-    //     if (existingComp && existingComp != comp) {
-    //         logError(`comp ${fullId} at ${ JSON.stringify(comp.$location)} already defined at ${JSON.stringify(existingComp.$location)}`,
-    //         {existingComp, oldLocation: existingComp.$location, newLocation: comp.$location})
-    //     }
-    //   }
-    // }
     return comp     
 }
 

@@ -196,7 +196,9 @@ class param {
     }
 }
 
-export const Var = jbCompProxy(new jbComp(resolveProfileTop({
+export const CompDef = comp => jbCompProxy(new jbComp(resolveProfileTop(comp))) // avoid recursion of Component
+
+export const Var = CompDef({
     id: 'var<>Var',
     type: 'var<>',
     params: [
@@ -204,4 +206,4 @@ export const Var = jbCompProxy(new jbComp(resolveProfileTop({
         {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
         {id: 'async', as: 'boolean', type: 'boolean<>'}
     ]
-})))
+})

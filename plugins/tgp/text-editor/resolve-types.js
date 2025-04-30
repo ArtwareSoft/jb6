@@ -3,15 +3,15 @@ import { OrigArgs, systemParams } from '../../core/jb-macro.js'
 import { astNode } from '../model-data/tgp-model-data.js'
 import { utils } from '../../common/common-utils.js'
 
-export function resolveCompTypes(topComp, {tgpModel} = {}) {
-  if (!topComp || topComp.$resolvedInner) 
-      return topComp
-  ;(topComp.params || []).forEach(p=> resolveProfileTypes(p.defaultValue, {expectedType: p.$type, topComp, tgpModel}))
-  ;(topComp.params || []).forEach(p=> resolveProfileTypes(p.templateValue, {expectedType: p.$type, topComp, tgpModel}))
-  resolveProfileTypes(topComp.impl, {expectedType: topComp.$type, tgpModel, topComp, parent: topComp})
-  topComp.$resolvedInner = true
-  return topComp
-}
+// export function resolveCompTypes(topComp, {tgpModel} = {}) {
+//   if (!topComp || topComp.$resolvedInner) 
+//       return topComp
+//   ;(topComp.params || []).forEach(p=> resolveProfileTypes(p.defaultValue, {expectedType: p.$type, topComp, tgpModel}))
+//   ;(topComp.params || []).forEach(p=> resolveProfileTypes(p.templateValue, {expectedType: p.$type, topComp, tgpModel}))
+//   resolveProfileTypes(topComp.impl, {expectedType: topComp.$type, tgpModel, topComp, parent: topComp})
+//   topComp.$resolvedInner = true
+//   return topComp
+// }
 
 function calcDslType(fullId) {
     if (typeof fullId != 'string') return
@@ -24,7 +24,7 @@ export const primitivesAst = Symbol.for('primitivesAst')
 
 export function resolveProfileTypes(prof, { astFromParent, expectedType, parent, parentProp, tgpModel, topComp, parentType, remoteCode} = {}) {
     if (!prof || !prof.constructor || ['Object','Array'].indexOf(prof.constructor.name) == -1) return prof
-    const typeSysType = tgpModel?.comps[`tgpType<>${parent?.$}`]
+    const typeSysType = tgpModel?.comps[`comp<tgp>${parent?.$}`]
     const implType = expectedType == '$implType<>' && `${typeSysType.type}<${typeSysType.dsl||''}>`
     const typeFromParent = expectedType == '$asParent<>' ? (parentType || calcDslType(parent?.$$)) : expectedType
     const typeFromAdapter = parent?.$ == 'typeAdapter' && parent.fromType
@@ -55,7 +55,6 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
     }
     return prof
 }
-
 
 function argsToProfile(prof, comp) {
   const ast = prof[astNode]
@@ -156,6 +155,8 @@ function argsToProfile(prof, comp) {
 }
 
 function resolveCompTypeWithId(id, {dslType, silent, tgpModel, parentProp, parent, topComp, parentType, remoteCode, dsl} = {}) {
+  if (dslType == 'comp<tgp>')
+    return tgpModel.comps['comp<tgp>tgpComp']
   if (!id) return
   const comps = tgpModel?.comps
   //if (id == 'css' && parent && parent.$ == 'text') debugger

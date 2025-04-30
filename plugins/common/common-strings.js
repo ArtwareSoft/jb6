@@ -1,3 +1,5 @@
+import { Data, Boolean } from './jb-common.js'
+
 export const prefix = Data('prefix', {
   category: 'string:90',
   params: [
@@ -75,14 +77,6 @@ export const capitalize = Data('capitalize', {
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
   impl: (ctx, {text}) => text.charAt(0).toUpperCase() + text.slice(1)
-})
-
-export const notContains = Boolean('notContains', {
-  params: [
-    {id: 'text', type: 'data[]', as: 'array', mandatory: true},
-    {id: 'allText', defaultValue: '%%', as: 'array', byName: true}
-  ],
-  impl: not(contains('%$text%', { allText: '%$allText%' }))
 })
 
 export const startsWith = Boolean('startsWith', {

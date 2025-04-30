@@ -1,5 +1,6 @@
-import { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, asJbComp}  from '../../core/jb-macro.js'
-import { utils, Data, jb } from '../../common/common-utils.js'
+import { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, asJbComp }  from '../../core/jb-macro.js'
+import { jbComp}  from '../../core/jb-core.js'
+import { utils, Data } from '../../common/common-utils.js'
 
 Data('prettyPrint', {
   params: [
@@ -212,7 +213,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
     if (!fullptId)
       return asIsProps(profile,path)
 
-    const comp = tgpModel?.comps[fullptId]
+    const comp = profile.$ instanceof jbComp ? profile.$ : tgpModel?.comps[fullptId]
     const id = fullptId.split('>').pop()                
     const macro = titleToId(id)
 

@@ -637,6 +637,14 @@ export const contains = Boolean('contains', {
   }
 })
 
+export const notContains = Boolean('notContains', {
+  params: [
+    {id: 'text', type: 'data[]', as: 'array', mandatory: true},
+    {id: 'allText', defaultValue: '%%', as: 'array', byName: true}
+  ],
+  impl: not(contains('%$text%', { allText: '%$allText%' }))
+})
+
 function runAsAggregator(ctx, profile,i, dataArray,profiles) {
     if (!profile || profile.$disabled) return dataArray
     const parentParam = (i < profiles.length - 1) ? { as: 'array'} : (ctx.parentParam || {}) // use parent param for last element to convert to client needs

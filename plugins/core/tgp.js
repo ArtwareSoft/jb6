@@ -1,42 +1,45 @@
-import { jb, Ctx, run, jbComp, Var } from './jb-core.js'
-import { asJbComp, jbCompProxy, resolveProfileTop } from './jb-macro.js'
+import { jb, Ctx, run, Var, CompDef } from './jb-core.js'
+import { asJbComp, resolveProfileTop } from './jb-macro.js'
 import { logError } from './logger.js'
 export { jb, Ctx, run, Var }
 
 jb.tgp = {}
 
 jb.ext.tgp = {
-  resloveParam(p, comp) {
-    if (p.as == 'boolean' && ['boolean','ref'].indexOf(p.type) == -1) 
-      p.type = 'boolean<>'
-    const t1 = (p.type || '').replace(/\[\]/g,'') || 'data<>'
-    p.$type = t1.indexOf('<') == -1 ? `${t1}<${comp.dsl || ''}>` : t1
+  resolveProfileTop(comp) {  
+    const dsl = comp.dsl || ''
+    comp.$type = comp.type.indexOf('>') == -1 ? `${comp.type}<${dsl}>` : comp.type
+    ;(comp.params || []).forEach(p=> {
+      if (p.as == 'boolean' && ['boolean','ref'].indexOf(p.type) == -1) 
+        p.type = 'boolean<>'
+      const t1 = (p.type || '').replace(/\[\]/g,'') || 'data<>'
+      p.$type = t1.indexOf('<') == -1 ? `${t1}<${comp.dsl || ''}>` : t1
+      if (p.$type == 'control<>') debugger
+    })
   },
   validateTgpTypes(profile) {
 
   }
 }
 
-const CompDef = comp => jbCompProxy(new jbComp(resolveProfileTop(comp))) // avoid recursion of Component
-export const tgpCompDef = CompDef({
-  id: 'tgpCompDef<>tgpCompDef',
-  type: 'tgpCompDef',
+export const tgpComp = CompDef({
+  dsl: 'tgp',
+  type: 'comp',
+  id: 'comp<tgp>tgpComp',
   params: [
     {id: 'id', as: 'string', mandatory: true},
     {id: 'type', as: 'string', byName: true},
     {id: 'dsl', as: 'string'},
-    {id: 'category', as: 'string'},
     {id: 'description', as: 'string'},
-    {id: 'location' },
-    {id: 'params', type: 'tgpParam[]'},
+    {id: 'params', type: 'param[]'},
     {id: 'impl', type: '$implType<>', dynamicType: '%type%', mandatory: true}
   ]
 })
 
 export function Component(comp) {
-    comp.$ = tgpCompDef[asJbComp]
+    comp.$ = tgpComp[asJbComp]
     comp.$location = comp.$location || calcSourceLocation(new Error().stack.split(/\r|\n/)) || {}
-    return jbCompProxy(new jbComp(resolveProfileTop(comp)))
+    return CompDef(comp)
 }
 
 export const TgpType = (type, extraCompProps) => {
@@ -50,9 +53,10 @@ export const TgpType = (type, extraCompProps) => {
       comp = arg0
 
     const id = shortId ? `${typeWithDsl}${shortId}` : ''
-    return jb.tgp[dsl][type][shortId] = tgpType[shortId] = Component({...comp, id, type, ...extraCompProps})
+    return jb.tgp[dsl][type][shortId] = tgpType[shortId] = Component({...comp, id, dsl, type, ...extraCompProps})
   }
   tgpType.type = type
+  tgpType.dsl = dsl
   tgpType.typeWithDsl = typeWithDsl
   jb.tgp[dsl] = jb.tgp[dsl] || {}
   jb.tgp[dsl][type] = {}
@@ -72,18 +76,32 @@ export const Action = TgpType('action')
 
 export function DefComponents(items,def) { items.forEach(item=>def(item)) }
 
-export const tgpType = Component({
-  id: 'tgpType<>tgpType',
-  type: 'tgpType',
+export const tgpType = CompDef({
+  dsl: 'tgp',
+  type: 'comp',
+  id: 'comp<tgp>tgpType',
   params: [
     {id: 'type', as: 'string', mandatory: true},
     {id: 'dsl', as: 'string', byName: true}
+  ],
+})
+
+export const compByType = CompDef({
+  dsl: 'tgp',
+  type: 'comp',
+  id: 'comp<tgp>compByType',
+  params: [
+    {id: 'id', as: 'string', mandatory: true},
+    {id: 'description', as: 'string'},
+    {id: 'params', type: 'param[]'},
+    {id: 'impl', type: '$implType<>', dynamicType: '%type%', mandatory: true}
   ]
 })
 
-export const param = Component({
-  id: 'tgpParam<>param',
-  type: 'tgpParam',
+export const param = CompDef({
+  dsl: 'tgp',
+  type: 'param',
+  id: 'param<tgp>param',
   singleInType: true,
   params: [
     {id: 'id', as: 'string', mandatory: true},
@@ -129,24 +147,4 @@ export function notifyInjectExtension(ext, extObj, level=1) {
     notifications.push({ext, extObj, level})
 }
 
-
-
-// export function ComponentOld(...args) {
-//   if (typeof args[0] != 'string') {
-//       const comp = args[0]
-// //      comp.$dsl = comp.dsl || ''
-//       comp.$ = tgpCompDef[asJbComp] //'tgpCompDef<>tgpCompDef'
-//       return jbCompProxy(resolveCompArgs(new jbComp(resolveProfileTop(comp))))
-//   }
-
-//   const [id, comp] = args
-// //  comp.$dsl = comp.dsl || ''
-//   comp.$ = tgpCompDef[asJbComp]
-//   //if (comp.type == 'any') jb.genericCompIds[id] = true
-//   comp.$location = calcSourceLocation(new Error().stack.split(/\r|\n/)) || {}
-
-//   //registerProxy(id)
-//   const resolved = resolveProfileTop(comp, {id})
-//   return jbCompProxy(new jbComp(resolved)) // lazy resolveCompArgs
-// }
 

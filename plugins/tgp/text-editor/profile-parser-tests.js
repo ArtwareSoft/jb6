@@ -8,7 +8,7 @@ import { jb, Data, Boolean, Var } from '../../common/jb-common.js'
 import { Control } from '../../testers/ui-dsl/ui.js'
 const { group, text, controlWithCondition } = Control
 const { pipeline, split, list } = Data
-const { equals, contains } = Boolean
+const { equals, contains, notContains, and, not } = Boolean
 
 Test('actionMapTest.simple', {
   impl: actionMapTest(() => split(',' , {text: '%%', part: 'first'}), 'data<>', 'propInfo!~part', '29,35')
@@ -58,18 +58,18 @@ Test('actionMapTest.asyncVar', {
 })
 
 Test('actionMapTest.prependInGroup', {
-  impl: actionMapTest(() => group(text(''), text('')), 'control<ui>', 'prependPT!~controls', '6,11')
+  impl: actionMapTest(() => group(text(''), text('')), 'control<ui>', 'prependPT!~controls', '6,6')
 })
 
 Test('actionMapTest.prependSingleInArrayPath', {
-  impl: actionMapTest(() => group(text('')), 'control<ui>', 'prependPT!~controls', '6,11')
+  impl: actionMapTest(() => group(text('')), 'control<ui>', 'prependPT!~controls', '6,6')
 })
 
 Test('actionMapTest.singleInArrayPath', {
   impl: actionMapTest(() => group(text('')), 'control<ui>', 'begin!~controls~text', '11,11')
 })
 
-const multiLineExample = Control('multiLineExample', {
+const multiLineExample = `Control('multiLineExample', {
   params: [
     {id: 'param1'}
   ],
@@ -78,25 +78,22 @@ const multiLineExample = Control('multiLineExample', {
     group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),
     text('world')
   )
-})
+})`
 
 Test('actionMapTest.multiLine.prepend', {
-  impl: actionMapTest(() => asComp(multiLineExample), 'control<ui>', 'prependPT!~impl~controls', '93,98')
+  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'prependPT!~impl~controls', '80,85')
 })
 
 Test('actionMapTest.param', {
-  impl: dataTest({
-    calculate: () => prettyPrintComp('multiLineExample',jb.comps['control<ui>multiLineExample']),
-    expectedResult: contains(`{id: 'param1'}`)
-  })
+  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'begin!~params~0', '46,46')
 })
 
 Test('actionMapTest.multiLine.implBegin', {
-  impl: actionMapTest(() => jb.comps['control<ui>multiLineExample'], 'control<ui>', 'begin!~impl', '87,87')
+  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'begin!~impl', '74,74')
 })
 
 Test('actionMapTest.multiLine.implEnd', {
-  impl: actionMapTest(() => jb.comps['control<ui>multiLineExample'], 'control<ui>', 'end!~impl', '216,216')
+  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'end!~impl', '203,203')
 })
 
 /*
@@ -119,6 +116,7 @@ Test('actionMapTest.remark.pipeline', {
     expectedResult: equals(`pipeline(Var('x', 1), 'a', { '//': 'hello' })`)
   })
 })
+
 
 Test('actionMapTest.newLinesInCode', {
   impl: dataTest({
@@ -152,24 +150,34 @@ Test('actionMapTest.singleFunc', {
   impl: actionMapTest(() => frontEnd.init(({ }, { }) => 5), 'feature<>', 'function!~action', '14,29')
 })
 
-Test('actionMapTest.primitiveArray', {
-  impl: dataTest({
-    calculate: () => prettyPrintWithPositions(list(1, 2, 3, 4), {type: 'data<>'}),
-    expectedResult: equals('%text%', 'list(1,2,3,4)')
-  })
-})
-
 Test('actionMapTest.byValue.cutTailingUndefinedArgs', {
   impl: dataTest(() => prettyPrint(css.boxShadow({ inset: false }), {type: 'feature<>'}), notContains('undefined'))
+})
+
+*/
+
+Test('actionMapTest.packedPrimitiveArray', {
+  impl: actionMapTest(() => list(1, 2, 3, 4), 'data<>', 'end!', '13,13')
 })
 
 Test('actionMapTest.async', {
   impl: dataTest(() => prettyPrint({ async a() { 3 } }), and(not(contains('a:')), contains('async a() { 3 }')))
 })
 
+Test('actionMapTest.asyncInProfile', {
+  impl: dataTest({
+    calculate: () => prettyPrint(dataTest(async () => { 5 }), {type: 'test<>'}),
+    expectedResult: and(not(contains('a:')), contains('async () => { 5 }'))
+  })
+})
+
+/*
+
 Test('actionMapTest.asIs', {
   impl: dataTest(() => prettyPrint(asIs({remoteRun: { $: 'runCtx' }})), contains('$:'))
 })
+
+/*
 
 Test('actionMapTest.asIsLarge', {
   impl: dataTest({
@@ -187,12 +195,7 @@ Test('actionMapTest.asIsLarge', {
 //   })
 // })
 
-Test('actionMapTest.asyncInProfile', {
-  impl: dataTest({
-    calculate: () => prettyPrint(dataTest(async () => { 5 }), {type: 'test<>'}),
-    expectedResult: and(not(contains('a:')), contains('async () => { 5 }'))
-  })
-})
+
 
 Test('actionMapTest.funcDefaults', {
   impl: dataTest({
