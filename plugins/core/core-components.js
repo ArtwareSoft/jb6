@@ -9,6 +9,13 @@ export const typeAdapter = Any('typeAdapter', {
   impl: ctx => ctx.args.val
 })
 
+export const asIs = Any('asIs', {
+  params: [
+    {id: 'val', ignore: true}
+  ],
+  impl: ctx => { debugger; ctx.args.val }
+})
+
 export const If = Any('If', {
   macroByValue: true,
   params: [

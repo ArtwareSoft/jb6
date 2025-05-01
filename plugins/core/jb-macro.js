@@ -24,13 +24,21 @@ export function jbCompProxy(jbComp) {
       get: (o, p) => {
         if (p == '$run')
             return (...args) => jbComp.runProfile(resolveProfileArgs(calcArgs(jbComp, args)))
-      
+        if (p == '$impl')
+          return jbComp.impl
+    
         return p === asJbComp && jbComp
       },
       apply: function (target, thisArg, $unresolvedArgs) {
-        return { $: jbComp, $unresolvedArgs }
+        return calcArgs(jbComp,$unresolvedArgs)
       }
   })
+}
+
+function calcArgs(jbComp,$unresolvedArgs) {
+  if (jbComp.id == 'any<>asIs')
+    return () => $unresolvedArgs[0]
+  return { $: jbComp, $unresolvedArgs }
 }
 
 // function getInnerMacro(ns, innerId) {

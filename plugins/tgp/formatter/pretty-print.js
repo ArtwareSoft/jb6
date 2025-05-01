@@ -193,6 +193,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
     const {forceByName, parentParam, posInArray} = settings
     if (noMacros)
       return asIsProps(profile,path)
+
     if (profile.$ == 'asIs') {
       resolveProfileArgs(profile)
       const content = prettyPrint(profile.$asIs,{noMacros: true})

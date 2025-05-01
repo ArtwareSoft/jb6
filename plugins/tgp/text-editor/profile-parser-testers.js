@@ -22,7 +22,7 @@ export const actionMapTest = Test('actionMapTest', {
     calculate: ({},{},{profile, expectedType}) => getTgpModel().then(tgpModel => {
       const { text: compText, actionMap} = typeof profile == 'string' ? { text: profile, actionMap: [] } 
         :  prettyPrintWithPositions(resolveProfileArgs(profile, {expectedType}), {tgpModel} )
-      const actionMapFromParse = calcProfileActionMap(compText, {tgpModel, tgpType: expectedType} )
+      const actionMapFromParse = calcProfileActionMap(compText, {tgpModel, tgpType: expectedType} ).actionMap
         .map(e=>({from: e.from, to: e.to,action: e.action, source: e.source})) // for debug to match actionMap
       return { actionMap, actionMapFromParse, compText }
     }),

@@ -19,7 +19,7 @@ const groupProps = component('groupProps', {
   params: [
     {id: 'props', type: 'group-prop[]', mandatory: true},
   ],
-  impl: ({data},props) => props.flatMap(x=>jb.asArray(x)).reduce((item,prop) => ({...item, ...prop.enrichGroupItem(item)}), data )
+  impl: ({data},props) => props.flatMap(x=>utils.asArray(x)).reduce((item,prop) => ({...item, ...prop.enrichGroupItem(item)}), data )
 })
 
 component('groupBy', {

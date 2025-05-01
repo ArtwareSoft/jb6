@@ -149,10 +149,10 @@ export const writeValue = Action('writeValue', {
     if (!db.isRef(to)) {
       debugger
       ctx.run(ctx.jbCtx.profile.to,{as: 'ref'}) // for debug
-      return jb.logError(`can not write to: ${ctx.jbCtx.profile.to}`, {ctx})
+      return logError(`can not write to: ${ctx.jbCtx.profile.to}`, {ctx})
     }
-    const val = jb.val(value)
-    if (jb.utils.isPromise(val))
+    const val = utils.val(value)
+    if (utils.isPromise(val))
       return Promise.resolve(val).then(_val=>db.writeValue(to,_val,ctx,noNotifications))
     else
       db.writeValue(to,val,ctx,noNotifications)
@@ -168,8 +168,8 @@ export const addToArray = Action('addToArray', {
   ],
   impl: (ctx,{array,toAdd,clone,addAtTop}) => {
     const items = clone ? JSON.parse(JSON.stringify(toAdd)) : toAdd;
-    const index = addAtTop ? 0 : jb.val(array).length;
-    db.splice(array, [[index, 0, ...jb.asArray(items)]],ctx);
+    const index = addAtTop ? 0 : utils.val(array).length;
+    db.splice(array, [[index, 0, ...utils.asArray(items)]],ctx);
   }
 })
 
@@ -200,7 +200,7 @@ export const removeFromArray = Action('removeFromArray', {
     {id: 'index', as: 'number', description: 'choose item or index'}
   ],
   impl: (ctx,{array,itemToRemove,index: _index}) => {
-		const index = itemToRemove ? jb.toarray(array).indexOf(itemToRemove) : _index;
+		const index = itemToRemove ? utils.toArray(array).indexOf(itemToRemove) : _index;
 		if (index != -1)
 			db.splice(array,[[index,1]],ctx)
 	}
@@ -210,7 +210,7 @@ export const toggleBooleanValue = Action('toggleBooleanValue', {
     params: [
       {id: 'of', as: 'ref'}
     ],
-    impl: (ctx,{of: _of}) => db.writeValue(_of,jb.val(_of) ? false : true,ctx)
+    impl: (ctx,{of: _of}) => db.writeValue(_of,utils.val(_of) ? false : true,ctx)
 })
 
 export const getOrCreate = Data('getOrCreate', {

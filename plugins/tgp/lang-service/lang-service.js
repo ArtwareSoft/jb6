@@ -1,25 +1,25 @@
 import { resolveCompArgs, isMacro}  from '../../core/jb-macro.js'
-import { utils, Data, jb, Ctx, DefComponents } from '../../common/common-utils.js'
+import { utils, Data, jb, Ctx } from '../../common/common-utils.js'
 import { calcTgpModelData } from '../model-data/tgp-model-data.js'
-import { tgpEditorHost, offsetToLineCol, calcProfileActionMap, deltaFileContent, filePosOfPath, calcHash } from '../text-editor/tgp-text-editor.js'
-import { prettyPrintWithPositions, prettyPrint } from '../formatter/pretty-print.js'
+import { tgpEditorHost, offsetToLineCol, calcProfileActionMap, deltaFileContent, filePosOfPath, calcHash, getPosOfPath } from '../text-editor/tgp-text-editor.js'
+import { prettyPrint } from '../formatter/pretty-print.js'
 import { update } from '../../db/immutable.js'
 
-export const tgpModels = {}
+export const tgpModels = {} 
 
-export async function calcCompProps(ctx, {includeCircuitOptions} = {}) {
+export async function _calcCompProps(ctx, {includeCircuitOptions} = {}) {
     const {forceLocalSuggestions, forceRemoteCompProps} = ctx.vars
     const docProps = { forceLocalSuggestions, ...tgpEditorHost().compTextAndCursor() }
     const packagePath = docProps.packagePath = docProps.filePath
     const tgpModel = tgpModels[packagePath]
     const compProps = (tgpModel && !forceRemoteCompProps) 
-        ? {...docProps, tgpModel, actionMap: calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
-        : await calcCompProps()
+        ? {...docProps, tgpModel, ...calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
+        : await do_calcCompProps()
     const circuitOptions = (compProps.path && includeCircuitOptions) ? 
         await new Ctx().setData(packagePath).calc({$: 'remote.circuitOptions', filePath: compProps.filePath, path: compProps.path}) : null
     return {...compProps, circuitOptions}
 
-    async function calcCompProps() {
+    async function do_calcCompProps() {
         const tgpModelData = forceLocalSuggestions ? await calcTgpModelData({filePath: packagePath}) 
             : await new Ctx().setData(packagePath).calc({$: 'remote.tgpModelData'})
         if (!tgpModelData.filePath) {
@@ -33,7 +33,7 @@ export async function calcCompProps(ctx, {includeCircuitOptions} = {}) {
             
         docProps.filePath = tgpModelData.filePath
         const tgpModel = tgpModels[packagePath] = new tgpModelForLangService(tgpModelData)
-        return {...docProps, tgpModel, actionMap: calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
+        return {...docProps, tgpModel, ...calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
     }
 }
 
@@ -93,19 +93,23 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
 
     function addArrayItemOp(path, { toAdd, index, srcCtx } = {}) {
         const val = tgpModel.valOfPath(path)
-        toAdd = toAdd === undefined ? { $: 'TBD' } : toAdd
+        toAdd = toAdd === undefined ? { $$: 'any<>TBD' } : toAdd
         if (Array.isArray(val)) {
-            if (index === undefined || index == -1)
+            if (val[index]?.$ == 'TBD')
+                return { ...setOp(`${path}~${index}`, toAdd, srcCtx), resultPath: `${path}~${index}` }
+            else if (index === undefined || index == -1)
                 return { path, op: { $push: [toAdd] }, srcCtx, resultPath: `${path}~${val.length}` }
             else
                 return { path, op: { $splice: [[index, 0, toAdd]] }, srcCtx, resultPath: `${path}~${index}` }
         } else if (!val) {
-            return { ...setOp(path, utils.asArray(toAdd), srcCtx), resultPath: `${path}~0` }
+            return { ...setOp(path, toAdd, srcCtx), resultPath: `${path}` } // empty array - lazy add ...
+            //return { ...setOp(path, utils.asArray(toAdd), srcCtx), resultPath: `${path}~0` }
         } else {
+            const arrayVal = utils.asArray(val)
             if (index === undefined || index == -1)
-                return { ...setOp(path, [val, toAdd], srcCtx), resultPath: `${path}~1` }
+                return { ...setOp(path, [...arrayVal, toAdd], srcCtx), resultPath: `${path}~1` }
             else
-                return { ...setOp(path, [toAdd, val], srcCtx), resultPath: `${path}~0` }
+                return { ...setOp(path, [toAdd, ...arrayVal], srcCtx), resultPath: `${path}~0` }
         }
     }
 }
@@ -151,7 +155,7 @@ function paramCompletions(path, compProps) {
         const paramType = tgpModel.paramType(path)
         const result = param.templateValue ? JSON.parse(JSON.stringify(param.templateValue))
             : paramType == 'boolean<>' ? true
-            : paramType.indexOf('data') != -1 ? '' : { $: 'TBD' }
+            : paramType.indexOf('data') != -1 ? '' : { $$: 'any<>TBD' }
 
         return setOp(path, result, srcCtx)
     }
@@ -289,104 +293,125 @@ export class tgpModelForLangService {
     }
 }
 
-export async function completionItems(ctx) {
-    const compProps = await calcCompProps(ctx)
-    const { actionMap, reformatEdits, compLine, errors, cursorPos } = compProps
-    let items = [], title = '', paramDef
-    if (reformatEdits) {
-        const item = {
-            kind: 4, id: 'reformat', insertText: '', label: 'reformat', sortText: '0001', edit: reformatEdits,
-            command: { command: 'jbart.applyCompChangeOfCompletionItem', arguments: [{ edit: reformatEdits, cursorPos }] },
+// *** comps
+
+const completionItems = Data({
+    impl: async (ctx) => {
+        const compProps = await _calcCompProps(ctx)
+        const { actionMap, reformatEdits, compLine, errors, cursorPos } = compProps
+        let items = [], title = '', paramDef
+        if (reformatEdits) {
+            const item = {
+                kind: 4, id: 'reformat', insertText: '', label: 'reformat', sortText: '0001', edit: reformatEdits,
+                command: { command: 'jbart.applyCompChangeOfCompletionItem', arguments: [{ edit: reformatEdits, cursorPos }] },
+            }
+            title = 'bad format'
+            items = [item]
+        } else if (actionMap) {
+            ({items, paramDef} = await provideCompletionItems(compProps, ctx))
+            items.forEach((item, i) => Object.assign(item, {
+                compLine, insertText: '', sortText: ('0000' + i).slice(-4), command: { command: 'jbart.applyCompChangeOfCompletionItem', 
+                arguments: [item] 
+            },
+            }))
+            title = paramDef && `${paramDef.id}: ${paramDef.$type.replace('<>','')}`
+            utils.log('completion items', { items, ...compProps, ctx })
+        } else if (errors) {
+            utils.logError('completion provideCompletionItems', {errors, compProps})
+            items = [ {
+                kind: 4, label: (errors[0]||'').toString(), sortText: '0001',
+            }]
+            title = prettyPrint(errors)
         }
-        title = 'bad format'
-        items = [item]
-    } else if (actionMap) {
-        ({items, paramDef} = await provideCompletionItems(compProps, ctx))
-        items.forEach((item, i) => Object.assign(item, {
-            compLine, insertText: '', sortText: ('0000' + i).slice(-4), command: { command: 'jbart.applyCompChangeOfCompletionItem', 
-            arguments: [item] 
-        },
-        }))
-        title = paramDef && `${paramDef.id}: ${paramDef.$type.replace('<>','')}`
-        utils.log('completion items', { items, ...compProps, ctx })
-    } else if (errors) {
-        utils.logError('completion provideCompletionItems', {errors, compProps})
-        items = [ {
-            kind: 4, label: (errors[0]||'').toString(), sortText: '0001',
-        }]
-        title = prettyPrint(errors)
+        return { items, title, paramDef, errors }
     }
-    return { items, title, paramDef, errors }
-}
+})
 
-async function compId(ctx) {
-    const compProps = await calcCompProps(ctx)
-    const { reformatEdits, actionMap, inCompOffset, tgpModel, path, comp } = compProps
-    if (reformatEdits)
-        return { errors: ['compId - bad format'], ...compProps }
+const compId = Data({
+    impl: async (ctx) => {    
+        const compProps = await _calcCompProps(ctx)
+        const { reformatEdits, actionMap, inCompOffset, tgpModel, path, comp } = compProps
+        if (reformatEdits)
+            return { errors: ['compId - bad format'], ...compProps }
 
-    const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
-        .map(e => e.action).filter(e => e.indexOf('edit!') != 0 && e.indexOf('begin!') != 0 && e.indexOf('end!') != 0)
-    if (actions.length == 0 && comp) 
-        return { comp: comp.id}
-    if (actions.length == 0) return []
-    const priorities = ['addProp']
-    const sortedActions = utils.unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
-    if (sortedActions[0] && sortedActions[0][0] == 'propInfo') 
-        return { comp: tgpModel.compNameOfPath(utils.parentPath(path)), prop: path.split('~').pop() }
-    return { comp: path && (path.match(/~/) ? tgpModel.compNameOfPath(path) : path) }
-}
-
-async function compReferences(ctx) {
-    const { comp, prop, reformatEdits } = ctx.data
-    if (reformatEdits)
-        return [{...ctx.data}]
-    const paths = Object.values(jb.comps).flatMap(comp=>scanForPath(comp,comp.id || ''))
-    return paths.map(path=>filePosOfPath(path))
-
-    function scanForPath(profile,path) {
-        if (!profile || utils.isPrimitiveValue(profile) || typeof profile == 'function') return []
-        const res = prop ? (utils.path(jb.comps[profile.$$],'$$') == comp && profile[prop] ? [`${path}~${prop}`] : [])
-            : utils.path(jb.comps[profile.$$],'$$') == comp ? [path] : []
-        return [ 
-            ...res,
-            ...Object.keys(profile).flatMap(k=>scanForPath(profile[k],`${path}~${k}`))
-        ]
+        const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
+            .map(e => e.action).filter(e => e.indexOf('edit!') != 0 && e.indexOf('begin!') != 0 && e.indexOf('end!') != 0)
+        if (actions.length == 0 && comp) 
+            return { comp: comp.id}
+        if (actions.length == 0) return []
+        const priorities = ['addProp']
+        const sortedActions = utils.unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
+        if (sortedActions[0] && sortedActions[0][0] == 'propInfo') 
+            return { comp: tgpModel.compNameOfPath(utils.parentPath(path)), prop: path.split('~').pop() }
+        return { comp: path && (path.match(/~/) ? tgpModel.compNameOfPath(path) : path) }
     }
-}
+})
 
-async function definition(ctx) {
-    const compProps = await calcCompProps(ctx)
-    const { actionMap, reformatEdits, inExtension, errors, path, tgpModel, lineText } = compProps
-    if (reformatEdits)
-        return { errors: ['definition - bad format'], ...compProps }
-    const allSemantics = actionMap.filter(e => e.action && e.action.endsWith(path)).map(x => x.action.split('!')[0])
-    if (inExtension || allSemantics.includes('function')) {
-        return funcLocation()
-    } else if (path) {
-        const cmpId = tgpModel.compNameOfPath(path)
-        return utils.path(tgpModel.comps[cmpId],'$location') || funcLocation()
-    } else if (errors) {
-        utils.logError('langService definition', {errors, ctx,compProps})
-        return compProps
-    }
+const compReferences = Data({
+    impl: async (ctx) => {    
+        const { comp, prop, reformatEdits, tgpModel } = ctx.data
+        if (reformatEdits)
+            return [{...ctx.data}]
+        const paths = Object.values(jb.comps).flatMap(comp=>scanForPath(comp,comp.id || ''))
+        return paths.map(path=>filePosOfPath(path, tgpModel))
 
-    async function funcLocation() {
-        const [, lib, func] = lineText.match(/jb\.([a-zA-Z_0-9]+)\.([a-zA-Z_0-9]+)/) || ['', '', '']
-        if (lib && utils.path(jb, [lib, '__extensions'])) {
-            // TODO: pass extensions in tgpModel
-            const loc = Object.values(jb[lib].__extensions).filter(ext => ext.funcs.includes(func)).map(ext => ext.location)[0]
-            const lineOfExt = (+loc.line) || 0
-            const fileContent = await jbHost.codePackageFromJson().fetchFile(loc.path)
-            const lines = ('' + fileContent).split('\n').slice(lineOfExt)
-            const funcHeader = new RegExp(`[^\.]${func}\\s*:|[^\.]${func}\\s*\\(`) //[^{]+{)`)
-            const lineOfFunc = lines.findIndex(l => l.match(funcHeader))
-            return { ...loc, line: lineOfExt + lineOfFunc }
+        function scanForPath(profile,path) {
+            if (!profile || utils.isPrimitiveValue(profile) || typeof profile == 'function') return []
+            const res = prop ? (utils.path(jb.comps[profile.$$],'$$') == comp && profile[prop] ? [`${path}~${prop}`] : [])
+                : utils.path(jb.comps[profile.$$],'$$') == comp ? [path] : []
+            return [ 
+                ...res,
+                ...Object.keys(profile).flatMap(k=>scanForPath(profile[k],`${path}~${k}`))
+            ]
         }
     }
-}
+})
 
-export function editAndCursorOfCompletionItem(item) {
+const definition = Data({
+    impl: async (ctx) => {
+        const compProps = await _calcCompProps(ctx)
+        const { actionMap, reformatEdits, inExtension, errors, path, tgpModel, lineText } = compProps
+        if (reformatEdits)
+            return { errors: ['definition - bad format'], ...compProps }
+        const allSemantics = actionMap.filter(e => e.action && e.action.endsWith(path)).map(x => x.action.split('!')[0])
+        if (inExtension || allSemantics.includes('function')) {
+            return funcLocation()
+        } else if (path) {
+            const cmpId = tgpModel.compNameOfPath(path)
+            return utils.path(tgpModel.comps[cmpId],'$location') || funcLocation()
+        } else if (errors) {
+            utils.logError('langService definition', {errors, ctx,compProps})
+            return compProps
+        }
+
+        async function funcLocation() {
+            const [, lib, func] = lineText.match(/jb\.([a-zA-Z_0-9]+)\.([a-zA-Z_0-9]+)/) || ['', '', '']
+            if (lib && utils.path(jb, [lib, '__extensions'])) {
+                // TODO: pass extensions in tgpModel
+                const loc = Object.values(jb[lib].__extensions).filter(ext => ext.funcs.includes(func)).map(ext => ext.location)[0]
+                const lineOfExt = (+loc.line) || 0
+                const fileContent = await jbHost.codePackageFromJson().fetchFile(loc.path)
+                const lines = ('' + fileContent).split('\n').slice(lineOfExt)
+                const funcHeader = new RegExp(`[^\.]${func}\\s*:|[^\.]${func}\\s*\\(`) //[^{]+{)`)
+                const lineOfFunc = lines.findIndex(l => l.match(funcHeader))
+                return { ...loc, line: lineOfExt + lineOfFunc }
+            }
+        }
+    }
+})
+
+const calcCompProps = Data({
+  params: [
+    {id: 'includeCircuitOptions', as: 'boolean', type: 'boolean<>', byName: true}
+  ],
+  impl: (ctx,{includeCircuitOptions}) => _calcCompProps(ctx,{includeCircuitOptions})
+})
+
+const editAndCursorOfCompletionItem = Data({
+  params: [
+    {id: 'item'}
+  ],
+  impl: async (ctx,{item}) => {
     if (item.edit) return item
     const { text, compId, comp, compLine, tgpModel } = item.compProps
     const itemProps = item.extend ? { ...item, ...item.extend() } : item
@@ -396,191 +421,21 @@ export function editAndCursorOfCompletionItem(item) {
     utils.path(opOnComp,path.split('~').slice(1),op) // create op as nested object
     const newComp = update(comp,opOnComp)
     resolveCompArgs(newComp,{tgpModel})
-    const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
-    const edit = deltaFileContent(text, newRes.text , compLine)
+    const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+    const edit = deltaFileContent(text, newcompText , compLine)
 
-    const cursorPos = itemProps.cursorPos || calcNewPos(newRes)
+    const cursorPos = itemProps.cursorPos || calcNewPos(newcompText)
     return { edit, cursorPos }
 
-    function calcNewPos(prettyPrintData) {
-        const TBD = item.compName == 'TBD' || utils.path(itemProps, 'op.$set.$') == 'TBD'
+    function calcNewPos(compText) {
+        const TBD = item.compName == 'any<>TBD' || utils.path(itemProps, 'op.$set.$$') == 'any<>TBD'
         const _whereToLand = TBD ? 'begin' : (whereToLand || 'edit')
-        const { line, col } = getPosOfPath(resultPath || path, [_whereToLand,'prependPT','appendPT'], {prettyPrintData})
+        const expectedPath = resultPath || path
+        const { line, col } = getPosOfPath(expectedPath, [_whereToLand,'prependPT','appendPT'], {compText, tgpModel})
         return { TBD, line: line + compLine, col }
-    }
-}
-
-async function deleteEdits(ctx) {
-    const compProps = await calcCompProps(ctx)
-    const { reformatEdits, text, comp, compLine, compId, errors, path, tgpModel, lineText } = compProps
-    if (reformatEdits)
-        return { errors: ['delete - bad format'], ...compProps }
-
-    const pathAr = path.split('~').slice(1)
-    const arrayElem = !isNaN(pathAr.slice(-1)[0])
-    const indexInArray = arrayElem && +pathAr.slice(-1)[0]
-
-    const opOnComp = {}
-    if (arrayElem)
-        utils.path(opOnComp,pathAr.slice(0, -1),{$splice: [[indexInArray,1]] })
-    else
-        utils.path(opOnComp,pathAr,{$set: null });
-
-    const newComp = update(comp,opOnComp)
-    const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
-    const edit = deltaFileContent(text, newRes.text , compLine)
-    utils.log('lang services delete', { edit, ...compProps })
-    return { edit, cursorPos: calcNewPos(newRes), hash: calcHash(text) }
-
-    function calcNewPos(prettyPrintData) {
-        let { line, col } = getPosOfPath(path, 'begin',{prettyPrintData})
-        if (!line && !col) {
-            let { line, col } = getPosOfPath(utils.parentPath(path), 'begin',{prettyPrintData})
-        }
-        if (!line && !col)
-            return utils.logError('delete can not find path', { path })
-        return { line: line + compLine, col }
-    }
-}
-
-async function disableEdits(ctx) {
-    const compProps = await calcCompProps(ctx)
-    const { reformatEdits, text, comp, compLine, compId, errors, path, tgpModel, lineText } = compProps
-    if (reformatEdits)
-        return { errors: ['disable - bad format'], ...compProps }
-
-    const pathAr = [...path.split('~').slice(1),'$disabled']
-    const opOnComp = {}
-    const toggleVal = utils.path(comp,pathAr) ? null : true
-    utils.path(opOnComp,pathAr,{$set: toggleVal });
-
-    const newComp = update(comp,opOnComp)
-    const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
-    const edit = deltaFileContent(text, newRes.text , compLine)
-    utils.log('lang services disable', { edit, ...compProps })
-    return { edit, cursorPos: calcNewPos(newRes) , hash: calcHash(text)}
-
-    function calcNewPos(prettyPrintData) {
-        let { line, col } = getPosOfPath(path, 'begin',{prettyPrintData})
-        return { line: line + compLine, col }
-    }
-} 
-
-async function duplicateEdits(ctx) {
-    const compProps = await calcCompProps(ctx)
-    const { reformatEdits, text, shortId, comp, compLine, compId, errors, path, tgpModel, lineText } = compProps
-    if (reformatEdits)
-        return { errors: ['duplicate - not in array'], ...compProps }
-
-    const pathAr = path.split('~').slice(1)
-    const arrayElem = !isNaN(pathAr.slice(-1)[0])
-    const indexInArray = arrayElem && +pathAr.slice(-1)[0]
-    const opOnComp = {}
-    if (arrayElem) {
-        const toAdd = cloneProfile(comp?.pathAr)
-        utils.path(opOnComp,pathAr.slice(0, -1),{$splice: [[indexInArray, 0, toAdd]] })    
-        const newComp = update(comp,opOnComp)
-        const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
-        const edit = deltaFileContent(text, newRes.text , compLine)
-        utils.log('lang services duplicate', { edit, ...compProps })
-        const targetPath = [compId,...pathAr.slice(0, -1),indexInArray+1].join('~')
-        return { edit, cursorPos: calcNewPos(targetPath, newRes), hash: calcHash(text) }
-    } else if (path.indexOf('~') == -1) { // duplicate component
-        const noOfLines = (text.match(/\n/g) || []).length+1
-        const edit = deltaFileContent('', `\ncomponent('${shortId}', ${text})\n`, compLine+noOfLines)
-        utils.log('lang services duplicate comp', { edit, ...compProps })
-        return { edit, cursorPos: {line: compLine+noOfLines+1, col: 0}}
-    }
-    return { errors: ['duplicate - bad format'], ...compProps }
-
-    function calcNewPos(path,prettyPrintData) {
-        let { line, col } = getPosOfPath(path, 'begin',{prettyPrintData})
-        if (!line && !col)
-            return utils.logError('duplicate can not find target path', { path })
-        return { line: line + compLine, col }
-    }
-}
-
-async function createTestEdits(ctx) {
-    const compProps = await calcCompProps(ctx)
-    const { reformatEdits, text, shortId, comp, compLine, compId, errors, path, tgpModel, lineText } = compProps
-    if (reformatEdits)
-        return { errors: ['createText - bad format'], ...compProps }
-
-    const impl = comp.$type == 'control<>' ? `uiTest(${shortId}(), contains(''))` : `dataTest(${shortId}(), equals(''))`
-    const testPrefix = comp.$type == 'action<>' ? 'action' : comp.$type == 'control<>' ? 'ui' : 'data'
-    const newText = `\ncomponent('${testPrefix}Test.${shortId}', {\n  impl: ${impl}\n})\n`        
-    const noOfLines = (text.match(/\n/g) || []).length+1
-    const edit = deltaFileContent('', newText, compLine+noOfLines)
-    utils.log('lang services duplicate comp', { edit, ...compProps })
-    return { edit, cursorPos: {line: compLine+noOfLines+1, col: 0}}
-}
-
-async function moveInArrayEdits(diff,ctx) {
-    const compProps = await calcCompProps(ctx)
-    const { reformatEdits, compId, compLine, actionMap, text, path, comp, tgpModel } = compProps
-    if (!reformatEdits && actionMap) {
-        const rev = path.split('~').slice(1).reverse()
-        const indexOfElem = rev.findIndex(x => x.match(/^[0-9]+$/))
-        if (indexOfElem != -1) {
-            const path = rev.slice(indexOfElem).reverse()
-            const arrayPath = path.slice(0, -1)
-            const fromIndex = +path.slice(-1)[0]
-            const toIndex = fromIndex + diff
-            const valToMove = utils.path(comp,path)
-            const op = {$splice: [[fromIndex,1],[toIndex,0,valToMove]] }
-
-            const opOnComp = {}
-            utils.path(opOnComp,arrayPath,op) // create opOnComp as nested object
-            const newComp = update(comp,opOnComp)
-            const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
-            const edit = deltaFileContent(text, newRes.text , compLine)
-            utils.log('tgpTextEditor moveInArray', { op, edit, ...compProps })
-
-            const origPath = compProps.path.split('~')
-            const index = origPath.length - indexOfElem
-            const to = [...origPath.slice(0,index-1),toIndex,...origPath.slice(index)].join('~')
-
-            return { edit, cursorPos: calcNewPos(to, newRes) }
-        }
-    }
-    return { errors: ['moveInArray - array elem was not found'], ...compProps }
-
-    function calcNewPos(path, prettyPrintData) {
-        const { line, col } = getPosOfPath(path, 'begin',{prettyPrintData})
-        if (!line && !col)
-            return utils.logError('moveInArray can not find path', { path })
-        return { line: line + compLine, col }
-    }
-}
-
-
-const langService = {completionItems,definition,compId,compReferences,deleteEdits,duplicateEdits,disableEdits,createTestEdits}
-
-DefComponents(Object.keys(langService), f => Data(`langService.${f}`, {
-  autoGen: true,
-  impl: ctx => langService[f](ctx)
-})
-)
-
-Data('langService.calcCompProps', {
-  params: [
-    {id: 'includeCircuitOptions', as: 'boolean', type: 'boolean<>', byName: true}
-  ],
-  impl: (ctx,{includeCircuitOptions}) => calcCompProps(ctx,{includeCircuitOptions})
+    }    
+  }
 })
 
-Data('langService.editAndCursorOfCompletionItem', {
-  params: [
-    {id: 'item'}
-  ],
-  impl: (ctx,{item}) => editAndCursorOfCompletionItem(item)
-})
-
-Data('langService.moveInArrayEdits', {
-    params: [
-        { id: 'diff', as: 'number', defaultValue: '%%' }
-    ],
-    impl: (ctx,{diff}) => moveInArrayEdits(diff,ctx)
-})
+export const langService = {completionItems, definition, compId, compReferences, calcCompProps, editAndCursorOfCompletionItem}
 

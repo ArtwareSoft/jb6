@@ -4,6 +4,8 @@ export const typeRules = [{ isOf: ['data<>','boolean<>'] }]
 
 export const Control = TgpType('control',{dsl: 'ui'})
 export const Feature = TgpType('feature',{dsl: 'ui'})
+export const UIAction = TgpType('ui-action',{dsl: 'test'})
+export const Jbm = TgpType('jbm',{dsl: 'jbm'})
 
 export const group = Control('group', {
     params: [
@@ -17,11 +19,13 @@ export const group = Control('group', {
 
 const button = Control({
     params: [
-        {id: 'text', as: 'ref', mandatory: true, templateValue: 'my text', dynamic: true},
-        {id: 'title', as: 'ref', dynamic: true},
-        {id: 'style', type: 'text-style', dynamic: true},
-        {id: 'features', type: 'feature[]', dynamic: true}    
-    ]
+        {id: 'title', as: 'ref', mandatory: true, templateValue: 'click me', dynamic: true},
+        {id: 'action', type: 'action<>', mandatory: true, dynamic: true},
+        {id: 'style', type: 'button-style', dynamic: true},
+        {id: 'raised', as: 'boolean', dynamic: true, type: 'boolean<>'},
+        {id: 'disabledTillActionFinished', as: 'boolean', type: 'boolean'},
+        {id: 'features', type: 'feature[]', dynamic: true}
+   ]
 })
 
 export const controlWithCondition = Control('controlWithCondition', {
@@ -47,13 +51,16 @@ export const uiTest = Test('uiTest', {
         {id: 'control', type: 'control<ui>', dynamic: true, mandatory: true},
         {id: 'expectedResult', type: 'boolean', dynamic: true, mandatory: true},
         {id: 'runBefore', type: 'action', dynamic: true},
+        {id: 'uiAction', type: 'ui-action<test>', dynamic: true},
         {id: 'allowError', as: 'boolean', dynamic: true, type: 'boolean'},
         {id: 'timeout', as: 'number', defaultValue: 200},
         {id: 'cleanUp', type: 'action', dynamic: true},
         {id: 'expectedCounters', as: 'single'},
+        {id: 'backEndJbm', type: 'jbm<jbm>'},
         {id: 'emulateFrontEnd', as: 'boolean', type: 'boolean'},
         {id: 'transactiveHeadless', as: 'boolean', type: 'boolean'},
-        {id: 'spy'}
+        {id: 'spy'},
+        {id: 'covers'}
     ]
 })
 

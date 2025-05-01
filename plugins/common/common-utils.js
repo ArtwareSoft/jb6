@@ -1,7 +1,7 @@
 import { Const, utils as core_utils } from '../core/core-utils.js'
 import { log, logError, logException } from '../core/logger.js'
 import { jb, Data, Ctx, DefComponents, TgpType, Var } from '../core/tgp.js'
-export {jb, Data, Var, Const, Ctx, DefComponents, TgpType}
+export {jb, Data, Var, Const, Ctx, DefComponents, TgpType, log, logError, logException}
 
 const delay = (mSec,res) => new Promise(r=>setTimeout(()=>r(res),mSec))
 

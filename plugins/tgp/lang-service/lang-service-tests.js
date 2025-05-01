@@ -1,4 +1,8 @@
-import { Test, Data, completionOptionsTest } from './lang-service-testers.js'
+import { Test, Data, completionOptionsTest, completionActionTest, dummyCompProps, fixEditedCompTest } from './lang-service-testers.js'
+import { asIs } from '../../core/core-components.js'
+import { pipeline, pipe, contains, equals } from '../../common/jb-common.js'
+import { dataTest } from '../../testers/data-tester.js'
+import { langService } from './lang-service.js'
 
 Test('completionTest.param1', {
   impl: completionOptionsTest(`uiTest(text(__'hello world', ''), contains('hello world'))`, ['style'])
@@ -46,12 +50,11 @@ Test('completionTest.secondParamAsArray1', {
   impl: completionOptionsTest(`dataTest(pipeline('a',__ '-%%-', '%%'))`, ['split'])
 })
 
-/*
-Test('completionTest.typeAdapter', {
-  impl: completionOptionsTest(`uiTest(text(typeAdapter('state<location>', __TBD())))`, {
-    expectedSelections: ['israel']
-  })
-})
+// Test('completionTest.typeAdapter', {
+//   impl: completionOptionsTest(`uiTest(text(typeAdapter('state<location>', __TBD())))`, {
+//     expectedSelections: ['israel']
+//   })
+// })
 
 Test('completionTest.createPipelineFromComp', {
   impl: completionActionTest(`uiTest(text(__split()))`, {
@@ -201,36 +204,39 @@ Test('completionTest.singleParamAsArray.data', {
 })
 
 Test('completionTest.actionReplaceTBD', {
-  impl: completionActionTest(`uiTest(button('x', remote.action(__TBD())))`, {
-    completionToActivate: 'move',
-    expectedEdit: asIs({range: {start: {line: 1, col: 41}, end: {line: 1, col: 44}}, newText: 'move'}),
-    expectedCursorPos: '1,46'
+  impl: completionActionTest(`uiTest(button('x', runActions(__TBD())))`, {
+    completionToActivate: 'delay',
+    expectedEdit: asIs({range: {start: {line: 1, col: 38}, end: {line: 1, col: 41}}, newText: 'delay'}),
+    expectedCursorPos: '1,44'
   })
 })
-
-Test('completionTest.fixEditedSample', {
+/*
+Data('completionTest.fixEditedSample', {
   impl: pipeline()
 })
 
 Test('completionTest.fixEditedCompSpaces', {
   impl: fixEditedCompTest({
-    compText: `Test('completionTest.fixEditedSample', {\n   impl:     split(__)\n})`,
+    compText: `Data('fixEditedSample', {\n   impl:     split(__)\n})`,
     expectedFixedComp: '{\n  impl: split()\n}'
   })
 })
 
 Test('completionTest.fixEditedCompWrongName', {
   impl: fixEditedCompTest({
-    compText: `Test('completionTest.fixEditedSample' ,{\n  impl: split(__a)\n})`,
+    compText: `Data('fixEditedSample' ,{\n  impl: split(__a)\n})`,
     expectedFixedComp: `{\n  impl: split(TBD())\n}`
   })
 })
+*/
 
+/*
 Test('completionTest.people', {
   impl: completionOptionsTest(`dataTest('%$peopleArray/__')`, {
     expectedSelections: ['people (3 items)']
   })
 })
+
 
 Test('completionTest.person', {
   impl: completionOptionsTest(`dataTest('%$__')`, {
@@ -277,7 +283,8 @@ Test('completionTest.writePreviewValue', {
     expectedCursorPos: '1,39'
   })
 })
-
+*/
+/*
 Test('completionTest.dslTest.createProp', {
   impl: completionActionTest(`state(__)`, {
     completionToActivate: 'capital',
@@ -314,6 +321,7 @@ Test('completionTest.dslTest.defaultValue', {
     filePath: '/plugins/core/dsl-tests.js'
   })
 })
+*/
 
 Test('completionTest.multiLine', {
   impl: completionActionTest({
@@ -329,13 +337,14 @@ Test('completionTest.multiLineAddProp', {
     compText: `group(__\n    text('hello'),\n    group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n    text('world')\n  )`,
     completionToActivate: 'features',
     expectedEdit: asIs({
-        range: {start: {line: 1, col: 14}, end: {line: 5, col: 2}},
+        range: {start: {line: 1, col: 21}, end: {line: 5, col: 2}},
         newText: `{\n    controls: [\n      text('hello'),\n      group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n      text('world')\n    ],\n    features: TBD()\n  }`
     }),
     expectedCursorPos: '7,14'
   })
 })
 
+/*
 Test('completionTest.multiLineFeatures', {
   impl: completionActionTest({
     compText: `group(text('my text'), {\n    features: [\n      method(),__\n      calcProp(),\n      css.class('asddddddddddddddddddddddddddd')\n    ]\n  })`,
@@ -345,38 +354,40 @@ Test('completionTest.multiLineFeatures', {
   })
 })
 
+
 Test('langServiceTest.provideDefinition', {
   impl: dataTest({
-    calculate: pipe(langService.dummyCompProps(`dataTest('', __not())`), langService.definition()),
+    calculate: pipe(dummyCompProps(`dataTest('', __not())`), langService.definition()),
     expectedResult: contains('jb-common', { data: '%path%' })
   })
 })
 
-Test('langServiceTest.provideDefinition.inFunc', {
-  impl: dataTest({
-    calculate: pipe(langService.dummyCompProps(`dataTest('', () => { __jb.utils.prettyPrint('aa'); return 3})`), langService.definition()),
-    expectedResult: equals('/plugins/tgp/formatter/pretty-print.js', { data: '%path%' })
-  })
-})
+// Test('langServiceTest.provideDefinition.inFunc', {
+//   impl: dataTest({
+//     calculate: pipe(dummyCompProps(`dataTest('', () => { utils.prettyPrint('aa'); return 3})`), langService.definition()),
+//     expectedResult: equals('/plugins/tgp/formatter/pretty-print.js', { data: '%path%' })
+//   })
+// })
 
 Test('langServiceTest.provideDefinition.firstInPipe', {
   impl: dataTest({
-    calculate: pipe(langService.dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
+    calculate: pipe(dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
     expectedResult: equals('/plugins/common/jb-common.js', { data: '%path%' })
   })
 })
 
 Test('langServiceTest.provideDefinition.inProfile', {
   impl: dataTest({
-    calculate: pipe(langService.dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
+    calculate: pipe(dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
     expectedResult: equals('/plugins/common/jb-common.js', { data: '%path%' })
   })
 })
 
+/*
 Test('langServiceTest.moveInArrayEdits', {
   impl: dataTest({
     calculate: pipe(
-      langService.dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`),
+      dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`),
       langService.moveInArrayEdits(1),
       first()
     ),
@@ -387,7 +398,7 @@ Test('langServiceTest.moveInArrayEdits', {
 Test('langServiceTest.duplicateEdits', {
   impl: dataTest({
     calculate: pipe(
-      langService.dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`),
+      dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`),
       langService.duplicateEdits(),
       first()
     ),
@@ -402,7 +413,7 @@ Test('langServiceTest.duplicateEdits', {
 Test('langServiceTest.deleteEdits', {
   impl: dataTest({
     calculate: pipe(
-      langService.dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`),
+      dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`),
       langService.deleteEdits(),
       first()
     ),
@@ -421,7 +432,7 @@ Test('test.tst1', {
 Test('langServiceTest.createTestEdits', {
   impl: dataTest({
     calculate: pipe(
-      langService.dummyCompProps(`Test('test.tst1', {\n  impl: pipeline(list(1,2,3), __slice(0, 2), join())\n})`),
+      dummyCompProps(`Test('test.tst1', {\n  impl: pipeline(list(1,2,3), __slice(0, 2), join())\n})`),
       langService.createTestEdits(),
       first()
     ),
@@ -438,7 +449,7 @@ Test('langServiceTest.createTestEdits', {
 Test('langServiceTest.enableEdits', {
   impl: dataTest({
     calculate: pipe(
-      langService.dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2, { $disabled: true }), join()), equals('1,2'))`),
+      dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2, { $disabled: true }), join()), equals('1,2'))`),
       langService.disableEdits(),
       first()
     ),

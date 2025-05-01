@@ -42,7 +42,7 @@ export function update(object, spec) {
 
 function copy(obj) {
     const res = Array.isArray(obj) ? obj.slice(0) : (obj && typeof obj === 'object') ? Object.assign({}, obj) : obj
-    res[jb.watchable.jbId] = obj[jb.watchable.jbId]
+    jb.ext.db?.watchable && (res[jb.ext.db.watchable.jbId] = obj[jb.ext.db.watchable.jbId])
     return res
 }
 

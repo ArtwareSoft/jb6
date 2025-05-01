@@ -1,8 +1,8 @@
 import { utils, Const } from './common-utils.js'
 import { TgpType, Action, Data, Boolean, Any, DefComponents, jb, Var } from '../core/tgp.js'
-import { If, typeAdapter, log } from '../core/core-components.js'
+import { If, typeAdapter, log, asIs } from '../core/core-components.js'
 
-export { If, typeAdapter, Var, log, Const, TgpType, Action, Data, Boolean, utils, jb }
+export { If, typeAdapter, Var, log, Const, TgpType, Action, Data, Boolean, utils, jb, asIs }
 
 export const pipeline = Data('pipeline', {
   description: 'flat map data arrays one after the other, does not wait for promises and rx',
