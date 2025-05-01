@@ -59,7 +59,7 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
 function argsToProfile(prof, comp) {
   const ast = prof[astNode]
   const { args, system, argsAst } = splitSystemArgs(prof.$unresolvedArgs, ast)
-  if (args.length == 0) return extendWithSystem({})
+  if (args.length == 0) return {...system, [primitivesAst]: {}, [astNode]: ast }
 
   const lastArg = args[args.length-1]
   const lastArgIsByName = lastArg && typeof lastArg == 'object' && !Array.isArray(lastArg) && !lastArg.$

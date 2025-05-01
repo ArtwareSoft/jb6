@@ -1,7 +1,7 @@
 import {lastEditForTester} from '../text-editor/workspace.js'
 import {tgpModelForLangService, tgpModels, completionItems, editAndCursorOfCompletionItem, calcCompProps } from './lang-service.js'
 import { calcTgpModelData } from '../model-data/tgp-model-data.js'
-import { offsetToLineCol, applyCompChange, tgpEditorHost, parseComp } from  '../text-editor/tgp-text-editor.js'
+import { offsetToLineCol, applyCompChange, tgpEditorHost, calcProfileActionMap } from  '../text-editor/tgp-text-editor.js'
 import { dataTest, Test, Usage, Data, utils } from '../../testers/data-tester.js'
 export { Test, Usage, Data }
 
@@ -11,14 +11,21 @@ function fixToUniqueName(code) {
   return code.replace(/Test\('x',/,`Test('${cmpId}',`)
 }
 
+const testTgpModel = {}
+function getTgpModel(filePath) {
+  testTgpModel[filePath] = testTgpModel[filePath] || calcTgpModelData({filePath})
+  return testTgpModel[filePath]
+}
+
 async function initCompletionText({ctx,compText,filePath,dsl,remoteSuggestions}) {
   const testId = ctx.vars.testID
-  const fullText = compText.match(/^Test\(/) ? compText : `Test('x', {\n  impl: ${compText}\n})`
+  const fullText = compText.match(/^[a-z]+Test\(/) ? `Test('x', {\n  impl: ${compText}\n})` 
+    : `Test('x', {\n  impl: uiTest(${compText})\n})`
   const parts = fixToUniqueName(fullText).split('__')
   const offset = parts[0].length
   const code = parts.join('')
   tgpEditorHost().initDoc(filePath, code)
-  const tgpModel = tgpModels[filePath] = new tgpModelForLangService(await calcTgpModelData({filePath}))
+  const tgpModel = tgpModels[filePath] = new tgpModelForLangService(await getTgpModel(filePath))
   //TODO: add file path to tgp model
   const ctxForTest = ctx.setVars({forceLocalSuggestions: !remoteSuggestions})
   const inCompPos = offsetToLineCol(code,offset)
@@ -124,7 +131,7 @@ Test('fixEditedCompTest', {
   ],
   impl: async (ctx,{compText,expectedFixedComp,filePath,dsl}) => {
       const {tgpModel, testId} = await initCompletionText({ctx,compText,filePath,dsl})
-      const compsProps = parseComp(host.compTextAndCursor(), tgpModel)
+      const compsProps = calcProfileActionMap(host.compTextAndCursor(), {tgpModel})
       const formattedText = compsProps.formattedText
       const success = formattedText == expectedFixedComp
       const reason = !success && formattedText
@@ -143,7 +150,7 @@ Data('langService.dummyCompProps', {
     const {tgpModel} = await initCompletionText({ctx,compText: _compText,filePath: _filePath,dsl})
     if (includeCircuitOptions)
       return calcCompProps(ctx,{includeCircuitOptions})
-    const { compText, inCompOffset, shortId, cursorCol, cursorLine, compLine, filePath, lineText } = parseComp(host.compTextAndCursor(), tgpModel)
+    const { compText, inCompOffset, shortId, cursorCol, cursorLine, compLine, filePath, lineText } = calcProfileActionMap(host.compTextAndCursor(), {tgpModel})
     return { compText, inCompOffset, shortId, cursorCol, cursorLine, compLine, filePath, lineText}
   }
 })

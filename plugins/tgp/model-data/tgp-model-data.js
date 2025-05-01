@@ -81,45 +81,45 @@ export async function calcTgpModelData({ filePath }) {
     const src = codeMap[filePath]
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
     ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations)
-		.forEach(decl => parseCompDec(decl, filePath, src))
+		  .forEach(decl => parseCompDec({exportName: decl.id.name, decl: decl.init, url: filePath, src}))
   }
 
-  // 4) Phase 2b: exported components + typeRules in all files
+  // 4) Phase 2b: exported components + direct compDef + typeRules in all files
   Object.entries(codeMap).filter(e=>!e[0].match(/tgp-meta.js$/)).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
-    ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
+    // if (url.match(/ui.js/)) debugger
+    const declarations = ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
       .flatMap(n => n.declaration.declarations)
-      .forEach(decl => {
-        if (decl.id.name === 'typeRules') {
-          typeRules.push(...astToObj(decl.init))
-        } else {
-          parseCompDec(decl, url, src)
-        }
-      })
+    declarations.forEach(decl => parseCompDec({exportName: decl.id.name , decl: decl.init, url, src}))
+
+    // directCompDef
+    ast.body.flatMap(n => n.type === 'ExpressionStatement' ? [n.expression] : [])
+      .forEach(decl => parseCompDec({decl, url, src}))
+
+    typeRules.push(... declarations.filter(decl=>decl.id.name == 'typeRules').flatMap(decl=>astToObj(decl.init)))
   })
 
   return { dsls, comps, typeRules, files: Object.keys(visited) }
 
-  function parseCompDec(decl, url, src) {
-    const init = decl.init
-    if ( init?.type !== 'CallExpression' || init.callee.type !== 'Identifier' || !compDefs[init.callee.name]) return
-
-	  const tgpType = init.callee.name
-    const exportName = decl.id.name
+  function parseCompDec({exportName, decl, url, src}) {
+    if ( decl.type !== 'CallExpression' || decl.callee.type !== 'Identifier' || !compDefs[decl.callee.name]) return
+	  const tgpType = decl.callee.name
 
     let shortId, comp
-    if (init.arguments[0].type === 'Literal') {
-      shortId = init.arguments[0].value
-      if (shortId !== exportName)
-        utils.logError(`calcTgpModelData id mismatch ${shortId} ${exportName}`,{ url, ...offsetToLineCol(src, init.arguments[0].start) })
-      comp = astToObj(init.arguments[1])
+    if (decl.arguments[0].type === 'Literal') {
+      shortId = decl.arguments[0].value
+      if (exportName && shortId !== exportName)
+        utils.logError(`calcTgpModelData id mismatch ${shortId} ${exportName}`,{ url, ...offsetToLineCol(src, decl) })
+      comp = astToObj(decl.arguments[1])
     } else {
       shortId = exportName
-      comp = astToObj(init.arguments[0])
+      comp = astToObj(decl.arguments[0])
     }
+    if (!shortId)
+      utils.logError(`calcTgpModelData no id mismatch`,{ url, ...offsetToLineCol(src, decl) })
 
-    const $location = { path: url, ...offsetToLineCol(src, init.start) }
+    const $location = { path: url, ...offsetToLineCol(src, decl.start) }
     const {type, typeWithDsl, dsl} = compDefs[tgpType]
     const id = shortId ? `${typeWithDsl}${shortId}` : ''
     dsls[dsl][type][shortId] = comps[id] = resolveProfileTop({...comp, id, dsl, type, $location}, {id})

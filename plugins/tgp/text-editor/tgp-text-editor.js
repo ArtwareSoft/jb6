@@ -1,4 +1,4 @@
-import { jb, utils } from '../../common/common-utils.js'
+import { jb, TgpType, utils } from '../../common/common-utils.js'
 import { astToTgpObj, astNode } from '../model-data/tgp-model-data.js'
 import { systemParams, OrigArgs } from '../../core/jb-macro.js'
 import { resolveProfileTypes, primitivesAst } from './resolve-types.js'
@@ -95,11 +95,17 @@ export function deltaFileContent(compText, newCompText, compLine) {
 //     return parseProfile(compText, {$$: 'comp<tgp>tgpComp', tgpType: 'comp<tgp>', tgpModel, basePath: utils.compName(topComp)})
 // }
 
-export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = '', $$}) {
+export function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0])
     resolveProfileTypes(topComp,{tgpModel, expectedType: tgpType, topComp})
-    topComp.$$ = $$ || `${tgpType}${topComp.$}`
+    let basePath = ''
+    if (tgpType == 'comp<tgp>') {
+        const { type, dsl } = tgpModel?.comps[`comp<tgp>${topComp.$}`]
+        const id = basePath = `${type}<${dsl||''}>${topComp.id}`
+        tgpModel.comps[id] = topComp
+    }
     const actionMap = []
+
     calcActionMap(topComp,basePath,topComp[astNode])
 
     return actionMap
@@ -167,7 +173,7 @@ export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = ''
             const firstParamAsArray = (param0.type||'').indexOf('[]') != -1 && !param0.byName
             const secondParamAsArray = param1.secondParamAsArray
             if (!firstParamAsArray && !secondParamAsArray)
-                delimiters.forEach(dl => actionMap.push({ action: `addProp!${path}`, from: dl.start, to: dl.end, source: 'delimiters' }))
+                delimiters.forEach(dl => actionMap.push({ action: `addProp!${path}`, from: dl.start, to: dl.end+1, source: 'delimiters' }))
             if (firstParamAsArray) {
                 const firstParamPath = `${path}~${param0.id}`
                 actionMap.push({ action: `prependPT!${firstParamPath}`, from: endOfPTName, to: (ast.arguments)?.[0]?.start || endOfPTName, source: 'firstParamAsArray' })
@@ -175,13 +181,13 @@ export function calcProfileActionMap(compText, {tgpType, tgpModel, basePath = ''
                 actionMap.push({ action: `appendPT!${firstParamPath}`, from: endOfParamArrayArea, to: endOfParamArrayArea })
                 delimiters.forEach((dl, i) => actionMap.push({ action: `insertPT!${firstParamPath}~${i}`, from: dl.start, to: dl.end }))
             }
-            if (secondParamAsArray && delimiters.length) {
+            if (secondParamAsArray) {
                 const secParamPath = `${path}~${param1.id}`
-                const startParamArrayArea = delimiters[0].end+1
+                const startParamArrayArea = delimiters.length ? delimiters[0].end+1 : ast.start
                 actionMap.push({ action: `prependPT!${secParamPath}`, from: startParamArrayArea, to: startParamArrayArea, source: 'secondParamAsArray' })
                 const endOfParamArrayArea = paramsByNameAst ? paramsByNameAst.start -1 : ast.end-1
                 actionMap.push({ action: `appendPT!${secParamPath}`, from: endOfParamArrayArea, to: endOfParamArrayArea })
-                delimiters.slice(1).forEach((dl, i) => actionMap.push({ action: `insertPT!${secParamPath}~${i}`, from: dl.start, to: dl.end }))
+                delimiters.forEach((dl, i) => actionMap.push({ action: `insertPT!${secParamPath}~${i}`, from: dl.start, to: dl.end }))
             }
             params.map(p=>({id:p.id, val: prof[p.id]})).filter(({val}) => val != null)
                 .forEach(({id,val}) => calcActionMap(val, `${path}~${id}`, prof[primitivesAst][id] || val[astNode]))

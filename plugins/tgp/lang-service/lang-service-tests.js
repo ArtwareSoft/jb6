@@ -1,14 +1,14 @@
 import { Test, Data, completionOptionsTest } from './lang-service-testers.js'
 
+Test('completionTest.param1', {
+  impl: completionOptionsTest(`uiTest(text(__'hello world', ''), contains('hello world'))`, ['style'])
+})
+
 Test('completionTest.param', {
   impl: completionOptionsTest({
     compText: `uiTest(__text(__'hello world',__ ''__)__,__ __contains('hello world')__)`,
     expectedSelections: ['runBefore','style','style','style','runBefore','runBefore','not','runBefore']
   })
-})
-/*
-Test('completionTest.param1', {
-  impl: completionOptionsTest(`uiTest(text(__'hello world', ''), contains('hello world'))`, ['style'])
 })
 
 Test('completionTest.pt', {
@@ -34,19 +34,22 @@ Test('completionTest.pipeline', {
   impl: completionOptionsTest(`uiTest(text(pipeline(''__)))`, ['split'])
 })
 
+Test('completionTest.pipeline2', {
+  impl: completionOptionsTest(`uiTest(text(pipeline('__')))`, ['split'])
+})
+
 Test('completionTest.secondParamAsArray', {
   impl: completionOptionsTest(`dataTest(pipeline('a',__ '__-%%-',__ '%%'__))`, ['split','split','split','split'])
 })
 
+Test('completionTest.secondParamAsArray1', {
+  impl: completionOptionsTest(`dataTest(pipeline('a',__ '-%%-', '%%'))`, ['split'])
+})
+
+/*
 Test('completionTest.typeAdapter', {
   impl: completionOptionsTest(`uiTest(text(typeAdapter('state<location>', __TBD())))`, {
     expectedSelections: ['israel']
-  })
-})
-
-Test('completionTest.pipeline2', {
-  impl: completionOptionsTest(`uiTest(text(pipeline('__')))`, {
-    expectedSelections: ['split']
   })
 })
 

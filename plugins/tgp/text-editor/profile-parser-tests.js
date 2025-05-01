@@ -81,19 +81,19 @@ const multiLineExample = `Control('multiLineExample', {
 })`
 
 Test('actionMapTest.multiLine.prepend', {
-  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'prependPT!~impl~controls', '80,85')
+  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'prependPT!control<ui>multiLineExample~impl~controls', '80,85')
 })
 
 Test('actionMapTest.param', {
-  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'begin!~params~0', '46,46')
+  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'begin!control<ui>multiLineExample~params~0', '46,46')
 })
 
 Test('actionMapTest.multiLine.implBegin', {
-  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'begin!~impl', '74,74')
+  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'begin!control<ui>multiLineExample~impl', '74,74')
 })
 
 Test('actionMapTest.multiLine.implEnd', {
-  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'end!~impl', '203,203')
+  impl: actionMapTest(multiLineExample, 'comp<tgp>', 'end!control<ui>multiLineExample~impl', '203,203')
 })
 
 /*
@@ -116,7 +116,6 @@ Test('actionMapTest.remark.pipeline', {
     expectedResult: equals(`pipeline(Var('x', 1), 'a', { '//': 'hello' })`)
   })
 })
-
 
 Test('actionMapTest.newLinesInCode', {
   impl: dataTest({
@@ -171,6 +170,13 @@ Test('actionMapTest.asyncInProfile', {
   })
 })
 
+Test('actionMapTest.funcDefaults', {
+  impl: dataTest({
+    calculate: () => prettyPrint({ aB(c, { b } = {}) { 3 } }),
+    expectedResult: and(not(contains('aB:')), contains('aB(c, { b } = {}) { 3 }')),
+  })
+})
+
 /*
 
 Test('actionMapTest.asIs', {
@@ -195,16 +201,6 @@ Test('actionMapTest.asIsLarge', {
 //   })
 // })
 
-
-
-Test('actionMapTest.funcDefaults', {
-  impl: dataTest({
-    calculate: () => prettyPrint({ aB(c, { b } = {}) { 3 } }),
-    expectedResult: and(not(contains('aB:')), contains('aB(c, { b } = {}) { 3 }')),
-    runBefore: runActionOnItems(list(1,2,3), delay(), 'index')
-  })
-})
-
 Test('actionMapTest.typeAdapter.from', {
   impl: dataTest({
     calculate: prettyPrint(() => typeAdapter('state<location>', israel()), true),
@@ -225,20 +221,4 @@ Test('actionMapTest.typeAdapter.to', {
   impl: dataTest(pipeline(typeAdapter('state<location>', israel()), '%capital/name%'), equals('Jerusalem'))
 })
 
-Test('actionMapTest.vars', {
-  impl: dataTest(
-    ctx => {
-    try {
-      const testToTest = 'coreTest.varsCases'
-      const compTxt = prettyPrintComp(testToTest.replace(/varsCases/, 'varsCases2'), jb.comps['test<>'+testToTest])
-      eval(compTxt)
-      return ctx.run(coreTest.asArrayBug(),'test<>') // checks for error
-        .then(({ success }) => success && compTxt)
-    } catch (e) {
-      return false
-    }
-  },
-    contains(`Var('items', [{id: 1}, {id: 2}])`)
-  )
-})
 */

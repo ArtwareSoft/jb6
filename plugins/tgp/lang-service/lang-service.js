@@ -1,7 +1,7 @@
 import { resolveCompArgs, isMacro}  from '../../core/jb-macro.js'
 import { utils, Data, jb, Ctx, DefComponents } from '../../common/common-utils.js'
 import { calcTgpModelData } from '../model-data/tgp-model-data.js'
-import { tgpEditorHost, offsetToLineCol, parseComp, deltaFileContent, filePosOfPath, calcHash } from '../text-editor/tgp-text-editor.js'
+import { tgpEditorHost, offsetToLineCol, calcProfileActionMap, deltaFileContent, filePosOfPath, calcHash } from '../text-editor/tgp-text-editor.js'
 import { prettyPrintWithPositions, prettyPrint } from '../formatter/pretty-print.js'
 import { update } from '../../db/immutable.js'
 
@@ -11,8 +11,9 @@ export async function calcCompProps(ctx, {includeCircuitOptions} = {}) {
     const {forceLocalSuggestions, forceRemoteCompProps} = ctx.vars
     const docProps = { forceLocalSuggestions, ...tgpEditorHost().compTextAndCursor() }
     const packagePath = docProps.packagePath = docProps.filePath
-    const compProps = (tgpModels[packagePath] && !forceRemoteCompProps) 
-        ? parseComp(docProps, tgpModels[packagePath])
+    const tgpModel = tgpModels[packagePath]
+    const compProps = (tgpModel && !forceRemoteCompProps) 
+        ? {...docProps, tgpModel, actionMap: calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
         : await calcCompProps()
     const circuitOptions = (compProps.path && includeCircuitOptions) ? 
         await new Ctx().setData(packagePath).calc({$: 'remote.circuitOptions', filePath: compProps.filePath, path: compProps.path}) : null
@@ -31,8 +32,8 @@ export async function calcCompProps(ctx, {includeCircuitOptions} = {}) {
         }
             
         docProps.filePath = tgpModelData.filePath
-        tgpModels[packagePath] = new tgpModelForLangService(tgpModelData)
-        return parseComp(docProps, tgpModels[packagePath])
+        const tgpModel = tgpModels[packagePath] = new tgpModelForLangService(tgpModelData)
+        return {...docProps, tgpModel, actionMap: calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
     }
 }
 
