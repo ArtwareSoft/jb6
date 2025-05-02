@@ -48,17 +48,6 @@ export const sum = Aggregator('sum', {
   impl: ctx => utils.asArray(ctx.data).reduce((acc,item) => +item+acc, 0)
 })
 
-export const slice = Aggregator('slice', {
-  params: [
-    {id: 'start', as: 'number', defaultValue: 0, description: '0-based index', mandatory: true},
-    {id: 'end', as: 'number', mandatory: true, description: '0-based index of where to end the selection (not including itself)'}
-  ],
-  impl: ({data},{start,end}) => {
-		if (!data || !data.slice) return null
-		return end ? data.slice(start,end) : data.slice(start)
-	}
-})
-
 export const sort = Aggregator('sort', {
   params: [
     {id: 'propertyName', as: 'string', description: 'sort by property inside object'},
@@ -77,13 +66,6 @@ export const sort = Aggregator('sort', {
   		return data.slice(0).sort((x,y)=>sortFunc(x,y));
 		return data.slice(0).sort((x,y)=>sortFunc(y,x));
 	}
-})
-
-export const first = Aggregator('first', {
-  params: [
-    {id: 'items', as: 'array', defaultValue: '%%'}
-  ],
-  impl: ({},{items}) => items[0]
 })
 
 export const last = Aggregator('last', {

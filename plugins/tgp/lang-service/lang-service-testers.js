@@ -21,6 +21,7 @@ function getTgpModel(filePath) {
 async function initCompletionText({ctx,compText,filePath,dsl,remoteSuggestions}) {
   const testId = ctx.vars.testID
   const fullText = compText.match(/^[a-z]+Test\(/) ? `Test('x', {\n  impl: ${compText}\n})` 
+    : compText.match(/^[A-Z]/) ? compText
     : `Test('x', {\n  impl: uiTest(${compText})\n})`
   const parts = fixToUniqueName(fullText).split('__')
   const offset = parts[0].length

@@ -1,9 +1,10 @@
 import { resolveCompArgs, isMacro}  from '../../core/jb-macro.js'
 import { utils, Data, jb, Ctx } from '../../common/common-utils.js'
 import { calcTgpModelData } from '../model-data/tgp-model-data.js'
-import { tgpEditorHost, offsetToLineCol, calcProfileActionMap, deltaFileContent, filePosOfPath, calcHash, getPosOfPath } from '../text-editor/tgp-text-editor.js'
+import { tgpEditorHost, offsetToLineCol, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath } from '../text-editor/tgp-text-editor.js'
 import { prettyPrint } from '../formatter/pretty-print.js'
 import { update } from '../../db/immutable.js'
+import { langServiceEdits } from './lang-service-edits.js'
 
 export const tgpModels = {} 
 
@@ -209,10 +210,9 @@ function setOp(path, value, srcCtx) {
     return { op: { $set: value }, path, srcCtx }
 }
 
-function cloneProfile(prof) {
+export function cloneProfile(prof) {
 	if (!prof || utils.isPrimitiveValue(prof) || typeof prof == 'function') return prof
-	const keys = [...Object.keys(prof),jb.core.OrigArgs]
-	return Object.fromEntries(keys.map(k=>[k,cloneProfile(prof[k])]))
+	return Object.fromEntries(Object.entries(prof).map(([k,v]) =>[k,cloneProfile(v)]))
 }
 
 export class tgpModelForLangService {
@@ -370,32 +370,13 @@ const compReferences = Data({
 const definition = Data({
     impl: async (ctx) => {
         const compProps = await _calcCompProps(ctx)
-        const { actionMap, reformatEdits, inExtension, errors, path, tgpModel, lineText } = compProps
-        if (reformatEdits)
-            return { errors: ['definition - bad format'], ...compProps }
-        const allSemantics = actionMap.filter(e => e.action && e.action.endsWith(path)).map(x => x.action.split('!')[0])
-        if (inExtension || allSemantics.includes('function')) {
-            return funcLocation()
-        } else if (path) {
-            const cmpId = tgpModel.compNameOfPath(path)
-            return utils.path(tgpModel.comps[cmpId],'$location') || funcLocation()
-        } else if (errors) {
+        const { errors, tgpModel, path } = compProps
+        const cmpId = tgpModel.compNameOfPath(path)
+        if (cmpId)
+            return tgpModel.comps[cmpId]?.$location
+        if (errors) {
             utils.logError('langService definition', {errors, ctx,compProps})
             return compProps
-        }
-
-        async function funcLocation() {
-            const [, lib, func] = lineText.match(/jb\.([a-zA-Z_0-9]+)\.([a-zA-Z_0-9]+)/) || ['', '', '']
-            if (lib && utils.path(jb, [lib, '__extensions'])) {
-                // TODO: pass extensions in tgpModel
-                const loc = Object.values(jb[lib].__extensions).filter(ext => ext.funcs.includes(func)).map(ext => ext.location)[0]
-                const lineOfExt = (+loc.line) || 0
-                const fileContent = await jbHost.codePackageFromJson().fetchFile(loc.path)
-                const lines = ('' + fileContent).split('\n').slice(lineOfExt)
-                const funcHeader = new RegExp(`[^\.]${func}\\s*:|[^\.]${func}\\s*\\(`) //[^{]+{)`)
-                const lineOfFunc = lines.findIndex(l => l.match(funcHeader))
-                return { ...loc, line: lineOfExt + lineOfFunc }
-            }
         }
     }
 })
@@ -437,5 +418,5 @@ const editAndCursorOfCompletionItem = Data({
   }
 })
 
-export const langService = {completionItems, definition, compId, compReferences, calcCompProps, editAndCursorOfCompletionItem}
+export const langService = {completionItems, definition, compId, compReferences, calcCompProps, editAndCursorOfCompletionItem, ...langServiceEdits}
 

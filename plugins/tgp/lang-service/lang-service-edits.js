@@ -1,3 +1,11 @@
+import { utils, Data } from '../../common/common-utils.js'
+import { _calcCompProps, cloneProfile } from './lang-service.js'
+import { prettyPrint } from '../formatter/pretty-print.js'
+import { update } from '../../db/immutable.js'
+import { tgpEditorHost, offsetToLineCol, calcProfileActionMap, deltaFileContent, filePosOfPath, calcHash, getPosOfPath } from '../text-editor/tgp-text-editor.js'
+import { resolveCompArgs, isMacro}  from '../../core/jb-macro.js'
+
+
 const deleteEdits = Data({ 
     impl: async ctx => {
         const compProps = await _calcCompProps(ctx)
@@ -16,15 +24,16 @@ const deleteEdits = Data({
             utils.path(opOnComp,pathAr,{$set: null });
 
         const newComp = update(comp,opOnComp)
-        const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
-        const edit = deltaFileContent(text, newRes.text , compLine)
-        utils.log('lang services delete', { edit, ...compProps })
-        return { edit, cursorPos: calcNewPos(newRes), hash: calcHash(text) }
+        resolveCompArgs(newComp,{tgpModel})
+        const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+        const edit = deltaFileContent(text, newcompText , compLine)
+        
+        return { edit, cursorPos: calcNewPos(newcompText), hash: calcHashNoTitle(text) }
 
-        function calcNewPos(prettyPrintData) {
-            let { line, col } = getPosOfPath(path, 'begin',{prettyPrintData, tgpModel})
+        function calcNewPos(compText) {
+            let { line, col } = getPosOfPath(path, 'begin',{compText, tgpModel})
             if (!line && !col) {
-                let { line, col } = getPosOfPath(utils.parentPath(path), 'begin',{prettyPrintData, tgpModel})
+                let { line, col } = getPosOfPath(utils.parentPath(path), 'begin',{compText, tgpModel})
             }
             if (!line && !col)
                 return utils.logError('delete can not find path', { path })
@@ -46,13 +55,13 @@ const disableEdits = Data({
         utils.path(opOnComp,pathAr,{$set: toggleVal });
 
         const newComp = update(comp,opOnComp)
-        const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
-        const edit = deltaFileContent(text, newRes.text , compLine)
-        utils.log('lang services disable', { edit, ...compProps })
-        return { edit, cursorPos: calcNewPos(newRes) , hash: calcHash(text)}
+        resolveCompArgs(newComp,{tgpModel})
+        const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+        const edit = deltaFileContent(text, newcompText , compLine)        
+        return { edit, cursorPos: calcNewPos(newcompText), hash: calcHashNoTitle(text) }
 
-        function calcNewPos(prettyPrintData) {
-            let { line, col } = getPosOfPath(path, 'begin',{prettyPrintData, tgpModel})
+        function calcNewPos(compText) {
+            let { line, col } = getPosOfPath(path, 'begin',{compText, tgpModel})
             return { line: line + compLine, col }
         }
     } 
@@ -70,24 +79,25 @@ const duplicateEdits = Data({
         const indexInArray = arrayElem && +pathAr.slice(-1)[0]
         const opOnComp = {}
         if (arrayElem) {
-            const toAdd = cloneProfile(comp?.pathAr)
+            const toAdd = cloneProfile(utils.path(comp,pathAr))
             utils.path(opOnComp,pathAr.slice(0, -1),{$splice: [[indexInArray, 0, toAdd]] })    
             const newComp = update(comp,opOnComp)
-            const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
-            const edit = deltaFileContent(text, newRes.text , compLine)
+            const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+            const edit = deltaFileContent(text, newcompText , compLine)
             utils.log('lang services duplicate', { edit, ...compProps })
             const targetPath = [compId,...pathAr.slice(0, -1),indexInArray+1].join('~')
-            return { edit, cursorPos: calcNewPos(targetPath, newRes), hash: calcHash(text) }
+            return { edit, cursorPos: calcNewPos(targetPath, newcompText), hash: calcHashNoTitle(text) }
         } else if (path.indexOf('~') == -1) { // duplicate component
             const noOfLines = (text.match(/\n/g) || []).length+1
-            const edit = deltaFileContent('', `\ncomponent('${shortId}', ${text})\n`, compLine+noOfLines)
+            const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+            const edit = deltaFileContent('', newcompText, compLine+noOfLines)
             utils.log('lang services duplicate comp', { edit, ...compProps })
             return { edit, cursorPos: {line: compLine+noOfLines+1, col: 0}}
         }
         return { errors: ['duplicate - bad format'], ...compProps }
 
-        function calcNewPos(path,prettyPrintData) {
-            let { line, col } = getPosOfPath(path, 'begin',{prettyPrintData, tgpModel})
+        function calcNewPos(path,compText) {
+            let { line, col } = getPosOfPath(path, 'begin',{compText, tgpModel})
             if (!line && !col)
                 return utils.logError('duplicate can not find target path', { path })
             return { line: line + compLine, col }
@@ -98,13 +108,12 @@ const duplicateEdits = Data({
 const createTestEdits = Data({ 
     impl: async ctx => {
         const compProps = await _calcCompProps(ctx)
-        const { reformatEdits, text, shortId, comp, compLine, compId, errors, path, tgpModel, lineText } = compProps
+        const { reformatEdits, text, shortId, compLine} = compProps
         if (reformatEdits)
             return { errors: ['createText - bad format'], ...compProps }
 
-        const impl = comp.$type == 'control<>' ? `uiTest(${shortId}(), contains(''))` : `dataTest(${shortId}(), equals(''))`
-        const testPrefix = comp.$type == 'action<>' ? 'action' : comp.$type == 'control<>' ? 'ui' : 'data'
-        const newText = `\ncomponent('${testPrefix}Test.${shortId}', {\n  impl: ${impl}\n})\n`        
+        const impl = `dataTest(${shortId}(), equals(''))`
+        const newText = `\nTest('dataTest.${shortId}', {\n  impl: ${impl}\n})\n`        
         const noOfLines = (text.match(/\n/g) || []).length+1
         const edit = deltaFileContent('', newText, compLine+noOfLines)
         utils.log('lang services duplicate comp', { edit, ...compProps })
@@ -123,31 +132,31 @@ const moveInArrayEdits = Data({
             const rev = path.split('~').slice(1).reverse()
             const indexOfElem = rev.findIndex(x => x.match(/^[0-9]+$/))
             if (indexOfElem != -1) {
-                const path = rev.slice(indexOfElem).reverse()
-                const arrayPath = path.slice(0, -1)
-                const fromIndex = +path.slice(-1)[0]
+                const elemPath = rev.slice(indexOfElem).reverse()
+                const arrayPath = elemPath.slice(0, -1)
+                const fromIndex = +elemPath.slice(-1)[0]
                 const toIndex = fromIndex + diff
-                const valToMove = utils.path(comp,path)
+                const valToMove = utils.path(comp,elemPath)
                 const op = {$splice: [[fromIndex,1],[toIndex,0,valToMove]] }
 
                 const opOnComp = {}
                 utils.path(opOnComp,arrayPath,op) // create opOnComp as nested object
                 const newComp = update(comp,opOnComp)
-                const newRes = prettyPrintWithPositions(newComp, { initialPath: compId, tgpModel })
-                const edit = deltaFileContent(text, newRes.text , compLine)
+                const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+                const edit = deltaFileContent(text, newcompText , compLine)
                 utils.log('tgpTextEditor moveInArray', { op, edit, ...compProps })
 
                 const origPath = compProps.path.split('~')
                 const index = origPath.length - indexOfElem
                 const to = [...origPath.slice(0,index-1),toIndex,...origPath.slice(index)].join('~')
 
-                return { edit, cursorPos: calcNewPos(to, newRes) }
+                return { edit, cursorPos: calcNewPos(to, newcompText) }
             }
         }
         return { errors: ['moveInArray - array elem was not found'], ...compProps }
 
-        function calcNewPos(path, prettyPrintData) {
-            const { line, col } = getPosOfPath(path, 'begin',{prettyPrintData, tgpModel})
+        function calcNewPos(path, compText) {
+            const { line, col } = getPosOfPath(path, 'begin',{compText, tgpModel})
             if (!line && !col)
                 return utils.logError('moveInArray can not find path', { path })
             return { line: line + compLine, col }
@@ -155,4 +164,8 @@ const moveInArrayEdits = Data({
     }
 })
 
-export const langService = { deleteEdits, disableEdits, duplicateEdits, createTestEdits, moveInArrayEdits }
+function calcHashNoTitle(str) {
+    return calcHash(str.split('\n').slice(1).join('\n'))
+}
+
+export const langServiceEdits = { deleteEdits, disableEdits, duplicateEdits, createTestEdits, moveInArrayEdits }

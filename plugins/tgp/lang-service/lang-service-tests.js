@@ -1,6 +1,6 @@
 import { Test, Data, completionOptionsTest, completionActionTest, dummyCompProps, fixEditedCompTest } from './lang-service-testers.js'
 import { asIs } from '../../core/core-components.js'
-import { pipeline, pipe, contains, equals } from '../../common/jb-common.js'
+import { pipeline, pipe, contains, equals, first, list, slice, join } from '../../common/jb-common.js'
 import { dataTest } from '../../testers/data-tester.js'
 import { langService } from './lang-service.js'
 
@@ -353,7 +353,7 @@ Test('completionTest.multiLineFeatures', {
     expectedCursorPos: '4,13'
   })
 })
-
+*/
 
 Test('langServiceTest.provideDefinition', {
   impl: dataTest({
@@ -383,7 +383,6 @@ Test('langServiceTest.provideDefinition.inProfile', {
   })
 })
 
-/*
 Test('langServiceTest.moveInArrayEdits', {
   impl: dataTest({
     calculate: pipe(
@@ -405,7 +404,7 @@ Test('langServiceTest.duplicateEdits', {
     expectedResult: equals(asIs({
         edit: {range: {start: {line: 1, col: 52}, end: {line: 1, col: 52}}, newText: 'slice(0, 2), '},
         cursorPos: {line: 1, col: 52},
-        hash: 747934708
+        hash: 2054365702
     }))
   })
 })
@@ -420,44 +419,39 @@ Test('langServiceTest.deleteEdits', {
     expectedResult: equals(asIs({
         edit: {range: {start: {line: 1, col: 39}, end: {line: 1, col: 52}}, newText: ''},
         cursorPos: {line: 1, col: 39},
-        hash: 747934708
+        hash: 2054365702
     }))
   })
-})
-
-Test('test.tst1', {
-  impl: pipeline(list(1,2,3), slice(0, 2), join())
 })
 
 Test('langServiceTest.createTestEdits', {
   impl: dataTest({
     calculate: pipe(
-      dummyCompProps(`Test('test.tst1', {\n  impl: pipeline(list(1,2,3), __slice(0, 2), join())\n})`),
+      dummyCompProps(`Data('tst1', {\n  impl: pipeline(list(1,2,3), __slice(0, 2), join())\n})`),
       langService.createTestEdits(),
       first()
     ),
     expectedResult: equals(asIs({
         edit: {
           range: {start: {line: 3, col: 0}, end: {line: 3, col: 0}},
-          newText: `\nTest('dataTest.test.tst1', {\n  impl: dataTest(test.tst1(), equals(''))\n})\n`
+          newText: `\nTest('dataTest.tst1', {\n  impl: dataTest(tst1(), equals(''))\n})\n`
         },
         cursorPos: {line: 4, col: 0}
     }))
   })
 })
 
-Test('langServiceTest.enableEdits', {
-  impl: dataTest({
-    calculate: pipe(
-      dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2, { $disabled: true }), join()), equals('1,2'))`),
-      langService.disableEdits(),
-      first()
-    ),
-    expectedResult: equals(asIs({
-        edit: {range: {start: {line: 1, col: 49}, end: {line: 1, col: 70}}, newText: ''},
-        cursorPos: {line: 1, col: 39},
-        hash: -1274638064
-    }))
-  })
-})
-  */
+// Test('langServiceTest.enableEdits', {
+//   impl: dataTest({
+//     calculate: pipe(
+//       dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2, { $disabled: true }), join()), equals('1,2'))`),
+//       langService.disableEdits(),
+//       first()
+//     ),
+//     expectedResult: equals(asIs({
+//         edit: {range: {start: {line: 1, col: 49}, end: {line: 1, col: 70}}, newText: ''},
+//         cursorPos: {line: 1, col: 39},
+//         hash: -1274638064
+//     }))
+//   })
+// })

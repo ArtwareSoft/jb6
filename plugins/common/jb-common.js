@@ -56,12 +56,30 @@ export const filter = Aggregator('filter', {
   impl: (ctx, {filter}) => utils.toArray(ctx.data).filter(item => filter(ctx.setData(item)))
 })
 
+export const first = Aggregator('first', {
+  params: [
+    {id: 'items', as: 'array', defaultValue: '%%'}
+  ],
+  impl: ({},{items}) => items[0]
+})
+
 export const list = Data('list', {
   description: 'list definition, flatten internal arrays',
   params: [
     {id: 'items', type: 'data[]', as: 'array', composite: true}
   ],
   impl: ({}, {items}) => items.flatMap(item=>Array.isArray(item) ? item : [item])
+})
+
+export const slice = Aggregator('slice', {
+  params: [
+    {id: 'start', as: 'number', defaultValue: 0, description: '0-based index', mandatory: true},
+    {id: 'end', as: 'number', mandatory: true, description: '0-based index of where to end the selection (not including itself)'}
+  ],
+  impl: ({data},{start,end}) => {
+		if (!data || !data.slice) return null
+		return end ? data.slice(start,end) : data.slice(start)
+	}
 })
 
 export const firstSucceeding = Data('firstSucceeding', {

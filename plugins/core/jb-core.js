@@ -41,10 +41,10 @@ export function run(profile, ctx = new Ctx(), settings = {openExpression: true, 
     if (utils.isPromise(ctx)) // handling a-synch vars
         return ctx.then(resolvedCtx => run(profile,resolvedCtx,{...settings, resolvedCtx: true}))
     delete settings.resolvedCtx
-    if (profile.data != null)
-        ctx = ctx.setData(profile.data)
-
     const { jbCtx } = ctx
+    if (profile.data != null)
+        ctx = ctx.setData(run(profile.data, ctx.setTgpCtx(jbCtx.innerParam({id: 'data'}, profile)), settings))
+
 
     const {openExpression, openArray, openObj, openComp} = settings
     if (typeof profile == 'string' && openExpression)

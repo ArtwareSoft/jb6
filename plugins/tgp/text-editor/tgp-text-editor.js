@@ -1,9 +1,8 @@
-import { jb, TgpType, utils, logException } from '../../common/common-utils.js'
+import { jb, utils, logException } from '../../common/common-utils.js'
 import { astToTgpObj, astNode } from '../model-data/tgp-model-data.js'
-import { systemParams, OrigArgs, resolveProfileTop } from '../../core/jb-macro.js'
+import { systemParams, resolveProfileTop } from '../../core/jb-macro.js'
 import { resolveProfileTypes, primitivesAst } from './resolve-types.js'
 import { parse } from '/libs/acorn.mjs'
-import { prettyPrintWithPositions } from '../formatter/pretty-print.js'
 
 const visitedPaths = [] 
 let currentVisited = 0
@@ -106,8 +105,11 @@ export function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel,
     const actionMap = []
 
     calcActionMap(topComp, compId, topComp[astNode])
+    const path = expectedPath || actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to)
+        .map(x => x.action.split('!').pop())
+        .reduce((longest, current) => current.length > longest.length ? current : longest, '');
 
-    return { text: compText, compId, comp: topComp, actionMap }
+    return { text: compText, compId, comp: topComp, actionMap, path }
 
     function calcActionMap(prof,path,ast) {
         const pathMatch = expectedPath.startsWith(path) || path.startsWith(expectedPath)
