@@ -138,6 +138,10 @@ export class Ctx {
             } , this)
         return vars.reduce((ctx,{name,val},i) => ctx.setVars({[name]: runInnerPathForVar(val, i, ctx)}), this )        
     }
+    dataObj(out,vars,input) { 
+        //    this.probe && jb.probe.record(this,out,input||out,vars)
+        return {data: out, vars: vars || this.vars} 
+    }
 }
 
 export class jbComp {
@@ -176,7 +180,7 @@ class param {
         if (this.dynamic == true) {
             const res = callerCtx => doResolve(mergeDataCtx(creatorCtx, callerCtx))
             res.creatorCtx = creatorCtx
-            res.profile = profile
+            res.profile = profile[this.id]
             return res
         }                
         return doResolve(creatorCtx)

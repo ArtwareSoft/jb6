@@ -224,7 +224,7 @@ export const obj = Data('obj', {
   params: [
     {id: 'props', type: 'prop[]', mandatory: true, sugar: true}
   ],
-  impl: (ctx, {props}) => Object.fromEntries(props.map(p=>[p.name, utils.toJstype(p.val(ctx),p.type)]))
+  impl: (ctx, {props}) => Object.fromEntries((props || []).map(p=>[p.name, utils.toJstype(p.val(ctx),p.type)]))
 })
 
 export const dynamicObject = Data('dynamicObject', {
@@ -443,7 +443,7 @@ export const runActionOnItems = Action('runActionOnItems', {
   impl: (ctx, {items, action, indexVariable}) => items.reduce( async (pr,_item,i) => {
     await pr;
     const item = await _item
-    return action(ctx.setVar(indexVariable,i).setData(item))
+    return action(ctx.setVars({[indexVariable]: i}).setData(item))
   })
 })
 

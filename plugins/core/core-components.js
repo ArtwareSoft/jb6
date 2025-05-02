@@ -23,7 +23,7 @@ export const If = Any('If', {
     {id: 'then', type: '$asParent', dynamic: true, composite: true},
     {id: 'Else', type: '$asParent', dynamic: true}
   ],
-  impl: ({},{ cond,this: _then, else: _else}) => cond() ? _then() : _else()
+  impl: ({},{ condition, then, Else}) => condition() ? then() : Else()
 })
 
 export const TBD = Any('TBD', {

@@ -15,7 +15,7 @@ export function initSpy({spyParam: _spyParam}) {
     if (!_spyParam) return
     spyParam = _spyParam
     enabled = true
-    _obs = _obs || jb.callbag?.subject()
+    _obs = _obs || jb.ext.callbag?.subject()
     calcIncludeLogsFromSpyParam()
     return spy
 }

@@ -1,6 +1,6 @@
-import { Boolean, Data, jb } from '../core/tgp.js'
+import { Boolean, Data, Action, jb } from '../core/tgp.js'
 import { log, logError } from '../core/logger.js'
-import { resolveFinishedPromise, asArray, toArray, consts } from '../core/core-utils.js'
+import { utils, consts } from '../core/core-utils.js'
 
 export function Writable(id, val) {
     resource(id,val)
@@ -26,11 +26,11 @@ const simpleValueByRefHandler = {
         return to
     },
     push(ref,toAdd) {
-        const arr = asArray(val(ref))
+        const arr = utils.asArray(val(ref))
         toArray(toAdd).forEach(item => arr.push(item))
     },
     splice(ref,args) {
-        const arr = asArray(val(ref))
+        const arr = utils.asArray(val(ref))
         arr.splice(...(args[0]))
     },
     asRef(value) {
@@ -81,7 +81,7 @@ const db = jb.ext.db = {
     objHandler,
     val(ref) {
         if (ref == null || typeof ref != 'object') return ref
-        const handler = db.refHandler(ref)
+        const handler = refHandler(ref)
         return handler ? handler.val(ref) : ref
     },
     asRef: obj => {
@@ -108,9 +108,9 @@ const db = jb.ext.db = {
     pathOfRef: ref => safeRefCall(ref, h=>h.pathOfRef(ref)),
     refOfPath: path => watchableHandlers.reduce((res,h) => res || h.refOfPath(path),null),
 
-    calcVar(varname, ctx, {isRef}) {
+    calcVar(varname, ctx, {isRef} = {}) {
         const { jbCtx: { args }} = ctx  
-        return resolveFinishedPromise(doCalc())
+        return utils.resolveFinishedPromise(doCalc())
         
         function doCalc() {
             if (args && args[varname] != undefined) return args[varname]
@@ -169,7 +169,7 @@ export const addToArray = Action('addToArray', {
   impl: (ctx,{array,toAdd,clone,addAtTop}) => {
     const items = clone ? JSON.parse(JSON.stringify(toAdd)) : toAdd;
     const index = addAtTop ? 0 : utils.val(array).length;
-    db.splice(array, [[index, 0, ...utils.asArray(items)]],ctx);
+    db.splice(array, [[index, 0, ...utils.utils.asArray(items)]],ctx);
   }
 })
 

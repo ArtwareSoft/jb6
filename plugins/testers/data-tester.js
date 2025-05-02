@@ -1,7 +1,7 @@
 import { Test, Usage, countersErrors } from './tester.js'
-import { utils, jb, Data, TgpType, Var, Const } from '../common/jb-common.js'
+import { utils, jb, Data, TgpType, Var, Const, equals, contains, join, pipeline, pipe, list, obj, prop, split, runActions, delay } from '../common/jb-common.js'
 import { spy } from '../logger/spy.js'
-export { jb, Test, Usage, Data, utils, Var, Const, TgpType }
+export { jb, Test, Usage, Data, utils, Var, Const, TgpType, equals, contains, pipeline, join, pipe, list, obj, prop, split, runActions, delay }
 
 export const dataTest = Test('dataTest', {
   params: [

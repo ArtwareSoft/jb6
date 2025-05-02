@@ -1,5 +1,5 @@
 import { jb } from './jb-core.js'
-import { logError } from './logger.js'
+import { log, logError } from './logger.js'
 
 const isPrimitiveValue = val => ['string','boolean','number'].indexOf(typeof val) != -1
 
@@ -112,4 +112,5 @@ export const utils = {
     compName, compParams, parentPath,
     val: x=>val(x)
 }
+export { log, logError }
 
