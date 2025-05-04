@@ -1,6 +1,6 @@
 import { Test, dataTest, utils } from '../../testers/data-tester.js'
 import { prettyPrintWithPositions } from '../formatter/pretty-print.js'
-import { resolveProfileArgs } from '../../core/jb-macro.js'
+import { resolveProfileArgs } from '../../core/jb-args.js'
 import { calcProfileActionMap } from './tgp-text-editor.js'
 import { calcTgpModelData } from '../model-data/tgp-model-data.js'
 export { Test, dataTest }

@@ -1,10 +1,27 @@
-import { utils, Const } from './common-utils.js'
-import { TgpType, Action, Data, Boolean, Any, DefComponents, jb, Var } from '../core/tgp.js'
-import { If, typeAdapter, log, asIs } from '../core/core-components.js'
+import { dsls } from '../core/all.js'
+import { utils } from './common-utils.js'
+export { utils, dsls }
 
-export { If, typeAdapter, Var, log, Const, TgpType, Action, Data, Boolean, utils, jb, asIs }
+const { 
+  tgp: { Any, DefComponents, Const, TgpType, TgpTypeModifier,
+    var : { Var }, 
+    any: { If, asIs} 
+  },
+  common: { Data, Boolean},
+} = dsls
 
-export const pipeline = Data('pipeline', {
+const Action = TgpType('action','common')
+
+Data('log', {
+  moreTypes: 'action',
+  params: [
+    {id: 'logName', as: 'string', mandatory: 'true'},
+    {id: 'logObj', as: 'single', defaultValue: '%%'}
+  ],
+  impl: (ctx,{logName,logObj}) => { log(logName,{...logObj,ctx}); return ctx.data }
+})
+
+Data('pipeline', {
   description: 'flat map data arrays one after the other, does not wait for promises and rx',
   params: [
     {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
@@ -14,7 +31,7 @@ export const pipeline = Data('pipeline', {
     runAsAggregator(ctx, prof,index,dataArray, utils.asArray(ctx.jbCtx.profile.items)), source())
 })
 
-export const pipe = Data('pipe', {
+Data('pipe', {
   description: 'synch data, wait for promises and reactive (callbag) data',
   params: [
     {id: 'items', type: 'data[]', dynamic: true, mandatory: true, composite: true}
@@ -33,7 +50,7 @@ export const pipe = Data('pipe', {
   }
 })
 
-export const Aggregator = TgpType('data', { aggregator: true})
+const Aggregator = TgpTypeModifier('Aggregator', { aggregator: true, dsl: 'common', type: 'data'})
 
 export const join = Aggregator('join', {
   params: [
@@ -299,7 +316,7 @@ Data('extendWithIndex', {
 			Object.assign({}, item, Object.fromEntries(properties.map(p=>[p.name, utils.toJstype(p.val(ctx.setData(item).setVars({index:i})),p.type)]))))
 })
 
-export const Prop = TgpType('prop')
+export const Prop = TgpType('prop','common')
 export const prop = Prop('prop', {
   params: [
     { id: 'name', as: 'string', mandatory: true },
@@ -457,7 +474,7 @@ export const removeProps = Action('removeProps', {
 })
 
 export const delay = Action('delay', {
-  moreTypes: 'data<>',
+  moreTypes: 'data',
   params: [
     {id: 'mSec', as: 'number', defaultValue: 1},
     {id: 'res', defaultValue: '%%'}
@@ -529,7 +546,7 @@ export const Switch = Data('Switch', {
   }
 })
 
-export const SwitchCase = TgpType('switch-case')
+export const SwitchCase = TgpType('switch-case','common')
 export const Case = SwitchCase('Case', {
   params: [
     {id: 'condition', type: 'boolean', mandatory: true, dynamic: true},
@@ -551,7 +568,7 @@ export const actionSwitch = Action('actionSwitch', {
   }
 })
 
-export const ActionSwitchCase = TgpType('action-switch-case')
+export const ActionSwitchCase = TgpType('action-switch-case','common')
 export const actionSwitchCase = ActionSwitchCase('actionSwitchCase', {
     params: [
     {id: 'condition', type: 'boolean', as: 'boolean', mandatory: true, dynamic: true},

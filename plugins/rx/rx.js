@@ -4,12 +4,12 @@ import { callbag } from './jb-callbag.js'
 import { operators, RXOperator } from './rx-operators.js'
 import { writeValue } from '../db/writable.js'
 
-export const RXSource = TgpType('source', { dsl : 'rx'})
-export const RXSink = TgpType('sink', { dsl : 'rx'})
+export const RXSource = TgpType('source', 'rx')
+export const RXSink = TgpType('sink', 'rx')
 export { RXOperator }
 
 const pipe = RXSource({
-  moreTypes: 'data<>,action<>',
+  moreTypes: 'data<common>,action<common>',
   description: 'pipeline of reactive observables with source',
   params: [
     {id: 'elems', type: 'rx[]', as: 'array', mandatory: true, dynamic: true, templateValue: []}

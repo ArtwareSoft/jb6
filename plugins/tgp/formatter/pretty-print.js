@@ -1,4 +1,4 @@
-import { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, asJbComp }  from '../../core/jb-macro.js'
+import { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, asJbComp }  from '../../core/jb-args.js'
 import { jbComp}  from '../../core/jb-core.js'
 import { utils, Data } from '../../common/common-utils.js'
 
@@ -245,7 +245,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
       paramsByName = params.slice(0)
     }
 
-    const varArgs = utils.asArray(profile.vars).map(({name, val, async},i) => ({innerPath: `vars~${i}`, val: {$$: 'var<>Var', name, val,async, ...calcArrayPos(i,profile.vars) }}))
+    const varArgs = utils.asArray(profile.vars).map(({name, val, async},i) => ({innerPath: `vars~${i}`, val: {$$: 'var<tgp>Var', name, val,async, ...calcArrayPos(i,profile.vars) }}))
     const varsByValue = hasParamAsArray ? varArgs : []
     //const varsByName = hasParamAsArray ? [] : ['vars']
     const systemProps = sysProps.filter(p=>p != 'vars' || !varsByValue.length).flatMap(p=>profile[p] ? [{innerPath: p, val: profile[p]}] : [])

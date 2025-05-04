@@ -1,9 +1,11 @@
-import { Test, Usage, countersErrors } from './tester.js'
-import { utils, jb, Data, TgpType, Var, Const, equals, contains, join, pipeline, pipe, list, obj, prop, split, runActions, delay } from '../common/jb-common.js'
+import { dsls } from '../core/all.js'
+import { testUtils } from './tester.js'
+import { utils } from '../common/jb-common.js'
 import { spy } from '../logger/spy.js'
-export { jb, Test, Usage, Data, utils, Var, Const, TgpType, equals, contains, pipeline, join, pipe, list, obj, prop, split, runActions, delay }
+const { test: { Test }} = dsls
 
-export const dataTest = Test('dataTest', {
+
+Test('dataTest', {
   params: [
     {id: 'calculate', type:'data', dynamic: true},
     {id: 'expectedResult', type: 'boolean', dynamic: true},
@@ -42,7 +44,7 @@ export const dataTest = Test('dataTest', {
 				})()
 			])
 			let testFailure = utils.path(testRes,'0.testFailure') || testRes?.testFailure
-			const countersErr = countersErrors(expectedCounters,allowError)
+			const countersErr = testUtils.countersErrors(expectedCounters,allowError)
 			const expectedResultCtx = ctxToUse.setData(testRes)
 			const expectedResultRes = !testFailure && await expectedResult(expectedResultCtx)
 			testFailure = expectedResultRes?.testFailure

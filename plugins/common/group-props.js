@@ -1,6 +1,6 @@
-import { Data, Aggregator, utils, TgpType, pipeline, prop, removeProps } from './jb-common.js'
+import {} from './jb-common.js'
 
-export const GroupProp = TgpType('group-prop')
+export const GroupProp = TgpType('group-prop','common')
 
 export const splitByPivot = Aggregator('splitByPivot', {
   params: [

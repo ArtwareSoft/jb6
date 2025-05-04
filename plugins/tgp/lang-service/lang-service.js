@@ -1,4 +1,4 @@
-import { resolveCompArgs, isMacro}  from '../../core/jb-macro.js'
+import { resolveCompArgs, isMacro}  from '../../core/jb-args.js'
 import { utils, Data, jb, Ctx } from '../../common/common-utils.js'
 import { calcTgpModelData } from '../model-data/tgp-model-data.js'
 import { tgpEditorHost, offsetToLineCol, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath } from '../text-editor/tgp-text-editor.js'

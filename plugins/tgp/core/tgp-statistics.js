@@ -3,7 +3,7 @@ import { utils, Data, jb } from '../../common/common-utils.js'
 const refs = {}, comps = {}
 function calcRefs() {
   if (Object.keys(comps).length) return
-  comps = Object.fromEntries(Object.entries(jb.tgp).flatMap(([dsl,types]) => 
+  comps = Object.fromEntries(Object.entries(jb.dsls).flatMap(([dsl,types]) => 
     Object.entries(types).flatMap(([type,tgpType]) => Object.entries(tgpType).map(([id,comp]) => [`${type}<${dsl}>${id}`, comp]))))
 
   Object.keys(comps).filter(k=>comps[k]).forEach(k=>

@@ -3,7 +3,7 @@ import { log, logError, utils } from '../core/core-utils.js'
 import { callbag } from './jb-callbag.js'
 import { If } from  '../core/core-components.js'
 
-export const RXOperator = TgpType('op', {dsl: 'rx'})
+export const RXOperator = TgpType('op', 'rx')
 
 export function addDebugInfo(f,ctx) { f.ctx = ctx; return f}
 
@@ -156,7 +156,7 @@ const map = RXOperator({
 
 const mapPromise = RXOperator({
   params: [
-    {id: 'func', type: 'data', moreTypes: 'action<>', dynamic: true, mandatory: true}
+    {id: 'func', type: 'data', moreTypes: 'action<common>', dynamic: true, mandatory: true}
   ],
   impl: (ctx, {func}) => callbag.mapPromise(ctx2 => Promise.resolve(func(ctx2)).then(data => ctx.dataObj(data, ctx2.vars || {}, ctx2.data))
     .catch(err => ({vars: {...ctx2.vars, err}, data: err})))

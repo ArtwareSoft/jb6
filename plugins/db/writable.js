@@ -1,15 +1,15 @@
-import { Boolean, Data, Action, jb } from '../core/tgp.js'
-import { log, logError } from '../core/logger.js'
-import { utils, consts } from '../core/core-utils.js'
+import { jb, coreUtils, dsls } from '../core/all.js'
+const { Boolean, Data, Action } = dsls.common
+const { log, logError, asArray, resolveFinishedPromise, isPromise, toArray } = coreUtils
+const { consts } = jb.coreRegistry
 
-export function Writable(id, val) {
-    resource(id,val)
+jb.dbRegistry = {
+  watchableHandlers: [],
+  isWatchableFunc: [], // assigned by watchable module, if loaded
+  resources: {}
 }
 
-export const addWatchableHandler = h => h && watchableHandlers.push(h)
-export const removeWatchableHandler = h => watchableHandlers = watchableHandlers.filter(x=>x!=h)
-const watchableHandlers = []
-const isWatchableFunc = [] // assigned by watchable module, if loaded
+const { watchableHandlers, isWatchableFunc, resources } = jb.dbRegistry
 
 const simpleValueByRefHandler = {
     val(v) {
@@ -26,11 +26,11 @@ const simpleValueByRefHandler = {
         return to
     },
     push(ref,toAdd) {
-        const arr = utils.asArray(val(ref))
+        const arr = asArray(val(ref))
         toArray(toAdd).forEach(item => arr.push(item))
     },
     splice(ref,args) {
-        const arr = utils.asArray(val(ref))
+        const arr = asArray(val(ref))
         arr.splice(...(args[0]))
     },
     asRef(value) {
@@ -49,7 +49,6 @@ const simpleValueByRefHandler = {
     doOp() {},
 }
 
-const resources = {}
 function resource(id,val) { 
     if (typeof val !== 'undefined')
         resources[id] = val
@@ -77,7 +76,7 @@ function refHandler(ref) {
     return watchableHandlers.find(handler => handler.isRef(ref))
 }
 
-const db = jb.ext.db = {
+const dbUtils = jb.dbUtils = {
     objHandler,
     val(ref) {
         if (ref == null || typeof ref != 'object') return ref
@@ -110,7 +109,7 @@ const db = jb.ext.db = {
 
     calcVar(varname, ctx, {isRef} = {}) {
         const { jbCtx: { args }} = ctx  
-        return utils.resolveFinishedPromise(doCalc())
+        return resolveFinishedPromise(doCalc())
         
         function doCalc() {
             if (args && args[varname] != undefined) return args[varname]
@@ -121,45 +120,49 @@ const db = jb.ext.db = {
                 return isRef ? useResourcesHandler(h=>h.refOfPath([varname])) : resource(varname)
             }
         }
-    }
+    },
+    addWatchableHandler: h => h && watchableHandlers.push(h),
+    removeWatchableHandler: h => watchableHandlers = watchableHandlers.filter(x=>x!=h)
 }
 
-export const isRef = Boolean('isRef', {
+// Todo: maybe should be a special component
+export function Writable(id, val) { resource(id,val) }
+
+Boolean('isRef', {
   params: [
     {id: 'obj', mandatory: true}
   ],
-  impl: ({},{obj}) => db.isRef(obj)
+  impl: ({},{obj}) => dbUtils.isRef(obj)
 })
 
-export const asRef = Data('asRef', {
+Data('asRef', {
   params: [
     {id: 'obj', mandatory: true}
   ],
-  impl: ({},{obj}) => db.asRef(obj)
+  impl: ({},{obj}) => dbUtils.asRef(obj)
 })
 
-export const writeValue = Action('writeValue', {
-  category: 'mutable:100',
+Action('writeValue', {
   params: [
     {id: 'to', as: 'ref', mandatory: true},
     {id: 'value', mandatory: true},
     {id: 'noNotifications', as: 'boolean', type: 'boolean'}
   ],
   impl: (ctx,{to,value,noNotifications}) => {
-    if (!db.isRef(to)) {
+    if (!dbUtils.isRef(to)) {
       debugger
       ctx.run(ctx.jbCtx.profile.to,{as: 'ref'}) // for debug
       return logError(`can not write to: ${ctx.jbCtx.profile.to}`, {ctx})
     }
-    const val = utils.val(value)
-    if (utils.isPromise(val))
-      return Promise.resolve(val).then(_val=>db.writeValue(to,_val,ctx,noNotifications))
+    const val = dbUtils.val(value)
+    if (isPromise(val))
+      return Promise.resolve(val).then(_val=>dbUtils.writeValue(to,_val,ctx,noNotifications))
     else
-      db.writeValue(to,val,ctx,noNotifications)
+      dbUtils.writeValue(to,val,ctx,noNotifications)
   }
 })
 
-export const addToArray = Action('addToArray', {
+Action('addToArray', {
   params: [
     {id: 'array', as: 'ref', mandatory: true},
     {id: 'toAdd', as: 'array', defaultValue: '%%'},
@@ -168,21 +171,21 @@ export const addToArray = Action('addToArray', {
   ],
   impl: (ctx,{array,toAdd,clone,addAtTop}) => {
     const items = clone ? JSON.parse(JSON.stringify(toAdd)) : toAdd;
-    const index = addAtTop ? 0 : utils.val(array).length;
-    db.splice(array, [[index, 0, ...utils.utils.asArray(items)]],ctx);
+    const index = addAtTop ? 0 : dbUtils.val(array).length;
+    dbUtils.splice(array, [[index, 0, ...asArray(items)]],ctx);
   }
 })
 
-export const move = Action('move', {
+Action('move', {
   description: 'move item in tree, activated from D&D',
   params: [
     {id: 'from', as: 'ref', mandatory: true},
     {id: 'to', as: 'ref', mandatory: true}
   ],
-  impl: (ctx,{from,to: _to}) => db.move(from,_to,ctx)
+  impl: (ctx,{from,to: _to}) => dbUtils.move(from,_to,ctx)
 })
 
-export const splice = Action('splice', {
+Action('splice', {
   params: [
     {id: 'array', as: 'ref', mandatory: true},
     {id: 'fromIndex', as: 'number', mandatory: true},
@@ -190,30 +193,30 @@ export const splice = Action('splice', {
     {id: 'itemsToAdd', as: 'array', defaultValue: []}
   ],
   impl: (ctx,{array,fromIndex,noOfItemsToRemove,itemsToAdd}) =>
-		db.splice(array,[[fromIndex,noOfItemsToRemove,...itemsToAdd]],ctx)
+		dbUtils.splice(array,[[fromIndex,noOfItemsToRemove,...itemsToAdd]],ctx)
 })
 
-export const removeFromArray = Action('removeFromArray', {
+Action('removeFromArray', {
   params: [
     {id: 'array', as: 'ref', mandatory: true},
     {id: 'itemToRemove', as: 'single', description: 'choose item or index'},
     {id: 'index', as: 'number', description: 'choose item or index'}
   ],
   impl: (ctx,{array,itemToRemove,index: _index}) => {
-		const index = itemToRemove ? utils.toArray(array).indexOf(itemToRemove) : _index;
+		const index = itemToRemove ? toArray(array).indexOf(itemToRemove) : _index;
 		if (index != -1)
-			db.splice(array,[[index,1]],ctx)
+			dbUtils.splice(array,[[index,1]],ctx)
 	}
 })
 
-export const toggleBooleanValue = Action('toggleBooleanValue', {
+Action('toggleBooleanValue', {
     params: [
       {id: 'of', as: 'ref'}
     ],
-    impl: (ctx,{of: _of}) => db.writeValue(_of,utils.val(_of) ? false : true,ctx)
+    impl: (ctx,{of: _of}) => dbUtils.writeValue(_of,dbUtils.val(_of) ? false : true,ctx)
 })
 
-export const getOrCreate = Data('getOrCreate', {
+Data('getOrCreate', {
   description: 'memoize, cache, calculate value if empty and assign for next time',
   category: 'mutable:80',
   params: [
@@ -221,10 +224,10 @@ export const getOrCreate = Data('getOrCreate', {
     {id: 'calcValue', dynamic: true}
   ],
   impl: async (ctx, {writeTo, calcValue}) => {
-    let val = utils.val(writeTo)
+    let val = dbUtils.val(writeTo)
     if (val == null) {
       val = await calcValue()
-      db.writeValue(writeTo,val,ctx)
+      dbUtils.writeValue(writeTo,val,ctx)
     }
     return val
   }

@@ -3,7 +3,7 @@ import { Test, dataTest } from '../../testers/data-tester.js'
 
 import { prettyPrintWithPositions, prettyPrint, prettyPrintComp} from '../formatter/pretty-print.js'
 import { getPosOfPath} from './tgp-text-editor.js'
-import { asComp } from '../../core/jb-macro.js'
+import { asComp } from '../../core/jb-args.js'
 import { jb, Data, Boolean, Var } from '../../common/jb-common.js'
 import { Control } from '../../testers/ui-dsl/ui.js'
 const { group, text, controlWithCondition } = Control

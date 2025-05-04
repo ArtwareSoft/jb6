@@ -1,15 +1,16 @@
-import { RT_types, utils, consts } from './core-utils.js'
-import { log, logError } from './logger.js'
-import { jb } from './jb-core.js'
-const {isRefType, resolveFinishedPromise, toString, toNumber} = utils
+import { coreUtils, jb } from './core-utils.js'
+const { log, logError, isRefType, resolveFinishedPromise, toString, toNumber, RT_types } = coreUtils
 
-const val = v => jb.ext.db ? jb.ext.db.val(v) : v
-const isRef = v => jb.ext.db ? jb.ext.db.isRef(v) : false
-const objHandler = v => jb.ext.db ? jb.ext.db.objHandler(v) : null
+const val = v => jb.dbUtils ? jb.dbUtils.val(v) : v
+const isRef = v => jb.dbUtils ? jb.dbUtils.isRef(v) : false
+const objHandler = v => jb.dbUtils ? jb.dbUtils.objHandler(v) : null
 
-const calcVar = (varname, ctx) => {
-    if (jb.ext.db)
-        return jb.ext.db.calcVar(varname,ctx)
+Object.assign(coreUtils, {calcExpression: calc, calcVar, calcBool})
+const { consts } = jb.coreRegistry
+
+function calcVar(varname, ctx) {
+    if (jb.dbUtils)
+        return jb.dbUtils.calcVar(varname,ctx)
     const { jbCtx: { args }} = ctx  
     return resolveFinishedPromise(doCalc())
 
@@ -20,7 +21,7 @@ const calcVar = (varname, ctx) => {
     }
 }
 
-export function calc(_exp, ctx, overrideParentParam ) {
+function calc(_exp, ctx, overrideParentParam ) {
     const { jbCtx : {parentParam: ctxParentParam } } = ctx
     const parentParam = overrideParentParam || ctxParentParam
     const jstype = parentParam?.ref ? 'ref' : parentParam?.as
@@ -122,7 +123,7 @@ function implicitlyCreateInnerObject(parent,prop,refHandler) {
     return parent[prop]
 }
 
-export function calcBool(exp, ctx, parentParam) {
+function calcBool(exp, ctx, parentParam) {
     if (exp.indexOf('$debugger:') == 0) {
       debugger
       exp = exp.split('$debugger:')[1]

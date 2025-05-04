@@ -1,7 +1,4 @@
-import { Const, utils as core_utils } from '../core/core-utils.js'
-import { log, logError, logException } from '../core/logger.js'
-import { jb, Data, Ctx, DefComponents, TgpType, Var } from '../core/tgp.js'
-export {jb, Data, Var, Const, Ctx, DefComponents, TgpType, log, logError, logException}
+import { coreUtils } from '../core/all.js'
 
 const delay = (mSec,res) => new Promise(r=>setTimeout(()=>r(res),mSec))
 
@@ -9,7 +6,7 @@ const path = (object,_path,value) => {
     if (!object) return object
     let cur = object
     if (typeof _path === 'string') _path = _path.split('.')
-    _path = core_utils.asArray(_path)
+    _path = coreUtils.asArray(_path)
 
     if (typeof value == 'undefined') {  // get
       return _path.reduce((o,k)=>o && o[k], object)
@@ -25,17 +22,17 @@ const path = (object,_path,value) => {
 
 function isDelayed(v) {
   if (!v || v.constructor === {}.constructor || Array.isArray(v)) return
-  return typeof v === 'object' ? core_utils.isPromise(v) : typeof v === 'function' && isCallbag(v)
+  return typeof v === 'object' ? coreUtils.isPromise(v) : typeof v === 'function' && isCallbag(v)
 }
 
 function waitForInnerElements(item, {passRx} = {}) { // resolve promises in array and double promise (via array), passRx - does not wait for reactive data to end, and pass it as is
-  if (core_utils.isPromise(item))
+  if (coreUtils.isPromise(item))
     return item.then(r=>waitForInnerElements(r,{passRx}))
   if (!passRx && isCallbag(item))
     return callbagToPromiseArray(item)
 
   if (Array.isArray(item)) {
-    if (! item.find(v=> isCallbag(v) || core_utils.isPromise(v))) return item
+    if (! item.find(v=> isCallbag(v) || coreUtils.isPromise(v))) return item
     return Promise.all(item.map(x=>waitForInnerElements(x,{passRx}))).then(items=>items.flatMap(x=>x))
   }
   return item
@@ -114,5 +111,5 @@ export function sortedArraysDiff(newArr, oldArr, compareFn) {
   return { inserted, updated, deleted }
 }
 
-export const utils = { ...core_utils, delay, path, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, 
-    objectDiff, sortedArraysDiff, log, logError, logException }
+export const utils = { ...coreUtils, delay, path, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, 
+    objectDiff, sortedArraysDiff }

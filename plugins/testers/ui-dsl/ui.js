@@ -2,10 +2,10 @@ import { Test, TgpType } from '../../testers/data-tester.js'
 
 export const typeRules = [{ isOf: ['data<>','boolean<>'] }]
 
-export const Control = TgpType('control',{dsl: 'ui'})
-export const Feature = TgpType('feature',{dsl: 'ui'})
-export const UIAction = TgpType('ui-action',{dsl: 'test'})
-export const Jbm = TgpType('jbm',{dsl: 'jbm'})
+export const Control = TgpType('control','ui')
+export const Feature = TgpType('feature','ui')
+export const UIAction = TgpType('ui-action','test')
+export const Jbm = TgpType('jbm','jbm')
 
 export const group = Control('group', {
     params: [

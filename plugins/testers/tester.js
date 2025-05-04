@@ -1,10 +1,14 @@
-import { Ctx, jb, onInjectExtension, TgpType } from '../core/tgp.js'
-import { log } from '../core/logger.js'
+import { coreUtils, dsls } from '../core/all.js'
+const { Ctx, jb, log, asJbComp } = coreUtils
 import { spy } from '../logger/spy.js'
-import { asJbComp } from '../core/jb-macro.js'
 
-export const Test = TgpType('test')
-export const Usage = TgpType('test', {doNotRunInTests: true})
+const { 
+  tgp: {TgpType} 
+} = dsls
+
+const Test = TgpType('test', 'test')
+
+export const testUtils = jb.testUtils = { countersErrors, runTest}
 
 export function countersErrors(expectedCounters,allowError) {
     if (!spy.isEnabled()) return ''
@@ -21,10 +25,10 @@ export function countersErrors(expectedCounters,allowError) {
 }
 
 let cleaners = []
-onInjectExtension('tests', ext => {
-    if (ext.cleaners)
-        cleaners = [...cleaners, ...ext.cleaners]
-})
+// onInjectExtension('tests', ext => {
+//     if (ext.cleaners)
+//         cleaners = [...cleaners, ...ext.cleaners]
+// })
 
 async function cleanBeforeRun() {
     cleaners.forEach(c=>c())
@@ -33,8 +37,8 @@ async function cleanBeforeRun() {
     spy.clear()
 }
 
-export async function runTest(testID,{fullTestId, singleTest} = {}) {
-    await !singleTest && cleanBeforeRun()
+async function runTest(testID, {fullTestId, singleTest} = {}) {
+    !singleTest && await cleanBeforeRun()
     const jbComp = Test[testID][asJbComp]
     log('start test',{testID})
     let res = null

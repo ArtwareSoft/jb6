@@ -1,4 +1,4 @@
-import { jb } from '../core/jb-core.js'
+import { jb } from '../core/all.js'
 
 let enabled = false, spyParam, _obs, enrichers = []
 const logs = []

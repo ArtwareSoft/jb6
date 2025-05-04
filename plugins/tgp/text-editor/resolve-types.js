@@ -1,5 +1,5 @@
 import { jb, jbComp} from '../../core/jb-core.js'
-import { OrigArgs, systemParams } from '../../core/jb-macro.js'
+import { OrigArgs, systemParams } from '../../core/jb-args.js'
 import { astNode } from '../model-data/tgp-model-data.js'
 import { utils } from '../../common/common-utils.js'
 

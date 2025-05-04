@@ -1,6 +1,6 @@
 import { jb, utils, logException } from '../../common/common-utils.js'
 import { astToTgpObj, astNode } from '../model-data/tgp-model-data.js'
-import { systemParams, resolveProfileTop } from '../../core/jb-macro.js'
+import { systemParams, resolveProfileTop } from '../../core/jb-args.js'
 import { resolveProfileTypes, primitivesAst } from './resolve-types.js'
 import { parse } from '/libs/acorn.mjs'
 

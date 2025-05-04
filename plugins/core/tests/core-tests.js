@@ -1,5 +1,20 @@
-import { Test, Usage, dataTest, Data, Var, Const } from '../../testers/data-tester.js'
-import { utils, pipeline, filter, contains, equals, delay, join, property, obj, prop } from '../../common/jb-common.js'
+import { } from '../../testers/data-tester.js'
+import { utils } from '../../common/jb-common.js'
+import { dsls } from '../../core/all.js'
+const { 
+  tgp: { Const, TgpType, 
+    var : { Var } 
+  },
+  common: { Data, Action, Boolean,
+    data: { pipeline, filter, join, property, obj, delay }, 
+    Boolean: { contains, equals },
+    Prop: { prop }
+  },
+  test: { Test,
+    test: { dataTest }
+  }
+} = dsls
+
 
 Const('person', {
     name: 'Homer Simpson',

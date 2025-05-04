@@ -1,26 +1,20 @@
-import { jb } from './jb-core.js'
-import { log, logError } from './logger.js'
+export const jb = {
+  proxies: {},
+  ext: {},
+  coreRegistry: {
+    consts: {}
+  },
+  dsls: {
+    tgp: { Const }
+  }
+}
 
 const isPrimitiveValue = val => ['string','boolean','number'].indexOf(typeof val) != -1
 
 const val = v => jb.ext.db ? jb.ext.db.val(v) : v
 const asRef = v => jb.ext.db ? jb.ext.db.asRef(v) : logError('asRef. extension db/writable.js was not loaded',{})
 
-export const consts = {}
-export function Const(id, val) {
-    const passiveSym = Symbol.for('passive')
-    consts[id] = markAsPassive(val || {})
-
-    function markAsPassive(obj) {
-        if (obj && typeof obj == 'object') {
-            obj[passiveSym] = true
-            Object.values(obj).forEach(v=>markAsPassive(v))
-        }
-        return obj
-    }    
-}
-
-export const RT_types = {
+const RT_types = {
     asIs: x => x,
     object(value) {
       if (Array.isArray(value))
@@ -107,10 +101,46 @@ const toNumber = RT_types.number
 const toSingle = RT_types.single
 const toJstype = (val,type) => RT_types[type](val)
 
-export const utils = { 
-    isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
-    compName, compParams, parentPath,
-    val: x=>val(x)
+function log(logNames, logObj) {
+  jb.ext.spy?.log(logNames, logObj)
 }
-export { log, logError }
+
+function logError(err,logObj) {
+  const { ctx, url, line, col } = logObj || {}
+  const { jbCtx: { callerStack, creatorStack }} = ctx || { jbCtx: {} }
+  const srcLink = url && globalThis.window ? `${window.location.origin}${url}:${line+1}:${col} ` : ''
+  globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, callerStack, creatorStack)
+  const errObj = { err , ...logObj, callerStack, creatorStack}
+  globalThis.jbHost?.process && globalThis.jbHost.process.stderr.write(err)
+  jb.ext.spy?.log('error', errObj)
+}
+
+function logException(e,err,logObj) {
+  globalThis.window && globalThis.console.log('%c Exception: ','color: red', err, e, logObj)
+  const errObj = { e, err, stack: e.stack||'', ...logObj}
+  globalThis.jbHost?.process && globalThis.jbHost.process.stderr.write(`${err}\n${e}`)
+  jb.ext.spy?.log('exception error', errObj)
+}
+
+function Const(id, val) {
+  const passiveSym = Symbol.for('passive')
+  jb.coreRegistry.consts[id] = markAsPassive(val || {})
+
+  function markAsPassive(obj) {
+      if (obj && typeof obj == 'object') {
+          obj[passiveSym] = true
+          Object.values(obj).forEach(v=>markAsPassive(v))
+      }
+      return obj
+  }    
+}
+
+jb.coreUtils = {
+  jb, RT_types, log, logError, logException, 
+  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
+  compName, compParams, parentPath,
+  val: x=>val(x)
+}
+
+export const coreUtils = jb.coreUtils
 

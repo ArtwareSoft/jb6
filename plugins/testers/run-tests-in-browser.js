@@ -1,8 +1,15 @@
-import { runTest, Test } from './tester.js'
-import { utils } from '../common/common-utils.js'
-import { Ctx, jb, run, globalsOfType } from '../core/tgp.js'
+import { coreUtils, dsls } from '../core/all.js'
+import { testUtils } from './tester.js'
+import { utils } from '../common/jb-common.js'
 import { spy } from '../logger/spy.js'
-import { asJbComp } from '../core/jb-macro.js'
+const { Ctx, jb, globalsOfType, asJbComp } = coreUtils
+const { delay, unique } = utils
+const { 
+    test : { Test }
+} = dsls  
+
+Object.assign(testUtils, {runTests})
+
 globalThis.spy = spy
 globalThis.jb = jb
 
@@ -35,7 +42,7 @@ function addHTML(el,html,{beforeResult} = {}) {
         el.appendChild(toAdd)
 }
 
-export function spyParamForTest(testID) {
+function spyParamForTest(testID) {
     return testID.match(/uiTest|[Ww]idget/) ? 'test,uiTest,headless' : 'test'
 }
 
@@ -53,7 +60,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
 
     tests.forEach(e => e.group = e.testID.split('.')[0].split('Test')[0]) // assign group by test name
     const priority = 'net,data,ui,rx,suggestionsTest,remote,studio'.split(',').reverse().join(',')
-    const groups = utils.unique(tests.map(e=>e.group)).sort((x,y) => priority.indexOf(x) - priority.indexOf(y))
+    const groups = unique(tests.map(e=>e.group)).sort((x,y) => priority.indexOf(x) - priority.indexOf(y))
     tests.sort((y,x) => groups.indexOf(x.group) - groups.indexOf(y.group))
     if (take)
         tests = tests.slice(0,take)
@@ -72,13 +79,13 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
         await pr;
         counter++
         if (counter % 100 == 0)
-            await utils.delay(5) // gc
+            await delay(5) // gc
         const fullTestId = `test<>${testID}`
         let res
         if (!showOnly) {
             document.getElementById('progress').innerHTML = `<div id=${testID}>${index++}: ${testID} started</div>`
             console.log('starting ' + testID )
-            res = await runTest(testID,{fullTestId, singleTest })
+            res = await testUtils.runTest(testID,{fullTestId, singleTest })
             console.log('end      ' + testID, res)
             document.getElementById('progress').innerHTML = `<div id=${testID}>${testID} finished</div>`
             res = { ...res, fullTestId, testID}

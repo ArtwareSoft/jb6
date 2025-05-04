@@ -1,25 +1,23 @@
-import { jb } from './jb-core.js'
-import { logError } from './logger.js'
+import { jb, coreUtils } from './core-utils.js'
+const { logError } = coreUtils
 
-export const isMacro = Symbol.for('isMacro')
-export const asJbComp = Symbol.for('asJbComp')
-export const OrigArgs = Symbol.for('OrigArgs')
+const isMacro = Symbol.for('isMacro')
+const asJbComp = Symbol.for('asJbComp')
+const OrigArgs = Symbol.for('OrigArgs')
 
-export const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
-export const systemParams = [ {id: 'data', $type: 'data<>'}, {id: 'vars', $type: 'var<>'}] 
+const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
+const systemParams = [ {id: 'data', $type: 'data<>'}, {id: 'vars', $type: 'var<>'}] 
 
-export const titleToId = id => id.split('.')[0].replace(/-([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
+const titleToId = id => id.split('.')[0].replace(/-([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
 
-export function asComp(pt) {
+function asComp(pt) {
     const jbComp = pt[asJbComp] || pt
     if (!jbComp?.$resolvedInner)
         resolveCompArgs(jbComp)
     return jbComp
 }
 
-export const typeRules = [{ isOf: ['data<>','boolean<>'] }]
-
-export function jbCompProxy(jbComp) {
+function jbCompProxy(jbComp) {
   return new Proxy(() => 0, {
       get: (o, p) => {
         if (p == '$run')
@@ -55,7 +53,7 @@ function splitSystemArgs(allArgs) {
   const args = [], system = {}
   allArgs.forEach(arg => {
       const comp = arg.$
-      if (comp?.id == 'var<>Var') { // Var in pipeline
+      if (comp?.id == 'var<tgp>Var') { // Var in pipeline
         system.vars = system.vars || []
         system.vars.push(arg)
       } else {
@@ -102,7 +100,7 @@ function argsToProfile(prof, comp) {
     }
 }
 
-export function resolveProfileTop(comp) {
+function resolveProfileTop(comp) {
     jb.ext.tgp?.resolveProfileTop(comp)
     ;(comp.params || []).forEach(p=> {
       if (sysProps.includes(p.id))
@@ -111,7 +109,7 @@ export function resolveProfileTop(comp) {
     return comp     
 }
 
-export function resolveCompArgs(topComp) {
+function resolveCompArgs(topComp) {
     if (!topComp || topComp.$resolvedInner) 
         return topComp
     ;(topComp.params || []).forEach(p=> resolveProfileArgs(p.defaultValue))
@@ -121,7 +119,7 @@ export function resolveCompArgs(topComp) {
     return topComp
 }
 
-export function resolveProfileArgs(prof) {
+function resolveProfileArgs(prof) {
   if (!prof || !prof.constructor || ['Object','Array'].indexOf(prof.constructor.name) == -1) return prof
   const comp = prof.$
   // if (!(comp instanceof jbComp))
@@ -140,3 +138,5 @@ export function resolveProfileArgs(prof) {
   }
   return prof
 }
+
+Object.assign(coreUtils, { resolveProfileTop, resolveCompArgs, resolveProfileArgs, isMacro, asJbComp, OrigArgs, sysProps, systemParams, titleToId, asComp, jbCompProxy})

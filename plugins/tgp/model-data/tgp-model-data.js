@@ -1,4 +1,4 @@
-import { asJbComp, resolveProfileArgs, resolveProfileTop } from '../../core/jb-macro.js'
+import { asJbComp, resolveProfileArgs, resolveProfileTop } from '../../core/jb-args.js'
 import { TgpType} from '../../core/tgp.js'
 import { Data, jb, utils } from '../../common/common-utils.js'
 import { offsetToLineCol } from '../text-editor/tgp-text-editor.js'
@@ -70,7 +70,7 @@ export async function calcTgpModelData({ filePath }) {
         const { type, dsl = '' } = comp
         dsls[dsl] = dsls[dsl] || {}
         dsls[dsl][type] = {}
-        comps[`comp<tgp>${id}`] = resolveProfileTop({ $: `comp<tgp>tgpType`, id, type, dsl, params: comps['comp<tgp>compByType'].params })
+        comps[`comp<tgp>${id}`] = resolveProfileTop({ $: `comp<tgp>tgpType`, id, type, dsl, params: comps['comp<tgp>tgpType'].instanceParams })
       })
   })
 

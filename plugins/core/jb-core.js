@@ -25,20 +25,14 @@ so a full comp id is in the format: type<dsl>id
 dynamic function 'hold' and keeps the args until called by client with ctx. it has the creator jbCtx, the creator ctx and the caller ctx to merge.
 }
 */
-import { resolveCompArgs, resolveProfileArgs, asComp, jbCompProxy, resolveProfileTop } from './jb-macro.js'
-import { RT_types, utils } from './core-utils.js'
-import { calc } from './jb-expression.js'
+import { jb } from './core-utils.js'
+const { RT_types, utils, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray } = jb.coreUtils
 
-export const jb = globalThis._jb = {
-    proxies: {},
-    ext: {}
-}
-
-export function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArray: false, openObj: false, openComp: true}) {
+function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArray: false, openObj: false, openComp: true}) {
     // changing context with data and vars
     if (profile.vars && !settings.resolvedCtx)
         ctx = ctx.extendWithVarsScript(profile.vars)
-    if (utils.isPromise(ctx)) // handling a-synch vars
+    if (isPromise(ctx)) // handling a-synch vars
         return ctx.then(resolvedCtx => run(profile,resolvedCtx,{...settings, resolvedCtx: true}))
     delete settings.resolvedCtx
     const { jbCtx } = ctx
@@ -48,7 +42,7 @@ export function run(profile, ctx = new Ctx(), settings = {openExpression: true, 
 
     const {openExpression, openArray, openObj, openComp} = settings
     if (typeof profile == 'string' && openExpression)
-        return toRTType(jbCtx.parentParam, calc(profile, ctx))
+        return toRTType(jbCtx.parentParam, calcExpression(profile, ctx))
     if (Array.isArray(profile) && openArray)
         return profile.map((p,i) => run(p, ctx.setTgpCtx(jbCtx.innerDataPath(i)), settings))
     const arrayType = (jbCtx.parentParam?.type || '').indexOf('[]') != -1
@@ -102,7 +96,7 @@ class JBCtx {
     }
 }
 
-export class Ctx {
+class Ctx {
     constructor({data,vars = {}, jbCtx = new JBCtx()} = {}) {
         this.data = data
         this.vars = vars
@@ -121,7 +115,7 @@ export class Ctx {
         return run(resolveProfileArgs(profile),this)
     }
     exp(exp,jstype) { 
-        return calc(exp, this.setTgpCtx(new JBCtx({...this.jbCtx, parentParam: {as: jstype}}))) 
+        return calcExpression(exp, this.setTgpCtx(new JBCtx({...this.jbCtx, parentParam: {as: jstype}}))) 
     }
     runInner(profile, parentParam, innerPath) {
         return run(profile, this.setTgpCtx(new JBCtx({...this.jbCtx, path: `${this.path}~${innerPath}`, parentParam, profile})))
@@ -130,7 +124,7 @@ export class Ctx {
         const runInnerPathForVar = (profile = ({data}) => data, index, ctx) =>
             run(profile, ctx.setTgpCtx(new JBCtx({...ctx.JBCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<>'} })))
 
-        vars = utils.asArray(vars)
+        vars = asArray(vars)
         if (vars.find(x=>x.async))
             return vars.reduce( async (ctx,{name,val},i) => {
               const _ctx = await ctx
@@ -144,7 +138,7 @@ export class Ctx {
     }
 }
 
-export class jbComp {
+class jbComp {
     constructor(compData) {
         Object.assign(this, compData)
     }
@@ -200,14 +194,4 @@ class param {
     }
 }
 
-export const CompDef = comp => jbCompProxy(new jbComp(resolveProfileTop(comp))) // avoid recursion of Component
-
-export const Var = CompDef({
-    id: 'var<>Var',
-    type: 'var<>',
-    params: [
-        {id: 'name', as: 'string', mandatory: true},
-        {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
-        {id: 'async', as: 'boolean', type: 'boolean<>'}
-    ]
-})
+Object.assign(jb.coreUtils, {run, Ctx, jbComp})

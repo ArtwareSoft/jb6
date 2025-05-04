@@ -3,7 +3,7 @@ import { _calcCompProps, cloneProfile } from './lang-service.js'
 import { prettyPrint } from '../formatter/pretty-print.js'
 import { update } from '../../db/immutable.js'
 import { tgpEditorHost, offsetToLineCol, calcProfileActionMap, deltaFileContent, filePosOfPath, calcHash, getPosOfPath } from '../text-editor/tgp-text-editor.js'
-import { resolveCompArgs, isMacro}  from '../../core/jb-macro.js'
+import { resolveCompArgs, isMacro}  from '../../core/jb-args.js'
 
 
 const deleteEdits = Data({ 
