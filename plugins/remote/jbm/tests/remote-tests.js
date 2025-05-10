@@ -74,7 +74,7 @@ component('remoteTest.remoteOperator.child.loadOperatorCode', {
 })
 
 component('itemlists.manyItems2', {
-  type: 'data<>',
+  type: 'data<common>',
   params: [
     {id: 'howMany', as: 'number', defaultValue: 1000}
   ],
@@ -277,7 +277,7 @@ component('remoteTest.operator.runTest', {
     calculate: pipe(
       rx.pipe(
         source.data('%$testsToRun%'),
-        rx.var('fullTestId', 'test<>%%'),
+        rx.var('fullTestId', 'test<test>%%'),
         rx.log('test'),
         remote.operator({
           rx: rx.mapPromise(({data},{fullTestId}) => jb.test.runSingleTest(data,{fullTestId})),

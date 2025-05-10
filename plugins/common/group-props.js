@@ -1,4 +1,4 @@
-import {} from './jb-common.js'
+import { utils} from './jb-common.js'
 
 export const GroupProp = TgpType('group-prop','common')
 
@@ -8,7 +8,7 @@ export const splitByPivot = Aggregator('splitByPivot', {
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
   impl: (ctx, {pivot, items}) => {
-      const keys = jb.utils.unique(items.map(item=>item[pivot]))
+      const keys = utils.unique(items.map(item=>item[pivot]))
       const groups = Object.fromEntries(keys.map(key=> [key,[]]))
       items.forEach(item => groups[item[pivot]].push(item))
       return keys.map(key => ({[pivot]: key, items: groups[key]}))

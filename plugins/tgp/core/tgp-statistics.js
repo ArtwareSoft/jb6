@@ -31,8 +31,8 @@ export function circuitOptions(compId) {
   return _comps.sort((x,y) => mark(y) - mark(x)).map(id=>({id, shortId: id.split('>').pop(), location: comps[id].$location}))
 
   function mark(id) {
-    if (id.match(/^test<>/) && id.indexOf(shortId) != -1) return 20
-    if (id.match(/^test<>/)) return 10
+    if (id.match(/^test<test>/) && id.indexOf(shortId) != -1) return 20
+    if (id.match(/^test<test>/)) return 10
     return 0
   }
 
@@ -69,7 +69,7 @@ Data('tgp.componentStatistics', {
       referredBy: cmpRefs.by,
       type: cmp.type || 'data',
       implType: typeof cmp.impl,
-      refCount: utils.path(cmpRefs.by,'length'),
+      refCount: calcPath(cmpRefs.by,'length'),
       size: asStr.length
     }
 	}

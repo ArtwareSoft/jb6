@@ -1,24 +1,37 @@
-import {lastEditForTester} from '../text-editor/workspace.js'
-import {tgpModelForLangService, tgpModels, _calcCompProps, langService } from './lang-service.js'
-import { calcTgpModelData } from '../model-data/tgp-model-data.js'
-import { offsetToLineCol, applyCompChange, tgpEditorHost, calcProfileActionMap } from  '../text-editor/tgp-text-editor.js'
-import { dataTest, Test, Usage, Data, utils } from '../../testers/data-tester.js'
-export { Test, Usage, Data }
-const { completionItems, editAndCursorOfCompletionItem} = langService 
+import { jb, coreUtils, dsls} from '../../../core/all.js'
+import { utils } from '../../../common/common-utils.js'
+import { tgpEditorHost } from './mock-workspace.js'
+import { langServiceUtils } from '../lang-service.js'
+import {} from '../../../testers/data-tester.js'
 
-let uniqueNameCounter = 0
+const { completionItems, editAndCursorOfCompletionItem, tgpModelForLangService, tgpModels, 
+  calcCompProps, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
+const { resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData } = coreUtils
+const { 
+  test: { Test, 
+    test: { dataTest }
+  }, 
+  common: { Data }
+} = dsls
+
+jb.langServiceTestRegistry = {
+  uniqueNameCounter: 0,
+  testTgpModel:  {}
+}
+const testTgpModel = jb.langServiceTestRegistry.testTgpModel
+
 function fixToUniqueName(code) {
-  const cmpId = 'CmpltnTst'+uniqueNameCounter++
+  const cmpId = 'CmpltnTst'+jb.langServiceTestRegistry.uniqueNameCounter++
   return code.replace(/Test\('x',/,`Test('${cmpId}',`)
 }
 
-const testTgpModel = {}
 function getTgpModel(filePath) {
+  filePath = filePath || '/plugins/testers/ui-dsl-for-tests.js'
   testTgpModel[filePath] = testTgpModel[filePath] || calcTgpModelData({filePath})
   return testTgpModel[filePath]
 }
 
-async function initCompletionText({ctx,compText,filePath,dsl,remoteSuggestions}) {
+async function initCompletionText({ctx,compText,filePath,remoteSuggestions}) {
   const testId = ctx.vars.testID
   const fullText = compText.match(/^[a-z]+Test\(/) ? `Test('x', {\n  impl: ${compText}\n})` 
     : compText.match(/^[A-Z]/) ? compText
@@ -38,11 +51,11 @@ async function initCompletionText({ctx,compText,filePath,dsl,remoteSuggestions})
   return {testId, tgpModel, ctxForTest, code, inCompPos, offsets, host}
 }
 
-export const completionOptionsTest = Test('completionOptionsTest', {
+Test('completionOptionsTest', {
   params: [
     {id: 'compText', as: 'string', description: 'use __ for completion points'},
     {id: 'expectedSelections', as: 'array', description: 'label a selection that should exist in the menu. one for each point'},
-    {id: 'filePath', as: 'string', defaultValue: '/plugins/testers/ui-dsl/ui.js'},
+    {id: 'filePath', as: 'string' },
     {id: 'dsl', as: 'string'}
   ],
   impl: dataTest({
@@ -60,7 +73,7 @@ export const completionOptionsTest = Test('completionOptionsTest', {
     },
     expectedResult: ({data},{},{expectedSelections}) => {
       const errors = data.reduce((errors,{options},i) => {
-        if (utils.path(options,'0') == 'reformat')
+        if (options?.[0] == 'reformat')
           return ['bad format']
         if (!options)
             return [`no options at index ${i}`]
@@ -73,15 +86,14 @@ export const completionOptionsTest = Test('completionOptionsTest', {
   })
 })
   
-export const completionActionTest = Test('completionActionTest', {
-  type: 'test',
+Test('completionActionTest', {
   params: [
     {id: 'compText', as: 'string', description: 'use __ for completion point'},
     {id: 'completionToActivate', as: 'string', dynamic: true, description: 'label of completion to activate', byName: true},
     {id: 'expectedEdit', description: '{ range: , newText:}'},
     {id: 'expectedTextAtSelection', description: '{ start: , end: }'},
     {id: 'expectedCursorPos', description: 'e.g. 1,12'},
-    {id: 'filePath', as: 'string', defaultValue: '/plugins/testers/ui-dsl/ui.js'},
+    {id: 'filePath', as: 'string'},
     {id: 'dsl', as: 'string'},
     {id: 'remoteSuggestions', as: 'boolean', type: 'boolean'}
   ],
@@ -103,7 +115,7 @@ export const completionActionTest = Test('completionActionTest', {
         await utils.delay(1) // wait for cursor change
         const {cursorLine, cursorCol } = host.compTextAndCursor()
         const actualCursorPos = [cursorLine, cursorCol].join(',')
-        const actualEdit = lastEditForTester()
+        const actualEdit = host.lastEdit()
         //console.log(actualEdit)
         return {items: items.map(x=>x.label), item: item.label, actualEdit, actualCursorPos, toActivate}
     },
@@ -127,11 +139,11 @@ export const completionActionTest = Test('completionActionTest', {
   })
 })
 
-export const fixEditedCompTest = Test('fixEditedCompTest', {
+Test('fixEditedCompTest', {
   params: [
     {id: 'compText', as: 'string', description: 'use __ for completion point'},
     {id: 'expectedFixedComp', as: 'string'},
-    {id: 'filePath', as: 'string', defaultValue: '/plugins/testers/ui-dsl/ui.js'},
+    {id: 'filePath', as: 'string'},
     {id: 'dsl', as: 'string'}
   ],
   impl: async (ctx,{compText,expectedFixedComp,filePath,dsl}) => {
@@ -144,23 +156,23 @@ export const fixEditedCompTest = Test('fixEditedCompTest', {
     }
 })
 
-export const dummyCompProps = Data('dummyCompProps', {
+Data('dummyCompProps', {
   params: [
     {id: 'compText', as: 'string', mandatory: true, description: 'use __ for completion point'},
     {id: 'dsl', as: 'string'},
-    {id: 'filePath', as: 'string', defaultValue: '/plugins/testers/ui-dsl/ui.js'},
-    {id: 'includeCircuitOptions', as: 'boolean', type: 'boolean<>'}
+    {id: 'filePath', as: 'string'},
+    {id: 'includeCircuitOptions', as: 'boolean', type: 'boolean<common>'}
   ],
   impl: async (ctx,{compText,dsl, filePath, includeCircuitOptions}) => {
     const {tgpModel, host} = await initCompletionText({ctx,compText,filePath ,dsl})
     if (includeCircuitOptions)
-      return _calcCompProps(ctx,{includeCircuitOptions})
+      return calcCompProps(ctx,{includeCircuitOptions})
     const { inCompOffset, shortId, cursorCol, cursorLine, compLine, lineText } = calcProfileActionMap(host.compTextAndCursor().compText, {tgpModel})
     return { compText, inCompOffset, shortId, cursorCol, cursorLine, compLine, filePath, lineText}
   }
 })
 
-export const pathChangeTest = Test('pathChangeTest', {
+Test('pathChangeTest', {
   params: [
     {id: 'path', as: 'string'},
     {id: 'action', type: 'action', dynamic: true},
@@ -186,4 +198,40 @@ export const pathChangeTest = Test('pathChangeTest', {
 
     return res
   }
+})
+
+Test('actionMapTest', {
+  macroByValue: true,
+  params: [
+    {id: 'profile' },
+    {id: 'expectedType', as: 'string'},
+    {id: 'path', as: 'string'},
+    {id: 'expectedPos', as: 'string'}
+  ],
+  impl: dataTest({
+    calculate: ({},{},{profile, expectedType}) => getTgpModel().then(tgpModel => {
+      const { text: compText, actionMap} = typeof profile == 'string' ? { text: profile, actionMap: [] } 
+        :  prettyPrintWithPositions(resolveProfileArgs(profile, {expectedType}), {tgpModel} )
+      const actionMapFromParse = calcProfileActionMap(compText, {tgpModel, tgpType: expectedType} ).actionMap
+        .map(e=>({from: e.from, to: e.to,action: e.action, source: e.source})) // for debug to match actionMap
+      return { actionMap, actionMapFromParse, compText }
+    }),
+    expectedResult: ({ data : {actionMap, actionMapFromParse, compText}},{},{expectedPos,path}) => {
+        const compareActions = (a, b) => a.from - b.from || a.to - b.to || a.action.localeCompare(b.action)
+        actionMap.sort(compareActions)
+        actionMapFromParse.sort(compareActions)
+        const diff = utils.sortedArraysDiff(actionMap,actionMapFromParse,compareActions)
+        ;[...diff.inserted, ...diff.deleted].forEach(e => { e.before = compText.slice(0,e.from); e.text = compText.slice(e.from,e.to) })
+        let error = ''
+        const actualDiff = [...diff.deleted.filter(x=>x.text !="'" || !x.action.startsWith('addProp!')), ...diff.inserted]
+        if (actualDiff.length)
+          console.log('actionMapTest diffs',diff)
+        const items = actionMapFromParse.filter(x=>x.action == path).map(x=>`${x.from},${x.to}`)
+        error = error || (items.length ? '' : `path not found ${path}`)
+        error = error || (items.includes(expectedPos) ? '' : `pos ${items.join(';')} instead of ${expectedPos}`)
+        return error ? { testFailure: error } : true
+    },
+    includeTestRes: true,
+    timeout: 1000
+  })
 })

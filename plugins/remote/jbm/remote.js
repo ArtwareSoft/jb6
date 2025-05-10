@@ -78,7 +78,7 @@ const remote_waitForJbm = Data({
 const remote_action = Action({
   description: 'exec a script on a remote node and returns a promise if not oneWay',
   params: [
-    {id: 'action', type: 'action<>', dynamic: true, composite: true},
+    {id: 'action', type: 'action<common>', dynamic: true, composite: true},
     {id: 'jbm', type: 'jbm<jbm>', defaultValue: jbm.self()},
     {id: 'oneway', as: 'boolean', description: 'do not wait for the respone', type: 'boolean'},
     {id: 'timeout', as: 'number', defaultValue: 10000},
@@ -214,7 +214,7 @@ export const remote = { source: remote_source, data: remote_data, action: remote
 // component('dataResource.yellowPages', { watchableData: {}})
 
 // component('remote.useYellowPages', {
-//     type: 'action<>',
+//     type: 'action<common>',
 //     impl: runActions(
 //         Var('yp','%$yellowPages%'),
 //         remote_action(({},{yp}) => component('dataResource.yellowPages', { watchableData: yp }), '%$jbm%'),

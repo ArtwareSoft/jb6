@@ -1,24 +1,7 @@
-import { coreUtils } from '../core/all.js'
+import { coreUtils, dsls } from '../core/all.js'
+export { dsls }
 
 const delay = (mSec,res) => new Promise(r=>setTimeout(()=>r(res),mSec))
-
-const path = (object,_path,value) => {
-    if (!object) return object
-    let cur = object
-    if (typeof _path === 'string') _path = _path.split('.')
-    _path = coreUtils.asArray(_path)
-
-    if (typeof value == 'undefined') {  // get
-      return _path.reduce((o,k)=>o && o[k], object)
-    } else { // set
-      for(let i=0;i<_path.length;i++)
-        if (i == _path.length-1)
-          cur[_path[i]] = value
-        else
-          cur = cur[_path[i]] = cur[_path[i]] || {}
-      return value
-    }
-}
 
 function isDelayed(v) {
   if (!v || v.constructor === {}.constructor || Array.isArray(v)) return
@@ -111,5 +94,5 @@ export function sortedArraysDiff(newArr, oldArr, compareFn) {
   return { inserted, updated, deleted }
 }
 
-export const utils = { ...coreUtils, delay, path, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, 
+export const utils = { ...coreUtils, delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, 
     objectDiff, sortedArraysDiff }

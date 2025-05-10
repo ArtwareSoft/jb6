@@ -4,9 +4,10 @@ const { logError } = coreUtils
 const isMacro = Symbol.for('isMacro')
 const asJbComp = Symbol.for('asJbComp')
 const OrigArgs = Symbol.for('OrigArgs')
+const astNode = Symbol.for('astNode')
 
 const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
-const systemParams = [ {id: 'data', $type: 'data<>'}, {id: 'vars', $type: 'var<>'}] 
+const systemParams = [ {id: 'data', $type: 'data<common>'}, {id: 'vars', $type: 'var<tgp>'}] 
 
 const titleToId = id => id.split('.')[0].replace(/-([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
 
@@ -34,7 +35,7 @@ function jbCompProxy(jbComp) {
 }
 
 function calcArgs(jbComp,$unresolvedArgs) {
-  if (jbComp.id == 'any<>asIs')
+  if (jbComp.id == 'any<tgp>asIs')
     return () => $unresolvedArgs[0]
   return { $: jbComp, $unresolvedArgs }
 }
@@ -139,4 +140,4 @@ function resolveProfileArgs(prof) {
   return prof
 }
 
-Object.assign(coreUtils, { resolveProfileTop, resolveCompArgs, resolveProfileArgs, isMacro, asJbComp, OrigArgs, sysProps, systemParams, titleToId, asComp, jbCompProxy})
+Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, isMacro, asJbComp, OrigArgs, sysProps, systemParams, titleToId, asComp, jbCompProxy})

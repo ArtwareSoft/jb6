@@ -76,7 +76,7 @@ class JBCtx {
         Object.assign(this,jbCtx)
     }
     innerDataPath(path) {
-        return new JBCtx({...this, path: `${this.path}~${path}`, parentParam: {$type: 'data<>'}, profile: 'data path' })
+        return new JBCtx({...this, path: `${this.path}~${path}`, parentParam: {$type: 'data<common>'}, profile: 'data path' })
     }
     innerParam(parentParam, profile) {
         return new JBCtx({...this, path: `${this.path}~${parentParam.id}`, parentParam, profile: profile[parentParam.id]})
@@ -122,7 +122,7 @@ class Ctx {
     }
     extendWithVarsScript(vars) {
         const runInnerPathForVar = (profile = ({data}) => data, index, ctx) =>
-            run(profile, ctx.setTgpCtx(new JBCtx({...ctx.JBCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<>'} })))
+            run(profile, ctx.setTgpCtx(new JBCtx({...ctx.JBCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<common>'} })))
 
         vars = asArray(vars)
         if (vars.find(x=>x.async))

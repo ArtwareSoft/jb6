@@ -4,9 +4,8 @@ const { asJbComp, resolveProfileTop, jbComp, jbCompProxy } = coreUtils
 const CompDef = comp => jbCompProxy(new jbComp(resolveProfileTop(comp)))
 
 Object.assign(coreUtils, { globalsOfType })
-Object.assign(jb.dsls.tgp, { TgpType, TgpTypeModifier, DefComponents })
 
-export const tgpComp = CompDef({ // bootstraping
+const tgpComp = CompDef({ // bootstraping
   dsl: 'tgp',
   type: 'comp',
   id: 'comp<tgp>tgpComp',
@@ -16,17 +15,19 @@ export const tgpComp = CompDef({ // bootstraping
     {id: 'dsl', as: 'string'},
     {id: 'description', as: 'string'},
     {id: 'params', type: 'param[]'},
-    {id: 'impl', type: '$implType<>', dynamicType: '%type%', mandatory: true}
+    {id: 'impl', dynamicTypeFromParent: (parent, dsls) => dsls.tgp.comp[parent.$]?.dslType, mandatory: true}
   ]
 })
 
-function TgpTypeModifier(id, extraCompProps) {
-  return TgpType(extraCompProps.type, extraCompProps.dsl, {modifierId: id, ...extraCompProps})
+Object.assign(jb.dsls.tgp, { TgpType, TgpTypeModifier, DefComponents, tgpComp })
+
+function TgpTypeModifier(id, extraCompProps, dsls = jb.dsls) {
+  return TgpType(extraCompProps.type, extraCompProps.dsl, {modifierId: id, ...extraCompProps}, dsls)
 }
 
-function TgpType(type, dsl, extraCompProps) {
+function TgpType(type, dsl, extraCompProps, dsls = jb.dsls) {
   const capitalLetterId = extraCompProps?.modifierId || type.replace(/-|\./g,'_').replace(/^[a-z]/, c => c.toUpperCase())
-  const typeWithDsl = `${type}<${dsl}>`
+  const dslType = `${type}<${dsl}>`
   const tgpType = (arg0,arg1) => {
     let [shortId,comp] = ['',null]
     if (typeof arg0 == 'string')
@@ -34,20 +35,20 @@ function TgpType(type, dsl, extraCompProps) {
     else
       comp = arg0
 
-    const id = shortId ? `${typeWithDsl}${shortId}` : ''
+    const id = shortId ? `${dslType}${shortId}` : ''
     tgpType[shortId] = Component({...comp, id, dsl, type, ...extraCompProps})
     ;[type, ...(comp.moreTypes||'').split(',')].filter(x=>x).forEach(typeInStr=> {
       let [_type,_dsl] = [typeInStr,dsl]
       if (typeInStr.indexOf('<') != -1)
         [_type, _dsl] = typeInStr.match(/([^<]+)<([^>]+)/).slice(1)
-      jb.dsls[_dsl][_type][shortId] = tgpType[shortId]
+      dsls[_dsl][_type][shortId] = tgpType[shortId]
     })
     return tgpType[shortId]
   }
-  Object.assign(tgpType, {capitalLetterId,type,dsl,typeWithDsl})
-  jb.dsls[dsl] = jb.dsls[dsl] || {}
-  jb.dsls[dsl][type] = jb.dsls[dsl][type] || {}
-  jb.dsls[dsl][capitalLetterId] = tgpType
+  Object.assign(tgpType, {capitalLetterId, type, dsl, dslType})
+  dsls[dsl] = dsls[dsl] || {}
+  dsls[dsl][type] = dsls[dsl][type] || {}
+  dsls[dsl][capitalLetterId] = tgpType
   return tgpType
 
   function Component(comp) {
@@ -63,18 +64,10 @@ const MetaVar = TgpType('var','tgp')
 const MetaComp = TgpType('comp','tgp')
 const MetaParam = TgpType('param','tgp')
 
-MetaComp('tgpComp', { // appears also above, for bootstraping
-  params: [
-    {id: 'id', as: 'string', mandatory: true},
-    {id: 'type', as: 'string', byName: true},
-    {id: 'dsl', as: 'string'},
-    {id: 'description', as: 'string'},
-    {id: 'params', type: 'param[]'},
-    {id: 'impl', type: '$implType<>', dynamicType: '%type%', mandatory: true}
-  ]
-})
-
 MetaComp('tgpType', {
+  id: 'comp<tgp>tgpType', // this id is used for tgp-model-data registration 
+  dsl: 'tgp',
+  type: 'comp',
   params: [
     {id: 'type', as: 'string', mandatory: true},
     {id: 'dsl', as: 'string', byName: true}
@@ -83,9 +76,20 @@ MetaComp('tgpType', {
     {id: 'id', as: 'string', mandatory: true},
     {id: 'description', as: 'string'},
     {id: 'params', type: 'param[]'},
-    {id: 'impl', type: '$implType<>', dynamicType: '%type%', mandatory: true}
+    {id: 'impl', dynamicTypeFromParent: parent => parent.$type, mandatory: true}
   ]
 })
+
+// MetaComp('tgpComp', { // appears also above, for bootstraping
+//   params: [
+//     {id: 'id', as: 'string', mandatory: true},
+//     {id: 'type', as: 'string', byName: true},
+//     {id: 'dsl', as: 'string'},
+//     {id: 'description', as: 'string'},
+//     {id: 'params', type: 'param[]'},
+//     {id: 'impl', dynamicTypeFromParent: parent => parent.$type, mandatory: true}
+//   ]
+// })
 
 MetaParam('param', {
   params: [
@@ -104,7 +108,7 @@ MetaVar('Var', {
   params: [
       {id: 'name', as: 'string', mandatory: true},
       {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
-      {id: 'async', as: 'boolean', type: 'boolean<>'}
+      {id: 'async', as: 'boolean', type: 'boolean<common>'}
   ]
 })
 
@@ -189,9 +193,9 @@ jb.ext.tgp = {
     ;(comp.params || []).forEach(p=> {
       if (p.as == 'boolean' && ['boolean','ref'].indexOf(p.type) == -1) 
         p.type = 'boolean<common>'
-      const t1 = (p.type || '').replace(/\[\]/g,'') || 'data<common>'
-      p.$type = t1.indexOf('<') == -1 ? `${t1}<${comp.dsl || ''}>` : t1
-      if (p.$type == 'control<>') debugger
+      const t1 = (p.type || '').replace(/\[\]/g,'') || 'data'
+      p.$type = t1.indexOf('<') == -1 ? `${t1}<${comp.dsl || 'common'}>` : t1
+      if (p.$type.match(/<>/)) debugger
     })
   },
   validateTgpTypes(profile) {
@@ -219,7 +223,7 @@ jb.ext.tgp = {
 //     {id: 'id', as: 'string', mandatory: true},
 //     {id: 'description', as: 'string'},
 //     {id: 'params', type: 'param[]'},
-//     {id: 'impl', type: '$implType<>', dynamicType: '%type%', mandatory: true}
+//     {id: 'impl', dynamicTypeFromParent: parent => parent.$type, mandatory: true}
 //   ]
 // })
 

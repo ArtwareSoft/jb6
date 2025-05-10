@@ -1,8 +1,19 @@
-import { Test, Data, completionOptionsTest, completionActionTest, dummyCompProps, fixEditedCompTest } from './lang-service-testers.js'
-import { asIs } from '../../core/core-components.js'
-import { pipeline, pipe, contains, equals, first, list, slice, join } from '../../common/jb-common.js'
-import { dataTest } from '../../testers/data-tester.js'
-import { langService } from './lang-service.js'
+import {} from './lang-service-testers.js'
+import { dsls } from '../../../common/jb-common.js'
+
+const {
+  tgp: {
+    any: { asIs }
+  },
+  test: { Test,
+    test: { completionOptionsTest, completionActionTest }
+  },
+  common: { Data, Action, Boolean,
+    data: { dummyCompProps, pipeline, list, filter, join, property, obj, delay, pipe, first, slice }, 
+    boolean: { equals, contains, notContains, and, not },
+    prop: { prop },
+  },
+} = dsls
 
 Test('completionTest.param1', {
   impl: completionOptionsTest(`uiTest(text(__'hello world', ''), contains('hello world'))`, ['style'])
@@ -316,7 +327,7 @@ Test('completionTest.dslTest.typeRules', {
 
 Test('completionTest.dslTest.defaultValue', {
   impl: completionOptionsTest({
-    compText: `Test('x', {\n  type: 'data<>',\n  params: [\n    {id: 'p1', type: 'state<location>', defaultValue: __israel()}\n  ]\n})`,
+    compText: `Test('x', {\n  type: 'data<common>',\n  params: [\n    {id: 'p1', type: 'state<location>', defaultValue: __israel()}\n  ]\n})`,
     expectedSelections: ['israel2'],
     filePath: '/plugins/core/dsl-tests.js'
   })

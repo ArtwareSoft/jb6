@@ -30,7 +30,7 @@ Test('rxTest.pipe', {
 //     expectedResult: equals('Dan'),
 //     runBefore: () => {
 //       // do not return promise
-//       jb.exec(runActions(delay(1),writeValue('%$person/name%','Dan')), 'action<>') 
+//       jb.exec(runActions(delay(1),writeValue('%$person/name%','Dan')), 'action<common>') 
 //     }
 //   })
 // })

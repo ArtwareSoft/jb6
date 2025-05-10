@@ -1,38 +1,44 @@
-import {lineColToOffset, closestComp } from './tgp-text-editor.js'
-import { jb, utils } from '../../common/common-utils.js'
+import { jb, coreUtils } from '../../../core/all.js'
+import { langServiceUtils } from '../lang-service-parsing-utils.js'
+const { lineColToOffset, closestComp } = langServiceUtils
+const { log } = coreUtils
 
-let activeUri
-const openDocs = {}
+jb.workspaceRegistry = {
+    activeUri, 
+    openDocs: {},
+    lastEdit: null
+}
+const openDocs = jb.workspaceRegistry.openDocs
 
-let _lastEditForTester
-export const lastEditForTester = () => _lastEditForTester
+function activeUri() { return jb.workspaceRegistry.activeUri() }
+function activeDoc() { return openDocs[jb.workspaceRegistry.activeUri()] }
 
 jb.ext.tgpTextEditor = { host: {
         type: 'jbWorkspace',
         async applyEdit(edit,{docUri, ctx} = {}) {
-            const _docUri = docUri || activeUri
+            const _docUri = docUri || activeUri()
             const docText = openDocs[_docUri].text
             const from = lineColToOffset(docText, edit.range.start)
             const to = lineColToOffset(docText,edit.range.end)
             const newText = openDocs[_docUri].text = docText.slice(0,from) + edit.newText + docText.slice(to)
-            _lastEditForTester = { edit }
+            jb.workspaceRegistry.lastEdit = { edit }
             if (ctx?.vars?.editorCmpId && !ctx?.vars?.doNotRefreshEditor) {
               const selector = `[cmp-id="${ctx.vars.editorCmpId}"]`
               ctx.runAction({ $: 'runFEMethodFromBackEnd', selector, method: 'setText', Data: { $asIs: newText} })
             }
         },
-        getActiveDoc: () => openDocs[activeUri],
+        getActiveDoc: () => activeDoc(),
         selectRange(start,{end, ctx} = {}) {
             end = end || start
-            openDocs[activeUri].selection = { start, end: end || start }
+            activeDoc().selection = { start, end: end || start }
             if (ctx?.vars?.editorCmpId && !ctx?.vars?.doNotRefreshEditor) {
                 const selector = `[cmp-id="${ctx.vars.editorCmpId}"]`
                 ctx.runAction({$: 'runFEMethodFromBackEnd', selector, method: 'selectRange', Data: {start, end}})
             }
         },
         compTextAndCursor() {
-            const doc = openDocs[activeUri]
-            return closestComp(doc.text, doc.selection.start.line, doc.selection.start.col, activeUri)                
+            const doc = activeDoc()
+            return closestComp(doc.text, doc.selection.start.line, doc.selection.start.col, activeUri())                
         },
         async execCommand(cmd) {
             //console.log('exec command', cmd)
@@ -41,16 +47,18 @@ jb.ext.tgpTextEditor = { host: {
         },
         initDoc(uri,text, selection = { start:{line:0,col:0}, end:{line:0,col:0} }) {
             openDocs[uri] = { text, selection}
-            activeUri = uri
+            activeUri() = uri
         },
         async getTextAtSelection() {
-            const selection = openDocs[activeUri].selection
-            const docText = openDocs[activeUri].text
+            const selection = activeDoc().selection
+            const docText = activeDoc().text
             const from = lineColToOffset(docText, selection.start)
             const to = lineColToOffset(docText, selection.start)
             return docText.slice(from,to)
         },
-        log(arg) { utils.log(arg,{})},
-        async gotoFilePos(path,line,col) {}
+        log(arg) { log(arg,{})},
+        async gotoFilePos(path,line,col) {},
+        lastEdit: () => jb.workspaceRegistry.lastEdit
 }}
 
+export const tgpEditorHost = jb.ext.tgpTextEditor

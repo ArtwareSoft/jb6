@@ -3,7 +3,7 @@ using('ui-testers','workspace-ui','tgp-lang-service-tests')
 component('tgpTextEditorTest.getPosOfPath', {
   impl: dataTest({
     calculate: pipeline(
-      () => jb.tgpTextEditor.getPosOfPath('test<>tgpTextEditorTest.getPosOfPath~impl~expectedResult', 'edit'),
+      () => jb.tgpTextEditor.getPosOfPath('test<test>tgpTextEditorTest.getPosOfPath~impl~expectedResult', 'edit'),
       '%line%,%col%'
     ),
     expectedResult: equals('6,27')

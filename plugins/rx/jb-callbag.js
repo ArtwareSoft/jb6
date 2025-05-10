@@ -1,4 +1,5 @@
-import { utils, log, logError } from '../core/core-utils.js'
+import { coreUtils } from '../core/core-utils.js'
+const { log, logError, isPromise, calcPath } = coreUtils
 
 export const callbag = {
   fromIter: iter => (start, sink) => {
@@ -127,7 +128,7 @@ export const callbag = {
       })
   },  
   takeUntil(notifier) {
-      if (utils.isPromise(notifier))
+      if (isPromise(notifier))
           notifier = callbag.fromPromise(notifier)
       const UNIQUE = {}
       return source => (start, sink) => {
@@ -933,7 +934,7 @@ export const callbag = {
   },
   fromCallBag: source => source,
   fromAny: (source, name, options) => {
-      const f = source && 'from' + (utils.isPromise(source) ? 'Promise'
+      const f = source && 'from' + (isPromise(source) ? 'Promise'
           : source.addEventListener ? 'Event'
           : typeof source[Symbol.iterator] === 'function' ? 'Iter'
           : '')
@@ -956,12 +957,12 @@ export const callbag = {
     return typeof val == 'function' ? val(val.runCtx && val.runCtx.setData(data)) : val
   },
   childTxInCtx(ctx,noOfChildren) {
-    const tx = utils.path(ctx,'vars.tx')
+    const tx = calcPath(ctx,'vars.tx')
     if (noOfChildren < 2 || !tx) return ctx
     return ctx.setVars({tx: callbag.transaction(tx)})
   },
   childTxInData(data,noOfChildren) {
-    const ctx = utils.path(data,'srcCtx')
+    const ctx = calcPath(data,'srcCtx')
     const ctxWithRx = ctx && callbag.childTxInCtx(ctx,noOfChildren)
     return (!ctxWithRx || ctxWithRx == ctx) ? data : { ...data, srcCtx: ctxWithRx}
   },

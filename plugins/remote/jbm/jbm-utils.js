@@ -30,7 +30,7 @@ const cbHandler = {
     getAsPromise(id,t) { 
         if (cbHandler.map[id] && cbHandler.map[id].terminated)
             return Promise.resolve(() => () => {})
-        return jb.exec({$: 'action<>waitFor', check: ()=> cbHandler.map[id], interval: 5, times: 10})
+        return jb.exec({$: 'action<common>waitFor', check: ()=> cbHandler.map[id], interval: 5, times: 10})
             .catch(err => {
                 if (!jb.terminated)
                     jb.logError('cbLookUp - can not find cb',{id, in: jb.uri})
@@ -235,7 +235,7 @@ extension('jbm', 'main', {
                 if (jb.treeShake.codeServerJbm) {
                     if (Object.keys(jb.treeShake.loadingCode || {}).length) {
                         jb.log('remote waiting for loadingCode',{cmd, loading: Object.keys(jb.treeShake.loadingCode)})
-                        await jb.exec({$: 'action<>waitFor', timeout: 100, check: () => !Object.keys(jb.treeShake.loadingCode).length })
+                        await jb.exec({$: 'action<common>waitFor', timeout: 100, check: () => !Object.keys(jb.treeShake.loadingCode).length })
                     }
                     await jb.treeShake.bringMissingCode(cmd.remoteRun)
                 }
@@ -276,7 +276,7 @@ extension('jbm', 'main', {
         if (!jb.jbm.networkPeers['devtools']) {
             jb.jbm.networkPeers['devtools'] = jb.jbm.extendPortToJbmProxy(jb.jbm.portFromFrame(globalThis,'devtools',{blockContentScriptLoop: true}))
             globalThis.postMessage({initDevToolsPeerOnDebugge: {uri: jb.uri, distPath: jb.jbm.pathOfDistFolder(), spyParam: jb.path(jb,'spy.spyParam')}}, '*')
-            await jb.exec({$: 'action<>waitFor', check: ()=> jb.jbm.devtoolsInitialized, interval: 500, times: 10})
+            await jb.exec({$: 'action<common>waitFor', check: ()=> jb.jbm.devtoolsInitialized, interval: 500, times: 10})
             jb.log(`chromeDebugger devtools initialized. adding connectToPanel func on debugee`,{uri: jb.uri})
             jb.jbm.connectToPanel = panelUri => {
                 jb.log(`chromeDebugger invoking connectToPanel comp ${panelUri} on devltools`,{uri: jb.uri})

@@ -1,6 +1,11 @@
-import { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, asJbComp }  from '../../core/jb-args.js'
-import { jbComp}  from '../../core/jb-core.js'
-import { utils, Data } from '../../common/common-utils.js'
+import { dsls, coreUtils } from '../../core/all.js'
+
+const { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, jbComp, asJbComp, isPrimitiveValue, asArray, val, compName, compByFullId } = coreUtils
+const {
+  common: { Data }
+} = dsls
+
+Object.assign(coreUtils,{ prettyPrint, prettyPrintWithPositions})
 
 Data('prettyPrint', {
   params: [
@@ -9,15 +14,15 @@ Data('prettyPrint', {
     {id: 'noMacros', as: 'boolean', type: 'boolean'},
     {id: 'type', as: 'string'}
   ],
-  impl: (ctx,{profile}) => prettyPrint(utils.val(profile),{ ...ctx.jbCtx.args })
+  impl: (ctx,{profile}) => prettyPrint(val(profile),{ ...ctx.jbCtx.args })
 })
 
 const emptyLineWithSpaces = Array.from(new Array(200)).map(_=>' ').join('')
 
-export function prettyPrintComp(compId,comp,settings={}) {
-    return `${compHeader(compId)}${prettyPrint(comp,{ initialPath: compId, ...settings })})`
-}
-export function prettyPrint(val,settings = {}) {
+// export function prettyPrintComp(compId,comp,settings={}) {
+//     return `${compHeader(compId)}${prettyPrint(comp,{ initialPath: compId, ...settings })})`
+// }
+function prettyPrint(val,settings = {}) {
   if (val == null) return ''
   return prettyPrintWithPositions(val,settings).text;
 }
@@ -26,7 +31,7 @@ function compHeader(compId) {
   return `component('${compId.split('>').pop()}', `
 }
 
-export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros,singleLine, depth, tgpModel, type} = {}) {
+function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros,singleLine, depth, tgpModel, type} = {}) {
   if (val[asJbComp]) {
     debugger
   }
@@ -100,12 +105,12 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
       }, [])
 
       return [
-        ...utils.asArray(open).map(x=>({...x, path, action: `propInfo!${path}`})),
+        ...asArray(open).map(x=>({...x, path, action: `propInfo!${path}`})),
         {token: newLine(), action: `prependPT!${path}`},
         ...vals,
         {token:'', action: `end!${path}`},
         {token: newLine(-1), action: `appendPT!${path}`},
-        ...utils.asArray(close).map(x=>({...x, path, action: `appendPT!${path}`})),
+        ...asArray(close).map(x=>({...x, path, action: `appendPT!${path}`})),
       ]
     }
 
@@ -210,11 +215,11 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
       ;(cleaned.params||[]).forEach(p => delete p.$type)
       return asIsProps(cleaned,path)
     }
-    const fullptId = utils.compName(profile)
+    const fullptId = compName(profile)
     if (!fullptId)
       return asIsProps(profile,path)
 
-    const comp = profile.$ instanceof jbComp ? profile.$ : tgpModel?.comps[fullptId]
+    const comp = profile.$ instanceof jbComp ? profile.$ : compByFullId(fullptId, tgpModel)
     const id = fullptId.split('>').pop()                
     const macro = titleToId(id)
 
@@ -245,7 +250,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
       paramsByName = params.slice(0)
     }
 
-    const varArgs = utils.asArray(profile.vars).map(({name, val, async},i) => ({innerPath: `vars~${i}`, val: {$$: 'var<tgp>Var', name, val,async, ...calcArrayPos(i,profile.vars) }}))
+    const varArgs = asArray(profile.vars).map(({name, val, async},i) => ({innerPath: `vars~${i}`, val: {$$: 'var<tgp>Var', name, val,async, ...calcArrayPos(i,profile.vars) }}))
     const varsByValue = hasParamAsArray ? varArgs : []
     //const varsByName = hasParamAsArray ? [] : ['vars']
     const systemProps = sysProps.filter(p=>p != 'vars' || !varsByValue.length).flatMap(p=>profile[p] ? [{innerPath: p, val: profile[p]}] : [])
@@ -253,7 +258,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
     const propsByName = systemProps.concat(paramsByName.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode }))).filter(({val})=>val !== undefined)
     const propsByValue = paramsByValue.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode})).filter(({val})=>val !== undefined)
     const firstParamVal = profile[param0.id]
-    const secondParamVal = utils.asArray(profile[param1.id])
+    const secondParamVal = asArray(profile[param1.id])
     const singleFirstParamAsArray = firstParamAsArray && !Array.isArray(firstParamVal) && firstParamVal != null
 
     const argsOfSingleFirstParam = [{innerPath: param0.id, val: firstParamVal}]
@@ -290,7 +295,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
     const singleFunc =  propsByName.length == 0 && !varArgs.length && !systemProps.length && argsByValue.length == 1 && typeof argsByValue[0].val == 'function'
     const singleVal =  propsByName.length == 0 && !varArgs.length && !systemProps.length && argsByValue.length == 1
     const primitiveArray =  propsByName.length == 0 && !varArgs.length && firstParamAsArray && 
-      argsByValue.reduce((acc,item)=> acc && utils.isPrimitiveValue(item.val), true)
+      argsByValue.reduce((acc,item)=> acc && isPrimitiveValue(item.val), true)
     const singleInArray = (parentParam?.type || '').indexOf('[]') != -1 && !path.match(/[0-9]$/)
     return props[path] = { len, macro, posInArray, argsByValue, propsByName, nameValuePattern, nameValueFold, singleVal, singleFunc, primitiveArray, singleInArray, singleArgAsArray, hasParamAsArray, lenOfValues, mixed: true}
   }
@@ -316,7 +321,7 @@ export function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath
   }
 
   function calcArrayProps(array, path) {
-    const primitiveArray = array.reduce((acc,item)=> acc && utils.isPrimitiveValue(item), true)
+    const primitiveArray = array.reduce((acc,item)=> acc && isPrimitiveValue(item), true)
     let longInnerValInArray = false
 //      const len = Array.from(array.keys()).map(x=>array[x]).reduce((len,val,i) => {
     const _arr = Object.values(array) 

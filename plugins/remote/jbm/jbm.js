@@ -14,7 +14,7 @@ component('worker', {
   params: [
     {id: 'id', as: 'string'},
     {id: 'sourceCode', type: 'source-code<loader>', byName: true},
-    {id: 'init', type: 'action<>', dynamic: true},
+    {id: 'init', type: 'action<common>', dynamic: true},
     {id: 'networkPeer', as: 'boolean', description: 'used for testing', type: 'boolean'}
   ],
   impl: If({
@@ -37,7 +37,7 @@ component('webWorker', {
   params: [
     {id: 'id', as: 'string'},
     {id: 'sourceCode', type: 'source-code<loader>', byName: true, defaultValue: treeShakeClient()},
-    {id: 'init', type: 'action<>', dynamic: true},
+    {id: 'init', type: 'action<common>', dynamic: true},
     {id: 'networkPeer', as: 'boolean', description: 'used for testing', type: 'boolean'},
     {id: 'stateless', as: 'boolean', description: 'can not be rx data source, or remote widget', type: 'boolean'}
   ],
@@ -94,7 +94,7 @@ component('child', {
   params: [
     {id: 'id', as: 'string'},
     {id: 'sourceCode', type: 'source-code<loader>', byName: true, defaultValue: treeShakeClient()},
-    {id: 'init', type: 'action<>', dynamic: true}
+    {id: 'init', type: 'action<common>', dynamic: true}
   ],
   impl: (ctx,_id,sourceCode,init) => {
         const id = _id || 'child1'
@@ -262,7 +262,7 @@ component('jbm.isSelf', {
   params: [
     {id: 'jbm', type: 'jbm', mandatory: true}
   ],
-  type: 'boolean<>',
+  type: 'boolean<common>',
   impl: (ctx,jbm) => jbm == jb
 })
 
@@ -275,8 +275,8 @@ component('parent', {
 })
 
 component('jbm.start', {
-  type: 'data<>',
-  moreTypes: 'action<>',
+  type: 'data<common>',
+  moreTypes: 'action<common>',
   params: [
     {id: 'jbm', type: 'jbm', mandatory: true}
   ],
@@ -284,7 +284,7 @@ component('jbm.start', {
 })
 
 component('jbm.terminateChild', {
-  type: 'action<>',
+  type: 'action<common>',
   params: [
     {id: 'id', as: 'string'}
   ],
@@ -292,17 +292,17 @@ component('jbm.terminateChild', {
 })
 
 component('isNode', {
-  type: 'boolean<>',
+  type: 'boolean<common>',
   impl: () => globalThis.jbHost.isNode
 })
 
 component('isVscode', {
-  type: 'boolean<>',
+  type: 'boolean<common>',
   impl: () => globalThis.jbHost.isVscode
 })
 
 component('nodeOnly', {
-  type: 'data<>',
+  type: 'data<common>',
   params: [
     {id: 'calc', dynamic: true, mandatory: true},
     {id: 'sourceCode', type: 'source-code<loader>', mandatory: true}

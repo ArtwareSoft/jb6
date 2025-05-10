@@ -80,7 +80,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
         counter++
         if (counter % 100 == 0)
             await delay(5) // gc
-        const fullTestId = `test<>${testID}`
+        const fullTestId = `test<test>${testID}`
         let res
         if (!showOnly) {
             document.getElementById('progress').innerHTML = `<div id=${testID}>${index++}: ${testID} started</div>`

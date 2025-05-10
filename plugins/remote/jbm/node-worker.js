@@ -127,7 +127,7 @@ component('remoteNodeWorker', {
   params: [
     {id: 'id', as: 'string'},
     {id: 'sourceCode', type: 'source-code<loader>', byName: true, defaultValue: treeShakeClientWithPlugins()},
-    {id: 'init', type: 'action<>', dynamic: true},
+    {id: 'init', type: 'action<common>', dynamic: true},
     {id: 'initiatorUrl', as: 'string', defaultValue: 'http://localhost:8082'},
     {id: 'workerDetails'}
   ],
@@ -188,8 +188,8 @@ component('nodeWorker', {
   params: [
     {id: 'id', as: 'string'},
     {id: 'sourceCode', type: 'source-code<loader>', byName: true, defaultValue: treeShakeClientWithPlugins()},
-    {id: 'init', type: 'action<>', dynamic: true},
-    {id: 'usePackedCode', as: 'boolean', type: 'boolean<>'}
+    {id: 'init', type: 'action<common>', dynamic: true},
+    {id: 'usePackedCode', as: 'boolean', type: 'boolean<common>'}
   ],
   impl: async (ctx,_id,sourceCode,init,usePackedCode) => {
     const id = (_id || 'w1').replace(/-/g,'__')

@@ -222,7 +222,7 @@ export const property = Data('property', {
   params: [
     {id: 'prop', as: 'string', mandatory: true},
     {id: 'ofObj', defaultValue: '%%'},
-    {id: 'useRef', as: 'boolean', type: 'boolean<>'}
+    {id: 'useRef', as: 'boolean', type: 'boolean<common>'}
   ],
   impl: (ctx, {prop, ofObj: obj, useRef}) => useRef && jb.ext.db ? jb.ext.db.objectProperty(obj,prop,ctx) : obj[prop]
 })

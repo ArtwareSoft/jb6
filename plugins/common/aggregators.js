@@ -1,5 +1,8 @@
-import { Data, Aggregator } from './jb-common.js'
-import { utils } from './common-utils.js'
+import { utils,dsls } from './common-utils.js'
+const { 
+  common: { Data, Aggregator },
+} = dsls
+
 
 export const aggregate = Aggregator('aggregate', {
   description: 'in pipeline, calc function on all items, rather then one by one',

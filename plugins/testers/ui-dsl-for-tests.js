@@ -1,13 +1,18 @@
-import { Test, TgpType } from '../../testers/data-tester.js'
+import { dsls } from '../core/all.js'
+const { 
+    common: { Data },
+    tgp: { TgpType},
+    test: { Test }
+} = dsls
+import {} from '../common/jb-common.js' // used indirectly by lang service tests
 
-export const typeRules = [{ isOf: ['data<>','boolean<>'] }]
+const Control = TgpType('control','ui')
+const Feature = TgpType('feature','ui')
 
-export const Control = TgpType('control','ui')
-export const Feature = TgpType('feature','ui')
-export const UIAction = TgpType('ui-action','test')
-export const Jbm = TgpType('jbm','jbm')
+TgpType('ui-action','test')
+TgpType('jbm','jbm')
 
-export const group = Control('group', {
+Control('group', {
     params: [
         {id: 'controls', type: 'control[]', mandatory: true, dynamic: true, composite: true},
         {id: 'title', as: 'string', dynamic: true, byName: true},
@@ -17,18 +22,18 @@ export const group = Control('group', {
     ]
 })
 
-const button = Control({
+const button = Control({ // used to test private def
     params: [
         {id: 'title', as: 'ref', mandatory: true, templateValue: 'click me', dynamic: true},
-        {id: 'action', type: 'action<>', mandatory: true, dynamic: true},
+        {id: 'action', type: 'action<common>', mandatory: true, dynamic: true},
         {id: 'style', type: 'button-style', dynamic: true},
-        {id: 'raised', as: 'boolean', dynamic: true, type: 'boolean<>'},
+        {id: 'raised', as: 'boolean', dynamic: true, type: 'boolean'},
         {id: 'disabledTillActionFinished', as: 'boolean', type: 'boolean'},
         {id: 'features', type: 'feature[]', dynamic: true}
    ]
 })
 
-export const controlWithCondition = Control('controlWithCondition', {
+Control('controlWithCondition', {
     macroByValue: true,
     params: [
         {id: 'condition', type: 'boolean', dynamic: true, mandatory: true, as: 'boolean'},
@@ -37,7 +42,7 @@ export const controlWithCondition = Control('controlWithCondition', {
     ]
 })
 
-export const text = Control('text', {
+Control('text', {
     params: [
         {id: 'text', as: 'ref', mandatory: true, templateValue: 'my text', dynamic: true},
         {id: 'title', as: 'ref', dynamic: true},
@@ -46,7 +51,7 @@ export const text = Control('text', {
     ]
 })
 
-export const uiTest = Test('uiTest', {
+Test('uiTest', {
     params: [
         {id: 'control', type: 'control<ui>', dynamic: true, mandatory: true},
         {id: 'expectedResult', type: 'boolean', dynamic: true, mandatory: true},
@@ -76,5 +81,12 @@ Feature('id', {
   description: 'adds id to html element',
   params: [
     {id: 'id', mandatory: true, as: 'string', dynamic: true}
+  ]
+})
+
+// for testing action map
+Data('singleParamByNameComp', {
+  params: [
+    {id: 'p1', as: 'boolean', type: 'boolean<common>', byName: true}
   ]
 })

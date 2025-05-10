@@ -1,60 +1,65 @@
-import { actionMapTest} from './profile-parser-testers.js'
-import { Test, dataTest } from '../../testers/data-tester.js'
+import {} from './lang-service-testers.js'
+import { dsls } from '../../../common/jb-common.js'
+import { coreUtils } from '../../../core/all.js'
+const { prettyPrint} = coreUtils
 
-import { prettyPrintWithPositions, prettyPrint, prettyPrintComp} from '../formatter/pretty-print.js'
-import { getPosOfPath} from './tgp-text-editor.js'
-import { asComp } from '../../core/jb-args.js'
-import { jb, Data, Boolean, Var } from '../../common/jb-common.js'
-import { Control } from '../../testers/ui-dsl/ui.js'
-const { group, text, controlWithCondition } = Control
-const { pipeline, split, list } = Data
-const { equals, contains, notContains, and, not } = Boolean
+const { 
+  tgp: { Const, TgpType, 
+    var : { Var } 
+  },
+  ui: { Control,
+    control: { group, text, controlWithCondition }
+
+  },
+  common: { Data, Action, Boolean,
+    data: { pipeline, list, filter, join, property, obj, delay, split }, 
+    boolean: { equals, contains, notContains, and, not },
+    prop: { prop },
+  },
+  test: { Test,
+    test: { dataTest, actionMapTest }
+  }
+} = dsls
 
 Test('actionMapTest.simple', {
-  impl: actionMapTest(() => split(',' , {text: '%%', part: 'first'}), 'data<>', 'propInfo!~part', '29,35')
+  impl: actionMapTest(() => split(',' , {text: '%%', part: 'first'}), 'data<common>', 'propInfo!~part', '29,35')
 })
 
 Test('actionMapTest.varsPath', {
-  impl: actionMapTest(() => split({vars: [Var('a', 100), Var('b', 'txt')]}), 'data<>', 'edit!~vars~0~val', '26,26')
+  impl: actionMapTest(() => split({vars: [Var('a', 100), Var('b', 'txt')]}), 'data<common>', 'edit!~vars~0~val', '26,26')
 })
 
 Test('actionMapTest.varsPathSingleVar', {
-  impl: actionMapTest(() => split({vars: Var('a', 'b')}), 'data<>', 'edit!~vars~val', '26,26')
+  impl: actionMapTest(() => split({vars: Var('a', 'b')}), 'data<common>', 'edit!~vars~val', '26,26')
 })
 
 Test('actionMapTest.varsPathInPipeline', {
-  impl: actionMapTest(() => pipeline(Var('a', 'b'),'hello'), 'data<>', 'edit!~vars~0~val', '19,19')
-})
-
-const singleParamByNameComp = Data({
-  params: [
-    {id: 'p1', as: 'boolean', type: 'boolean<>', byName: true}
-  ]
+  impl: actionMapTest(() => pipeline(Var('a', 'b'),'hello'), 'data<common>', 'edit!~vars~0~val', '19,19')
 })
 
 Test('actionMapTest.singleParamByName', {
-  impl: actionMapTest('pipeline(singleParamByNameComp({p1: true}))', 'data<>', 'begin!~source~p1', '36,36')
+  impl: actionMapTest('pipeline(singleParamByNameComp({p1: true}))', 'data<common>', 'begin!~source~p1', '36,36')
 })
 
 Test('actionMapTest.secondParamAsArray', {
-  impl: actionMapTest(() => pipeline(list(1,2), '%%'), 'data<>', 'begin!~items~0', '20,20')
+  impl: actionMapTest(() => pipeline(list(1,2), '%%'), 'data<common>', 'begin!~items~0', '20,20')
 })
 
 Test('actionMapTest.secondParamAsArrayWithVars', {
-  impl: actionMapTest(() => pipeline(Var('a', 3), '%%', 'aa'), 'data<>', 'begin!~items~0', '28,28')
+  impl: actionMapTest(() => pipeline(Var('a', 3), '%%', 'aa'), 'data<common>', 'begin!~items~0', '28,28')
 })
 
 Test('actionMapTest.secondParamAsArrayWithLongVars', {
   impl: actionMapTest({
     profile: () => pipeline(Var('a', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'), '%%', 'aaaaaaaaaaaaaaaaaaaaaadasdaaaaaaaaaaaaaaaaaaaaa'),
-    expectedType: 'data<>',
+    expectedType: 'data<common>',
     path: 'begin!~items~0',
     expectedPos: '82,82'
   })
 })
 
 Test('actionMapTest.asyncVar', {
-  impl: actionMapTest(() => pipeline(Var('a',3, {async: true}),''), 'data<>', 'begin!~vars~0~async', '30,30')
+  impl: actionMapTest(() => pipeline(Var('a',3, {async: true}),''), 'data<common>', 'begin!~vars~0~async', '30,30')
 })
 
 Test('actionMapTest.prependInGroup', {
@@ -109,7 +114,7 @@ Test('actionMapTest.dslNameOveride', {
 Test('actionMapTest.remark.pipeline', {
   impl: dataTest({
     calculate: pipeline(
-      () => prettyPrintWithPositions(pipeline(Var('x',1), 'a' , {'//': 'hello'}),{type: 'data<>', singleLine: true}),
+      () => prettyPrintWithPositions(pipeline(Var('x',1), 'a' , {'//': 'hello'}),{type: 'data<common>', singleLine: true}),
       log('test'),
       '%text%'
     ),
@@ -142,7 +147,7 @@ Data('test.foldFunction', {
 })
 
 Test('actionMapTest.posOfFoldFunctionBug', {
-  impl: dataTest(() => getPosOfPath('data<>test.foldFunction~impl~items~0'), equals('%line%', 4))
+  impl: dataTest(() => getPosOfPath('data<common>test.foldFunction~impl~items~0'), equals('%line%', 4))
 })
 
 Test('actionMapTest.singleFunc', {
@@ -156,7 +161,7 @@ Test('actionMapTest.byValue.cutTailingUndefinedArgs', {
 */
 
 Test('actionMapTest.packedPrimitiveArray', {
-  impl: actionMapTest(() => list(1, 2, 3, 4), 'data<>', 'end!', '13,13')
+  impl: actionMapTest(() => list(1, 2, 3, 4), 'data<common>', 'end!', '13,13')
 })
 
 Test('actionMapTest.async', {
@@ -165,7 +170,7 @@ Test('actionMapTest.async', {
 
 Test('actionMapTest.asyncInProfile', {
   impl: dataTest({
-    calculate: () => prettyPrint(dataTest(async () => { 5 }), {type: 'test<>'}),
+    calculate: () => prettyPrint(dataTest(async () => { 5 }), {type: 'test<test>'}),
     expectedResult: and(not(contains('a:')), contains('async () => { 5 }'))
   })
 })
@@ -189,14 +194,14 @@ Test('actionMapTest.asIsLarge', {
   impl: dataTest({
     calculate: () => prettyPrint(equals(asIs({ edit: { range: {start: {line: 3, col: 0}, end: {line: 3, col: 0}},
     newText: `Test('dataTest.test.tst1', {\n  impl: dataTest(test.tst1(), equals(''))\n})` }, cursorPos: {line: 4, col: 0} })
-  ), {type: 'data<>'}),
+  ), {type: 'data<common>'}),
     expectedResult: equals(`equals(asIs({\n    edit: {\n      range: {start: {line: 3, col: 0}, end: {line: 3, col: 0}},\n      newText: \`Test('dataTest.test.tst1', {\\n  impl: dataTest(test.tst1(), equals(''))\\n})\`\n    },\n    cursorPos: {line: 4, col: 0}\n}))`)
   })
 })
 
 // Test('actionMapTest.tooLong', {
 //   impl: dataTest({
-//     calculate: () => prettyPrintComp('UiTreeTest.treeDD.sameArray',jb.comps['test<>UiTreeTest.treeDD.sameArray']),
+//     calculate: () => prettyPrintComp('UiTreeTest.treeDD.sameArray',jb.comps['test<test>UiTreeTest.treeDD.sameArray']),
 //     expectedResult: contains('\n')
 //   })
 // })
@@ -211,7 +216,7 @@ Test('actionMapTest.typeAdapter.from', {
 Test('actionMapTest.asIs', {
   impl: dataTest({
     calculate: prettyPrint(() => equals('hello', asIs({ line: 1, col: 47 })), {
-      type: 'boolean<>'
+      type: 'boolean<common>'
     }),
     expectedResult: equals(`equals('hello', asIs({line: 1, col: 47}))`)
   })

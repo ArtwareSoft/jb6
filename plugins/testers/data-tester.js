@@ -1,9 +1,10 @@
-import { dsls } from '../core/all.js'
 import { testUtils } from './tester.js'
-import { utils } from '../common/jb-common.js'
+import { dsls, utils } from '../common/jb-common.js'
 import { spy } from '../logger/spy.js'
-const { test: { Test }} = dsls
+import {} from './ui-dsl-for-tests.js'
 
+export { dsls, utils }
+const { test: { Test }} = dsls
 
 Test('dataTest', {
   params: [
@@ -43,7 +44,7 @@ Test('dataTest', {
 					return _res
 				})()
 			])
-			let testFailure = utils.path(testRes,'0.testFailure') || testRes?.testFailure
+			let testFailure = testRes?.[0]?.testFailure || testRes?.testFailure
 			const countersErr = testUtils.countersErrors(expectedCounters,allowError)
 			const expectedResultCtx = ctxToUse.setData(testRes)
 			const expectedResultRes = !testFailure && await expectedResult(expectedResultCtx)

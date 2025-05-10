@@ -166,8 +166,8 @@ Action('addToArray', {
   params: [
     {id: 'array', as: 'ref', mandatory: true},
     {id: 'toAdd', as: 'array', defaultValue: '%%'},
-    {id: 'clone', as: 'boolean', type: 'boolean<>'},
-    {id: 'addAtTop', as: 'boolean', type: 'boolean<>'}
+    {id: 'clone', as: 'boolean', type: 'boolean<common>'},
+    {id: 'addAtTop', as: 'boolean', type: 'boolean<common>'}
   ],
   impl: (ctx,{array,toAdd,clone,addAtTop}) => {
     const items = clone ? JSON.parse(JSON.stringify(toAdd)) : toAdd;

@@ -135,10 +135,28 @@ function Const(id, val) {
   }    
 }
 
+function calcPath(object,_path,value) {
+  if (!object) return object
+  let cur = object
+  if (typeof _path === 'string') _path = _path.split('.')
+  _path = coreUtils.asArray(_path)
+
+  if (typeof value == 'undefined') {  // get
+    return _path.reduce((o,k)=>o && o[k], object)
+  } else { // set
+    for(let i=0;i<_path.length;i++)
+      if (i == _path.length-1)
+        cur[_path[i]] = value
+      else
+        cur = cur[_path[i]] = cur[_path[i]] || {}
+    return value
+  }
+}
+
 jb.coreUtils = {
   jb, RT_types, log, logError, logException, 
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
-  compName, compParams, parentPath,
+  compName, compParams, parentPath, calcPath,
   val: x=>val(x)
 }
 

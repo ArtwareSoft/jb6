@@ -1,8 +1,9 @@
 import { Data, Ctx } from '../../core/tgp.js'
-import { log, logError, utils } from '../../core/core-utils.js'
+import { coreUtils } from '../../core/core-utils.js'
 import { callbag } from '../../rx/jb-callbag.js'
 import { prettyPrint } from '../../formatter/pretty-print.js'
 
+const { log, logError, calcPath, isCallbag, resolveProfile } = coreUtils
 const allwaysPassVars = ['widgetId','disableLog','uiTest']
 const MAX_ARRAY_LENGTH = 10000, MAX_OBJ_DEPTH = 100
 
@@ -63,7 +64,7 @@ function stripData(data, { top, depth, path} = {}) {
         return data.slice(0,MAX_ARRAY_LENGTH).map((x,i)=>stripData(x, innerDepthAndPath(i)))
     if (typeof data == 'object' && ['DOMRect'].indexOf(data.constructor.name) != -1)
         return Object.fromEntries(Object.keys(data.__proto__).map(k=>[k,data[k]]))
-    if (typeof data == 'object' && (utils.path(data.constructor,'name') || '').match(/Error$/))
+    if (typeof data == 'object' && (calcPath(data.constructor,'name') || '').match(/Error$/))
         return {$$: 'Error', message: data.toString() }
     if (typeof data == 'object' && ['VNode','Object','Array'].indexOf(data.constructor.name) == -1)
         return { $$: data.constructor.name }
@@ -80,10 +81,10 @@ export function deStrip(data, _asIs) {
     const stripedObj = data && typeof data == 'object' && Object.fromEntries(Object.entries(data).map(e=>[e[0],deStrip(e[1],asIs)]))
     if (stripedObj && data.$ == 'runCtx' && !asIs)
         return (ctx2,data2) => {
-            const ctx = new Ctx(utils.resolveProfile(stripedObj, {topComp: stripedObj}),{}).extendVars(ctx2,data2)
+            const ctx = new Ctx(resolveProfile(stripedObj, {topComp: stripedObj}),{}).extendVars(ctx2,data2)
             const res = ctx.runItself()
             if (ctx.probe) {
-                if (utils.isCallbag(res))
+                if (isCallbag(res))
                     return callbag.pipe(res, callbag.mapPromise(r=>waitAndWrapProbeResult(r,ctx.probe,ctx)))
                 if (callbag.isCallbagOperator(res))
                     return source => callbag.pipe(res(source), callbag.mapPromise(r=>waitAndWrapProbeResult(r,ctx.probe,ctx)))

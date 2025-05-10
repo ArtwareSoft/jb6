@@ -1,15 +1,20 @@
-import { jb, utils, logException } from '../../common/common-utils.js'
-import { astToTgpObj, astNode } from '../model-data/tgp-model-data.js'
-import { systemParams, resolveProfileTop } from '../../core/jb-args.js'
-import { resolveProfileTypes, primitivesAst } from './resolve-types.js'
+import { coreUtils } from '../../core/all.js'
+import {} from '../model-data/tgp-model-data.js'
 import { parse } from '/libs/acorn.mjs'
+const { jb, systemParams, resolveProfileTop, astToTgpObj, astNode, logException, 
+    resolveProfileTypes, compParams, compName, isPrimitiveValue, asArray, compByFullId, primitivesAst } = coreUtils
 
-const visitedPaths = [] 
-let currentVisited = 0
+jb.langServiceUtils = jb.langServiceUtils || {}
+export const langServiceUtils = jb.langServiceUtils
 
-export const tgpEditorHost = () => jb.ext.tgpTextEditor.host
+Object.assign(langServiceUtils, {closestComp, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath, lineColToOffset, offsetToLineCol, 
+    tgpEditorHost, applyCompChange, calcHash})
 
-export async function applyCompChange(editAndCursor, {ctx} = {}) {
+function tgpEditorHost() {
+    return jb.ext.tgpTextEditor.host
+}
+
+async function applyCompChange(editAndCursor, {ctx} = {}) {
     const host = tgpEditorHost()
     const { edit, cursorPos } = editAndCursor
     try {
@@ -27,7 +32,7 @@ export async function applyCompChange(editAndCursor, {ctx} = {}) {
     }
 }
 
-export function calcHash(str) {
+function calcHash(str) {
     let hash = 0, i, chr;
     if (str.length === 0) return hash
     for (i = 0; i < str.length; i++) {
@@ -38,38 +43,36 @@ export function calcHash(str) {
     return hash
 }
 
-export function offsetToLineCol(text, offset) {
+function offsetToLineCol(text, offset) {
     const cut = text.slice(0, offset)
     return {
         line: (cut.match(/\n/g) || []).length || 0,
         col: offset - (cut.indexOf('\n') == -1 ? 0 : (cut.lastIndexOf('\n') + 1))
     }
 }
-export function lineColToOffset(text, { line, col }) {
+function lineColToOffset(text, { line, col }) {
     const res = text.split('\n').slice(0, line).reduce((sum, line) => sum + line.length + 1, 0) + col
     if (isNaN(res)) debugger
     return res
 }
 
-export function getPosOfPath(path, _where = 'edit', { compText, tgpModel } = {}) { // edit,begin,end,function
+function getPosOfPath(path, _where = 'edit', { compText, tgpModel } = {}) { // edit,begin,end,function
     const { actionMap, text, startOffset = 0 } = calcProfileActionMap(compText, {tgpModel, expectedPath: path})
-//    const compId = path.split('~')[0]
-//    const { actionMap, text, startOffset } = prettyPrintData // || prettyPrintWithPositions(tgpModel.comps[compId], { initialPath: compId })
-    const item = utils.asArray(_where).reduce((acc,where) => acc || actionMap.find(e => e.action == `${where}!${path}`), null)
+    const item = asArray(_where).reduce((acc,where) => acc || actionMap.find(e => e.action == `${where}!${path}`), null)
     if (!item) return { line: 0, col: 0 }
     return offsetToLineCol(text, item.from - startOffset)
 }
 
-export function filePosOfPath(tgpPath, {tgpModel}) {
+function filePosOfPath(tgpPath, {tgpModel}) {
     const compId = tgpPath.split('~')[0]
-    const loc = tgpModel.comps[compId].$location
+    const loc = compByFullId(compId, tgpModel).$location
     const path = loc.path
     const compLine = (+loc.line) || 0
     const { line, col } = getPosOfPath(tgpPath, 'begin', {tgpModel})
     return { path, line: line + compLine, col }
 }
 
-export function deltaFileContent(compText, newCompText, compLine) {
+function deltaFileContent(compText, newCompText, compLine) {
     const { common, oldText, newText } = calcDiff(compText, newCompText || '')
     const commonStartSplit = common.split('\n')
     const start = { line: compLine + commonStartSplit.length - 1, col: commonStartSplit.slice(-1)[0].length }
@@ -91,17 +94,18 @@ export function deltaFileContent(compText, newCompText, compLine) {
     }
 }
 
-export function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
+function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0])
-    resolveProfileTypes(topComp,{tgpModel, expectedType: tgpType, topComp})
-    let compId = ''
-    if (tgpType == 'comp<tgp>') {
-        const $$ = `comp<tgp>${topComp.$}`
-        const { type, dsl } = tgpModel?.comps[$$]
-        const id = compId = `${type}<${dsl||''}>${topComp.id}`
-        Object.assign(topComp,{ type, dsl, $$})
-        tgpModel.comps[id] = resolveProfileTop(topComp)
-    }
+    resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp})
+    const compId = tgpType == 'comp<tgp>' ? `${tgpModel.dsls.tgp.comp[topComp.$].dslType}${topComp.id}` : ''
+    //resolveProfileTop(topComp)
+    // if (tgpType == 'comp<tgp>') {
+    //     const $$ = `comp<tgp>${topComp.$}`
+    //     const { type, dsl } = compByFullId($$, tgpModel)
+    //     const id = compId = `${type}<${dsl||''}>${topComp.id}`
+    //     Object.assign(topComp,{ type, dsl, $$})
+    //     tgpModel.comps[id] = resolveProfileTop(topComp)
+    // }
     const actionMap = []
 
     calcActionMap(topComp, compId, topComp[astNode])
@@ -117,7 +121,7 @@ export function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel,
         if (!ast || !pathMatch || inCompOffset != -1 && !astMatchOffset ) return
         actionMap.push({ action: `begin!${path}`, from: ast.start, to: ast.start })
 
-        if (utils.isPrimitiveValue(prof)) {
+        if (isPrimitiveValue(prof)) {
             actionMap.push({ action: `beginToken!${path}`, from: ast.start, to: ast.start })
             actionMap.push({ action: `endToken!${path}`, from: ast.end, to: ast.end })
             actionMap.push({ action: `end!${path}`, from: ast.end, to: ast.end })
@@ -170,7 +174,7 @@ export function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel,
                 if (props.length > 1)
                     props.slice(1).forEach((prop, i) => actionMap.push({ action: `addProp!${path}`, from: props[i].end, to: prop.start, source: 'props' }))
             }
-            const params = [...utils.compParams(tgpModel.comps[utils.compName(prof)]), ...systemParams]
+            const params = [...compParams(compByFullId(compName(prof), tgpModel)), ...systemParams]
             const param0 = params[0] || {}, param1 = params[1] || {}
             const firstParamAsArray = (param0.type||'').indexOf('[]') != -1 && !param0.byName
             const secondParamAsArray = param1.secondParamAsArray
@@ -197,7 +201,7 @@ export function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel,
     }
 }
 
-export function closestComp(docText, cursorLine, cursorCol, filePath) {
+function closestComp(docText, cursorLine, cursorCol, filePath) {
     const ast = parse(docText, { ecmaVersion:'latest', sourceType:'module' })
     const offset = lineColToOffset(docText,{line: cursorLine, col: cursorCol})
     const node = ast.body.find(x=> x.start <= offset && offset < x.end)
@@ -208,3 +212,4 @@ export function closestComp(docText, cursorLine, cursorCol, filePath) {
     const compText = docText.slice(node.start,node.end)
     return { compText, compLine, inCompOffset: offset - node.start, shortId, cursorLine, cursorCol, filePath}
 }
+

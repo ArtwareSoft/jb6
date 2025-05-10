@@ -1,13 +1,20 @@
-import { asJbComp, resolveProfileArgs, resolveProfileTop } from '../../core/jb-args.js'
-import { TgpType} from '../../core/tgp.js'
-import { Data, jb, utils } from '../../common/common-utils.js'
-import { offsetToLineCol } from '../text-editor/tgp-text-editor.js'
 import { parse } from '/libs/acorn.mjs'
+import { dsls, coreUtils } from '../../core/all.js'
+const { resolveProfileTop, asJbComp } = coreUtils
+const { 
+  tgp: { TgpType, TgpTypeModifier },
+  common: { Data },
+} = dsls
+
+export { coreUtils }
+const { astNode } = coreUtils
+
+Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
 
-export async function calcTgpModelData({ filePath }) {
+async function calcTgpModelData({ filePath }) {
   if (!filePath) return {}
 
   const codeMap = {}
@@ -35,45 +42,42 @@ export async function calcTgpModelData({ filePath }) {
 	await Promise.all(imports.map(url=>crawl(url)))
   })(filePath)
 
-  const compDefs = {} 
-  const comps  = {}
   const dsls = {}
 
-  // phase 0 - core urls
+  // phase 0 - meta
   {
-    const core_files = ['/plugins/core/tgp.js', '/plugins/core/jb-core.js']
-    const core_src = await Promise.all(core_files.map(url=> fetch(url).then(url=>url.text())))
-    core_files.forEach((_,i) => {
-      const src = core_src[i]
+      const src = await fetch('/plugins/core/tgp.js').then(url=>url.text())
       const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
-      ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
-        .flatMap(n => n.declaration.declarations)
-        .filter(decl=> decl.init?.callee?.name == 'CompDef')
-        .forEach(decl => {
-          const comp = astToObj(decl.init.arguments[0])
-          comps[comp.id] = resolveProfileTop(comp)
-        })
-    })
+      ast.body.flatMap(n => n.type === 'ExpressionStatement' ? [n.expression] : [])
+        .filter(decl=> decl.callee?.name == 'MetaComp')
+        .forEach(decl => resolveProfileTop(astToObj(decl.arguments[1])))
   }
 
-  // 2) Phase 1: find all `export const X = TgpType(...)`
+  // 2) Phase 1: find all `... = TgpType(...)`
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
-    ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
-      .flatMap(n => n.declaration.declarations)
-      .filter(d => d.init?.type === 'CallExpression' && d.init.callee.type === 'Identifier' && d.init.callee.name === 'TgpType' 
-    		  && d.init.arguments[0]?.type === 'Literal')
-      .forEach(d => {
-        const id = d.id.name
-        const comp = compDefs[id] = TgpType(...d.init.arguments.map(astToObj))
-        const { type, dsl = '' } = comp
-        dsls[dsl] = dsls[dsl] || {}
-        dsls[dsl][type] = {}
-        comps[`comp<tgp>${id}`] = resolveProfileTop({ $: `comp<tgp>tgpType`, id, type, dsl, params: comps['comp<tgp>tgpType'].instanceParams })
-      })
+    const directDefs = ast.body.flatMap(n => n?.expression)
+    const exportDefs = ast.body.filter(n => n.type === 'ExportNamedDeclaration').flatMap(n => n.declaration?.declarations).map(d=>d?.init)
+    const constDefs =  ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations).map(d=>d?.init)
+    const allDefs = [...directDefs, ...exportDefs, ...constDefs]
+
+    allDefs.filter(d => d?.callee?.name === 'TgpType').forEach(decl=> {
+      const args = decl.arguments.map(ast =>astToObj(ast))
+      args.push(...Array(3 - args.length).fill(null), dsls)
+      TgpType(...args)
+    })
+    allDefs.filter(d => d?.callee?.name === 'TgpTypeModifier').forEach(decl=> {
+      const args = decl.arguments.map(ast =>astToObj(ast))
+      args.push(...Array(2 - args.length).fill(null), dsls)
+      TgpTypeModifier(...args)
+    })
   })
 
+  const compDefs = Object.fromEntries(Object.values(dsls).flatMap(dsl=>Object.values(dsl)).map(x=>[x.capitalLetterId,x]).filter(x=>x[0]))
+  Object.assign(dsls.tgp.comp, compDefs)
+  dsls.tgp.var.Var = jb.dsls.tgp.var.Var[asJbComp]
+  dsls.tgp.comp.tgpComp = jb.dsls.tgp.tgpComp[asJbComp]
   let typeRules   = []
 
   // 3) Phase 2a: non-exported in the entry file only
@@ -85,7 +89,7 @@ export async function calcTgpModelData({ filePath }) {
   }
 
   // 4) Phase 2b: exported components + direct compDef + typeRules in all files
-  Object.entries(codeMap).filter(e=>!e[0].match(/tgp-meta.js$/)).forEach(([url, src]) => {
+  Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
     // if (url.match(/ui.js/)) debugger
@@ -100,7 +104,7 @@ export async function calcTgpModelData({ filePath }) {
     typeRules.push(... declarations.filter(decl=>decl.id.name == 'typeRules').flatMap(decl=>astToObj(decl.init)))
   })
 
-  return { dsls, comps, typeRules, files: Object.keys(visited) }
+  return { dsls, typeRules, files: Object.keys(visited) }
 
   function parseCompDec({exportName, decl, url, src}) {
     if ( decl.type !== 'CallExpression' || decl.callee.type !== 'Identifier' || !compDefs[decl.callee.name]) return
@@ -120,20 +124,13 @@ export async function calcTgpModelData({ filePath }) {
       utils.logError(`calcTgpModelData no id mismatch`,{ url, ...offsetToLineCol(src, decl) })
 
     const $location = { path: url, ...offsetToLineCol(src, decl.start) }
-    const {type, typeWithDsl, dsl} = compDefs[tgpType]
-    const id = shortId ? `${typeWithDsl}${shortId}` : ''
-    dsls[dsl][type][shortId] = comps[id] = resolveProfileTop({...comp, id, dsl, type, $location}, {id})
-    
-    // const resolvedComp = resolveProfileTop({location, type, $dsl: dsl, ...comp })
-    // comps[resolvedComp.id] = resolvedComp
-    // utils.asArray(comp.moreTypes).forEach(t=>comps[`${t}${shortId}`] = resolvedComp)
+    const _comp = compDefs[tgpType](shortId, {...comp, $location})
+    const jbComp = _comp[asJbComp] // remove the proxy
+    dsls[jbComp.dsl][jbComp.type][shortId] = jbComp 
   }
 }
 
-
-export const astNode = Symbol.for('astNode')
-
-export function astToTgpObj(node) {
+function astToTgpObj(node) {
 	if (!node) return undefined
 	switch (node.type) {
 	  case 'Literal': return node.value
@@ -193,8 +190,15 @@ function resolvePath(b, r) {
 	  else if (p !== '.' && p !== '') out.push(p)
 	}
 	return (b[0] === '/' ? '/' : '') + out.join('/')
+}
+
+function offsetToLineCol(text, offset) {
+  const cut = text.slice(0, offset)
+  return {
+      line: (cut.match(/\n/g) || []).length || 0,
+      col: offset - (cut.indexOf('\n') == -1 ? 0 : (cut.lastIndexOf('\n') + 1))
   }
-  
+}
 
 Data('tgpModelData.byFilePath', {
   params: [
