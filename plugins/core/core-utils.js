@@ -12,8 +12,8 @@ export const jb = {
 
 const isPrimitiveValue = val => ['string','boolean','number'].indexOf(typeof val) != -1
 
-const val = v => jb.ext.db ? jb.ext.db.val(v) : v
-const asRef = v => jb.ext.db ? jb.ext.db.asRef(v) : logError('asRef. extension db/writable.js was not loaded',{})
+const val = v => jb.dbUtils ? jb.dbUtils?.val(v) : v
+const asRef = v => jb.dbUtils ? jb.dbUtils.asRef(v) : logError('asRef. extension db/writable.js was not loaded',{})
 
 const RT_types = {
     asIs: x => x,

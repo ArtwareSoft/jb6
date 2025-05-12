@@ -1,6 +1,22 @@
-import { Test, dataTest, Var, pipe, utils, join, equals, delay, list, obj, prop, split, runActions } from '../testers/data-tester.js'
+import { dsls, utils } from '../testers/data-tester.js'
 import { rx, source, sink, subject, RXSource } from './rx.js'
 import { callbag } from './jb-callbag.js'
+
+
+const {
+  tgp: { Const, TgpType, 
+    var : { Var } 
+  },
+  test: { Test,
+    test: { dataTest, completionOptionsTest, completionActionTest }
+  },
+  common: { Data, Action, Boolean,
+    action: { runActions },
+    data: { dummyCompProps, pipeline, list, filter, join, property, obj, delay, pipe, first, slice, split }, 
+    boolean: { equals, contains, notContains, and, not },
+    prop: { prop },
+  },
+} = dsls
 
 Test('rxTest.pipeWithObservable', {
   impl: dataTest(pipe(ctx => callbag.fromIter([1,2]), '%%a', join()), equals('1a,2a'))

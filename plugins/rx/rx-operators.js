@@ -1,7 +1,12 @@
-import { TgpType } from '../core/tgp.js'
-import { log, logError, utils } from '../core/core-utils.js'
+import { coreUtils, dsls } from '../core/all.js'
 import { callbag } from './jb-callbag.js'
-import { If } from  '../core/core-components.js'
+const { log } = coreUtils
+const {
+  tgp: { TgpType,
+    any: { If }
+  },
+} = dsls
+
 
 export const RXOperator = TgpType('op', 'rx')
 

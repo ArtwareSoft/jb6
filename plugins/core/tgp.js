@@ -1,5 +1,5 @@
 import { jb, coreUtils } from './core-utils.js'
-const { asJbComp, resolveProfileTop, jbComp, jbCompProxy } = coreUtils
+const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType } = coreUtils
 
 Object.assign(coreUtils, { globalsOfType })
 

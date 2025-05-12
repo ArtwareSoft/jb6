@@ -1,8 +1,15 @@
-import { TgpType, Action, Data, jb } from '../core/tgp.js'
-import { utils } from '../core/core-utils.js'
+import { coreUtils, dsls } from '../core/all.js'
 import { callbag } from './jb-callbag.js'
 import { operators, RXOperator } from './rx-operators.js'
-import { writeValue } from '../db/writable.js'
+import { } from '../db/writable.js'
+
+const { toArray, jb } = coreUtils
+const {
+  tgp: { TgpType },
+  common: { Data, Action, Boolean,
+    action: { writeValue }, 
+  },  
+} = dsls
 
 export const RXSource = TgpType('source', 'rx')
 export const RXSink = TgpType('sink', 'rx')
@@ -22,7 +29,7 @@ const source_data = RXSource({
   params: [
     {id: 'Data', mandatory: true}
   ],
-  impl: (ctx, {Data}) => callbag.map(x => ctx.dataObj(x))(callbag.fromIter(utils.toArray(Data)))
+  impl: (ctx, {Data}) => callbag.map(x => ctx.dataObj(x))(callbag.fromIter(toArray(Data)))
 })
 
 const _callbag = RXSource({

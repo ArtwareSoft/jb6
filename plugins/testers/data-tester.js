@@ -1,9 +1,9 @@
 import { testUtils } from './tester.js'
-import { dsls, utils } from '../common/jb-common.js'
+import { dsls, utils, coreUtils } from '../common/jb-common.js'
 import { spy } from '../logger/spy.js'
 import {} from './ui-dsl-for-tests.js'
 
-export { dsls, utils }
+export { dsls, utils, coreUtils }
 const { test: { Test }} = dsls
 
 Test('dataTest', {
