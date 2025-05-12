@@ -107,7 +107,7 @@ function testResultHtml(res, repo) {
     const { success, duration, reason, testID} = res
     const testComp = Test[testID][asJbComp]
     //    const location = testComp.$location || {}
-    // const sourceCode = JSON.stringify(run(typeAdapter('source-code<loader>', test({
+    // const sourceCode = JSON.stringify(run(typeAdapter('source-code<jbm>', test({
     //     filePath: () => location.path, repo: () => location.repo
     // }))))
     //const studioUrl = `http://localhost:8082/project/studio/${fullTestId}/${fullTestId}?sourceCode=${encodeURIComponent(sourceCode)}`

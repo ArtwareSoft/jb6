@@ -6,7 +6,7 @@ component('remote.cmd', {
     {id: 'main', type: 'data<common>', dynamic: true, moreTypes: 'action<common>', description: 'e.g pipeline("hello","%% -- %$v1%")'},
     {id: 'wrap', as: 'string', description: 'e.g prune(MAIN)'},
     {id: 'context', description: 'e.g {v1: "xx", param1: prof1("yy") }'},
-    {id: 'sourceCode', type: 'source-code<loader>', mandatory: true},
+    {id: 'sourceCode', type: 'source-code<jbm>', mandatory: true},
     {id: 'id', as: 'string', description: 'jb.uri of cmd, default is main'},
     {id: 'viaHttpServer', as: 'string', defaultValue: 'http://localhost:8082'}
   ],

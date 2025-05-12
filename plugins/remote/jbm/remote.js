@@ -1,8 +1,19 @@
-import { RXSource, RXOperator, rx, source, sink } from '../../rx/rx.js'
+import {} from '../../rx/rx.js'
 import { callbag } from '../../rx/jb-callbag.js'
-import { jbm, childJbms, uri, networkPeers } from './jbm.js'
+import { remoteUtils } from './jbm-utils.js'
+import { jb, dsls, ns } from '../../core/tgp.js'
+const {
+  tgp: {  },
+  rx: { RXOperator, RXSource },
+  common: { 
+    data: { waitFor },
+  }
+} = dsls
+const { rx, source, sink, jbm } = ns
 
-const remote_source = RXSource({
+const { mergeProbeResult, prettyPrint, logError } = remoteUtils
+
+RXSource('remote.source', {
   params: [
     {id: 'rx', type: 'rx<>', dynamic: true},
     {id: 'jbm', type: 'jbm<jbm>', defaultValue: jbm.self()},
@@ -17,15 +28,14 @@ const remote_source = RXSource({
       rx.concatMap((ctx,{},{rx,require}) => {
         const rjbm = ctx.data
         const { pipe, map } = callbag
-        return pipe(rjbm.createCallbagSource(jb.remoteCtx.stripFunction(rx,{require})), 
-          map(res => jb.remoteCtx.mergeProbeResult(ctx,res,rjbm.uri)) )
+        return pipe(rjbm.createCallbagSource(stripFunction(rx,{require})), 
+          map(res => mergeProbeResult(ctx,res,rjbm.uri)) )
       })
     )
   })
 })
 
-const remote_operator = RXOperator({
-  type: 'rx<>',
+RXOperator('remote.operator', {
   params: [
     {id: 'rx', type: 'rx<>', dynamic: true},
     {id: 'jbm', type: 'jbm<jbm>', defaultValue: jbm.self()},
@@ -36,13 +46,13 @@ const remote_operator = RXOperator({
         if (!jbm)
             return jb.logError('remote.operator - can not find jbm', {in: jb.uri, jbm: ctx.profile.jbm, jb, ctx})
         if (jbm == jb) return rx()
-        const stripedRx = jb.remoteCtx.stripFunction(rx,{require})
-        const profText = jb.utils.prettyPrint(rx.profile)
+        const stripedRx = stripFunction(rx,{require})
+        const profText = prettyPrint(rx.profile)
         let counter = 0
         const varsMap = {}
         const cleanDataObjVars = map(dataObj => {
             if (typeof dataObj != 'object' || !dataObj.vars) return dataObj
-            const vars = { ...jb.objFromEntries(jb.entries(dataObj.vars).filter(e => jb.remoteCtx.shouldPassVar(e[0],profText))), messageId: ++counter } 
+            const vars = { ...Object.fromEntries(Object.entries(dataObj.vars).filter(e => shouldPassVar(e[0],profText))), messageId: ++counter } 
             varsMap[counter] = dataObj.vars
             return { data: dataObj.data, vars}
         })
@@ -54,13 +64,13 @@ const remote_operator = RXOperator({
         return source => pipe( fromPromise(jbm), mapPromise(_jbm=>_jbm.rjbm()),
             concatMap(rjbm => pipe(
               source, replay(5), cleanDataObjVars, rjbm.createCallbagOperator(stripedRx), 
-              map(res => jb.remoteCtx.mergeProbeResult(ctx,res,rjbm.uri)), 
+              map(res => mergeProbeResult(ctx,res,rjbm.uri)), 
               restoreDataObjVars
             )))
     }
 })
 
-const remote_waitForJbm = Data({
+Data('remote.waitForJbm',{
   description: 'wait for jbm to be available',
   params: [
     {id: 'jbm', type: 'jbm<jbm>', defaultValue: jbm.self()},
@@ -71,11 +81,11 @@ const remote_waitForJbm = Data({
         if (jbm == jb) return
         const rjbm = await (await jbm).rjbm()
         if (!rjbm || !rjbm.remoteExec)
-            return jb.logError('remote waitForJbm - can not resolve jbm', {in: jb.uri, jbm, rjbm, jbmProfile: ctx.profile.jbm, ctx})
+            return logError('remote waitForJbm - can not resolve jbm', {in: jb.uri, jbm, rjbm, jbmProfile: ctx.profile.jbm, ctx})
     }
 })
 
-const remote_action = Action({
+Action('remote.action', {
   description: 'exec a script on a remote node and returns a promise if not oneWay',
   params: [
     {id: 'action', type: 'action<common>', dynamic: true, composite: true},
@@ -86,17 +96,17 @@ const remote_action = Action({
   ],
   impl: async (ctx,{action,jbm,oneway,timeout,require}) => {
         if (!jbm)
-            return jb.logError('remote_action - can not find jbm', {in: jb.uri, jbm: ctx.profile.jbm, jb, ctx})
+            return logError('remote_action - can not find jbm', {in: jb.uri, jbm: ctx.profile.jbm, jb, ctx})
         if (jbm == jb) return action()
         const rjbm = await (await jbm).rjbm()
         if (!rjbm || !rjbm.remoteExec)
             return jb.logError('remote_action - can not resolve jbm', {in: jb.uri, jbm, rjbm, jbmProfile: ctx.profile.jbm, jb, ctx})
-        const res = await rjbm.remoteExec(jb.remoteCtx.stripFunction(action,{require}),{timeout,oneway,isAction: true,action,ctx})
-        return jb.remoteCtx.mergeProbeResult(ctx,res,rjbm.uri)
+        const res = await rjbm.remoteExec(stripFunction(action,{require}),{timeout,oneway,isAction: true,action,ctx})
+        return mergeProbeResult(ctx,res,rjbm.uri)
     }
 })
 
-const remote_data = Data({
+Data('remote.data', {
   description: 'calc a script on a remote node and returns a promise',
   params: [
     {id: 'calc', dynamic: true},
@@ -108,17 +118,17 @@ const remote_data = Data({
         if (jbm == jb)
             return data()
         if (!jbm)
-            return jb.logError('remote.data - can not find jbm', {in: jb.uri, jbm: ctx.profile.jbm, jb, ctx})
+            return logError('remote.data - can not find jbm', {in: jb.uri, jbm: ctx.profile.jbm, jb, ctx})
         const rjbm = await (await jbm).rjbm()
         if (!rjbm || !rjbm.remoteExec)
-            return jb.logError('remote.data - can not resolve jbm', {in: jb.uri, jbm, rjbm, jbmProfile: ctx.profile.jbm, jb, ctx})
+            return logError('remote.data - can not resolve jbm', {in: jb.uri, jbm, rjbm, jbmProfile: ctx.profile.jbm, jb, ctx})
                 
-        const res = await rjbm.remoteExec(jb.remoteCtx.stripFunction(data,{require}),{timeout,data,ctx})
-        return jb.remoteCtx.mergeProbeResult(ctx,res,rjbm.uri)
+        const res = await rjbm.remoteExec(stripFunction(data,{require}),{timeout,data,ctx})
+        return mergeProbeResult(ctx,res,rjbm.uri)
     }
 })
 
-const initShadowData = Action({
+Action('remote.initShadowData', {
   description: 'shadow watchable data on remote jbm',
   params: [
     {id: 'src', as: 'ref'},
@@ -126,12 +136,12 @@ const initShadowData = Action({
   ],
   impl: rx.pipe(
     source.watchableData('%$src%', { includeChildren: 'yes' }),
-    rx.map(obj(prop('op', '%op%'), prop('path', ({data}) => jb.db.pathOfRef(data.ref)))),
+    rx.map(obj(prop('op', '%op%'), prop('path', ({data}) => jb.dbUtils?.pathOfRef(data.ref)))),
     sink.action(remote_action(updateShadowData('%%'), '%$jbm%'))
   )
 })
 
-const copyPassiveData = Action({
+Action('remote.copyPassiveData', {
   description: 'shadow watchable data on remote jbm',
   params: [
     {id: 'resourceId', as: 'string'},
@@ -139,14 +149,14 @@ const copyPassiveData = Action({
   ],
   impl: runActions(
     Var('resourceCopy', '%${%$resourceId%}%'),
-    remote_action({
+    remote.action({
       action: addComponent('%$resourceId%', '%$resourceCopy%', { type: 'passiveData' }),
       jbm: '%$jbm%'
     })
   )
 })
 
-const shadowResource = Action({
+Action('remote.shadowResource', {
   description: 'shadow watchable data on remote jbm',
   params: [
     {id: 'resourceId', as: 'string'},
@@ -163,54 +173,53 @@ const shadowResource = Action({
     }),
     rx.pipe(
       source.watchableData('%${%$resourceId%}%', { includeChildren: 'yes' }),
-      rx.map(obj(prop('op', '%op%'), prop('path', ({data}) => jb.db.pathOfRef(data.ref)))),
+      rx.map(obj(prop('op', '%op%'), prop('path', ({data}) => jb.dbUtils?.pathOfRef(data.ref)))),
       sink.action(remote_action(updateShadowData('%%'), '%$jbm%'))
     )
   )
 })
 
 
-const updateShadowData = Action({
+Action('remote.updateShadowData', {
   description: 'internal - update shadow on remote jbm',
   params: [
     {id: 'entry'}
   ],
   impl: (ctx,{path,op}) => {
         jb.log('shadowData update',{op, ctx})
-        const ref = jb.db.refOfPath(path)
+        const ref = jb.dbUtils?.refOfPath(path)
         if (!ref)
-            jb.logError('shadowData path not found at destination',{path, ctx})
+            logError('shadowData path not found at destination',{path, ctx})
         else
-            jb.db.doOp(ref, op, ctx)
+            jb.dbUtils?.doOp(ref, op, ctx)
     }
 })
 
 /*** net comps */
-const listSubJbms = Data({
+Data('remote.listSubJbms', {
   impl: pipe(
     () => Object.values(childJbms || {}),
-    remote_data(listSubJbms(), '%%'),
+    remote.data(listSubJbms(), '%%'),
     aggregate(list(() => uri, '%%'))
   )
 })
 
-const getRootextentionUri = Data({
+Data('remote.getRootextentionUri', {
   impl: () => uri.split('•')[0]
 })
 
-const listAll = Data({
+Data('remote.listAll', {
   impl: remote_data({
     calc: pipe(
       Var('subJbms', listSubJbms(), { async: true }),
       () => Object.values(networkPeers || {}),
-      remote_data(listSubJbms(), '%%'),
+      remote.data(listSubJbms(), '%%'),
       aggregate(list('%$subJbms%','%%'))
     ),
     jbm: byUri(getRootextentionUri())
   })
 })
 
-export const remote = { source: remote_source, data: remote_data, action: remote_action, operator: remote_operator, listAll, shadowResource }
 // component('dataResource.yellowPages', { watchableData: {}})
 
 // component('remote.useYellowPages', {

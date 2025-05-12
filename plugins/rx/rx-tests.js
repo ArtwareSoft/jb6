@@ -1,9 +1,10 @@
-import { dsls, utils } from '../testers/data-tester.js'
-import { rx, source, sink, subject, RXSource } from './rx.js'
+import { utils } from '../testers/data-tester.js'
+import { } from './rx.js'
 import { callbag } from './jb-callbag.js'
-
+import { dsls, ns } from '../core/all.js'
 
 const {
+  rx: { RXOperator, RXSource, RXSink },
   tgp: { Const, TgpType, 
     var : { Var } 
   },
@@ -17,6 +18,8 @@ const {
     prop: { prop },
   },
 } = dsls
+
+const { rx, source, sink, subject } = ns
 
 Test('rxTest.pipeWithObservable', {
   impl: dataTest(pipe(ctx => callbag.fromIter([1,2]), '%%a', join()), equals('1a,2a'))

@@ -21,42 +21,64 @@ implementatios over frame(window,worker), websocket, connection
 Routing is implemented by remoteRoutingPort, first calclating the routing path, and sending to the message hop by hop to the destination.
 The routing path is reversed to create response message
 */
+import { dsls, coreUtils } from '../../core/all.js'
+import { utils } from '../../common/jb-common.js'
+import { remoteUtils } from './remote-context.js'
 
-const cbHandler = {
-    counter: 0, 
-    map: {},
-    newId: () => jb.uri + ':' + (cbHandler.counter++),
-    get: id => cbHandler.map[id],
-    getAsPromise(id,t) { 
-        if (cbHandler.map[id] && cbHandler.map[id].terminated)
-            return Promise.resolve(() => () => {})
-        return jb.exec({$: 'action<common>waitFor', check: ()=> cbHandler.map[id], interval: 5, times: 10})
-            .catch(err => {
-                if (!jb.terminated)
-                    jb.logError('cbLookUp - can not find cb',{id, in: jb.uri})
-                return () => {}
-            })
-            .then(cb => {
-                if (t == 2) cbHandler.removeEntry(id)
-                return cb
-            })
-    },
-    addToLookup(cb) { 
-        const id = cbHandler.newId()
-        cbHandler.map[id] = cb
-        return id 
-    },
-    removeEntry(ids,m,delay=10) {
-        jb.log(`remote remove cb handlers at ${jb.uri}`,{ids,m})
-        jb.delay(delay).then(()=> // TODO: BUGGY delay - keep alive as sink talkback may want to send 1. think how to know when sink got 2.
-            jb.asArray(ids).filter(x=>x).forEach(id => {
-                cbHandler.map[id].terminated = true
-            } )
-        )
-    },
-    terminate() {
-        Object.keys(cbHandler.map).forEach(k=>delete cbHandler[k])
+const { asArray, delay, log, logError, calcPath } = coreUtils
+const { varsUsed, mergeProbeResult, deStrip, stripCBVars, stripData, markProbeRecords, stripJS, stripFunction } = remoteUtils
+const {
+    common: { 
+        data: { waitFor },
     }
+} = dsls
+
+jb.remoteRegistry = { 
+    cbCounter: 0, 
+    cbMap: {},
+    ports: {},
+    childJbms: {}, 
+    networkPeers: {}, 
+    notifyChildReady: {}
+}
+
+Object.assign(jb.remoteUtils, { remoteExec, terminateAllChildren, portFromFrame, extendPortToJbmProxy })
+
+const registry = jb.remoteRegistry
+const cbHandlers = jb.remoteRegistry.cbMap
+const ports = jb.remoteRegistry.ports
+
+function newCBId() {
+    return jb.uri + ':' + (jb.cbHandlerRegistry.cbCounter++)
+}
+
+async function getAsPromise(id,t) { 
+    if (cbHandlers[id] && cbHandlers[id].terminated)
+        return
+    try {
+        const cb = waitFor.$run({check: ()=> cbHandlers[id], interval: 5, times: 10})
+        if (t == 2) removeEntry(id)
+        return cb
+    } catch(err) {
+        if (!jb.terminated)
+            logError('cbLookUp - can not find cb',{id, in: jb.uri})
+    }
+}
+
+function addToLookup(cb) { 
+    const id = newCBId()
+    cbHandlers[id] = cb
+    return id 
+}
+
+async function removeEntry(ids, m, _delay=10) {
+    log(`remote remove cb handlers at ${jb.uri}`,{ids,m})
+    await delay(_delay) // TODO: BUGGY delay - keep alive as sink talkback may want to send 1. think how to know when sink got 2.
+    asArray(ids).filter(x=>x).forEach(id => cbHandlers[id].terminated = true)
+}
+
+function terminate() {
+    Object.keys(cbHandlers).forEach(k=>delete cbHandlers[k])
 }
 
 // net
@@ -66,68 +88,57 @@ function reverseRoutingProps(routingMsg) {
         routingPath: routingMsg.routingPath.slice(0).reverse(),
         from: routingMsg.to,
         to: routingMsg.from,
-        $disableLog: jb.path(routingMsg,'remoteRun.vars.$disableLog')
+        $disableLog: calcPath(routingMsg,'remoteRun.vars.$disableLog')
     }
-    const diableLog = jb.path(routingMsg,'remoteRun.vars.$disableLog') && {$disableLog: true}
+    const diableLog = calcPath(routingMsg,'remoteRun.vars.$disableLog') && {$disableLog: true}
     return { ...rPath, ...diableLog}
 }
 
 function handleOrRouteMsg(from,to,handler,m, {blockContentScriptLoop} = {}) {
     if (jb.terminated) {
-        jb.log(`remote messsage arrived to terminated ${from}`,{from,to, m})
+        log(`remote messsage arrived to terminated ${from}`,{from,to, m})
         return
     }
-//            jb.log(`remote handle or route at ${from}`,{m})
+//            log(`remote handle or route at ${from}`,{m})
     if (blockContentScriptLoop && m.routingPath && m.routingPath.join(',').indexOf([from,to].join(',')) != -1) return
     const arrivedToDest = m.routingPath && m.routingPath.slice(-1)[0] === jb.uri || (m.to == from && m.from == to)
     if (arrivedToDest) {
-        jb.log(`transmit remote received at ${from} from ${m.from} to ${m.to}`,{m})
+        log(`transmit remote received at ${from} from ${m.from} to ${m.to}`,{m})
         handler && handler(m)
     } else if (m.routingPath) {
         const path = m.routingPath
         const indexOfNextPort = path.indexOf(jb.uri)+1
-        let nextPort = indexOfNextPort && jb.ports[path[indexOfNextPort]]
-        if (!nextPort && jb.jbm.gateway) {
-            path.splice(path.indexOf(jb.uri),0,jb.jbm.gateway.uri)
-            nextPort = jb.jbm.gateway
-            jb.log(`remote gateway injected to routingPath at ${from} from ${m.from} to ${m.to} forward to ${nextPort.to}`,{nextPort, m })
+        let nextPort = indexOfNextPort && ports[path[indexOfNextPort]]
+        if (!nextPort && jb.remoteRegistry.gateway) {
+            path.splice(path.indexOf(jb.uri),0,jb.remoteRegistry.gateway.uri)
+            nextPort = jb.remoteRegistry.gateway
+            log(`remote gateway injected to routingPath at ${from} from ${m.from} to ${m.to} forward to ${nextPort.to}`,{nextPort, m })
         }
         if (!nextPort)
-            return jb.logError(`remote - no destination found and no gateway at ${from} from ${m.from} to ${m.to}`,{ m })
-        jb.log(`remote forward at ${from} from ${m.from} to ${m.to} forward to ${nextPort.to}`,{nextPort, m })
+            return logError(`remote - no destination found and no gateway at ${from} from ${m.from} to ${m.to}`,{ m })
+        log(`remote forward at ${from} from ${m.from} to ${m.to} forward to ${nextPort.to}`,{nextPort, m })
         nextPort.postMessage(m)
     }            
 }
 
-extension('jbm', 'main', {
-    initExtension() {
-        Object.assign(jb, {
-            uri: jb.uri || jb.frame.jbUri,
-            ports: {},
-            remoteExec,
-            createCallbagSource: remoteExec,
-            createCallbagOperator: remoteExec,
-        })
-        return { childJbms: {}, networkPeers: {}, notifyChildReady: {} }
+async function remoteExec(sctx) {
+    // used by child jbm
+    //await jb.treeShake.codeServerJbm && jb.treeShake.bringMissingCode(sctx)
+    return utils.waitForInnerElements(deStrip(sctx)())
+}
 
-        async function remoteExec(sctx) {
-            // used by child jbm
-            await jb.treeShake.codeServerJbm && jb.treeShake.bringMissingCode(sctx)
-            return jb.utils.waitForInnerElements(jb.remoteCtx.deStrip(sctx)())
-        }
-    },
-    portFromFrame(frame,to,options) {
-        if (jb.ports[to]) return jb.ports[to]
-        const from = jb.uri
-        const port = {
+function portFromFrame(frame, to,options) {
+    if (ports[to]) return ports[to]
+    const from = jb.uri
+    const port = {
             frame, from, to, handlers: [],
             postMessage: _m => {
                 const m = {from, to,..._m}
-                jb.log(`transmit remote sent from ${from} to ${to}`,{m})
+                log(`transmit remote sent from ${from} to ${to}`,{m})
                 frame.postMessage(m) 
             },
             onMessage: { addListener: handler => { 
-                function h(m) { jb.net.handleOrRouteMsg(from,to,handler,m.data,options) }
+                function h(m) { handleOrRouteMsg(from,to,handler,m.data,options) }
                 port.handlers.push(h); 
                 return frame.addEventListener('message', h) 
             }},
@@ -136,183 +147,167 @@ extension('jbm', 'main', {
                 port.handlers.forEach(h=>frame.removeEventListener('message',h))
             }
         }
-        jb.ports[to] = port
+        ports[to] = port
         return port
-    },
-    extendPortToJbmProxy(port,{doNotinitCommandListener} = {}) {
-        if (port && !port.createCalllbagSource) {
-            Object.assign(port, {
-                uri: port.to,
-                rjbm() { return this },
-                createCallbagSource(remoteRun) {
-                    const cbId = cbHandler.newId()
-                    port.postMessage({$:'CB.createSource', remoteRun, cbId })
-                    return (t,d) => outboundMsg({cbId,t,d})
-                },
-                createCallbagOperator(remoteRun) {
-                    return source => {
-                        const sourceId = cbHandler.addToLookup(Object.assign(source,{remoteRun}))
-                        const cbId = cbHandler.newId()
-                        port.postMessage({$:'CB.createOperator', remoteRun, sourceId, cbId })
-                        return (t,d) => {
-                            jb.log('remote callbag operator send',{t,d, remoteRun, cbId})
-                            if (t == 2) console.log('send 2',cbId,sourceId)
-                            outboundMsg({cbId,t,d})
-                        }
-                    }
-                },
-                remoteExec(remoteRun, {oneway, timeout = 5000, isAction, ctx} = {}) {
-                    if (oneway)
-                        return port.postMessage({$:'CB.execOneWay', remoteRun, timeout })
-                    return new Promise((resolve,reject) => {
-                        const handlers = cbHandler.map
-                        const cbId = cbHandler.newId()
-                        const timer = setTimeout(() => {
-                            if (!handlers[cbId] || handlers[cbId].terminated) return
-                            const err = { type: 'error', desc: 'remote exec timeout', remoteRun, timeout }
-                            jb.logError('remote exec timeout',{timeout, uri: jb.uri, h: handlers[cbId]})
-                            handlers[cbId] && reject(err)
-                        }, timeout)
-                        handlers[cbId] = {resolve,reject,remoteRun, timer}
-                        jb.log('remote exec request',{remoteRun,port,oneway,cbId})
-                        port.postMessage({$:'CB.exec', remoteRun, cbId, isAction, timeout })
-                    })
-                }
-            })
-            if (!doNotinitCommandListener)
-                initCommandListener()
-        }
-        return port
+}
 
-        function initCommandListener() {
-            port.onMessage.addListener(m => {
-                if (jb.terminated) return // TODO: removeEventListener
-                jb.log(`remote command from ${m.from} ${m.$}`,{m})
-                if ((m.$ || '').indexOf('CB.') == 0)
-                    handleCBCommand(m)
-                else if (m.$ == 'CB')
-                    inboundMsg(m)
-                else if (m.$ == 'execResult')
-                    inboundExecResult(m)
-            })
-        }
-
-        function outboundMsg({cbId,t,d}) {
-            port.postMessage({$:'CB', cbId,t, d: t == 0 ? cbHandler.addToLookup(d) : d })
-        }
-        function inboundMsg(m) { 
-            const {cbId,t,d} = m
-            jb.log('remote callbag source/operator',{t,d, cbId})
-            if (t == 2) cbHandler.removeEntry(cbId,m)
-            return cbHandler.getAsPromise(cbId,t).then(cb=> !jb.terminated && cb && cb(t, t == 0 ? remoteCB(d,cbId,m) : d)) 
-        }
-        function inboundExecResult(m) { 
-            cbHandler.getAsPromise(m.cbId).then(h=>{
-                if (jb.terminated) return
-                if (!h) 
-                    return jb.logError('remote exec result arrived with no handler',{cbId:m.cbId, m})
-                clearTimeout(h.timer)
-                if (m.type == 'error') {
-                    jb.logError('remote remoteExec', {m, h})
-                    h.reject(m)
-                } else {
-                    h.resolve(m.result)
-                }
-                cbHandler.removeEntry(m.cbId,m)
-            })
-        }            
-        function remoteCB(cbId, localCbId, routingMsg) { 
-            let talkback
-            return (t,d) => {
-                if (t==2) cbHandler.removeEntry([localCbId,talkback],routingMsg)
-                //if (t == 1 && !d) return
-                port.postMessage({$:'CB', cbId,t, d: t == 0 ? (talkback = cbHandler.addToLookup(d)) : jb.remoteCtx.stripCBVars(d), ...jb.net.reverseRoutingProps(routingMsg) }) 
-            }
-        }
-        async function handleCBCommand(cmd) {
-            const {$,sourceId,cbId,isAction} = cmd
-            try {
-                if (jb.treeShake.codeServerJbm) {
-                    if (Object.keys(jb.treeShake.loadingCode || {}).length) {
-                        jb.log('remote waiting for loadingCode',{cmd, loading: Object.keys(jb.treeShake.loadingCode)})
-                        await jb.exec({$: 'action<common>waitFor', timeout: 100, check: () => !Object.keys(jb.treeShake.loadingCode).length })
+function extendPortToJbmProxy(port,{doNotinitCommandListener} = {}) {
+    if (port && !port.createCalllbagSource) {
+        Object.assign(port, {
+            uri: port.to,
+            rjbm() { return this },
+            createCallbagSource(remoteRun) {
+                const cbId = newCBId()
+                port.postMessage({$:'CB.createSource', remoteRun, cbId })
+                return (t,d) => outboundMsg({cbId,t,d})
+            },
+            createCallbagOperator(remoteRun) {
+                return source => {
+                    const sourceId = addToLookup(Object.assign(source,{remoteRun}))
+                    const cbId = newCBId()
+                    port.postMessage({$:'CB.createOperator', remoteRun, sourceId, cbId })
+                    return (t,d) => {
+                        log('remote callbag operator send',{t,d, remoteRun, cbId})
+                        if (t == 2) console.log('send 2',cbId,sourceId)
+                        outboundMsg({cbId,t,d})
                     }
-                    await jb.treeShake.bringMissingCode(cmd.remoteRun)
                 }
-                jb.log('remote handleCBCommand',{cmd})
-                const deStrip = jb.remoteCtx.deStrip(cmd.remoteRun)
-                const deStripResult = await (typeof deStrip == 'function' ? deStrip() : deStrip)
-                const {result, actualResult, probe} = await waitForResult(deStripResult)
-                if ($ == 'CB.createSource' && typeof actualResult == 'function') {
-                    jb.remoteCtx.markProbeRecords(probe, 'initSource')
-                    cbHandler.map[cbId] = actualResult
-                } else if ($ == 'CB.createOperator' && typeof actualResult == 'function') {
-                    jb.remoteCtx.markProbeRecords(probe, 'initOperator')
-                    cbHandler.map[cbId] = actualResult(remoteCB(sourceId, cbId,cmd) ) // bind to source
-                } else if ($ == 'CB.exec') {
-                    const resultToReturn = isAction ? (probe ? {$: 'withProbeResult', probe} : {}) : jb.remoteCtx.stripData(result)
-                    port.postMessage({$:'execResult', cbId, result: resultToReturn , ...jb.net.reverseRoutingProps(cmd) })
+            },
+            remoteExec(remoteRun, {oneway, timeout = 5000, isAction, ctx} = {}) {
+                if (oneway)
+                    return port.postMessage({$:'CB.execOneWay', remoteRun, timeout })
+                return new Promise((resolve,reject) => {
+                    const handlers = cbHandlers
+                    const cbId = newCBId()
+                    const timer = setTimeout(() => {
+                        if (!handlers[cbId] || handlers[cbId].terminated) return
+                        const err = { type: 'error', desc: 'remote exec timeout', remoteRun, timeout }
+                        logError('remote exec timeout',{timeout, uri: jb.uri, h: handlers[cbId]})
+                        handlers[cbId] && reject(err)
+                    }, timeout)
+                    handlers[cbId] = {resolve,reject,remoteRun, timer}
+                    log('remote exec request',{remoteRun,port,oneway,cbId})
+                    port.postMessage({$:'CB.exec', remoteRun, cbId, isAction, timeout })
+                })
+            }
+        })
+        if (!doNotinitCommandListener)
+            initCommandListener()
+    }
+    return port
+
+    function initCommandListener() {
+        port.onMessage.addListener(m => {
+            if (jb.terminated) return // TODO: removeEventListener
+            log(`remote command from ${m.from} ${m.$}`,{m})
+            if ((m.$ || '').indexOf('CB.') == 0)
+                handleCBCommand(m)
+            else if (m.$ == 'CB')
+                inboundMsg(m)
+            else if (m.$ == 'execResult')
+                inboundExecResult(m)
+        })
+    }
+
+    function outboundMsg({cbId,t,d}) {
+        port.postMessage({$:'CB', cbId,t, d: t == 0 ? addToLookup(d) : d })
+    }
+    async function inboundMsg(m) {    
+        const {cbId,t,d} = m
+        log('remote callbag source/operator',{t,d, cbId})
+        if (t == 2) removeEntry(cbId,m)
+        const cb = await getAsPromise(cbId,t)
+        if (!jb.terminated && cb)
+            cb(t, t == 0 ? remoteCB(d,cbId,m) : d)
+    }
+    async function inboundExecResult(m) { 
+        const h = await getAsPromise(m.cbId)
+        if (jb.terminated) return
+        if (!h) 
+            return logError('remote exec result arrived with no handler',{cbId:m.cbId, m})
+        clearTimeout(h.timer)
+        if (m.type == 'error') {
+            logError('remote remoteExec', {m, h})
+            h.reject(m)
+        } else {
+            h.resolve(m.result)
+        }
+        removeEntry(m.cbId,m)
+    }
+
+    function remoteCB(cbId, localCbId, routingMsg) { 
+        let talkback
+        return (t,d) => {
+            if (t==2) removeEntry([localCbId,talkback],routingMsg)
+            //if (t == 1 && !d) return
+            port.postMessage({$:'CB', cbId,t, d: t == 0 ? (talkback = addToLookup(d)) : stripCBVars(d), ...reverseRoutingProps(routingMsg) }) 
+        }
+    }
+
+    async function handleCBCommand(cmd) {
+        const {$,sourceId,cbId,isAction} = cmd
+        try {
+            if (jb.treeShake.codeServerJbm) {
+                if (Object.keys(jb.treeShake.loadingCode || {}).length) {
+                    log('remote waiting for loadingCode',{cmd, loading: Object.keys(jb.treeShake.loadingCode)})
+                    await waitFor.$run({timeout: 100, check: () => !Object.keys(jb.treeShake.loadingCode).length })
                 }
-            } catch(err) { 
-                jb.logException(err,'remote handleCBCommand',{cmd})
-                $ == 'CB.exec' && port.postMessage({$:'execResult', cbId, result: { type: 'error', err}, ...jb.net.reverseRoutingProps(cmd) })
+                await jb.treeShake.bringMissingCode(cmd.remoteRun)
             }
-            async function waitForResult(result) {
-                const res = jb.path(result,'$') ? result.res : result
-                const actualResult = $ == 'CB.exec' ? await jb.utils.waitForInnerElements(res) : res
-                const probe = jb.path(result,'$') ? result.probe : null
-                return {result: probe ? {...result, res: actualResult } : actualResult, actualResult, probe}
+            log('remote handleCBCommand',{cmd})
+            const deStrip = deStrip(cmd.remoteRun)
+            const deStripResult = await (typeof deStrip == 'function' ? deStrip() : deStrip)
+            const {result, actualResult, probe} = await waitForResult(deStripResult)
+            if ($ == 'CB.createSource' && typeof actualResult == 'function') {
+                markProbeRecords(probe, 'initSource')
+                cbHandlers[cbId] = actualResult
+            } else if ($ == 'CB.createOperator' && typeof actualResult == 'function') {
+                markProbeRecords(probe, 'initOperator')
+                cbHandlers[cbId] = actualResult(remoteCB(sourceId, cbId,cmd) ) // bind to source
+            } else if ($ == 'CB.exec') {
+                const resultToReturn = isAction ? (probe ? {$: 'withProbeResult', probe} : {}) : stripData(result)
+                port.postMessage({$:'execResult', cbId, result: resultToReturn , ...reverseRoutingProps(cmd) })
             }
+        } catch(err) { 
+            logException(err,'remote handleCBCommand',{cmd})
+            $ == 'CB.exec' && port.postMessage({$:'execResult', cbId, result: { type: 'error', err}, ...reverseRoutingProps(cmd) })
         }
-    },
-    pathOfDistFolder() {
-        const pathOfDistFolder = jb.path(jb.studio,'studiojb.studio.host.pathOfDistFolder')
-        const location = jb.path(jb.frame,'location')
-        return pathOfDistFolder && pathOfDistFolder() || location && location.href.match(/^[^:]*/)[0] + `://${location.host}/dist`
-    },
-    async initDevToolsDebugge() {
-        if (jb.test && jb.test.runningTests && !jb.test.singleTest) 
-            return jb.logError('jbart devtools is disables for multiple tests')
-        if (!jb.jbm.networkPeers['devtools']) {
-            jb.jbm.networkPeers['devtools'] = jb.jbm.extendPortToJbmProxy(jb.jbm.portFromFrame(globalThis,'devtools',{blockContentScriptLoop: true}))
-            globalThis.postMessage({initDevToolsPeerOnDebugge: {uri: jb.uri, distPath: jb.jbm.pathOfDistFolder(), spyParam: jb.path(jb,'spy.spyParam')}}, '*')
-            await jb.exec({$: 'action<common>waitFor', check: ()=> jb.jbm.devtoolsInitialized, interval: 500, times: 10})
-            jb.log(`chromeDebugger devtools initialized. adding connectToPanel func on debugee`,{uri: jb.uri})
-            jb.jbm.connectToPanel = panelUri => {
-                jb.log(`chromeDebugger invoking connectToPanel comp ${panelUri} on devltools`,{uri: jb.uri})
-                new jb.core.jbCtx().setVar('$disableLog',true).run(remote.action({
-                    action: {$: 'jbm.connectToPanel', panelUri}, 
-                    jbm: byUri('devtools'),
-                    oneway: true
-                })) } // will be called directly by initPanel using eval
+        async function waitForResult(result) {
+            const res = result?.$ ? result.res : result
+            const actualResult = $ == 'CB.exec' ? await utils.waitForInnerElements(res) : res
+            const probe = result?.$ ? result.probe : null
+            return {result: probe ? {...result, res: actualResult } : actualResult, actualResult, probe}
         }
-    },
-    async terminateChild(id,ctx,childsOrNet=jb.jbm.childJbms) {
+    }
+}
+    
+async function terminateChild(id,ctx,childsOrNet= registry.childJbms) {
         if (!childsOrNet[id]) return
         const childJbm = await childsOrNet[id]
         if (!childJbm) return
         const rjbm = await childJbm.rjbm()
         rjbm.terminated = childJbm.terminated = true
-        jb.log('remote terminate child', {id})
-        Object.keys(jb.ports).filter(x=>x.indexOf(childJbm.uri) == 0).forEach(uri=>{
-                if (jb.ports[uri].terminate)
-                    jb.ports[uri].terminate()
-                delete jb.ports[uri]
+        log('remote terminate child', {id})
+        Object.keys(ports).filter(x=>x.indexOf(childJbm.uri) == 0).forEach(uri=>{
+                if (ports[uri].terminate)
+                    ports[uri].terminate()
+                delete ports[uri]
             })
         delete childsOrNet[id]
-        rjbm.remoteExec(jb.remoteCtx.stripJS(() => {cbHandler.terminate(); terminated = true; if (typeof close1 == 'function') close() } ), {oneway: true, ctx} )
-        return rjbm.remoteExec(jb.remoteCtx.stripJS(async () => {
-            cbHandler.terminate()
+        rjbm.remoteExec(stripJS(() => {terminate(); terminated = true; if (typeof close1 == 'function') close() } ), {oneway: true, ctx} )
+        return rjbm.remoteExec(stripJS(async () => {
+            terminate()
             jb.terminated = true
             if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope)
                 jb.delay(100).then(() => close()) // close worker
             return 'terminated' 
         }), { oneway: true, ctx} )
-    },
-    terminateAllChildren(ctx) {
-        return Promise.all([
-            ...Object.keys(jb.jbm.childJbms||{}).map(id=>jb.jbm.terminateChild(id,ctx,jb.jbm.childJbms)),
-            ...Object.keys(jb.jbm.networkPeers||{}).map(id=>jb.jbm.terminateChild(id,ctx,jb.jbm.networkPeers)),
-        ])
-    }
-})
+}
+
+function terminateAllChildren(ctx) {
+    return Promise.all([
+        ...Object.keys(registry.childJbms||{}).map(id=>terminateChild(id,ctx, registry.childJbms)),
+        ...Object.keys(registry.networkPeers||{}).map(id=>terminateChild(id,ctx, registry.networkPeers)),
+    ])
+}
+

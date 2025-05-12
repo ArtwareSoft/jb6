@@ -184,7 +184,7 @@ async function dataCompletions(compProps, path, ctx) {
     const { line, col } = offsetToLineCol(text, item.from - startOffset - 1)
 
     const suggestions = await ctx.setData(input).setVars({ filePath, probePath: path }).calc(
-        {$: 'langServer.remoteProbe', sourceCode: {$: 'source-code<loader>probeServer', filePath: '%$filePath%'}, probePath: '%$probePath%', expressionOnly: true })
+        {$: 'langServer.remoteProbe', sourceCode: {$: 'source-code<jbm>probeServer', filePath: '%$filePath%'}, probePath: '%$probePath%', expressionOnly: true })
     return (calcPath(suggestions, '0.options') || []).map(option => {
         const { pos, toPaste, tail, text } = option
         const primiteVal = option.valueType != 'object'

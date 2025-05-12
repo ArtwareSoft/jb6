@@ -4,6 +4,9 @@ import { callbag } from '../../rx/jb-callbag.js'
 import { prettyPrint } from '../../formatter/pretty-print.js'
 
 const { log, logError, calcPath, isCallbag, resolveProfile } = coreUtils
+const remoteUtils = jb.remoteUtils = { varsUsed, mergeProbeResult, deStrip, stripCBVars, stripData, markProbeRecords, stripJS, stripFunction, prettyPrint }
+export { remoteUtils }
+
 const allwaysPassVars = ['widgetId','disableLog','uiTest']
 const MAX_ARRAY_LENGTH = 10000, MAX_OBJ_DEPTH = 100
 
@@ -32,8 +35,7 @@ function stripCtx(ctx) {
     if (!ctx) return null
     const isJS = typeof ctx.profile == 'function'
     const profText = prettyPrint(ctx.profile)
-    const vars = Object.fromEntries(Object.entries(ctx.vars)
-        .filter(e => shouldPassVar(e[0],profText))
+    const vars = Object.fromEntries(Object.entries(ctx.vars).filter(e => shouldPassVar(e[0],profText))
         .map(e=>[e[0],stripData(e[1])]))
     const data = usingData(profText) && stripData(ctx.data)
     const params = Object.fromEntries(Object.entries(isJS ? ctx.params: Object.entries(ctx.cmpCtx?.params))
@@ -181,4 +183,3 @@ const varsUsed = Data({
   }
 })
 
-export const remoteCtx = { varsUsed, mergeProbeResult }

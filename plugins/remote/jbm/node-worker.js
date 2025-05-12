@@ -1,4 +1,7 @@
 
+const { varsUsed, mergeProbeResult, deStrip, stripCBVars, stripData, markProbeRecords, stripJS, stripFunction,
+    remoteExec, terminateAllChildren, portFromFrame, extendPortToJbmProxy } = remoteUtils
+    
 extension('webSocket', 'client', {
     initExtension() { return { toRestart: [], servers: {} } },
     connectFromBrowser: (wsUrl,serverUri,ctx) => new Promise( resolve => {
@@ -20,7 +23,7 @@ extension('webSocket', 'client', {
         client.on('open', () => resolve(jb.webSocket.portFromVSCodeWebSocket(client,serverUri)))
     }),
     portFromW3CSocket(socket,to,options) {
-        if (jb.ports[to]) return jb.ports[to]
+        if (jb.remoteRegistry.ports[to]) return jb.remoteRegistry.ports[to]
         const from = jb.uri
         const port = {
             socket, from, to,
@@ -32,11 +35,11 @@ extension('webSocket', 'client', {
             onMessage: { addListener: handler => socket.onmessage = m => jb.net.handleOrRouteMsg(from,to,handler,JSON.parse(m.data),options) },
             onDisconnect: { addListener: handler => { port.disconnectHandler = handler} }
         }
-        jb.ports[to] = port
+        jb.remoteRegistry.ports[to] = port
         return port
     },    
     portFromVSCodeWebSocket(socket,to,options) {
-        if (jb.ports[to]) return jb.ports[to]
+        if (jb.remoteRegistry.ports[to]) return jb.remoteRegistry.ports[to]
         const from = jb.uri
         const port = {
             socket, from, to,
@@ -48,11 +51,11 @@ extension('webSocket', 'client', {
             onMessage: { addListener: handler => socket.on('message', m => jb.net.handleOrRouteMsg(from,to,handler,JSON.parse(m.utf8Data),options)) },
             onDisconnect: { addListener: handler => { port.disconnectHandler = handler} }
         }
-        jb.ports[to] = port
+        jb.remoteRegistry.ports[to] = port
         return port
     },
     portFromNodeWebSocket(socket,to,options) {
-        if (jb.ports[to]) return jb.ports[to]
+        if (jb.remoteRegistry.ports[to]) return jb.remoteRegistry.ports[to]
         const from = jb.uri
         const port = {
             socket, from, to,
@@ -64,11 +67,11 @@ extension('webSocket', 'client', {
             onMessage: { addListener: handler => socket.on('message', m => jb.net.handleOrRouteMsg(from,to,handler,JSON.parse(m.utf8Data),options)) },
             onDisconnect: { addListener: handler => { port.disconnectHandler = handler} }
         }
-        jb.ports[to] = port
+        jb.remoteRegistry.ports[to] = port
         return port
     },
     portFromBrowserWebSocket(socket,to,options) {
-        if (jb.ports[to]) return jb.ports[to]
+        if (jb.remoteRegistry.ports[to]) return jb.remoteRegistry.ports[to]
         const from = jb.uri
         const port = {
             socket, from, to,
@@ -80,11 +83,11 @@ extension('webSocket', 'client', {
             onMessage: { addListener: handler => socket.addEventListener('message',m => jb.net.handleOrRouteMsg(from,to,handler,JSON.parse(m.data),options)) },
             onDisconnect: { addListener: handler => { port.disconnectHandler = handler} }
         }
-        jb.ports[to] = port
+        jb.remoteRegistry.ports[to] = port
         return port
     },
     portFromNodeChildProcess(proc,to,options) {
-        if (jb.ports[to]) return jb.ports[to]
+        if (jb.remoteRegistry.ports[to]) return jb.remoteRegistry.ports[to]
         const from = jb.uri
         const port = {
             proc, from, to,
@@ -96,7 +99,7 @@ extension('webSocket', 'client', {
             onMessage: { addListener: handler => proc.on('message', m => jb.net.handleOrRouteMsg(from,to,handler,m,options)) },
             onDisconnect: { addListener: handler => { port.disconnectHandler = handler} }
         }
-        jb.ports[to] = port
+        jb.remoteRegistry.ports[to] = port
         return port
     },
 })    
@@ -126,22 +129,23 @@ component('remoteNodeWorker', {
   type: 'jbm',
   params: [
     {id: 'id', as: 'string'},
-    {id: 'sourceCode', type: 'source-code<loader>', byName: true, defaultValue: treeShakeClientWithPlugins()},
+    {id: 'sourceCode', type: 'source-code<jbm>', byName: true, defaultValue: treeShakeClientWithPlugins()},
     {id: 'init', type: 'action<common>', dynamic: true},
     {id: 'initiatorUrl', as: 'string', defaultValue: 'http://localhost:8082'},
     {id: 'workerDetails'}
   ],
   impl: async (ctx,_id,sourceCode,init,initiatorUrl,workerDetails) => {
+    const { ports, childJbms } = jb.remoteRegistry
         const id = (_id || 'nodeWorker1').replace(/-/g,'__')
         const vscode = jbHost.isVscode ? 'vscode ' : ''
         jb.log(`${vscode}remote node worker`,{ctx,id})
         const nodeWorkerUri = `${jb.uri}__${id}`
         const restart = (jb.webSocket.toRestart||[]).indexOf(id)
-        if (jb.jbm.childJbms[id] && restart == -1) return jb.jbm.childJbms[id]
+        if (childJbms[id] && restart == -1) return childJbms[id]
         if (restart != -1) {
-            jb.jbm.childJbms[id].remoteExec(jb.remoteCtx.stripJS(() => process.exit(0)), { oneway: true} )
-            delete jb.jbm.childJbms[id]
-            delete jb.ports[nodeWorkerUri]
+            childJbms[id].remoteExec(jb.remoteCtx.stripJS(() => process.exit(0)), { oneway: true} )
+            delete childJbms[id]
+            delete ports[nodeWorkerUri]
             jb.webSocket.toRestart.splice(restart,1)
         }
         const args = [
@@ -165,12 +169,12 @@ component('remoteNodeWorker', {
         const port = await jb.webSocket[method](workerDetails.wsUrl, workerDetails.uri,ctx)
         jb.log(`${vscode}remote connected to port`,{ctx,workerDetails})
 
-        const jbm = jb.jbm.childJbms[id] = {
+        const jbm = childJbms[id] = {
             ...workerDetails,
             async rjbm() {
                 if (this._rjbm) return this._rjbm
-                this._rjbm = jb.ports[nodeWorkerUri] = jb.jbm.extendPortToJbmProxy(port)
-                await init(ctx.setVar('jbm',jb.jbm.childJbms[id]))
+                this._rjbm = ports[nodeWorkerUri] = jb.jbm.extendPortToJbmProxy(port)
+                await init(ctx.setVar('jbm',childJbms[id]))
                 return this._rjbm
             }
         }
@@ -187,13 +191,13 @@ component('nodeWorker', {
   type: 'jbm',
   params: [
     {id: 'id', as: 'string'},
-    {id: 'sourceCode', type: 'source-code<loader>', byName: true, defaultValue: treeShakeClientWithPlugins()},
+    {id: 'sourceCode', type: 'source-code<jbm>', byName: true, defaultValue: treeShakeClientWithPlugins()},
     {id: 'init', type: 'action<common>', dynamic: true},
     {id: 'usePackedCode', as: 'boolean', type: 'boolean<common>'}
   ],
   impl: async (ctx,_id,sourceCode,init,usePackedCode) => {
     const id = (_id || 'w1').replace(/-/g,'__')
-    if (jb.jbm.childJbms[id]) return jb.jbm.childJbms[id]
+    if (jb.remoteRegistry.childJbms[id]) return jb.remoteRegistry.childJbms[id]
     if (!jbHost.isNode || jbHost.isVscode)
         return jb.logError(`nodeWorker ${id} can only run on pure nodejs`, {ctx})
 
@@ -221,7 +225,7 @@ parentPort.postMessage({ $: 'workerReady' })
  })
 //# sourceURL=${workerUri}-initJb.js`
 
-    return jb.jbm.childJbms[id] = {
+    return jb.remoteRegistry.childJbms[id] = {
         uri: workerUri,
         rjbm() {
             if (this._rjbm) return this._rjbm
@@ -239,7 +243,7 @@ parentPort.postMessage({ $: 'workerReady' })
                         worker.off('message',f1)
                         const rjbm = self._rjbm = jb.jbm.extendPortToJbmProxy(jb.jbm.portFromParentToWorker(worker,jb.uri,workerUri))
                         rjbm.worker = worker
-                        await init(ctx.setVar('jbm',jb.jbm.childJbms[id]))
+                        await init(ctx.setVar('jbm',jb.remoteRegistry.childJbms[id]))
                         resolve(rjbm)
                     }
                 }
@@ -261,13 +265,13 @@ parentPort.postMessage({ $: 'workerReady' })
 //     ],
 //     impl: async (ctx,name,projects,init,inspect) => {
 //         jb.log('vscode jbm spawn',{ctx,name})
-//         if (jb.jbm.childJbms[name]) return jb.jbm.childJbms[name]
+//         if (jb.remoteRegistry.childJbms[name]) return jb.remoteRegistry.childJbms[name]
 //         const childUri = `${jb.uri}__${name}`
 //         // if (jb.webSocket.toRestart.indexOf(name) != -1) {
-//         //     if (jb.path(jb.jbm.childJbms[name],'kill'))
-//         //       jb.jbm.childJbms[name].kill()
-//         //     delete jb.jbm.childJbms[name]
-//         //     delete jb.ports[forkUri]
+//         //     if (jb.path(jb.remoteRegistry.childJbms[name],'kill'))
+//         //       jb.remoteRegistry.childJbms[name].kill()
+//         //     delete jb.remoteRegistry.childJbms[name]
+//         //     delete jb.remoteRegistry.ports[forkUri]
 //         //     jb.webSocket.toRestart.splice(indexOf(name),1)
 //         // }
 
@@ -292,7 +296,7 @@ parentPort.postMessage({ $: 'workerReady' })
 //             jb.logError('jbm spawn can not parse child Conf', {childDetailsStr})
 //         }
 //         const port = await jb.webSocket.connectFromNodeClient(`ws://localhost:${childDetails.port}`, childDetails.uri,ctx)
-//         const jbm = jb.jbm.childJbms[childDetails.uri] = jb.jbm.extendPortToJbmProxy(port)
+//         const jbm = jb.remoteRegistry.childJbms[childDetails.uri] = jb.jbm.extendPortToJbmProxy(port)
 //         jbm.kill = child.kill
 //         jbm.pid = child.pid 
 //         await init(ctx.setVar('jbm',jbm))

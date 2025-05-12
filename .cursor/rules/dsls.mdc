@@ -1,0 +1,35 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+import { jb, dsls, coreUtils, ns } from '../../core/tgp.js'
+
+const {
+  jb, RT_types, log, logError, logException, 
+  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
+  compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
+} = coreUtils 
+
+const {
+  rx: { RxSource, RXOperator
+
+  },
+  remote: { Jbm, SourceCode,
+    jbm: {},
+    sourceCode: {}
+  },
+  tgp: { Const, TgpType, 
+    var : { Var } 
+  },
+  test: { Test,
+    test: { dataTest, uiTest, completionOptionsTest, completionActionTest }
+  },
+  common: { Data, Action, Boolean,
+    action: { runActions },
+    data: { dummyCompProps, pipeline, list, filter, join, property, obj, delay, pipe, first, slice, split }, 
+    boolean: { equals, contains, notContains, and, not },
+    prop: { prop },
+  },
+} = dsls
+const { rx, source, sink, jbm } = ns

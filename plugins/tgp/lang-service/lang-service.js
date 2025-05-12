@@ -12,6 +12,7 @@ const {
    common: { Data }
 } = dsls
 
+
 Data('langService.completionItems', {
     impl: async (ctx) => {
         const compProps = await calcCompProps(ctx)

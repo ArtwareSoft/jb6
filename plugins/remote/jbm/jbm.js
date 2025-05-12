@@ -1,19 +1,30 @@
-pluginDsl('jbm')
-using('loader,tree-shake')
+import { remoteUtils } from './jbm-utils.js'
+import { dsls, ns, coreUtils } from '../core/all.js'
 
-component('stateless', {
-  type: 'jbm',
+const { 
+  tgp: { Any, DefComponents, Const, TgpType, TgpTypeModifier,
+    var : { Var }, 
+    any: { If, asIs} 
+  },
+  common: { Data, Boolean},
+} = dsls
+
+const { varsUsed, mergeProbeResult, deStrip, stripCBVars, stripData, markProbeRecords, stripJS, stripFunction,
+  remoteExec, terminateAllChildren, portFromFrame, extendPortToJbmProxy } = remoteUtils
+
+const Jbm = TgpType('jbm','jbm')
+const SourceCode = TgpType('source-code','jbm')
+
+SourceCode('byPath', {
   params: [
-    {id: 'sourceCode', type: 'source-code<loader>'}
-  ],
-  impl: If(isNode(), cmd('%$sourceCode%'), webWorker({ sourceCode: '%$sourceCode%', stateless: true }))
+    {id: 'path', as: 'string'}
+  ]
 })
 
-component('worker', {
-  type: 'jbm',
+Jbm('worker', {
   params: [
     {id: 'id', as: 'string'},
-    {id: 'sourceCode', type: 'source-code<loader>', byName: true},
+    {id: 'sourceCode', type: 'source-code<jbm>', byName: true},
     {id: 'init', type: 'action<common>', dynamic: true},
     {id: 'networkPeer', as: 'boolean', description: 'used for testing', type: 'boolean'}
   ],
@@ -36,17 +47,17 @@ component('webWorker', {
   type: 'jbm',
   params: [
     {id: 'id', as: 'string'},
-    {id: 'sourceCode', type: 'source-code<loader>', byName: true, defaultValue: treeShakeClient()},
+    {id: 'sourceCode', type: 'source-code<jbm>', byName: true},
     {id: 'init', type: 'action<common>', dynamic: true},
     {id: 'networkPeer', as: 'boolean', description: 'used for testing', type: 'boolean'},
     {id: 'stateless', as: 'boolean', description: 'can not be rx data source, or remote widget', type: 'boolean'}
   ],
   impl: (ctx,_id,sourceCode,init,networkPeer) => {
       const id = (_id || 'w1').replace(/-/g,'__')
-      const childsOrNet = networkPeer ? jb.jbm.networkPeers : jb.jbm.childJbms
+      const childsOrNet = networkPeer ? jb.remoteRegistry.networkPeers : jb.remoteRegistry.childJbms
       if (childsOrNet[id]) return childsOrNet[id]
       const workerUri = networkPeer ? id : `${jb.uri}•${id}`
-      const parentOrNet = networkPeer ? `jb.jbm.gateway = jb.jbm.networkPeers['${jb.uri}']` : 'jb.parent'
+      const parentOrNet = networkPeer ? `jb.remoteRegistry.gateway = jb.remoteRegistry.networkPeers['${jb.uri}']` : 'jb.parent'
       sourceCode.plugins = jb.utils.unique([...(sourceCode.plugins || []),'remote-jbm','tree-shake'])
 
       const workerCode = `
@@ -93,16 +104,16 @@ component('child', {
   type: 'jbm',
   params: [
     {id: 'id', as: 'string'},
-    {id: 'sourceCode', type: 'source-code<loader>', byName: true, defaultValue: treeShakeClient()},
+    {id: 'sourceCode', type: 'source-code<jbm>', byName: true, defaultValue: treeShakeClient()},
     {id: 'init', type: 'action<common>', dynamic: true}
   ],
   impl: (ctx,_id,sourceCode,init) => {
         const id = _id || 'child1'
-        if (jb.jbm.childJbms[id]) return jb.jbm.childJbms[id]
+        if (jb.remoteRegistry.childJbms[id]) return jb.remoteRegistry.childJbms[id]
         const childUri = `${jb.uri}•${id}`
         sourceCode.plugins = jb.utils.unique([...(sourceCode.plugins || []),'remote-jbm','tree-shake'])
 
-        return jb.jbm.childJbms[id] = {
+        return jb.remoteRegistry.childJbms[id] = {
             uri: childUri,
             async rjbm() {
                 if (this._rjbm) return this._rjbm
@@ -140,7 +151,7 @@ component('child', {
 component('cmd', {
   type: 'jbm',
   params: [
-    {id: 'sourceCode', type: 'source-code<loader>', mandatory: true},
+    {id: 'sourceCode', type: 'source-code<jbm>', mandatory: true},
     {id: 'viaHttpServer', as: 'string', defaultValue: 'http://localhost:8082'},
     {id: 'doNotStripResult', as: 'boolean', type: 'boolean'},
     {id: 'id', as: 'string'},
@@ -213,9 +224,9 @@ component('byUri', {
           if (routingPath.length == 2 && jb.ports[routingPath[1]])
               return jb.ports[routingPath[1]]
           let nextPort = jb.ports[routingPath[1]]
-          if (!nextPort && jb.jbm.gateway) {
-              routingPath.splice(1,0,jb.jbm.gateway.uri)
-              nextPort = jb.jbm.gateway
+          if (!nextPort && jb.remoteRegistry.gateway) {
+              routingPath.splice(1,0,jb.remoteRegistry.gateway.uri)
+              nextPort = jb.remoteRegistry.gateway
           }
           if (!nextPort) {
               return jb.logError(`routing - can not find next port`,{routingPath, uri: jb.uri, from,to})
@@ -245,7 +256,7 @@ component('byUri', {
           return [...path_to_shared_parent.reverse(),...p2.slice(i)]
       }
       function findNeighbourJbm(uri) {
-          return [jb, jb.parent, ...Object.values(jb.jbm.childJbms), ...Object.values(jb.jbm.networkPeers)].filter(x=>x).find(x=>x.uri == uri)
+          return [jb, jb.parent, ...Object.values(jb.remoteRegistry.childJbms), ...Object.values(jb.remoteRegistry.networkPeers)].filter(x=>x).find(x=>x.uri == uri)
       }
   }
 })
@@ -305,7 +316,7 @@ component('nodeOnly', {
   type: 'data<common>',
   params: [
     {id: 'calc', dynamic: true, mandatory: true},
-    {id: 'sourceCode', type: 'source-code<loader>', mandatory: true}
+    {id: 'sourceCode', type: 'source-code<jbm>', mandatory: true}
   ],
   impl: If(and(isNode(), not(isVscode())), '%$calc()%', remote.data('%$calc()%', cmd('%$sourceCode%')))
 })

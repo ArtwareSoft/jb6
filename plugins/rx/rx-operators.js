@@ -1,4 +1,4 @@
-import { coreUtils, dsls } from '../core/all.js'
+import { coreUtils, dsls, ns } from '../core/all.js'
 import { callbag } from './jb-callbag.js'
 const { log } = coreUtils
 const {
@@ -7,36 +7,37 @@ const {
   },
 } = dsls
 
-
-export const RXOperator = TgpType('op', 'rx')
+export const RXOperator = TgpType('op', 'rx', {modifierId: 'RXOperator'})
 
 export function addDebugInfo(f,ctx) { f.ctx = ctx; return f}
 
-const innerPipe = RXOperator({
+RXOperator('rx.innerPipe',{
   description: 'composite operator, inner reactive pipeline without source',
   params: [
-    {id: 'elems', type: 'rx[]', as: 'array', mandatory: true, templateValue: []}
+    {id: 'elems', type: 'op[]', as: 'array', mandatory: true, templateValue: []}
   ],
   impl: (ctx, {elems}) => source => callbag.pipe(source, ...elems)
 })
 
-const fork = RXOperator({
+const { rx } = ns
+
+RXOperator('rx.fork',{
   description: 'separate operator with same source data',
   params: [
-    {id: 'elems', type: 'rx[]', as: 'array', mandatory: true, templateValue: []}
+    {id: 'elems', type: 'op[]', as: 'array', mandatory: true, templateValue: []}
   ],
   impl: (ctx, {elems}) => callbag.fork(...elems)
 })
 
-const startWith = RXOperator({
+RXOperator('rx.startWith',{
   description: 'startWith callbags sources (or any)',
   params: [
-    {id: 'sources', type: 'rx[]', as: 'array'}
+    {id: 'sources', type: 'source[]', as: 'array'}
   ],
   impl: (ctx, {sources}) => callbag.startWith(...sources)
 })
 
-const _var = RXOperator({
+RXOperator('rx.var',{
   description: 'define an immutable variable that can be used later in the pipe',
   params: [
     {id: 'name', as: 'string', dynamic: true, mandatory: true, description: 'if empty, does nothing'},
@@ -50,7 +51,7 @@ const _var = RXOperator({
   })
 })
 
-const vars = RXOperator({
+RXOperator('rx.vars',{
   description: 'define an immutable variables that can be used later in the pipe',
   params: [
     {id: 'Vars', dynamic: true}
@@ -63,7 +64,7 @@ const vars = RXOperator({
   }
 })
 
-const resource = RXOperator({
+RXOperator('rx.resource',{
   description: 'define a static mutable variable that can be used later in the pipe',
   params: [
     {id: 'name', as: 'string', dynamic: true, mandatory: true, description: 'if empty, does nothing'},
@@ -80,7 +81,7 @@ const resource = RXOperator({
   })
 })
 
-const reduce = RXOperator({
+RXOperator('rx.reduce',{
   description: 'incrementally aggregates/accumulates data in a variable, e.g. count, concat, max, etc',
   params: [
     {id: 'varName', as: 'string', mandatory: true, description: 'the result is accumulated in this var', templateValue: 'acc'},
@@ -110,56 +111,56 @@ const reduce = RXOperator({
   }
 })
 
-const count = RXOperator({
+RXOperator('rx.count',{
   params: [
     {id: 'varName', as: 'string', mandatory: true, defaultValue: 'count'}
   ],
-  impl: reduce('%$varName%', 0, {value: (ctx, {}, {varName}) => ctx.vars[varName] + 1})
+  impl: rx.reduce('%$varName%', 0, {value: (ctx, {}, {varName}) => ctx.vars[varName] + 1})
 })
 
-const join = RXOperator({
+RXOperator('rx.join',{
   params: [
     {id: 'varName', as: 'string', mandatory: true, defaultValue: 'join'},
     {id: 'separator', as: 'string', defaultValue: ','}
   ],
-  impl: reduce('%$varName%', '%%', {
+  impl: rx.reduce('%$varName%', '%%', {
     value: (ctx, {}, {varName, separator}) => [ctx.vars[varName], ctx.data].join(separator),
     avoidFirst: true
   })
 })
 
-const max = RXOperator({
+RXOperator('rx.max',{
   params: [
     {id: 'varName', as: 'string', mandatory: true, defaultValue: 'max'},
     {id: 'value', dynamic: true, defaultValue: '%%'}
   ],
-  impl: reduce('%$varName%', -Infinity, {
+  impl: rx.reduce('%$varName%', -Infinity, {
     value: (ctx, {}, {varName, value}) => Math.max(ctx.vars[varName], value(ctx))
   })
 })
 
-const _do = RXOperator({
+RXOperator('rx.do',{
   params: [
     {id: 'action', type: 'action', dynamic: true, mandatory: true}
   ],
   impl: (ctx, {action}) => callbag.Do(ctx2 => action(ctx2))
 })
 
-const doPromise = RXOperator({
+RXOperator('rx.doPromise',{
   params: [
     {id: 'action', type: 'action', dynamic: true, mandatory: true}
   ],
   impl: (ctx, {action}) => callbag.doPromise(ctx2 => action(ctx2))
 })
 
-const map = RXOperator({
+RXOperator('rx.map',{
   params: [
     {id: 'func', dynamic: true, mandatory: true}
   ],
   impl: (ctx, {func}) => callbag.map(addDebugInfo(ctx2 => ctx.dataObj(func(ctx2), ctx2.vars || {}, ctx2.data), ctx))
 })
 
-const mapPromise = RXOperator({
+RXOperator('rx.mapPromise',{
   params: [
     {id: 'func', type: 'data', moreTypes: 'action<common>', dynamic: true, mandatory: true}
   ],
@@ -167,7 +168,7 @@ const mapPromise = RXOperator({
     .catch(err => ({vars: {...ctx2.vars, err}, data: err})))
 })
 
-const filter = RXOperator({
+RXOperator('rx.filter',{
   category: 'filter',
   params: [
     {id: 'filter', type: 'boolean', dynamic: true, mandatory: true}
@@ -175,7 +176,7 @@ const filter = RXOperator({
   impl: (ctx, {filter}) => callbag.filter(addDebugInfo(ctx2 => filter(ctx2), ctx))
 })
 
-const flatMap = RXOperator({
+RXOperator('rx.flatMap',{
   description: 'match inputs the callbags or promises',
   params: [
     {id: 'source', type: 'rx', category: 'source', dynamic: true, mandatory: true, description: 'map each input to source callbag'},
@@ -232,7 +233,7 @@ const flatMap = RXOperator({
   }
 })
 
-const concatMap = RXOperator({
+RXOperator('rx.concatMap',{
   category: 'operator,combine',
   params: [
     {id: 'func', type: 'rx', dynamic: true, mandatory: true, description: 'keeps the order of the results, can return array, promise or callbag'},
@@ -243,7 +244,7 @@ const concatMap = RXOperator({
     : callbag.concatMap(ctx2 => func(ctx2))
 })
 
-const distinctUntilChanged = RXOperator({
+RXOperator('rx.distinctUntilChanged',{
   description: 'filters adjacent items in stream',
   category: 'filter',
   params: [
@@ -252,7 +253,7 @@ const distinctUntilChanged = RXOperator({
   impl: (ctx, {equalsFunc}) => callbag.distinctUntilChanged((prev, cur) => equalsFunc(ctx.setData(cur.data).setVars({prev:prev.data})), ctx)
 })
 
-const distinct = RXOperator({
+RXOperator('rx.distinct',{
   description: 'filters unique values',
   category: 'filter',
   params: [
@@ -261,12 +262,12 @@ const distinct = RXOperator({
   impl: (ctx, {key}) => callbag.distinct(addDebugInfo(ctx2 => key(ctx2), ctx))
 })
 
-const catchError = RXOperator({
+RXOperator('rx.catchError',{
   category: 'error',
   impl: ctx => callbag.catchError(err => ctx.dataObj(err))
 })
 
-const timeoutLimit = RXOperator({
+RXOperator('rx.timeoutLimit', {
   category: 'error',
   params: [
     {id: 'timeout', dynamic: true, defaultValue: '3000', description: 'can be dynamic'},
@@ -275,7 +276,7 @@ const timeoutLimit = RXOperator({
   impl: (ctx, {timeout, error}) => callbag.timeoutLimit(timeout, error)
 })
 
-const throwError = RXOperator({
+RXOperator('rx.throwError',{
   category: 'error',
   params: [
     {id: 'condition', as: 'boolean', dynamic: true, mandatory: true, type: 'boolean'},
@@ -284,7 +285,7 @@ const throwError = RXOperator({
   impl: (ctx, {condition, error}) => callbag.throwError(ctx2 => condition(ctx2), error)
 })
 
-const debounceTime = RXOperator({
+RXOperator('rx.debounceTime',{
   description: 'waits for a cooldown period, them emits the last arrived',
   params: [
     {id: 'cooldownPeriod', dynamic: true, description: 'can be dynamic'},
@@ -293,7 +294,7 @@ const debounceTime = RXOperator({
   impl: (ctx, {cooldownPeriod, immediate}) => callbag.debounceTime(cooldownPeriod, immediate)
 })
 
-const throttleTime = RXOperator({
+RXOperator('rx.throttleTime',{
   description: 'enforces a cooldown period. Any data that arrives during the showOnly time is ignored',
   params: [
     {id: 'cooldownPeriod', dynamic: true, description: 'can be dynamic'},
@@ -302,14 +303,14 @@ const throttleTime = RXOperator({
   impl: (ctx, {cooldownPeriod, emitLast}) => callbag.throttleTime(cooldownPeriod, emitLast)
 })
 
-const delay = RXOperator({
+RXOperator('rx.delay',{
   params: [
     {id: 'time', dynamic: true, description: 'can be dynamic'}
   ],
   impl: (ctx, {time}) => callbag.delay(time)
 })
 
-const replay = RXOperator({
+RXOperator('rx.replay',{
   description: 'stores messages and replay them for later subscription',
   params: [
     {id: 'itemsToKeep', as: 'number', description: 'empty for unlimited'}
@@ -317,7 +318,7 @@ const replay = RXOperator({
   impl: (ctx, {itemsToKeep}) => callbag.replay(itemsToKeep)
 })
 
-const takeUntil = RXOperator({
+RXOperator('rx.takeUntil',{
   description: 'closes the stream when events comes from notifier',
   category: 'terminate',
   params: [
@@ -326,7 +327,7 @@ const takeUntil = RXOperator({
   impl: (ctx, {notifier}) => callbag.takeUntil({notifier})
 })
 
-const take = RXOperator({
+RXOperator('rx.take',{
   description: 'closes the stream after taking some items',
   category: 'terminate',
   params: [
@@ -335,7 +336,7 @@ const take = RXOperator({
   impl: (ctx, {count}) => callbag.take(count(), ctx)
 })
 
-const takeWhile = RXOperator({
+RXOperator('rx.takeWhile',{
   description: 'closes the stream on condition',
   category: 'terminate',
   params: [
@@ -345,17 +346,17 @@ const takeWhile = RXOperator({
   impl: (ctx, {whileCondition, passLastEvent}) => callbag.takeWhile(ctx => whileCondition(ctx), passLastEvent)
 })
 
-const toArray = RXOperator({
+RXOperator('rx.toArray',{
   description: 'wait for all and returns next item as array',
   impl: ctx => source => callbag.pipe(source, callbag.toArray(), callbag.map(arr => ctx.dataObj(arr.map(x => x.data))))
 })
 
-const last = RXOperator({
+RXOperator('rx.last',{
   category: 'filter',
   impl: () => callbag.last()
 })
 
-const skip = RXOperator({
+RXOperator('rx.skip',{
   category: 'filter',
   params: [
     {id: 'count', as: 'number', dynamic: true}
@@ -363,33 +364,27 @@ const skip = RXOperator({
   impl: (ctx, {count}) => callbag.skip(count())
 })
 
-const _log = RXOperator({
+RXOperator('rx.log',{
   description: 'log flow data, used for debug',
   params: [
     {id: 'name', as: 'string', dynamic: true, description: 'log names'},
     {id: 'extra', as: 'single', dynamic: true, description: 'object. more properties to log'}
   ],
-  impl: _do((ctx, vars, {name, extra}) => log(name(ctx), {data: ctx.data, vars, ...extra(ctx), ctx: ctx.cmpCtx}))
+  impl: rx.do((ctx, vars, {name, extra}) => log(name(ctx), {data: ctx.data, vars, ...extra(ctx), ctx: ctx.cmpCtx}))
 })
 
-const clog = RXOperator({
+RXOperator('rx.clog',{
   description: 'console.log flow data, used for debug',
   params: [
     {id: 'name', as: 'string'}
   ],
-  impl: _do((x, {}, {name}) => console.log(name, x))
+  impl: rx.do((x, {}, {name}) => console.log(name, x))
 })
 
-const sniffer = RXOperator({
+RXOperator('rx.sniffer',{
   description: 'console.log data & control',
   params: [
     {id: 'name', as: 'string'}
   ],
   impl: (ctx, {name}) => source => callbag.sniffer(source, {next: x => console.log(name, x)})
 })
-
-export const operators = {
-    innerPipe, fork, startWith, var: _var, vars, resource, reduce, count, join, max, do: _do, doPromise, map, mapPromise, filter, flatMap
-    , concatMap, distinctUntilChanged, distinct, catchError, timeoutLimit, throwError, debounceTime, throttleTime, delay
-    , replay, takeUntil, take, takeWhile, toArray, last, skip, log: _log, clog, sniffer
-}
