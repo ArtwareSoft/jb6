@@ -1,12 +1,13 @@
 import {} from './lang-service-testers.js'
-import { dsls } from '../../../common/jb-common.js'
+import { dsls, ns } from '../../../common/jb-common.js'
+const { langService } = ns
 
 const {
   tgp: {
     any: { asIs }
   },
   test: { Test,
-    test: { completionOptionsTest, completionActionTest }
+    test: { dataTest, completionOptionsTest, completionActionTest }
   },
   common: { Data, Action, Boolean,
     data: { dummyCompProps, pipeline, list, filter, join, property, obj, delay, pipe, first, slice }, 

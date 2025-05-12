@@ -2,8 +2,8 @@ import { coreUtils, dsls } from '../core/all.js'
 import { testUtils } from './tester.js'
 import { utils } from '../common/jb-common.js'
 import { spy } from '../logger/spy.js'
-const { Ctx, jb, globalsOfType, asJbComp } = coreUtils
-const { delay, unique } = utils
+const { Ctx, jb, globalsOfType, asJbComp, unique } = coreUtils
+const { delay } = utils
 const { 
     test : { Test }
 } = dsls  

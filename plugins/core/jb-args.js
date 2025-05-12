@@ -7,7 +7,7 @@ const OrigArgs = Symbol.for('OrigArgs')
 const astNode = Symbol.for('astNode')
 
 const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
-const systemParams = [ {id: 'data', $type: 'data<common>'}, {id: 'vars', $type: 'var<tgp>'}] 
+const systemParams = [ {id: 'data', $dslType: 'data<common>'}, {id: 'vars', $dslType: 'var<tgp>'}] 
 
 const titleToId = id => id.split('.')[0].replace(/-([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
 
@@ -35,7 +35,7 @@ function jbCompProxy(jbComp) {
 }
 
 function calcArgs(jbComp,$unresolvedArgs) {
-  if (jbComp.id == 'any<tgp>asIs')
+  if (jbComp.id == 'asIs') // any<tgp>asIs
     return () => $unresolvedArgs[0]
   return { $: jbComp, $unresolvedArgs }
 }
@@ -54,7 +54,8 @@ function splitSystemArgs(allArgs) {
   const args = [], system = {}
   allArgs.forEach(arg => {
       const comp = arg.$
-      if (comp?.id == 'var<tgp>Var') { // Var in pipeline
+      if (comp?.id == 'Var') { // Var in pipeline var<tgp>Var
+        debugger
         system.vars = system.vars || []
         system.vars.push(arg)
       } else {
@@ -102,7 +103,16 @@ function argsToProfile(prof, comp) {
 }
 
 function resolveProfileTop(comp) {
-    jb.ext.tgp?.resolveProfileTop(comp)
+    const dsl = comp.dsl || ''
+    comp.$dslType = comp.type.indexOf('>') == -1 ? `${comp.type}<${dsl}>` : comp.type
+    ;(comp.params || []).forEach(p=> {
+      if (p.as == 'boolean' && ['boolean','ref'].indexOf(p.type) == -1) 
+        p.type = 'boolean<common>'
+      if (p.dynamicTypeFromParent) return
+      const t1 = (p.type || '').replace(/\[\]/g,'') || 'data<common>'
+      p.$dslType = t1.indexOf('<') == -1 ? `${t1}<${comp.dsl || 'common'}>` : t1
+      if (p.$dslType.match(/<>/)) debugger
+    })
     ;(comp.params || []).forEach(p=> {
       if (sysProps.includes(p.id))
         return logError(`resolveProfileTop - can not use system prop ${p.id} as param name in ${comp.id||''}`,{comp})

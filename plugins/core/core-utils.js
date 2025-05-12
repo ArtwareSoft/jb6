@@ -6,7 +6,8 @@ export const jb = {
   },
   dsls: {
     tgp: { Const }
-  }
+  },
+  ns: {}
 }
 
 const isPrimitiveValue = val => ['string','boolean','number'].indexOf(typeof val) != -1
@@ -86,13 +87,13 @@ const unique = (ar,f) => {
 }
 const isPromise = v => v && v != null && typeof v.then === 'function'
 
-function compName(profile) {
-  return profile.$?.id || profile.$$
+function compIdOfProfile(profile) {
+  if (typeof profile.$$ == 'string') return profile.$$
+  return `${profile.$$.$dslType}${profile.$$.id}`
 }
 
 const compParams = comp => comp?.params || []
 const parentPath = path => path.split('~').slice(0,-1).join('~')
-
 
 const asArray = v => v == null ? [] : (Array.isArray(v) ? v : [v])
 const toArray = RT_types.array
@@ -153,10 +154,14 @@ function calcPath(object,_path,value) {
   }
 }
 
+function splitDslType(dslType) {
+  return dslType.match(/^([^<]+)<([^>]+)>$/).slice(1)
+}
+
 jb.coreUtils = {
   jb, RT_types, log, logError, logException, 
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
-  compName, compParams, parentPath, calcPath,
+  compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   val: x=>val(x)
 }
 

@@ -10,8 +10,8 @@ jb.workspaceRegistry = {
 }
 const openDocs = jb.workspaceRegistry.openDocs
 
-function activeUri() { return jb.workspaceRegistry.activeUri() }
-function activeDoc() { return openDocs[jb.workspaceRegistry.activeUri()] }
+function activeUri() { return jb.workspaceRegistry.activeUri }
+function activeDoc() { return openDocs[jb.workspaceRegistry.activeUri] }
 
 jb.ext.tgpTextEditor = { host: {
         type: 'jbWorkspace',
@@ -47,7 +47,7 @@ jb.ext.tgpTextEditor = { host: {
         },
         initDoc(uri,text, selection = { start:{line:0,col:0}, end:{line:0,col:0} }) {
             openDocs[uri] = { text, selection}
-            activeUri() = uri
+            jb.workspaceRegistry.activeUri = uri
         },
         async getTextAtSelection() {
             const selection = activeDoc().selection

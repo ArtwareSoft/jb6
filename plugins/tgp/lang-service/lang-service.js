@@ -5,8 +5,8 @@ import {} from '../formatter/pretty-print.js'
 import { langServiceUtils } from './lang-service-utils.js'
 export { langServiceUtils } 
 
-const { jb, resolveCompArgs, prettyPrint, isPrimitiveValue, logError, log, calcPath, compByFullId } = coreUtils
-const { calcCompProps, cloneProfile, newPTCompletions, deltaFileContent } = langServiceUtils
+const { jb, resolveCompArgs, prettyPrint, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique } = coreUtils
+const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems } = langServiceUtils
 
 const { 
    common: { Data }
@@ -31,7 +31,7 @@ Data('langService.completionItems', {
                 arguments: [item] 
             },
             }))
-            title = paramDef && `${paramDef.id}: ${paramDef.$type.replace('<>','')}`
+            title = paramDef && `${paramDef.id}: ${paramDef.$dslType.replace('<>','')}`
             log('completion items', { items, ...compProps, ctx })
         } else if (errors) {
             logError('completion provideCompletionItems', {errors, compProps})
@@ -57,10 +57,10 @@ Data('langService.compId', {
             return { comp: comp.id}
         if (actions.length == 0) return []
         const priorities = ['addProp']
-        const sortedActions = utils.unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
+        const sortedActions = unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
         if (sortedActions[0] && sortedActions[0][0] == 'propInfo') 
-            return { comp: tgpModel.compNameOfPath(utils.parentPath(path)), prop: path.split('~').pop() }
-        return { comp: path && (path.match(/~/) ? tgpModel.compNameOfPath(path) : path) }
+            return { comp: tgpModel.compIdOfPath(parentPath(path)), prop: path.split('~').pop() }
+        return { comp: path && (path.match(/~/) ? tgpModel.compIdOfPath(path) : path) }
     }
 })
 
@@ -88,7 +88,7 @@ Data('langService.definition', {
     impl: async (ctx) => {
         const compProps = await calcCompProps(ctx)
         const { errors, tgpModel, path } = compProps
-        const cmpId = tgpModel.compNameOfPath(path)
+        const cmpId = tgpModel.compIdOfPath(path)
         if (cmpId)
             return compByFullId(cmpId, tgpModel)?.$location
         if (errors) {
@@ -126,7 +126,7 @@ Data('langService.editAndCursorOfCompletionItem', {
     return { edit, cursorPos }
 
     function calcNewPos(compText) {
-        const TBD = item.compName == 'any<tgp>TBD' || calcPath(itemProps, 'op.$set.$$') == 'any<tgp>TBD'
+        const TBD = item.compId == 'any<tgp>TBD' || calcPath(itemProps, 'op.$set.$$') == 'any<tgp>TBD'
         const _whereToLand = TBD ? 'begin' : (whereToLand || 'edit')
         const expectedPath = resultPath || path
         const { line, col } = getPosOfPath(expectedPath, [_whereToLand,'prependPT','appendPT'], {compText, tgpModel})
@@ -272,29 +272,3 @@ function calcHashNoTitle(str) {
     return calcHash(str.split('\n').slice(1).join('\n'))
 }
 
-async function provideCompletionItems(compProps, ctx) {
-    const { actionMap, inCompOffset, tgpModel } = compProps
-    const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
-        .map(e => e.action).filter(e => e.indexOf('edit!') != 0 && e.indexOf('begin!') != 0 && e.indexOf('end!') != 0)
-    if (actions.length == 0) return []
-    const priorities = ['addProp']
-    let paramDef = null
-    const sortedActions = utils.unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
-    let items = sortedActions.reduce((acc, action) => {
-        const [op, path] = action
-        paramDef = tgpModel.paramDef(path)
-        // if (!paramDef)
-        //     logError('can not find paramDef for path',{path,ctx})
-        const toAdd = (op == 'setPT' && paramDef && paramDef.options) ? enumCompletions(path,compProps)
-            : op == 'setPT' ? [...wrapWithArray(path, compProps), ...newPTCompletions(path, 'set', compProps)]
-            : op == 'insertPT' ? newPTCompletions(path, 'insert', compProps)
-            : op == 'appendPT' ? newPTCompletions(path, 'append', compProps)
-            : op == 'prependPT' ? newPTCompletions(path, 'prepend', compProps)
-            : op == 'addProp' ? paramCompletions(path, compProps) : []
-        return [...acc, ...toAdd]
-    }, [])
-    if (actions[0] && actions[0].indexOf('insideText') == 0)
-        items = await dataCompletions(compProps, actions[0].split('!').pop(), ctx)
-
-    return { items, paramDef }
-}

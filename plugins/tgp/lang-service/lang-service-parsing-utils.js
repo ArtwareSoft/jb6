@@ -1,8 +1,8 @@
 import { coreUtils } from '../../core/all.js'
 import {} from '../model-data/tgp-model-data.js'
 import { parse } from '/libs/acorn.mjs'
-const { jb, systemParams, resolveProfileTop, astToTgpObj, astNode, logException, 
-    resolveProfileTypes, compParams, compName, isPrimitiveValue, asArray, compByFullId, primitivesAst } = coreUtils
+const { jb, systemParams, astToTgpObj, astNode, logException, 
+    resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType } = coreUtils
 
 jb.langServiceUtils = jb.langServiceUtils || {}
 export const langServiceUtils = jb.langServiceUtils
@@ -97,15 +97,13 @@ function deltaFileContent(compText, newCompText, compLine) {
 function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0])
     resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp})
-    const compId = tgpType == 'comp<tgp>' ? `${tgpModel.dsls.tgp.comp[topComp.$].dslType}${topComp.id}` : ''
-    //resolveProfileTop(topComp)
-    // if (tgpType == 'comp<tgp>') {
-    //     const $$ = `comp<tgp>${topComp.$}`
-    //     const { type, dsl } = compByFullId($$, tgpModel)
-    //     const id = compId = `${type}<${dsl||''}>${topComp.id}`
-    //     Object.assign(topComp,{ type, dsl, $$})
-    //     tgpModel.comps[id] = resolveProfileTop(topComp)
-    // }
+    let compId = ''
+    if (tgpType == 'comp<tgp>' && topComp.id) { // set compId and add to comps registry
+        const dslType = tgpModel.dsls.tgp.comp[topComp.$].dslType
+        compId = `${dslType}${topComp.id}`
+        const [ type, dsl ] = splitDslType(dslType)
+        tgpModel.dsls[dsl][type][topComp.id] = topComp
+    }
     const actionMap = []
 
     calcActionMap(topComp, compId, topComp[astNode])
@@ -174,7 +172,9 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
                 if (props.length > 1)
                     props.slice(1).forEach((prop, i) => actionMap.push({ action: `addProp!${path}`, from: props[i].end, to: prop.start, source: 'props' }))
             }
-            const params = [...compParams(compByFullId(compName(prof), tgpModel)), ...systemParams]
+            
+            const compFullId = (path && path.indexOf('~') == -1) ? 'comp<tgp>tgpComp' : compIdOfProfile(prof)
+            const params = [...compParams(compByFullId(compFullId, tgpModel)), ...systemParams]
             const param0 = params[0] || {}, param1 = params[1] || {}
             const firstParamAsArray = (param0.type||'').indexOf('[]') != -1 && !param0.byName
             const secondParamAsArray = param1.secondParamAsArray

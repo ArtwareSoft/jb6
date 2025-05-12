@@ -1,5 +1,5 @@
 import { coreUtils } from './core-utils.js'
-const { asJbComp, astNode, OrigArgs, systemParams, jbComp, unique, asArray, isPrimitiveValue, logError } = coreUtils
+const { asJbComp, astNode, OrigArgs, systemParams, jbComp, unique, asArray, isPrimitiveValue, logError, splitDslType } = coreUtils
 
 export const primitivesAst = Symbol.for('primitivesAst')
 
@@ -15,16 +15,16 @@ function calcDslType(fullId) {
 export function resolveProfileTypes(prof, { astFromParent, expectedType, parent, parentProp, tgpModel, topComp, parentType, remoteCode} = {}) {
     if (!prof || !prof.constructor || ['Object','Array'].indexOf(prof.constructor.name) == -1) return prof
     const typeFromParent = expectedType == '$asParent<>' ? (parentType || calcDslType(parent?.$$)) : expectedType
-    const typeFromAdapter = parent?.$ == 'typeAdapter' && parent.fromType
+    const dynamicTypeFromParent = parentProp?.dynamicTypeFromParent?.(parent,tgpModel.dsls)
     const fromFullId = calcDslType(prof.$$)
-    const dslType = typeFromAdapter || typeFromParent || fromFullId // implType || 
-    if (dslType?.indexOf('<') == -1) debugger
+    const dslType = dynamicTypeFromParent || typeFromParent || fromFullId 
+    if (!dslType || dslType?.indexOf('<') == -1) debugger
     const ast = prof[astNode] || astFromParent
 
     const comp = prof.$ instanceof jbComp ? prof.$
         : resolveCompTypeWithId(prof.$$ || prof.$, tgpModel, { dslType, parent, parentProp, topComp, parentType, remoteCode })
     if (comp)
-      prof.$$ = prof.$ instanceof jbComp ? prof.$ : comp.id
+      prof.$$ = prof.$ instanceof jbComp ? prof.$ : `${dslType}${comp.id}`
     if (prof.$unresolvedArgs && comp) {
       Object.assign(prof, argsToProfile(prof, comp), {[astNode]: prof[astNode]})
       prof[OrigArgs] = prof.$unresolvedArgs
@@ -32,11 +32,11 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
     }
 
     if (Array.isArray(prof)) {
-      prof[primitivesAst] = Object.fromEntries(prof.map( (val,i) => isPrimitiveValue(val) && [i,ast.elements[i]]).filter(Boolean))
+      prof[primitivesAst] = Object.fromEntries(prof.map( (val,i) => isPrimitiveValue(val) && [i,ast?.elements[i]]).filter(Boolean))
       prof.forEach((v,i) =>resolveProfileTypes(v, { astFromParent: prof[primitivesAst][i], expectedType: dslType, parent, parentProp, topComp, tgpModel, parentType, remoteCode}))
     } else if (comp && prof.$ != 'asIs') {
       ;[...(comp.params || []), ...systemParams].forEach(p=> 
-          resolveProfileTypes(prof[p.id], { astFromParent: prof[primitivesAst][p.id], expectedType: p.$type, parentType: dslType, parent: prof, parentProp: p, topComp, tgpModel, remoteCode}))
+          resolveProfileTypes(prof[p.id], { astFromParent: prof[primitivesAst]?.[p.id], expectedType: p.$dslType, parentType: dslType, parent: prof, parentProp: p, topComp, tgpModel, remoteCode}))
     } else if (!comp && prof.$) {
         logError(`resolveProfile - can not resolve ${prof.$} at ${topComp && topComp.$$} expected type ${dslType || 'unknown'}`, 
             {tgpModel, compId: prof.$, prof, expectedType, dslType, topComp, parentType})
@@ -148,7 +148,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentProp, paren
   if (dslType == 'comp<tgp>')
     return jb.dsls.tgp.tgpComp[asJbComp]
   if (dslType) {
-    const [type, dsl] = dslType.match(/^([^<]+)<([^>]+)>$/).slice(1)
+    const [type, dsl] = splitDslType(dslType)
     const res = dsls[dsl||'common'][type][id]
     if (res) return res
   }
@@ -169,7 +169,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentProp, paren
   const allTypes = unique([byTypeRules,dynamicTypeFromParent,typeFromParent,dslType].filter(x=>x).join(',').split(',').filter(x=>x))
   const shortId = id.split('>').pop()
   const fromAllTypes = allTypes.map(dslType => {
-    const [type, dsl] = dslType.match(/^([^<]+)<([^>]+)>$/).slice(1)
+    const [type, dsl] = splitDslType(dslType)
     return dsls[dsl||'common'][type][shortId]
   }).find(x=>x)
   if (fromAllTypes)

@@ -42,16 +42,17 @@ async function calcTgpModelData({ filePath }) {
 	await Promise.all(imports.map(url=>crawl(url)))
   })(filePath)
 
-  const dsls = {}
+  const tgpModel = {dsls: {}, ns: {}, typeRules: [], files: Object.keys(visited)}
+  const {dsls, typeRules} = tgpModel
 
   // phase 0 - meta
-  {
-      const src = await fetch('/plugins/core/tgp.js').then(url=>url.text())
-      const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
-      ast.body.flatMap(n => n.type === 'ExpressionStatement' ? [n.expression] : [])
-        .filter(decl=> decl.callee?.name == 'MetaComp')
-        .forEach(decl => resolveProfileTop(astToObj(decl.arguments[1])))
-  }
+  // {
+  //     const src = await fetch('/plugins/core/tgp.js').then(url=>url.text())
+  //     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+  //     ast.body.flatMap(n => n.type === 'ExpressionStatement' ? [n.expression] : [])
+  //       .filter(decl=> decl.callee?.name == 'MetaComp')
+  //       .forEach(decl => resolveProfileTop(astToObj(decl.arguments[1])))
+  // }
 
   // 2) Phase 1: find all `... = TgpType(...)`
   Object.entries(codeMap).forEach(([url, src]) => {
@@ -64,12 +65,12 @@ async function calcTgpModelData({ filePath }) {
 
     allDefs.filter(d => d?.callee?.name === 'TgpType').forEach(decl=> {
       const args = decl.arguments.map(ast =>astToObj(ast))
-      args.push(...Array(3 - args.length).fill(null), dsls)
+      args.push(...Array(3 - args.length).fill(null), tgpModel)
       TgpType(...args)
     })
     allDefs.filter(d => d?.callee?.name === 'TgpTypeModifier').forEach(decl=> {
       const args = decl.arguments.map(ast =>astToObj(ast))
-      args.push(...Array(2 - args.length).fill(null), dsls)
+      args.push(...Array(2 - args.length).fill(null), tgpModel)
       TgpTypeModifier(...args)
     })
   })
@@ -78,7 +79,6 @@ async function calcTgpModelData({ filePath }) {
   Object.assign(dsls.tgp.comp, compDefs)
   dsls.tgp.var.Var = jb.dsls.tgp.var.Var[asJbComp]
   dsls.tgp.comp.tgpComp = jb.dsls.tgp.tgpComp[asJbComp]
-  let typeRules   = []
 
   // 3) Phase 2a: non-exported in the entry file only
   {
@@ -104,7 +104,7 @@ async function calcTgpModelData({ filePath }) {
     typeRules.push(... declarations.filter(decl=>decl.id.name == 'typeRules').flatMap(decl=>astToObj(decl.init)))
   })
 
-  return { dsls, typeRules, files: Object.keys(visited) }
+  return tgpModel
 
   function parseCompDec({exportName, decl, url, src}) {
     if ( decl.type !== 'CallExpression' || decl.callee.type !== 'Identifier' || !compDefs[decl.callee.name]) return

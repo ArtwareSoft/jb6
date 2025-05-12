@@ -1,10 +1,12 @@
 import { dsls } from '../core/all.js'
+import {} from './data-tester.js'
+import {} from '../common/jb-common.js' // used indirectly by lang service tests
+
 const { 
     common: { Data },
     tgp: { TgpType},
     test: { Test }
 } = dsls
-import {} from '../common/jb-common.js' // used indirectly by lang service tests
 
 const Control = TgpType('control','ui')
 const Feature = TgpType('feature','ui')

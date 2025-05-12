@@ -1,6 +1,6 @@
 import { dsls, coreUtils } from '../../core/all.js'
 
-const { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, jbComp, asJbComp, isPrimitiveValue, asArray, val, compName, compByFullId } = coreUtils
+const { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, jbComp, asJbComp, isPrimitiveValue, asArray, val, compIdOfProfile, compByFullId } = coreUtils
 const {
   common: { Data }
 } = dsls
@@ -41,7 +41,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
   if (!val || typeof val !== 'object')
     return { text: val != null && val.toString ? val.toString() : JSON.stringify(val), map: {} }
   if (type)
-    val.$type = type
+    val.$dslType = type
   if (val.$unresolvedArgs)
     val.$comp ? resolveCompArgs(val,{tgpModel}) : resolveProfileArgs(val,{tgpModel, expectedType: type})
 
@@ -212,10 +212,10 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       if (profile.params)
         cleaned.params = JSON.parse(JSON.stringify(profile.params))
       Object.keys(cleaned).forEach(k=> (k == '$$' || k.match(/^\$.+/)) && delete cleaned[k])
-      ;(cleaned.params||[]).forEach(p => delete p.$type)
+      ;(cleaned.params||[]).forEach(p => delete p.$dslType)
       return asIsProps(cleaned,path)
     }
-    const fullptId = compName(profile)
+    const fullptId = profile.$$ && compIdOfProfile(profile)
     if (!fullptId)
       return asIsProps(profile,path)
 

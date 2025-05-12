@@ -18,7 +18,7 @@ function calcRefs() {
 
   function calcRefs(profile) {
     if (profile == null || typeof profile != 'object') return [];
-    return Object.values(profile).reduce((res,v)=> [...res,...calcRefs(v)], [utils.compName(profile)])
+    return Object.values(profile).reduce((res,v)=> [...res,...calcRefs(v)], [utils.compId(profile)])
   }    
 }
 

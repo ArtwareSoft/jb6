@@ -1,12 +1,12 @@
-import { jb, coreUtils, dsls} from '../../../core/all.js'
+import { jb, coreUtils, dsls, ns} from '../../../core/all.js'
 import { utils } from '../../../common/common-utils.js'
-import { tgpEditorHost } from './mock-workspace.js'
+import {} from './mock-workspace.js'
 import { langServiceUtils } from '../lang-service.js'
 import {} from '../../../testers/data-tester.js'
 
-const { completionItems, editAndCursorOfCompletionItem, tgpModelForLangService, tgpModels, 
-  calcCompProps, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
-const { resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData } = coreUtils
+const { langService } = ns
+const { tgpEditorHost, tgpModelForLangService, tgpModels, calcCompProps, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
+const { resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes } = coreUtils
 const { 
   test: { Test, 
     test: { dataTest }
@@ -32,6 +32,7 @@ function getTgpModel(filePath) {
 }
 
 async function initCompletionText({ctx,compText,filePath,remoteSuggestions}) {
+  filePath = filePath || '/plugins/testers/ui-dsl-for-tests.js'
   const testId = ctx.vars.testID
   const fullText = compText.match(/^[a-z]+Test\(/) ? `Test('x', {\n  impl: ${compText}\n})` 
     : compText.match(/^[A-Z]/) ? compText
@@ -66,7 +67,7 @@ Test('completionOptionsTest', {
       await offsetsPos.reduce(async (pr, inCompPos) => {
         await pr
         host.selectRange(inCompPos)
-        const options = (await completionItems.$impl(ctxForTest)).items.map(x=>x.label)
+        const options = (await langService.completionItems.$impl(ctxForTest)).items.map(x=>x.label)
         acc.push({options})
       }, Promise.resolve())
       return acc
@@ -109,7 +110,7 @@ Test('completionActionTest', {
         if (!item) 
           return { items: items.map(x=>x.label), toActivate }
 
-        const edit = item.edit ? item : await editAndCursorOfCompletionItem.$impl(ctx,{item})
+        const edit = item.edit ? item : await langService.editAndCursorOfCompletionItem.$impl(ctx,{item})
         await applyCompChange(edit, {ctx})
         //applyCompChange(item,{ctx})
         await utils.delay(1) // wait for cursor change
@@ -210,11 +211,15 @@ Test('actionMapTest', {
   ],
   impl: dataTest({
     calculate: ({},{},{profile, expectedType}) => getTgpModel().then(tgpModel => {
-      const { text: compText, actionMap} = typeof profile == 'string' ? { text: profile, actionMap: [] } 
-        :  prettyPrintWithPositions(resolveProfileArgs(profile, {expectedType}), {tgpModel} )
-      const actionMapFromParse = calcProfileActionMap(compText, {tgpModel, tgpType: expectedType} ).actionMap
+      const { text, actionMap } =  (typeof profile != 'string') ? prettyPrintActionMap() : { text: profile, actionMap: []}
+      const actionMapFromParse = calcProfileActionMap(text, {tgpModel, tgpType: expectedType} ).actionMap
         .map(e=>({from: e.from, to: e.to,action: e.action, source: e.source})) // for debug to match actionMap
-      return { actionMap, actionMapFromParse, compText }
+      return { actionMap, actionMapFromParse, compText: text }
+
+      function prettyPrintActionMap() {
+        const topComp = resolveProfileArgs(profile, {expectedType})
+        resolveProfileTypes(topComp, {tgpModel, expectedType, topComp})
+        return prettyPrintWithPositions(topComp, {tgpModel})      }
     }),
     expectedResult: ({ data : {actionMap, actionMapFromParse, compText}},{},{expectedPos,path}) => {
         const compareActions = (a, b) => a.from - b.from || a.to - b.to || a.action.localeCompare(b.action)

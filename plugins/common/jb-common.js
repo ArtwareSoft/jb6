@@ -1,6 +1,6 @@
-import { dsls } from '../core/all.js'
+import { dsls, ns } from '../core/all.js'
 import { utils } from './common-utils.js'
-export { utils, dsls }
+export { utils, dsls, ns }
 
 const { 
   tgp: { Any, DefComponents, Const, TgpType, TgpTypeModifier,

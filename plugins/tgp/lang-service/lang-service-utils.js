@@ -1,51 +1,78 @@
 import { coreUtils } from '../../core/all.js'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
 const { tgpEditorHost, offsetToLineCol, calcProfileActionMap } = langServiceUtils
-const { jb, Ctx, isMacro, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath } = coreUtils
+const { jb, Ctx, isMacro, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, unique, compByFullId, splitDslType } = coreUtils
 
 export { langServiceUtils }  
 jb.langServiceRegistry = { 
     tgpModels : {}
 }
 
+async function provideCompletionItems(compProps, ctx) {
+    const { actionMap, inCompOffset, tgpModel } = compProps
+    const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
+        .map(e => e.action).filter(e => e.indexOf('edit!') != 0 && e.indexOf('begin!') != 0 && e.indexOf('end!') != 0)
+    if (actions.length == 0) return []
+    const priorities = ['addProp']
+    let paramDef = null
+    const sortedActions = unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
+    let items = sortedActions.reduce((acc, action) => {
+        const [op, path] = action
+        paramDef = tgpModel.paramDef(path)
+        // if (!paramDef)
+        //     logError('can not find paramDef for path',{path,ctx})
+        const toAdd = (op == 'setPT' && paramDef && paramDef.options) ? enumCompletions(path,compProps)
+            : op == 'setPT' ? [...wrapWithArray(path, compProps), ...newPTCompletions(path, 'set', compProps)]
+            : op == 'insertPT' ? newPTCompletions(path, 'insert', compProps)
+            : op == 'appendPT' ? newPTCompletions(path, 'append', compProps)
+            : op == 'prependPT' ? newPTCompletions(path, 'prepend', compProps)
+            : op == 'addProp' ? paramCompletions(path, compProps) : []
+        return [...acc, ...toAdd]
+    }, [])
+    if (actions[0] && actions[0].indexOf('insideText') == 0)
+        items = await dataCompletions(compProps, actions[0].split('!').pop(), ctx)
+
+    return { items, paramDef }
+}
+
 async function calcCompProps(ctx, {includeCircuitOptions} = {}) {
     const {forceLocalSuggestions, forceRemoteCompProps} = ctx.vars
     const docProps = { forceLocalSuggestions, ...tgpEditorHost().compTextAndCursor() }
-    const packagePath = docProps.packagePath = docProps.filePath
-    const tgpModel = tgpModels[packagePath]
+    const filePath = docProps.filePath
+    const tgpModel = jb.langServiceRegistry.tgpModels[filePath]
     const compProps = (tgpModel && !forceRemoteCompProps) 
         ? {...docProps, tgpModel, ...calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
         : await docalcCompProps()
     const circuitOptions = (compProps.path && includeCircuitOptions) ? 
-        await new Ctx().setData(packagePath).calc({$: 'remote.circuitOptions', filePath: compProps.filePath, path: compProps.path}) : null
+        await new Ctx().setData(filePath).calc({$: 'remote.circuitOptions', filePath: compProps.filePath, path: compProps.path}) : null
     return {...compProps, circuitOptions}
 
     async function docalcCompProps() {
-        const tgpModelData = forceLocalSuggestions ? await calcTgpModelData({filePath: packagePath}) 
-            : await new Ctx().setData(packagePath).calc({$: 'remote.tgpModelData'})
+        const tgpModelData = forceLocalSuggestions ? await calcTgpModelData({filePath}) 
+            : await new Ctx().setData(filePath).calc({$: 'remote.tgpModelData'})
         if (!tgpModelData.filePath) {
             const errorMessage = calcPath(tgpModelData.errors,'0.0.e.message') || ''
             const referenceError = (errorMessage.match(/ReferenceError: (.*)/) || [])[1]
             const SyntaxError = (errorMessage.match(/SyntaxError: (.*)/) || [])[1]
             const errors = [referenceError,SyntaxError].filter(x=>x)
-            tgpEditorHost().log(`error creating tgpModelData for path ${packagePath}`)
-            return { errors: [...errors, ...asArray(tgpModelData.errors), `error creating tgpModelData for path ${packagePath}`]}
+            tgpEditorHost().log(`error creating tgpModelData for path ${filePath}`)
+            return { errors: [...errors, ...asArray(tgpModelData.errors), `error creating tgpModelData for path ${filePath}`]}
         }
             
         docProps.filePath = tgpModelData.filePath
-        const tgpModel = tgpModels[packagePath] = new tgpModelForLangService(tgpModelData)
+        const tgpModel = jb.langServiceRegistry.tgpModels[filePath] = new tgpModelForLangService(tgpModelData)
         return {...docProps, tgpModel, ...calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
     }
 }
 
 function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,append,prepend
     const tgpModel = compProps.tgpModel
-    const options = compProps.tgpModel.PTsOfPath(path).filter(x => !x.match(/^dataResource\./)).map(compName => {
-        const comp = tgpModel.compById(compName)
+    const options = compProps.tgpModel.PTsOfPath(path).filter(x => !x.match(/^dataResource\./)).map(compId => {
+        const comp = tgpModel.compById(compId)
         return {
-            label: compName.split('>').pop(), kind: 2, compName, opKind, path, compProps,
-            detail: [comp.description, compName.indexOf('>') != -1 && compName.split('>')[0] + '>'].filter(x => x).join(' '),
-            extend(ctx) { return setPTOp(this.path, this.opKind, this.compName, ctx) },
+            label: compId.split('>').pop(), kind: 2, compId, opKind, path, compProps,
+            detail: [comp.description, compId.indexOf('>') != -1 && compId.split('>')[0] + '>'].filter(x => x).join(' '),
+            extend(ctx) { return setPTOp(this.path, this.opKind, this.compId, ctx) },
         }
     })
     const isArrayElem = path.match(/~[0-9]+$/)
@@ -56,11 +83,11 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
     }
     return [propTitle, ...options]
 
-    function setPTOp(path, opKind, compName, ctx) {
+    function setPTOp(path, opKind, compId, ctx) {
         const index = opKind == 'append' ? -1 : opKind == 'insert' ? (+path.split('~').pop() + 1) : opKind == 'prepend' && 0
         const basePath = opKind == 'insert' ? path.split('~').slice(0, -1).join('~') : path
         const basedOnVal = opKind == 'set' && tgpModel.valOfPath(path)
-        const { result, cursorPath, whereToLand } = newProfile(tgpModel.compById(compName), {basedOnVal})
+        const { result, cursorPath, whereToLand } = newProfile(tgpModel.compById(compId), {basedOnVal})
         const res = opKind == 'set' ? setOp(path, result, ctx) : addArrayItemOp(basePath, { toAdd: result, index, ctx })
         return {...res, resultPath: [res.resultPath || path,cursorPath].filter(x=>x).join('~'), whereToLand }
     }
@@ -89,7 +116,7 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
 
 function newProfile(comp, {basedOnPath, basedOnVal} = {}) {
 	const currentVal = basedOnVal != null ?  basedOnVal : (basedOnPath && valOfPath(basedOnPath))
-	const result = { $$: comp.id, $type: comp.$type	}
+	const result = { $$: comp.id, $dslType: comp.$dslType }
 	let cursorPath = '', whereToLand = 'edit'
 	const composite = compParams(comp).find(p=>p.composite)
 	compParams(comp).forEach(p=>{
@@ -197,22 +224,23 @@ class tgpModelForLangService {
         const res = calcPath(this.compById(path.split('~')[0], silent),path.split('~').slice(1))
         return res && res[isMacro] ? res() : res
     }
-    compNameOfPath(path) {
+    compIdOfPath(path) {
         if (path.indexOf('~') == -1)
-            return 'jbComponent'
+            return 'comp<tgp>tgpComp'
         if (path.match(/~\vars$/)) 
             return
-        return utils.compName(this.valOfPath(path))
+        const prof = this.valOfPath(path)
+        return prof?.$$ && compIdOfProfile(prof)
     }
     paramDef(path) {
-        let _parentPath = utils.parentPath(path)
+        let _parentPath = parentPath(path)
         let paramName = path.split('~').pop()
         if (!_parentPath)
             return this.compById(path)
         if (!isNaN(Number(paramName))) { // array elements
             path = _parentPath
             paramName = path.split('~').pop()
-            _parentPath = utils.parentPath(path)
+            _parentPath = parentPath(path)
         }
         if (paramName == 'defaultValue' && this.isParamDef(_parentPath))
         return this.valOfPath(_parentPath)
@@ -223,7 +251,7 @@ class tgpModelForLangService {
         const pathAr = path.split('~')
         return pathAr.length == 3 && pathAr[1] == 'params'
     }
-    compOfPath(path) { return this.compById(this.compNameOfPath(path)) }
+    compOfPath(path) { return this.compById(this.compIdOfPath(path)) }
     paramsOfPath(path) { return compParams(this.compOfPath(path)) }
     compById(id) { return this.currentComp.compId == id ? this.currentComp.comp : compByFullId(id, this) }
     PTsOfType(type,dsl) {
@@ -239,13 +267,13 @@ class tgpModelForLangService {
         return +(((comp.category||'').match(/common:([0-9]+)/)||[0,0])[1])
     }
     PTsOfPath(path) {
-        const typeAndDsl = this.paramType(path)
-        const [dsl,type] = typeAndDsl.match(/^([^<]+)<([^>]+)>$/) || [typeAndDsl,'']
+        const dslType = this.paramType(path)
+        const [type, dsl] = splitDslType(dslType)
         return this.PTsOfType(type,dsl)
     }
     paramType(path) {
-        const type = this.paramDef(path)?.$type
-        return type == '$asParent' ? this.paramType(utils.parentPath(path)) : type
+        const type = this.paramDef(path)?.$dslType
+        return type == '$asParent' ? this.paramType(parentPath(path)) : type
     }
     enumOptions(path) { 
         return ((this.paramDef(path) || {}).options ||'').split(',').map(x=> ({code: x.split(':')[0],text: x.split(':')[0]}))
@@ -253,7 +281,7 @@ class tgpModelForLangService {
     canWrapWithArray(path) {
         const type = this.paramDef(path) ? (this.paramDef(path).type || '') : ''
         const val = this.valOfPath(path)
-        const parentVal = this.valOfPath(utils.parentPath(path))
+        const parentVal = this.valOfPath(parentPath(path))
         return type.includes('[') && !Array.isArray(val) && !Array.isArray(parentVal)
     }
     pluginOfFilePath(filePath) {
@@ -269,5 +297,7 @@ class tgpModelForLangService {
     }
 }
 
-Object.assign(langServiceUtils, { calcCompProps, cloneProfile, tgpModelForLangService, newPTCompletions, tgpModels: jb.langServiceRegistry.tgpModels})
+Object.assign(langServiceUtils, { provideCompletionItems, calcCompProps, cloneProfile, tgpModelForLangService,  
+    tgpModels: jb.langServiceRegistry.tgpModels
+})
 
