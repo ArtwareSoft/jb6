@@ -6,7 +6,7 @@ import { langServiceUtils } from './lang-service-utils.js'
 export { langServiceUtils } 
 
 const { jb, resolveCompArgs, prettyPrint, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique } = coreUtils
-const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems } = langServiceUtils
+const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems, filePosOfPath, getPosOfPath, calcHash } = langServiceUtils
 
 const { 
    common: { Data }
@@ -31,7 +31,7 @@ Data('langService.completionItems', {
                 arguments: [item] 
             },
             }))
-            title = paramDef && `${paramDef.id}: ${paramDef.$dslType.replace('<>','')}`
+            title = paramDef && `${paramDef.id}: ${(paramDef.$dslType||'').replace('<>','')}`
             log('completion items', { items, ...compProps, ctx })
         } else if (errors) {
             logError('completion provideCompletionItems', {errors, compProps})

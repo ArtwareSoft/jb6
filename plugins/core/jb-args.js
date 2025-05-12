@@ -105,13 +105,16 @@ function argsToProfile(prof, comp) {
 function resolveProfileTop(comp) {
     const dsl = comp.dsl || ''
     comp.$dslType = comp.type.indexOf('>') == -1 ? `${comp.type}<${dsl}>` : comp.type
-    ;(comp.params || []).forEach(p=> {
-      if (p.as == 'boolean' && ['boolean','ref'].indexOf(p.type) == -1) 
+    ;(comp.params || []).filter(p=> !p.dynamicTypeFromParent).forEach(p=> {
+      if (p.type == 'boolean') p.type = 'boolean<common>'
+      if (p.type == 'data' || !p.type) p.type = 'data<common>'
+      if (p.type == 'action') p.type = 'action<common>'
+
+      if (p.as == 'boolean' && ['ref'].indexOf(p.type) == -1) 
         p.type = 'boolean<common>'
-      if (p.dynamicTypeFromParent) return
       const t1 = (p.type || '').replace(/\[\]/g,'') || 'data<common>'
       p.$dslType = t1.indexOf('<') == -1 ? `${t1}<${comp.dsl || 'common'}>` : t1
-      if (p.$dslType.match(/<>/)) debugger
+      // if (p.$dslType.match(/<>/)) debugger
     })
     ;(comp.params || []).forEach(p=> {
       if (sysProps.includes(p.id))

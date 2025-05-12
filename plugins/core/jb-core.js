@@ -48,7 +48,6 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
     const arrayType = (jbCtx.parentParam?.type || '').indexOf('[]') != -1
     if (arrayType && Array.isArray(profile)) // array param
         return profile.flatMap(p => run(p, ctx, settings))
-    //const pt = profile.$$ || profile.$
     if (profile && profile.$ && openComp) {
         const comp = asComp(profile.$) // also lazy resolve
         const ret = comp.runProfile(profile, ctx, settings)

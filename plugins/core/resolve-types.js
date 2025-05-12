@@ -25,6 +25,7 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
         : resolveCompTypeWithId(prof.$$ || prof.$, tgpModel, { dslType, parent, parentProp, topComp, parentType, remoteCode })
     if (comp)
       prof.$$ = prof.$ instanceof jbComp ? prof.$ : `${dslType}${comp.id}`
+    if (prof.$$ == 'pipeline') debugger
     if (prof.$unresolvedArgs && comp) {
       Object.assign(prof, argsToProfile(prof, comp), {[astNode]: prof[astNode]})
       prof[OrigArgs] = prof.$unresolvedArgs

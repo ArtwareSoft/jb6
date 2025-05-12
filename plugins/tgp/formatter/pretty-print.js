@@ -220,7 +220,8 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       return asIsProps(profile,path)
 
     const comp = profile.$ instanceof jbComp ? profile.$ : compByFullId(fullptId, tgpModel)
-    const id = fullptId.split('>').pop()                
+    const id = fullptId == 'comp<tgp>tgpComp' ? profile.$ : fullptId.split('>').pop()
+    if (typeof id != 'string') debugger
     const macro = titleToId(id)
 
     const params = (comp.params || []).slice(0)

@@ -101,7 +101,7 @@ Test('completionActionTest', {
   impl: dataTest({
     calculate: async (ctx,{}, {compText,completionToActivate, filePath, dsl, remoteSuggestions }) => {
         const {ctxForTest, host} = await initCompletionText({ctx,compText,filePath,dsl,remoteSuggestions})
-        const {items} = await completionItems.$impl(ctxForTest)
+        const {items} = await langService.completionItems.$impl(ctxForTest)
         if (items.find(x=>x.label == 'reformat'))
             return { testFailure: `bad comp format` }
 

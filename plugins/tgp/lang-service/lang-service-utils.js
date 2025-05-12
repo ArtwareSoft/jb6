@@ -66,11 +66,11 @@ async function calcCompProps(ctx, {includeCircuitOptions} = {}) {
 }
 
 function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,append,prepend
-    const tgpModel = compProps.tgpModel
-    const options = compProps.tgpModel.PTsOfPath(path).filter(x => !x.match(/^dataResource\./)).map(compId => {
-        const comp = tgpModel.compById(compId)
+    const { tgpModel } = compProps
+    const options = tgpModel.PTsOfPath(path).map(comp => {
+        const compId = `${comp.$dslType}${comp.id}`
         return {
-            label: compId.split('>').pop(), kind: 2, compId, opKind, path, compProps,
+            label: comp.id, kind: 2, compId, opKind, path, compProps,
             detail: [comp.description, compId.indexOf('>') != -1 && compId.split('>')[0] + '>'].filter(x => x).join(' '),
             extend(ctx) { return setPTOp(this.path, this.opKind, this.compId, ctx) },
         }
@@ -79,7 +79,7 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
     const propStr = isArrayElem ? path.split('~').slice(-2).join('~') : path.split('~').pop()
     const propTitle = {
         label: propStr + ': ' + tgpModel.paramType(path), kind: 25, path, extend: () => { },
-        detail: calcPath(compProps.tgpModel.paramDef(path), 'description')
+        detail: calcPath(tgpModel.paramDef(path), 'description')
     }
     return [propTitle, ...options]
 
@@ -116,7 +116,7 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
 
 function newProfile(comp, {basedOnPath, basedOnVal} = {}) {
 	const currentVal = basedOnVal != null ?  basedOnVal : (basedOnPath && valOfPath(basedOnPath))
-	const result = { $$: comp.id, $dslType: comp.$dslType }
+	const result = { $$: `${comp.$dslType}${comp.id}`, $dslType: comp.$dslType }
 	let cursorPath = '', whereToLand = 'edit'
 	const composite = compParams(comp).find(p=>p.composite)
 	compParams(comp).forEach(p=>{
@@ -218,7 +218,6 @@ class tgpModelForLangService {
     constructor(tgpModel) {
         Object.assign(this,tgpModel)
         this.ptsOfTypeCache = {}
-        this.currentComp = {}
     }
     valOfPath(path, silent){ 
         const res = calcPath(this.compById(path.split('~')[0], silent),path.split('~').slice(1))
@@ -253,15 +252,14 @@ class tgpModelForLangService {
     }
     compOfPath(path) { return this.compById(this.compIdOfPath(path)) }
     paramsOfPath(path) { return compParams(this.compOfPath(path)) }
-    compById(id) { return this.currentComp.compId == id ? this.currentComp.comp : compByFullId(id, this) }
+    compById(id) { return compByFullId(id, this) }
     PTsOfType(type,dsl) {
         const dslType = `${type}<${dsl}>`
         if (this.ptsOfTypeCache[dslType])
             return this.ptsOfTypeCache[dslType]
-        debugger
         const res = Object.values(this.dsls[dsl][type])
         res.sort((c1,c2) => this.markOfComp(c2) - this.markOfComp(c1))
-        return this.ptsOfTypeCache[dslType] = res.map(c=>c.id)
+        return this.ptsOfTypeCache[dslType] = res
     }
     markOfComp(comp) {
         return +(((comp.category||'').match(/common:([0-9]+)/)||[0,0])[1])
