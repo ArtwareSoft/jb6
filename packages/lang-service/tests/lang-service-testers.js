@@ -41,7 +41,6 @@ async function initCompletionText({ctx,compText,filePath,remoteSuggestions}) {
   const code = parts.join('')
   tgpEditorHost().initDoc(filePath, code)
   const tgpModel = tgpModels[filePath] = new tgpModelForLangService(await getTgpModel(filePath))
-  //TODO: add file path to tgp model
   const ctxForTest = ctx.setVars({forceLocalSuggestions: !remoteSuggestions})
   const inCompPos = offsetToLineCol(code,offset)
   tgpEditorHost().selectRange(inCompPos)

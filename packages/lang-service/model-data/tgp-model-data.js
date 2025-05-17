@@ -1,6 +1,6 @@
 import { parse } from '../lib/acorn.mjs'
 import { dsls, coreUtils } from '@jb6/core'
-const { astNode, asJbComp, logError } = coreUtils
+const { jb, astNode, asJbComp, logError } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -14,22 +14,32 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 async function importMap() {
   if (globalThis.window) 
     return fetch('/import-map.json').then(r=>r.json())
+  return importMapNode()
+}
 
-  const pkgsDir = path.join(__dirname, '../../packages')
+async function importMapNode() {
+  const { readdir } = await import('fs/promises')
+  const { fileURLToPath } = await import('url')
+  const __filename = fileURLToPath(import.meta.url)
+  const path = await import('path')
+
+  const __dirname = path.dirname(__filename)
+  const pkgsDir = path.join(__dirname, '../..')
   const entries = await readdir(pkgsDir, { withFileTypes: true })
   const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
   const runtime = Object.fromEntries(
       folders.flatMap(f => [
-        [`@jb6/${f}`,   `/packages/${f}/index.js`],
-        [`@jb6/${f}/`, `/packages/${f}/`]          // enables sub-path imports
+        [`@jb6/${f}`,   `${pkgsDir}/${f}/index.js`],
+        [`@jb6/${f}/`, `${pkgsDir}/${f}/`]          // enables sub-path imports
       ])
     )
-  const internalAlias = { '#jb6/': '/packages/' }
+  const internalAlias = { '#jb6/': `${pkgsDir}/` }
   
   return { imports: { ...runtime, ...internalAlias } }
 }
 
 function resolveWithImportMap(specifier, { imports }) {
+  console.log(specifier)
   let winner = ''               // longest matching key
   for (const key in imports) {
     if (
@@ -46,9 +56,20 @@ function resolveWithImportMap(specifier, { imports }) {
   return target.endsWith('/') ? target + rest : target;
 }
 
-async function calcTgpModelData({ filePath }) {
+async function doFetch(url) {
+  if (globalThis.window) {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`fetch ${url} → ${res.status}`)
+    return await res.text()
+  }
+  const { readFile } = await import('fs/promises')
+  return await readFile(url, 'utf8')
+}
+
+export async function calcTgpModelData({ filePath }) {
   if (!filePath) return {}
   const _importMap = await importMap()
+  console.log(_importMap)
 
   const codeMap = {}
   const visited = {}  // urls seen
@@ -58,9 +79,7 @@ async function calcTgpModelData({ filePath }) {
     if (visited[url]) return
     visited[url] = true
     const rUrl = resolveWithImportMap(url, _importMap)
-    const res = await fetch(rUrl)
-    if (!res.ok) throw new Error(`fetch ${url} → ${res.status}`)
-    const src = await res.text()
+    const src = await doFetch(rUrl)
     codeMap[url] = src
 
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
