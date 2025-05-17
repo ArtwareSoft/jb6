@@ -1,21 +1,23 @@
 {
-  "name": "jb-ecm",
+  "name": "jb6-monorepo",
+  "private": true,
   "version": "1.0.0",
-  "description": "",
+  "description": "JB6 core + plugins (pure-JS workspaces mono-repo)",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node server/jb-server.js",
+    "test": "node packages/tests-runner/run-tests-cli.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "workspaces": ["packages/*"],
+  "imports": {
+    "#jb6/*": "./packages/*"
+  },
   "devDependencies": {
     "acorn": "^8.14.1",
     "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "rollup": "^4.40.0"
+    "express": "^5.1.0"
   },
-  "dependencies": {
-    "acorn-walk": "^8.3.4"
-  }
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

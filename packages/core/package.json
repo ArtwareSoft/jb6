@@ -1,0 +1,10 @@
+{
+  "name": "@jb6/core",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { 
+    ".": "./index.js"
+   },
+  "files": ["*.js", "tests"],
+  "dependencies": {}
+}
