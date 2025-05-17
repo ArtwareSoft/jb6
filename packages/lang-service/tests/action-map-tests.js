@@ -1,7 +1,7 @@
-import { langServiceUtils } from '@jb6/lang-service'
+import { } from '@jb6/lang-service'
 import { } from './lang-service-testers.js'
-const { prettyPrint} = langServiceUtils
-import { dsls } from '@jb6/core'
+import { dsls, coreUtils } from '@jb6/core'
+const { prettyPrint} = coreUtils
 
 const { 
   tgp: { Const, TgpType, 

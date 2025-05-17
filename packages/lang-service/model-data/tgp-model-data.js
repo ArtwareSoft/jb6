@@ -1,13 +1,10 @@
 import { parse } from '../lib/acorn.mjs'
 import { dsls, coreUtils } from '@jb6/core'
-const { resolveProfileTop, asJbComp } = coreUtils
+const { astNode, asJbComp, logError } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
 } = dsls
-
-export { coreUtils }
-const { astNode } = coreUtils
 
 Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 
@@ -71,13 +68,11 @@ async function calcTgpModelData({ filePath }) {
 
     const imports = [
 	  ...ast.body.filter(n => n.type === 'ImportDeclaration').map(n => n.source.value)
-      	.filter(spec => ['/',',','@','#'].some(p=>spec.startsWith(p))).map(rel => resolvePath(rUrl, rel)),
+      	.filter(spec => ['/','.','@','#'].some(p=>spec.startsWith(p))).map(rel => resolvePath(rUrl, rel)),
 	  ...ast.body.filter(n => n.type === 'ExpressionStatement').map(n => n.expression)
       	.filter(ex => ex.type === 'CallExpression' && ex.callee.type === 'Import')
       	.map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(rUrl, rel))
 	  ].filter(x=>!x.match(/^\/libs\//))
-
-    console.log('crawl imports', rUrl, imports)
 
 	  await Promise.all(imports.map(url=>crawl(url)))
   })(filePath)
@@ -145,14 +140,14 @@ async function calcTgpModelData({ filePath }) {
     if (decl.arguments[0].type === 'Literal') {
       shortId = decl.arguments[0].value
       if (exportName && shortId !== exportName)
-        utils.logError(`calcTgpModelData id mismatch ${shortId} ${exportName}`,{ url, ...offsetToLineCol(src, decl) })
+        logError(`calcTgpModelData id mismatch ${shortId} ${exportName}`,{ url, ...offsetToLineCol(src, decl) })
       comp = astToObj(decl.arguments[1])
     } else {
       shortId = exportName
       comp = astToObj(decl.arguments[0])
     }
     if (!shortId)
-      utils.logError(`calcTgpModelData no id mismatch`,{ url, ...offsetToLineCol(src, decl) })
+      logError(`calcTgpModelData no id mismatch`,{ url, ...offsetToLineCol(src, decl) })
 
     const $location = { path: url, ...offsetToLineCol(src, decl.start) }
     const _comp = compDefs[tgpType](shortId, {...comp, $location})
@@ -211,7 +206,7 @@ function astToObj(node) {
 }
 
 function resolvePath(b, r) {
-	if (r[0] === '/') return r
+	if (['/','@','#'].some(p=>r.startsWith(p))) return r
 	const segs = b.split('/')
 	segs.pop()
 	const parts = segs.concat(r.split('/'))

@@ -4,7 +4,7 @@ const {
   common: { Data, Boolean },
 } = dsls
 
-export const prefix = Data('prefix', {
+Data('prefix', {
   category: 'string:90',
   params: [
     {id: 'separator', as: 'string', mandatory: true},
@@ -13,7 +13,7 @@ export const prefix = Data('prefix', {
   impl: (ctx, {separator, text}) => (text||'').substring(0,text.indexOf(separator))
 })
 
-export const suffix = Data('suffix', {
+Data('suffix', {
   category: 'string:90',
   params: [
     {id: 'separator', as: 'string', mandatory: true},
@@ -22,7 +22,7 @@ export const suffix = Data('suffix', {
   impl: (ctx, {separator, text}) => (text||'').substring(text.lastIndexOf(separator)+separator.length)
 })
 
-export const removePrefix = Data('removePrefix', {
+Data('removePrefix', {
   category: 'string:80',
   params: [
     {id: 'separator', as: 'string', mandatory: true},
@@ -31,7 +31,7 @@ export const removePrefix = Data('removePrefix', {
   impl: (ctx, {separator, text}) => text.indexOf(separator) == -1 ? text : text.substring(text.indexOf(separator)+separator.length)
 })
 
-export const removeSuffix = Data('removeSuffix', {
+Data('removeSuffix', {
   category: 'string:80',
   params: [
     {id: 'separator', as: 'string', mandatory: true},
@@ -40,7 +40,7 @@ export const removeSuffix = Data('removeSuffix', {
   impl: (ctx, {separator, text}) => text.lastIndexOf(separator) == -1 ? text : text.substring(0,text.lastIndexOf(separator))
 })
 
-export const removeSuffixRegex = Data('removeSuffixRegex', {
+Data('removeSuffixRegex', {
   category: 'string:80',
   params: [
     {id: 'suffix', as: 'string', mandatory: true, description: 'regular expression. e.g [0-9]*'},
@@ -53,7 +53,7 @@ export const removeSuffixRegex = Data('removeSuffixRegex', {
   }
 })
 
-export const matchRegex = Boolean('matchRegex', {
+Boolean('matchRegex', {
   description: 'validation with regular expression',
   params: [
     {id: 'regex', as: 'string', mandatory: true, description: 'e.g: [a-zA-Z]*'},
@@ -62,28 +62,28 @@ export const matchRegex = Boolean('matchRegex', {
   impl: (ctx, {regex, text}) => text.match(new RegExp(regex))
 })
 
-export const toUpperCase = Data('toUpperCase', {
+Data('toUpperCase', {
   params: [
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
   impl: (ctx, {text}) => text.toUpperCase()
 })
 
-export const toLowerCase = Data('toLowerCase', {
+Data('toLowerCase', {
   params: [
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
   impl: (ctx, {text}) => text.toLowerCase()
 })
 
-export const capitalize = Data('capitalize', {
+Data('capitalize', {
   params: [
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
   impl: (ctx, {text}) => text.charAt(0).toUpperCase() + text.slice(1)
 })
 
-export const startsWith = Boolean('startsWith', {
+Boolean('startsWith', {
   description: 'begins with, includes, contains',
   params: [
     {id: 'startsWith', as: 'string', mandatory: true},
@@ -92,7 +92,7 @@ export const startsWith = Boolean('startsWith', {
   impl: (ctx, {startsWith, text}) => text.startsWith(startsWith)
 })
 
-export const endsWith = Boolean('endsWith', {
+Boolean('endsWith', {
   description: 'includes, contains',
   params: [
     {id: 'endsWith', as: 'string', mandatory: true},
@@ -101,7 +101,7 @@ export const endsWith = Boolean('endsWith', {
   impl: (ctx, {endsWith, text}) => text.endsWith(endsWith)
 })
 
-export const jsonStringify = Data('json.stringify', {
+Data('json.stringify', {
   params: [
     {id: 'value', defaultValue: '%%'},
     {id: 'space', as: 'string', description: 'use space or tab to make pretty output'}
@@ -109,7 +109,7 @@ export const jsonStringify = Data('json.stringify', {
   impl: (ctx, {value, space}) => JSON.stringify(calcValue(value),null,space)
 })
 
-export const jsonParse = Data('json.parse', {
+Data('json.parse', {
   params: [
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
@@ -122,7 +122,7 @@ export const jsonParse = Data('json.parse', {
   }
 })
 
-export const replace = Data('replace', {
+Data('replace', {
   params: [
     {id: 'find', as: 'string', mandatory: true},
     {id: 'replace', as: 'string', mandatory: true},
@@ -134,7 +134,7 @@ export const replace = Data('replace', {
     useRegex ? text.replace(new RegExp(find,regexFlags) ,replace) : text.replace(find,replace)
 })
 
-export const extractPrefix = Data('extractPrefix', {
+Data('extractPrefix', {
   params: [
     {id: 'separator', as: 'string', description: '/w- alphnumberic, /s- whitespace, ^- beginline, $-endline'},
     {id: 'text', as: 'string', defaultValue: '%%', byName: true},
@@ -152,7 +152,7 @@ export const extractPrefix = Data('extractPrefix', {
   }
 })
 
-export const extractSuffix = Data('extractSuffix', {
+Data('extractSuffix', {
   params: [
     {id: 'separator', as: 'string', description: '/w- alphnumberic, /s- whitespace, ^- beginline, $-endline'},
     {id: 'text', as: 'string', defaultValue: '%%', byName: true},
@@ -170,7 +170,7 @@ export const extractSuffix = Data('extractSuffix', {
   }
 })
 
-export const formatDate = Data('formatDate', {
+Data('formatDate', {
   description: 'using toLocaleDateString',
   params: [
     {id: 'date', defaultValue: '%%', description: 'Date value'},
@@ -188,7 +188,7 @@ export const formatDate = Data('formatDate', {
   impl: (ctx, params) => new Date(params.date).toLocaleDateString(undefined, Object.fromEntries(jb.entries(params).filter(e=>e[1])))
 })
 
-export const formatNumber = Data('formatNumber', {
+Data('formatNumber', {
   description: 'using toLocaleDateString',
   params: [
     {id: 'precision', as: 'number', defaultValue: '2', description: '10.33'},

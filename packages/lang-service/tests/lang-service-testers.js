@@ -1,7 +1,7 @@
 import { langServiceUtils } from '@jb6/lang-service'
 import { ns, dsls, coreUtils } from '@jb6/core'
 
-const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes } = coreUtils
+const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, ref } = coreUtils
 const { langService } = ns
 const { tgpEditorHost, tgpModelForLangService, tgpModels, calcCompProps, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
 
@@ -111,7 +111,7 @@ Test('completionActionTest', {
         const edit = item.edit ? item : await langService.editAndCursorOfCompletionItem.$impl(ctx,{item})
         await applyCompChange(edit, {ctx})
         //applyCompChange(item,{ctx})
-        await utils.delay(1) // wait for cursor change
+        await delay(1) // wait for cursor change
         const {cursorLine, cursorCol } = host.compTextAndCursor()
         const actualCursorPos = [cursorLine, cursorCol].join(',')
         const actualEdit = host.lastEdit()
@@ -124,7 +124,7 @@ Test('completionActionTest', {
         return { testFailure: `completion not found - ${toActivate}` }
 
       const host = tgpEditorHost()
-      const editsSuccess = Object.keys(utils.objectDiff(actualEdit.edit,expectedEdit)).length == 0
+      const editsSuccess = Object.keys(objectDiff(actualEdit.edit,expectedEdit)).length == 0
       const selectionSuccess  = expectedTextAtSelection == null || host.getTextAtSelection() == expectedTextAtSelection
       const cursorPosSuccess = !expectedCursorPos || expectedCursorPos == actualCursorPos
 
@@ -185,7 +185,7 @@ Test('pathChangeTest', {
     const failure = (part,reason) => ({ id: testId, title: testId + '- ' + part, success:false, reason: reason })
     const success = _ => ({ id: testId, title: testId, success: true })
 
-    const pathRef = utils.ref(path)
+    const pathRef = ref(path)
     action()
     
     const res_path = pathRef.path().join('~')
@@ -223,7 +223,7 @@ Test('actionMapTest', {
         const compareActions = (a, b) => a.from - b.from || a.to - b.to || a.action.localeCompare(b.action)
         actionMap.sort(compareActions)
         actionMapFromParse.sort(compareActions)
-        const diff = utils.sortedArraysDiff(actionMap,actionMapFromParse,compareActions)
+        const diff = sortedArraysDiff(actionMap,actionMapFromParse,compareActions)
         ;[...diff.inserted, ...diff.deleted].forEach(e => { e.before = compText.slice(0,e.from); e.text = compText.slice(e.from,e.to) })
         let error = ''
         const actualDiff = [...diff.deleted.filter(x=>x.text !="'" || !x.action.startsWith('addProp!')), ...diff.inserted]
