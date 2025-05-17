@@ -22,7 +22,7 @@ Control('group', {
     ]
 })
 
-const button = Control({ // used to test private def
+Control('button', {
     params: [
         {id: 'title', as: 'ref', mandatory: true, templateValue: 'click me', dynamic: true},
         {id: 'action', type: 'action<common>', mandatory: true, dynamic: true},

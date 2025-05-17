@@ -1,8 +1,7 @@
 import { jb, coreUtils } from '@jb6/core'
-import { langServiceUtils } from '@jb6/lang-service'
 const { log } = coreUtils
 
-const { lineColToOffset, closestComp } = langServiceUtils
+const { lineColToOffset, closestComp } = jb.langServiceUtils
 
 jb.workspaceRegistry = {
     activeUri, 

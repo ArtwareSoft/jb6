@@ -1,5 +1,5 @@
 import {} from '#jb6/core/tests/core-tests.js'
 import {} from '#jb6/lang-service/tests/action-map-tests.js'
-// import {} from '../plugins/tgp/lang-service/tests/lang-service-tests.js'
+import {} from '#jb6/lang-service/tests/lang-service-tests.js'
 // import {} from '../plugins/rx/rx-tests.js'
 //import {} from '../plugins/remote/jbm/tests/jbm-tests.js'

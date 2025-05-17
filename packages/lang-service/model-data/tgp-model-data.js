@@ -58,7 +58,6 @@ async function calcTgpModelData({ filePath }) {
     if (visited[url]) return
     visited[url] = true
     const rUrl = resolveWithImportMap(url, _importMap)
-    console.log('crawl', url, rUrl)
     const res = await fetch(rUrl)
     if (!res.ok) throw new Error(`fetch ${url} → ${res.status}`)
     const src = await res.text()

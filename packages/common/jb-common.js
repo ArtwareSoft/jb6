@@ -323,7 +323,7 @@ Prop('prop', {
   ]
 })
 
-const not = Boolean('not', {
+export const not = Boolean('not', {
   type: 'boolean',
   params: [
     {id: 'of', type: 'boolean', as: 'boolean', mandatory: true, composite: true}
@@ -653,7 +653,7 @@ Data('split', {
   }
 })
 
-const contains = Boolean('contains', {
+export const contains = Boolean('contains', {
   params: [
     {id: 'text', type: 'data[]', as: 'array', mandatory: true},
     {id: 'allText', defaultValue: '%%', as: 'string'},

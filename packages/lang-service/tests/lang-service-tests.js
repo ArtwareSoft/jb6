@@ -1,4 +1,4 @@
-import { dsls, ns } from '@jb/core'
+import { dsls, ns } from '@jb6/core'
 import {} from './lang-service-testers.js'
 const { langService } = ns
 
@@ -384,14 +384,14 @@ Test('langServiceTest.provideDefinition', {
 Test('langServiceTest.provideDefinition.firstInPipe', {
   impl: dataTest({
     calculate: pipe(dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
-    expectedResult: equals('/plugins/common/jb-common.js', { data: '%path%' })
+    expectedResult: equals('/packages/common/jb-common.js', { data: '%path%' })
   })
 })
 
 Test('langServiceTest.provideDefinition.inProfile', {
   impl: dataTest({
     calculate: pipe(dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
-    expectedResult: equals('/plugins/common/jb-common.js', { data: '%path%' })
+    expectedResult: equals('/packages/common/jb-common.js', { data: '%path%' })
   })
 })
 
