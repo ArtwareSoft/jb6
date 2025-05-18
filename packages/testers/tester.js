@@ -205,7 +205,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
         }
     }, Promise.resolve())
     const summary = `total: ${tests.length}, \x1b[32msuccess: ${success_counter}, \x1b[31mfailures: ${fail_counter}, \x1b[33mmemory: ${usedJSHeapSize()}M, time: ${Date.now() - startTime} ms`
-    printLive(summary+'\n')
+    isCli && printLive(summary+'\n')
 }
 
 function testResultHtml(res, repo) {
