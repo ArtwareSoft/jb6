@@ -1,1 +1,1 @@
-# jb-ecm
+# jb6 - Component framework

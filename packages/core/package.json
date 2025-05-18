@@ -6,5 +6,11 @@
     ".": "./index.js"
    },
   "files": ["*.js", "tests"],
-  "dependencies": {}
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Artwaresoft/jb6.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": { "access": "public" }
 }

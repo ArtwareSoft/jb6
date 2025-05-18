@@ -11,6 +11,12 @@
     "dependencies": {
       "@jb6/core": "^0.1.0",
       "@jb6/common": "^0.1.0"
-    }
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/Artwaresoft/jb6.git",
+      "directory": "packages/testers"
+    },
+    "publishConfig": { "access": "public" }
 }
   

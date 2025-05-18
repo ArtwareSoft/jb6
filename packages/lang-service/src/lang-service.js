@@ -1,5 +1,5 @@
 import { coreUtils, dsls } from '@jb6/core'
-import { update } from '#jb6/db/immutable.js'
+import { update } from '../lib/immutable.js'
 
 const { jb, resolveCompArgs, prettyPrint, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique } = coreUtils
 const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems, filePosOfPath, getPosOfPath, calcHash } = jb.langServiceUtils

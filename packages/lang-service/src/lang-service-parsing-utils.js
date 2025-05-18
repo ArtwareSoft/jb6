@@ -1,4 +1,4 @@
-import { parse } from '@jb6/lang-service/lib/acorn.mjs'
+import { parse } from '../lib/acorn.mjs'
 import { coreUtils } from '@jb6/core'
 const { jb, systemParams, astToTgpObj, astNode, logException, 
     resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType } = coreUtils
