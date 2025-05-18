@@ -23,6 +23,6 @@
         "access": "public"
     },
     "bin": {
-        "run-tests-cli": "./run-tests-cli.js"
+        "run-tests": "./run-tests-cli.js"
     }
 }
