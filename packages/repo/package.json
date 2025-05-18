@@ -1,18 +1,17 @@
 {
-  "name": "@jb6/core",
-  "version": "0.1.0",
+  "name": "@jb6/repo",
+  "version": "1.0.0",
+  "description": "the state of jb. keep it single line, no versions",
   "type": "module",
   "exports": {
     ".": "./index.js"
   },
   "scripts": {},
-  "dependencies": {
-    "@jb6/repo": "1.0.0"
-  },
+  "dependencies": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Artwaresoft/jb6.git",
-    "directory": "packages/core"
+    "directory": "packages/repo"
   },
   "publishConfig": {
     "access": "public"

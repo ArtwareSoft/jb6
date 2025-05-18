@@ -1,4 +1,6 @@
-export const jb = {
+import { jb } from '@jb6/repo'
+export { jb }
+Object.assign(jb, {
   proxies: {},
   ext: {},
   coreRegistry: {
@@ -8,7 +10,7 @@ export const jb = {
     tgp: { Const }
   },
   ns: {}
-}
+})
 
 const isPrimitiveValue = val => ['string','boolean','number'].indexOf(typeof val) != -1
 

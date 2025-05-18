@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node server/jb-server.js",
-    "test-via-cli": "node packages/testers/run-tests-cli.js all",
+    "test": "node packages/testers/run-tests-cli.js all",
     "test-via-web": "start http://localhost:8083/packages/testers/tests.html",
     "web-server": "node packages/testers/jb-web-server.js",
     "vscode-package": "cd packages/vscode-tgp-lang && vsce package"
