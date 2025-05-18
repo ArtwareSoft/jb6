@@ -2,21 +2,24 @@
     "name": "@jb6/testers",
     "version": "0.1.0",
     "type": "module",
-    "exports": { 
-      ".": "./index.js",
-      "./*": "./*"
+    "exports": {
+        ".": "./index.js",
+        "./*": "./*"
     },
-    "files": [ "*.js" ],
-  
+    "files": [
+        "*.js"
+    ],
+    "scripts": {},
     "dependencies": {
-      "@jb6/core": "^0.1.0",
-      "@jb6/common": "^0.1.0"
+        "@jb6/core": "^0.1.0",
+        "@jb6/common": "^0.1.0"
     },
     "repository": {
-      "type": "git",
-      "url": "https://github.com/Artwaresoft/jb6.git",
-      "directory": "packages/testers"
-    },
-    "publishConfig": { "access": "public" }
+        "type": "git",
+        "url": "git+https://github.com/Artwaresoft/jb6.git",
+        "directory": "packages/testers"
+    },  
+    "publishConfig": {
+        "access": "public"
+    }
 }
-  

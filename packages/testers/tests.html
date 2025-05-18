@@ -26,18 +26,20 @@
 	<div id="show"> </div>
  <script type="module">
     await loadJbImportMap()
-    await import('./all-tests.js')
-    const { runTests } = await import('./run-tests.js')
+    const { runTests } = await import('@jb6/testers')
     const { spy } = await import('@jb6/testers/spy.js')
+    await import('@jb6/testers/all-tests.js')
+
     const urlQuery = prop => new URLSearchParams(location.search).get(prop)
 
+    // show: urlQuery('show') != null,
+    //     showOnly: urlQuery('showOnly') != null,
+    // onlyTest: urlQuery('show') == 'onlyTest',
+
     const params = { 
-        show: urlQuery('show') != null,
-        showOnly: urlQuery('showOnly') != null,
         specificTest: urlQuery('test'),
         notPattern: urlQuery('not'),
-        onlyTest: urlQuery('show') == 'onlyTest',
-        ...Object.fromEntries(['repo','rerun','pattern','take','remoteTests'].map(x=>[x,urlQuery(x)]))
+        ...Object.fromEntries(['pattern','take'].map(x=>[x,urlQuery(x)]))
     }
     spy.initSpyByUrl()
     runTests(params)

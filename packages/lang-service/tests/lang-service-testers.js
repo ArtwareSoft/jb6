@@ -226,9 +226,9 @@ Test('actionMapTest', {
         const diff = sortedArraysDiff(actionMap,actionMapFromParse,compareActions)
         ;[...diff.inserted, ...diff.deleted].forEach(e => { e.before = compText.slice(0,e.from); e.text = compText.slice(e.from,e.to) })
         let error = ''
-        const actualDiff = [...diff.deleted.filter(x=>x.text !="'" || !x.action.startsWith('addProp!')), ...diff.inserted]
-        if (actualDiff.length)
-          console.log('actionMapTest diffs',diff)
+//        const actualDiff = [...diff.deleted.filter(x=>x.text !="'" || !x.action.startsWith('addProp!')), ...diff.inserted]
+        // if (actualDiff.length)
+        //   console.log('actionMapTest diffs',diff)
         const items = actionMapFromParse.filter(x=>x.action == path).map(x=>`${x.from},${x.to}`)
         error = error || (items.length ? '' : `path not found ${path}`)
         error = error || (items.includes(expectedPos) ? '' : `pos ${items.join(';')} instead of ${expectedPos}`)

@@ -39,7 +39,6 @@ async function importMapNode() {
 }
 
 function resolveWithImportMap(specifier, { imports }) {
-  console.log(specifier)
   let winner = ''               // longest matching key
   for (const key in imports) {
     if (
@@ -69,8 +68,6 @@ async function doFetch(url) {
 export async function calcTgpModelData({ filePath }) {
   if (!filePath) return {}
   const _importMap = await importMap()
-  console.log(_importMap)
-
   const codeMap = {}
   const visited = {}  // urls seen
 

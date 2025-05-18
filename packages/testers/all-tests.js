@@ -1,0 +1,5 @@
+import {} from '../core/tests/core-tests.js'
+import {} from '../lang-service/tests/action-map-tests.js'
+import {} from '../lang-service/tests/lang-service-tests.js'
+// import {} from '../plugins/rx/rx-tests.js'
+//import {} from '../plugins/remote/jbm/tests/jbm-tests.js'

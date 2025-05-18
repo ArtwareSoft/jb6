@@ -10,15 +10,19 @@
 		"vscode": "^1.75.1"
 	},
 	"icon": "logo128.png",
-	"repository": "https://github.com/Artwaresoft/jb-ecm",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Artwaresoft/jb6.git"
+	},
 	"activationEvents": [
 		"onLanguage:javascript"
 	],
 	"dependencies": {
 		"ws": "^8.18.0",
-		"@jb6/core":        "file:../../packages/core",
-		"@jb6/lang-service":"file:../../packages/lang-service"
+		"@jb6/core": "file:../../packages/core",
+		"@jb6/lang-service": "file:../../packages/lang-service"
 	},
+	"scripts": {},
 	"main": "tgp-lang-extension.js",
 	"contributes": {
 		"viewsContainers": {

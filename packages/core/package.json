@@ -2,15 +2,21 @@
   "name": "@jb6/core",
   "version": "0.1.0",
   "type": "module",
-  "exports": { 
+  "exports": {
     ".": "./index.js"
-   },
-  "files": ["*.js", "tests"],
+  },
+  "scripts": {},
+  "files": [
+    "*.js",
+    "tests"
+  ],
   "dependencies": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/Artwaresoft/jb6.git",
+    "url": "git+https://github.com/Artwaresoft/jb6.git",
     "directory": "packages/core"
   },
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  }
 }

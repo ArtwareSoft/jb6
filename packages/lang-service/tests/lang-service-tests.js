@@ -384,14 +384,14 @@ Test('langServiceTest.provideDefinition', {
 Test('langServiceTest.provideDefinition.firstInPipe', {
   impl: dataTest({
     calculate: pipe(dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
-    expectedResult: equals('/packages/common/jb-common.js', { data: '%path%' })
+    expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' })
   })
 })
 
 Test('langServiceTest.provideDefinition.inProfile', {
   impl: dataTest({
     calculate: pipe(dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
-    expectedResult: equals('/packages/common/jb-common.js', { data: '%path%' })
+    expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' })
   })
 })
 

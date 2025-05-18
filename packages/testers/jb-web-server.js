@@ -12,12 +12,12 @@ const settings = {
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const pkgsDir = path.join(__dirname, '../packages')
+const pkgsDir = path.join(__dirname, '..')
 
 const app = express()
 const port = 8083
 
-app.use('/packages', express.static(path.join(__dirname, '../packages')))
+app.use('/packages', express.static(pkgsDir))
 
 app.get('/import-map.json', async (_req, res) => {
   const entries = await readdir(pkgsDir, { withFileTypes: true })
