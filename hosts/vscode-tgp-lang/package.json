@@ -1,0 +1,176 @@
+{
+	"name": "tgp-lang",
+	"displayName": "TGP Language",
+	"description": "TGP language service and probe activation",
+	"version": "1.0.1",
+	"publisher": "artwaresoft",
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"vscode": "^1.75.1"
+	},
+	"icon": "logo128.png",
+	"repository": "https://github.com/Artwaresoft/jb-ecm",
+	"activationEvents": [
+		"onLanguage:javascript"
+	],
+	"dependencies": {
+		"ws": "^8.18.0",
+		"@jb6/core":        "file:../../packages/core",
+		"@jb6/lang-service":"file:../../packages/lang-service"
+	},
+	"main": "tgp-lang-extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "jbart",
+					"title": "jBart",
+					"icon": "logo128.png"
+				}
+			]
+		},
+		"views": {
+			"jbart": [
+				{
+					"id": "jbart.main",
+					"type": "webview",
+					"name": "main"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "jbart.applyCompChangeOfCompletionItem",
+				"title": "apply component change from text editor"
+			},
+			{
+				"command": "jbart.restartLangServer",
+				"title": "restart tgp lang completion server"
+			},
+			{
+				"command": "jbart.gotoPath",
+				"title": "goto path"
+			},
+			{
+				"command": "jbart.moveUp",
+				"title": "move item up in array"
+			},
+			{
+				"command": "jbart.moveDown",
+				"title": "move item down in array"
+			},
+			{
+				"command": "jbart.openPreviewPanel",
+				"title": "open or rerun preview"
+			},
+			{
+				"command": "jbart.openProbeResultPanel",
+				"title": "jbart inspect probe result input output"
+			},
+			{
+				"command": "jbart.openProbeResultEditor",
+				"title": "jbart inspect probe result input output in editor"
+			},
+			{
+				"command": "jbart.closeProbeResultEditor",
+				"title": "close jbart inspect probe result input output editor"
+			},
+			{
+				"command": "jbart.openjBartStudio",
+				"title": "open jBart studio"
+			},
+			{
+				"command": "jbart.openjBartTest",
+				"title": "open jBart test"
+			},
+			{
+				"command": "jbart.openLastCmd",
+				"title": "internal for debug - open last cmd"
+			},
+			{
+				"command": "jbart.visitLastPath",
+				"title": "goto the last visited jbart tgp path, can use history"
+			},
+			{
+				"command": "jbart.duplicate",
+				"title": "duplicate the current profile, in array. including components and params"
+			},
+			{
+				"command": "jbart.disable",
+				"title": "toggle disable/enable current profile"
+			},
+			{
+				"command": "jbart.delete",
+				"title": "delete profile"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "jbart.moveUp",
+				"key": "ctrl+Up",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.moveDown",
+				"key": "ctrl+Down",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.openPreviewPanel",
+				"key": "ctrl+Alt+P",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.openProbeResultEditor",
+				"key": "ctrl+I",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.closeProbeResultEditor",
+				"key": "ctrl+Shift+I",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.openProbeResultPanel",
+				"key": "ctrl+U",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.openjBartStudio",
+				"key": "ctrl+J",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.openjBartTest",
+				"key": "ctrl+Shift+J",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.openLastCmd",
+				"key": "ctrl+Alt+J",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.visitLastPath",
+				"key": "ctrl+Q",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.duplicate",
+				"key": "alt+D",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.delete",
+				"key": "ctrl+Alt+D",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "jbart.disable",
+				"key": "ctrl+shift+D",
+				"when": "editorTextFocus"
+			}
+		]
+	}
+}

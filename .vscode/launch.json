@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Run TGP-Lang Extension",
+        "type": "extensionHost",
+        "request": "launch",
+  
+        // ▶ the only lines you really need to change
+        "args": [
+          "--extensionDevelopmentPath=${workspaceFolder}/hosts/vscode-tgp-lang",
+          "--disable-extensions"               // optional
+        ],
+        "outFiles": [
+          "${workspaceFolder}/hosts/vscode-tgp-lang/**/*.js"
+        ]
+      }
+    ]
+  }

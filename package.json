@@ -6,9 +6,13 @@
   "type": "module",
   "scripts": {
     "dev": "node server/jb-server.js",
-    "test": "node packages/tests-runner/run-tests-cli.js"
+    "test": "node packages/tests-runner/run-tests-cli.js",
+    "vscode-package": "cd packages/vscode-tgp-lang && vsce package"
   },
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*",
+    "hosts/*"
+  ],
   "imports": {
     "#jb6/*": "./packages/*"
   },
