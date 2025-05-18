@@ -8,8 +8,8 @@
   "scripts": {},
   "files": [
     "*.js",
-    "src/**",
-    "tests/**"
+    "src/*.js",
+    "tests/*.js"
   ],
   "dependencies": {},
   "repository": {
