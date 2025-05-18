@@ -26,7 +26,11 @@ if (process.argv.length < 3) {
 }
 importPath = importPath == 'all' ? '@jb6/testers/all-tests.js' : importPath
 
-import(importPath).then(() => runTests(params)).catch(error =>
-    console.error(`Failed to import module: ${importPath}`, error))
+const resolvedPath = importPath.startsWith('.')
+  ? new URL(importPath, `file://${process.cwd()}/`).href
+  : importPath;
+
+import(resolvedPath).then(() => runTests(params)).catch(error =>
+    console.error(`Failed to import module: ${resolvedPath}`, error))
 
 
