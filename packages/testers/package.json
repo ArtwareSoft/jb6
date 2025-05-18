@@ -21,5 +21,8 @@
     },  
     "publishConfig": {
         "access": "public"
+    },
+    "bin": {
+        "run-tests-cli": "./run-tests-cli.js"
     }
 }

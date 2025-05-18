@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { runTests } from '@jb6/testers'
 
 if (process.argv.length < 3) {
