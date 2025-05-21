@@ -1,5 +1,5 @@
 {
-    "name": "@jb6/testers",
+    "name": "@jb6/testing",
     "version": "0.1.0",
     "type": "module",
     "exports": {
@@ -7,7 +7,7 @@
         "./*": "./*"
     },
     "files": [
-        "*.js"
+        "*.*"
     ],
     "scripts": {},
     "dependencies": {
@@ -21,7 +21,7 @@
     "repository": {
         "type": "git",
         "url": "git+https://github.com/Artwaresoft/jb6.git",
-        "directory": "packages/testers"
+        "directory": "packages/testing"
     },  
     "publishConfig": {
         "access": "public"
@@ -30,3 +30,4 @@
         "run-tests": "./run-tests-cli.js"
     }
 }
+

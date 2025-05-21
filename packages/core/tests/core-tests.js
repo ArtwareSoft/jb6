@@ -1,5 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
-import {} from '@jb6/testers'
+import {} from '@jb6/testing'
 const { 
   tgp: { Const, TgpType, 
     var : { Var } 

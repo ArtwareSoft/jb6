@@ -25,12 +25,14 @@
 	<div id="testElem"> </div>
 	<div id="show"> </div>
  <script type="module">
-    await loadJbImportMap()
-    const { runTests } = await import('@jb6/testers')
-    const { spy } = await import('@jb6/testers/spy.js')
-    await import('@jb6/testers/all-tests.js')
-
     const urlQuery = prop => new URLSearchParams(location.search).get(prop)
+
+    await loadJbImportMap()
+    const { runTests } = await import('@jb6/testing')
+    const { spy } = await import('@jb6/testing/spy.js')
+    const modulePath = urlQuery('modulePath') || '@jb6/testing/all-jb6-tests.js'
+    console.log('modulePath', modulePath)
+    await import(modulePath)
 
     // show: urlQuery('show') != null,
     //     showOnly: urlQuery('showOnly') != null,

@@ -25,13 +25,13 @@ function fixToUniqueName(code) {
 }
 
 function getTgpModel(filePath) {
-  filePath = filePath || '@jb6/testers'
+  filePath = filePath || '@jb6/testing'
   testTgpModel[filePath] = testTgpModel[filePath] || calcTgpModelData({filePath})
   return testTgpModel[filePath]
 }
 
 async function initCompletionText({ctx,compText,filePath,remoteSuggestions}) {
-  filePath = filePath || '@jb6/testers'
+  filePath = filePath || '@jb6/testing'
   const testId = ctx.vars.testID
   const fullText = compText.match(/^[a-z]+Test\(/) ? `Test('x', {\n  impl: ${compText}\n})` 
     : compText.match(/^[A-Z]/) ? compText

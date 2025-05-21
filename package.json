@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "node server/jb-server.js",
-    "test": "node packages/testers/run-tests-cli.js all",
-    "test-via-web": "start http://localhost:8083/packages/testers/tests.html",
-    "web-server": "node packages/testers/jb-web-server.js",
+    "test": "node packages/testing/run-tests-cli.js all",
+    "test-via-web": "start http://localhost:8083/packages/testing/tests.html",
+    "web-server": "node packages/testing/jb-web-server.js",
     "vscode-package": "cd packages/vscode-tgp-lang && vsce package"
   },
   "workspaces": [
