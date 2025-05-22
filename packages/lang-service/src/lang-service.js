@@ -10,8 +10,12 @@ const {
 
 
 Data('langService.completionItems', {
-    impl: async (ctx) => {
-        const compProps = await calcCompProps(ctx)
+    jsonrpc: true,
+    params: [
+        { id: 'compTextAndCursor', defaultValue: '%%' }
+    ],
+    impl: async (ctx, { compTextAndCursor }) => {
+        const compProps = await calcCompProps(compTextAndCursor)
         const { actionMap, reformatEdits, compLine, errors, cursorPos } = compProps
         let items = [], title = '', paramDef
         if (reformatEdits) {
@@ -41,32 +45,15 @@ Data('langService.completionItems', {
     }
 })
 
-Data('langService.compId', {
-    impl: async (ctx) => {    
-        const compProps = await calcCompProps(ctx)
-        const { reformatEdits, actionMap, inCompOffset, tgpModel, path, comp } = compProps
-        if (reformatEdits)
-            return { errors: ['compId - bad format'], ...compProps }
-
-        const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
-            .map(e => e.action).filter(e => e.indexOf('edit!') != 0 && e.indexOf('begin!') != 0 && e.indexOf('end!') != 0)
-        if (actions.length == 0 && comp) 
-            return { comp: comp.id}
-        if (actions.length == 0) return []
-        const priorities = ['addProp']
-        const sortedActions = unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
-        if (sortedActions[0] && sortedActions[0][0] == 'propInfo') 
-            return { comp: tgpModel.compIdOfPath(parentPath(path)), prop: path.split('~').pop() }
-        return { comp: path && (path.match(/~/) ? tgpModel.compIdOfPath(path) : path) }
-    }
-})
-
 Data('langService.compReferences', {
-    impl: async (ctx) => {    
-        const { comp, prop, reformatEdits, tgpModel } = ctx.data
-        if (reformatEdits)
-            return [{...ctx.data}]
-        const paths = tgpModel.comps().flatMap(comp=>scanForPath(comp,comp.id || ''))
+    params: [
+        { id: 'compTextAndCursor', defaultValue: '%%' }
+    ],
+    impl: async (ctx, { compTextAndCursor }) => {    
+        const compProps = await calcCompProps(compTextAndCursor)
+        const { compId, prop } = calcCompId(compProps)
+        const { tgpModel } = compProps
+        const paths = tgpModel.comps().flatMap(comp=>scanForPath(comp,compId || ''))
         return paths.map(path=>filePosOfPath(path, tgpModel))
 
         function scanForPath(profile,path) {
@@ -78,12 +65,29 @@ Data('langService.compReferences', {
                 ...Object.keys(profile).flatMap(k=>scanForPath(profile[k],`${path}~${k}`))
             ]
         }
+        function calcCompId(compProps) {
+            const { actionMap, inCompOffset, tgpModel, path, comp } = compProps
+    
+            const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
+                .map(e => e.action).filter(e => e.indexOf('edit!') != 0 && e.indexOf('begin!') != 0 && e.indexOf('end!') != 0)
+            if (actions.length == 0 && comp) 
+                return { compId: comp.id}
+            if (actions.length == 0) return {}
+            const priorities = ['addProp']
+            const sortedActions = unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
+            if (sortedActions[0] && sortedActions[0][0] == 'propInfo') 
+                return { compId: tgpModel.compIdOfPath(parentPath(path)), prop: path.split('~').pop() }
+            return { compId: path && (path.match(/~/) ? tgpModel.compIdOfPath(path) : path) }
+        }
     }
 })
 
 Data('langService.definition', {
-    impl: async (ctx) => {
-        const compProps = await calcCompProps(ctx)
+    params: [
+        { id: 'compTextAndCursor', defaultValue: '%%' }
+    ],
+    impl: async (ctx, { compTextAndCursor }) => {
+        const compProps = await calcCompProps(compTextAndCursor)
         const { errors, tgpModel, path } = compProps
         const cmpId = tgpModel.compIdOfPath(path)
         if (cmpId)
@@ -133,8 +137,11 @@ Data('langService.editAndCursorOfCompletionItem', {
 })
 
 Data('langService.deleteEdits', { 
-    impl: async ctx => {
-        const compProps = await calcCompProps(ctx)
+    params: [
+        { id: 'compTextAndCursor', defaultValue: '%%' }
+    ],
+    impl: async (ctx, { compTextAndCursor }) => {
+        const compProps = await calcCompProps(compTextAndCursor)
         const { reformatEdits, text, comp, compLine, compId, errors, path, tgpModel, lineText } = compProps
         if (reformatEdits)
             return { errors: ['delete - bad format'], ...compProps }
@@ -169,8 +176,11 @@ Data('langService.deleteEdits', {
 })
 
 Data('langService.duplicateEdits', { 
-    impl: async ctx => {
-        const compProps = await calcCompProps(ctx)
+    params: [
+        { id: 'compTextAndCursor', defaultValue: '%%' }
+    ],
+    impl: async (ctx, { compTextAndCursor }) => {
+        const compProps = await calcCompProps(compTextAndCursor)
         const { reformatEdits, text, shortId, comp, compLine, compId, errors, path, tgpModel, lineText } = compProps
         if (reformatEdits)
             return { errors: ['duplicate - not in array'], ...compProps }
@@ -207,8 +217,11 @@ Data('langService.duplicateEdits', {
 })
 
 Data('langService.createTestEdits', { 
-    impl: async ctx => {
-        const compProps = await calcCompProps(ctx)
+    params: [
+        { id: 'compTextAndCursor', defaultValue: '%%' }
+    ],
+    impl: async (ctx, { compTextAndCursor }) => {
+        const compProps = await calcCompProps(compTextAndCursor)
         const { reformatEdits, text, shortId, compLine} = compProps
         if (reformatEdits)
             return { errors: ['createText - bad format'], ...compProps }
@@ -224,10 +237,11 @@ Data('langService.createTestEdits', {
 
 Data('langService.moveInArrayEdits', {
     params: [
-        { id: 'diff', as: 'number', defaultValue: '%%' }
+        { id: 'diff', as: 'number', defaultValue: '%%' },
+        { id: 'compTextAndCursor' }
     ],
-    impl: async (ctx, {diff}) => {
-        const compProps = await calcCompProps(ctx)
+    impl: async (ctx, {diff, compTextAndCursor}) => {
+        const compProps = await calcCompProps(compTextAndCursor)
         const { reformatEdits, compId, compLine, actionMap, text, path, comp, tgpModel } = compProps
         if (!reformatEdits && actionMap) {
             const rev = path.split('~').slice(1).reverse()

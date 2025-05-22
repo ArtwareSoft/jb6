@@ -7,6 +7,14 @@ jb.langServiceRegistry = {
     tgpModels : {}
 }
 
+async function calcCompProps(_compTextAndCursor) {
+    const compTextAndCursor = await _compTextAndCursor
+    const { filePath, compText, inCompOffset } = compTextAndCursor
+    jb.langServiceRegistry.tgpModels[filePath] = jb.langServiceRegistry.tgpModels[filePath] || new tgpModelForLangService(await calcTgpModelData({filePath}))
+    const tgpModel = jb.langServiceRegistry.tgpModels[filePath]
+    return {...compTextAndCursor, tgpModel, ...calcProfileActionMap(compText, {inCompOffset, tgpModel}) }
+}
+
 async function provideCompletionItems(compProps, ctx) {
     const { actionMap, inCompOffset, tgpModel } = compProps
     const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
@@ -32,36 +40,6 @@ async function provideCompletionItems(compProps, ctx) {
         items = await dataCompletions(compProps, actions[0].split('!').pop(), ctx)
 
     return { items, paramDef }
-}
-
-async function calcCompProps(ctx, {includeCircuitOptions} = {}) {
-    const {forceLocalSuggestions, forceRemoteCompProps} = ctx.vars
-    const docProps = { forceLocalSuggestions, ...tgpEditorHost().compTextAndCursor() }
-    const filePath = docProps.filePath
-    const tgpModel = jb.langServiceRegistry.tgpModels[filePath]
-    const compProps = (tgpModel && !forceRemoteCompProps) 
-        ? {...docProps, tgpModel, ...calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
-        : await docalcCompProps()
-    const circuitOptions = (compProps.path && includeCircuitOptions) ? 
-        await new Ctx().setData(filePath).calc({$: 'remote.circuitOptions', filePath: compProps.filePath, path: compProps.path}) : null
-    return {...compProps, circuitOptions}
-
-    async function docalcCompProps() {
-        const tgpModelData = forceLocalSuggestions ? await calcTgpModelData({filePath}) 
-            : await new Ctx().setData(filePath).calc({$: 'remote.tgpModelData'})
-        if (!tgpModelData.filePath) {
-            const errorMessage = calcPath(tgpModelData.errors,'0.0.e.message') || ''
-            const referenceError = (errorMessage.match(/ReferenceError: (.*)/) || [])[1]
-            const SyntaxError = (errorMessage.match(/SyntaxError: (.*)/) || [])[1]
-            const errors = [referenceError,SyntaxError].filter(x=>x)
-            tgpEditorHost().log(`error creating tgpModelData for path ${filePath}`)
-            return { errors: [...errors, ...asArray(tgpModelData.errors), `error creating tgpModelData for path ${filePath}`]}
-        }
-            
-        docProps.filePath = tgpModelData.filePath
-        const tgpModel = jb.langServiceRegistry.tgpModels[filePath] = new tgpModelForLangService(tgpModelData)
-        return {...docProps, tgpModel, ...calcProfileActionMap(docProps.compText, {inCompOffset: docProps.inCompOffset, tgpModel}) }
-    }
 }
 
 function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,append,prepend

@@ -1,4 +1,4 @@
-import { parse } from '../lib/acorn.mjs'
+import { parse, tokenizer, tokTypes } from '../lib/acorn.mjs'
 import { coreUtils } from '@jb6/core'
 const { jb, systemParams, astToTgpObj, astNode, logException, 
     resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType } = coreUtils
@@ -198,14 +198,23 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
 }
 
 function closestComp(docText, cursorLine, cursorCol, filePath) {
-    const ast = parse(docText, { ecmaVersion:'latest', sourceType:'module' })
     const offset = lineColToOffset(docText,{line: cursorLine, col: cursorCol})
-    const node = ast.body.find(x=> x.start <= offset && offset < x.end)
-    const shortId = node?.expression?.arguments[0]?.value
+    const span = findTopLevelSpan(docText, offset)
+    const compText = docText.slice(span.start, span.end)
+    const shortId = (compText.match(/^\s*\w+\(\s*(['"`])([\s\S]*?)\1/)||[])[2]
     if (!shortId)
         return { notJbCode: true }
-    const compLine = offsetToLineCol(docText,node.start).line
-    const compText = docText.slice(node.start,node.end)
-    return { compText, compLine, inCompOffset: offset - node.start, shortId, cursorLine, cursorCol, filePath}
+    const compLine = offsetToLineCol(docText,span.start).line
+    return { compText, compLine, inCompOffset: offset - span.start, shortId, cursorLine, cursorCol, filePath}
+
+    function findTopLevelSpan(src, offset) {
+        let depth = 0, start = null
+        for (let tok of tokenizer(src, { ecmaVersion: 'latest', sourceType: 'module', ranges: true })) {
+          if (depth === 0 && start === null) start = tok.start
+          if (depth === 0 && start <= offset && offset < tok.start) return { start, end: tok.end }
+          if (tok.type === tokTypes.braceL) depth++
+          if (tok.type === tokTypes.braceR) depth--
+        }
+    }
 }
 

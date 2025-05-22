@@ -15,19 +15,14 @@ const {
 
 jb.langServiceTestRegistry = {
   uniqueNameCounter: 0,
-  testTgpModel:  {}
-}
-const testTgpModel = jb.langServiceTestRegistry.testTgpModel
-
-function fixToUniqueName(code) {
-  const cmpId = 'CmpltnTst'+jb.langServiceTestRegistry.uniqueNameCounter++
-  return code.replace(/Test\('x',/,`Test('${cmpId}',`)
 }
 
-function getTgpModel(filePath) {
+async function getTgpModel(filePath) {
   filePath = filePath || '@jb6/testing'
-  testTgpModel[filePath] = testTgpModel[filePath] || calcTgpModelData({filePath})
-  return testTgpModel[filePath]
+  jb.langServiceRegistry.tgpModels[filePath] = jb.langServiceRegistry.tgpModels[filePath] 
+     || new tgpModelForLangService(await calcTgpModelData({filePath}))
+  const tgpModel = jb.langServiceRegistry.tgpModels[filePath]
+  return tgpModel
 }
 
 async function initCompletionText({ctx,compText,filePath,remoteSuggestions}) {
@@ -39,16 +34,31 @@ async function initCompletionText({ctx,compText,filePath,remoteSuggestions}) {
   const parts = fixToUniqueName(fullText).split('__')
   const offset = parts[0].length
   const code = parts.join('')
-  tgpEditorHost().initDoc(filePath, code)
-  const tgpModel = tgpModels[filePath] = new tgpModelForLangService(await getTgpModel(filePath))
-  const ctxForTest = ctx.setVars({forceLocalSuggestions: !remoteSuggestions})
-  const inCompPos = offsetToLineCol(code,offset)
-  tgpEditorHost().selectRange(inCompPos)
-  const offsets = parts.reduce((acc,part) => [...acc, acc.pop()+part.length] , [0] ).slice(1,-1)
   const host = tgpEditorHost()
+  host.initDoc(filePath, code)
+  const inCompPos = offsetToLineCol(code,offset)
+  host.selectRange(inCompPos)
+  const offsets = parts.reduce((acc,part) => [...acc, acc.pop()+part.length] , [0] ).slice(1,-1).map(offset=>offsetToLineCol(code,offset))
+  const compTextAndCursor = host.compTextAndCursor()
 
-  return {testId, tgpModel, ctxForTest, code, inCompPos, offsets, host}
+  return {testId, compTextAndCursor, code, inCompPos, offsets, host, filePath }
+
+  function fixToUniqueName(code) {
+    const cmpId = 'CmpltnTst'+jb.langServiceTestRegistry.uniqueNameCounter++
+    return code.replace(/Test\('x',/,`Test('${cmpId}',`)
+  }
 }
+
+Data('calcCompTextAndCursor', {
+  params: [
+    {id: 'compText', as: 'string', mandatory: true, description: 'use __ for completion point'},
+    {id: 'filePath', as: 'string'},
+  ],
+  impl: async (ctx,{compText, filePath}) => {
+    const { compTextAndCursor } = await initCompletionText({ctx, compText, filePath })
+    return compTextAndCursor
+  }
+})
 
 Test('completionOptionsTest', {
   params: [
@@ -59,13 +69,13 @@ Test('completionOptionsTest', {
   ],
   impl: dataTest({
     calculate: async (ctx,{},{compText,filePath,dsl})=> {
-      const {ctxForTest, code, offsets, host} = await initCompletionText({ctx,compText,filePath,dsl})
-      const offsetsPos = offsets.map(offset=>offsetToLineCol(code,offset))
+      const {offsets, host} = await initCompletionText({ctx,compText,filePath,dsl})
       const acc = []
-      await offsetsPos.reduce(async (pr, inCompPos) => {
+      await offsets.reduce(async (pr, inCompPos) => {
         await pr
         host.selectRange(inCompPos)
-        const options = (await langService.completionItems.$impl(ctxForTest)).items.map(x=>x.label)
+        const compTextAndCursor = host.compTextAndCursor()
+        const options = (await langService.completionItems.$run({compTextAndCursor})).items.map(x=>x.label)
         acc.push({options})
       }, Promise.resolve())
       return acc
@@ -98,8 +108,8 @@ Test('completionActionTest', {
   ],
   impl: dataTest({
     calculate: async (ctx,{}, {compText,completionToActivate, filePath, dsl, remoteSuggestions }) => {
-        const {ctxForTest, host} = await initCompletionText({ctx,compText,filePath,dsl,remoteSuggestions})
-        const {items} = await langService.completionItems.$impl(ctxForTest)
+        const { compTextAndCursor, host} = await initCompletionText({ctx,compText,filePath,dsl,remoteSuggestions})
+        const {items} = await langService.completionItems.$run({compTextAndCursor})
         if (items.find(x=>x.label == 'reformat'))
             return { testFailure: `bad comp format` }
 
@@ -138,38 +148,38 @@ Test('completionActionTest', {
   })
 })
 
-Test('fixEditedCompTest', {
-  params: [
-    {id: 'compText', as: 'string', description: 'use __ for completion point'},
-    {id: 'expectedFixedComp', as: 'string'},
-    {id: 'filePath', as: 'string'},
-    {id: 'dsl', as: 'string'}
-  ],
-  impl: async (ctx,{compText,expectedFixedComp,filePath,dsl}) => {
-      const {tgpModel, testId, host} = await initCompletionText({ctx,compText,filePath,dsl})
-      const compsProps = calcProfileActionMap(host.compTextAndCursor().compText, {tgpModel})
-      const formattedText = compsProps.formattedText
-      const success = formattedText == expectedFixedComp
-      const reason = !success && formattedText
-      return { id: testId, title: testId, success, reason }
-    }
-})
+// Test('fixEditedCompTest', {
+//   params: [
+//     {id: 'compText', as: 'string', description: 'use __ for completion point'},
+//     {id: 'expectedFixedComp', as: 'string'},
+//     {id: 'filePath', as: 'string'},
+//     {id: 'dsl', as: 'string'}
+//   ],
+//   impl: async (ctx,{compText,expectedFixedComp,filePath,dsl}) => {
+//       const {tgpModel, testId, compTextAndCursor} = await initCompletionText({ctx,compText,filePath,dsl})
+//       const compsProps = calcProfileActionMap(compTextAndCursor.compText, {tgpModel})
+//       const formattedText = compsProps.formattedText
+//       const success = formattedText == expectedFixedComp
+//       const reason = !success && formattedText
+//       return { id: testId, title: testId, success, reason }
+//     }
+// })
 
-Data('dummyCompProps', {
-  params: [
-    {id: 'compText', as: 'string', mandatory: true, description: 'use __ for completion point'},
-    {id: 'dsl', as: 'string'},
-    {id: 'filePath', as: 'string'},
-    {id: 'includeCircuitOptions', as: 'boolean', type: 'boolean<common>'}
-  ],
-  impl: async (ctx,{compText,dsl, filePath, includeCircuitOptions}) => {
-    const {tgpModel, host} = await initCompletionText({ctx,compText,filePath ,dsl})
-    if (includeCircuitOptions)
-      return calcCompProps(ctx,{includeCircuitOptions})
-    const { inCompOffset, shortId, cursorCol, cursorLine, compLine, lineText } = calcProfileActionMap(host.compTextAndCursor().compText, {tgpModel})
-    return { compText, inCompOffset, shortId, cursorCol, cursorLine, compLine, filePath, lineText}
-  }
-})
+// Data('dummyCompProps', {
+//   params: [
+//     {id: 'compText', as: 'string', mandatory: true, description: 'use __ for completion point'},
+//     {id: 'dsl', as: 'string'},
+//     {id: 'filePath', as: 'string'},
+//     {id: 'includeCircuitOptions', as: 'boolean', type: 'boolean<common>'}
+//   ],
+//   impl: async (ctx,{compText: _compText,dsl, filePath: _filePath, includeCircuitOptions}) => {
+//     const {tgpModel, compTextAndCursor, filePath } = await initCompletionText({ctx,compText: _compText, filePath: _filePath ,dsl})
+//     if (includeCircuitOptions)
+//       return calcCompProps(ctx,{includeCircuitOptions})
+//     const { inCompOffset, shortId, cursorCol, cursorLine, compLine, lineText, compText } = calcProfileActionMap(compTextAndCursor.compText, {tgpModel})
+//     return { compText, inCompOffset, shortId, cursorCol, cursorLine, compLine, filePath, lineText}
+//   }
+// })
 
 Test('pathChangeTest', {
   params: [

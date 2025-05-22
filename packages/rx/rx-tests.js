@@ -13,7 +13,7 @@ const {
   },
   common: { Data, Action, Boolean,
     action: { runActions },
-    data: { dummyCompProps, pipeline, list, filter, join, property, obj, delay, pipe, first, slice, split }, 
+    data: {  pipeline, list, filter, join, property, obj, delay, pipe, first, slice, split }, 
     boolean: { equals, contains, notContains, and, not },
     prop: { prop },
   },

@@ -9,30 +9,36 @@ import { readdir, readFile } from 'fs/promises'
 import express from 'express'
 
 export async function serveImportMap(app) {
-  const devMode  = await isJB6Dev()
+  const {imports, dirEntriesToServe} = await calcImportMap()
+  for (const {dir, pkgId, pkgDir} of dirEntriesToServe) {
+    app.use(`/packages/${dir}`, express.static(pkgDir))
+  }
+  app.get('/import-map.json', (_req, res) => res.json({ imports }))
+}
 
+export async function calcImportMap() {
+  const devMode  = await isJB6Dev()
   if (devMode) {
     console.log('JB6 dev mode: serving mono-repo packages/')
     const pkgsDir = path.resolve(__dirname, '..')
-    app.use('/packages', express.static(pkgsDir))
-    app.get('/import-map.json', async (_req, res) => {
-      const entries = await readdir(pkgsDir, { withFileTypes: true })
-      const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
-      const runtime = Object.fromEntries(
-        folders.flatMap(f => [
-          [`@jb6/${f}`,  `/packages/${f}/index.js`],
-          [`@jb6/${f}/`, `/packages/${f}/`]          // enables sub-path imports
-        ])
-      )    
-      res.json({ imports: { ...runtime, '#jb6/': '/packages/' } })
-    })  
+    const entries = await readdir(pkgsDir, { withFileTypes: true })
+    const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
+    const runtime = Object.fromEntries(
+      folders.flatMap(f => [
+        [`@jb6/${f}`,  `/packages/${f}/index.js`],
+        [`@jb6/${f}/`, `/packages/${f}/`]          // enables sub-path imports
+      ])
+    )    
+    const dirEntriesToServe = [{dir: 'packages', pkgId: '@jb6/packages', pkgDir: pkgsDir}]    
+    return { imports: { ...runtime, '#jb6/': '/packages/' }, dirEntriesToServe }
   } else {
     let rootPkgName = '', repoRoot = ''
+    const dirEntriesToServe = []
     try {
       repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
       const root_pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
       rootPkgName = root_pkg.name
-      app.use(`/${rootPkgName}`, express.static(repoRoot))
+      dirEntriesToServe.push({dir: rootPkgName, pkgId: `@${rootPkgName}/`, pkgDir: repoRoot})
       console.log(`Mounting client rep: /${rootPkgName} at ${repoRoot}/`)
     } catch (e) {}
   
@@ -42,7 +48,7 @@ export async function serveImportMap(app) {
         const pkgId    = `@jb6/${name}`
         const pkgDir = path.dirname(requirePkg.resolve(pkgId))
         // mount this package
-        app.use(`/packages/${name}`, express.static(pkgDir)) // , { dotfiles: 'allow' }
+        dirEntriesToServe.push({dir: name, pkgId, pkgDir})
         console.log(`Mounting package: /packages/${name} at ${pkgDir}/`)
         return [
           [`${pkgId}`,  `/packages/${name}/index.js`],
@@ -51,7 +57,7 @@ export async function serveImportMap(app) {
       })
     ])
     console.log('Client mode: serving installed @jb6/* packages', imports)
-    app.get('/import-map.json', (_req, res) => res.json({ imports }))
+    return { imports, dirEntriesToServe }
   }
 }
 

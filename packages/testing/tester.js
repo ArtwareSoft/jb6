@@ -133,13 +133,19 @@ let   lastLineLength = 0     // to wipe residual chars when we overwrite
 
 const printLive = line => {
   const pad = ' '.repeat(Math.max(lastLineLength - line.length, 0))
-  process.stdout.write('\r' + line + pad)
+  if (isCli)
+    process.stdout.write('\r' + line + pad)
+  else
+    console.log(line)
   lastLineLength = line.length
 }
 
 const printFail = line => {
   const redLine = `\x1b[31m${line}\x1b[0m`; // Add red color
-  process.stdout.write('\r' + redLine + '\n')   // newline keeps the failure
+  if (isCli)
+    process.stdout.write('\r' + redLine + '\n')   // newline keeps the failure
+  else
+    console.log(redLine)
   lastLineLength = 0
 }
 
@@ -180,7 +186,8 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
 
         let res
         if (!showOnly) {
-            isCli ? printLive(runningMsg) : document.getElementById('progress').innerHTML = runningMsg
+            !isCli && (document.getElementById('progress').innerHTML = runningMsg)
+            printLive(runningMsg)
             res = await runTest(testID, { fullTestId, singleTest })
             res = { ...res, fullTestId, testID}
             res.success ? success_counter++ : fail_counter++
@@ -193,6 +200,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
             if (!isCli) {
                 updateTestHeader(document)
                 addHTML(document.body, testResultHtml(res, repo), {beforeResult: singleTest && res.renderDOM})
+                console.log('res',res)
             }
             if (!res.success)
                  printFail(`${testID} ${res.reason || JSON.stringify(res,2,null) || 'unknown error'}`)

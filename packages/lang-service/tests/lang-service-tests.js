@@ -10,7 +10,7 @@ const {
     test: { dataTest, completionOptionsTest, completionActionTest }
   },
   common: { Data, Action, Boolean,
-    data: { dummyCompProps, pipeline, list, filter, join, property, obj, delay, pipe, first, slice }, 
+    data: { calcCompTextAndCursor, pipeline, list, filter, join, property, obj, delay, pipe, first, slice }, 
     boolean: { equals, contains, notContains, and, not },
     prop: { prop },
   },
@@ -369,50 +369,42 @@ Test('completionTest.multiLineFeatures', {
 
 Test('langServiceTest.provideDefinition', {
   impl: dataTest({
-    calculate: pipe(dummyCompProps(`dataTest('', __not())`), langService.definition()),
+    calculate: langService.definition(calcCompTextAndCursor(`dataTest('', __not())`)),
     expectedResult: contains('jb-common', { data: '%path%' })
   })
 })
 
 // Test('langServiceTest.provideDefinition.inFunc', {
 //   impl: dataTest({
-//     calculate: pipe(dummyCompProps(`dataTest('', () => { utils.prettyPrint('aa'); return 3})`), langService.definition()),
+//     calculate: pipe(calcCompTextAndCursor(`dataTest('', () => { utils.prettyPrint('aa'); return 3})`), langService.definition()),
 //     expectedResult: equals('/plugins/tgp/formatter/pretty-print.js', { data: '%path%' })
 //   })
 // })
 
 Test('langServiceTest.provideDefinition.firstInPipe', {
   impl: dataTest({
-    calculate: pipe(dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
+    calculate: langService.definition(calcCompTextAndCursor('dataTest(pipeline(l__ist()))')),
     expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' })
   })
 })
 
 Test('langServiceTest.provideDefinition.inProfile', {
   impl: dataTest({
-    calculate: pipe(dummyCompProps('dataTest(pipeline(l__ist()))'), langService.definition()),
+    calculate: langService.definition(calcCompTextAndCursor('dataTest(pipeline(l__ist()))')),
     expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' })
   })
 })
 
 Test('langServiceTest.moveInArrayEdits', {
   impl: dataTest({
-    calculate: pipe(
-      dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`),
-      langService.moveInArrayEdits(1),
-      first()
-    ),
+    calculate: langService.moveInArrayEdits(1, calcCompTextAndCursor(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`)),
     expectedResult: equals('%cursorPos%', asIs({line: 1, col: 47}))
   })
 })
 
 Test('langServiceTest.duplicateEdits', {
   impl: dataTest({
-    calculate: pipe(
-      dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`),
-      langService.duplicateEdits(),
-      first()
-    ),
+    calculate: langService.duplicateEdits(calcCompTextAndCursor(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`)),
     expectedResult: equals(asIs({
         edit: {range: {start: {line: 1, col: 52}, end: {line: 1, col: 52}}, newText: 'slice(0, 2), '},
         cursorPos: {line: 1, col: 52},
@@ -423,11 +415,7 @@ Test('langServiceTest.duplicateEdits', {
 
 Test('langServiceTest.deleteEdits', {
   impl: dataTest({
-    calculate: pipe(
-      dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`),
-      langService.deleteEdits(),
-      first()
-    ),
+    calculate: langService.deleteEdits(calcCompTextAndCursor(`dataTest(pipeline(list(1,2,3), __slice(0, 2), join()), equals('1,2'))`)),
     expectedResult: equals(asIs({
         edit: {range: {start: {line: 1, col: 39}, end: {line: 1, col: 52}}, newText: ''},
         cursorPos: {line: 1, col: 39},
@@ -438,11 +426,7 @@ Test('langServiceTest.deleteEdits', {
 
 Test('langServiceTest.createTestEdits', {
   impl: dataTest({
-    calculate: pipe(
-      dummyCompProps(`Data('tst1', {\n  impl: pipeline(list(1,2,3), __slice(0, 2), join())\n})`),
-      langService.createTestEdits(),
-      first()
-    ),
+    calculate: langService.createTestEdits(calcCompTextAndCursor(`Data('tst1', {\n  impl: pipeline(list(1,2,3), __slice(0, 2), join())\n})`)),
     expectedResult: equals(asIs({
         edit: {
           range: {start: {line: 3, col: 0}, end: {line: 3, col: 0}},
@@ -456,7 +440,7 @@ Test('langServiceTest.createTestEdits', {
 // Test('langServiceTest.enableEdits', {
 //   impl: dataTest({
 //     calculate: pipe(
-//       dummyCompProps(`dataTest(pipeline(list(1,2,3), __slice(0, 2, { $disabled: true }), join()), equals('1,2'))`),
+//       calcCompTextAndCursor(`dataTest(pipeline(list(1,2,3), __slice(0, 2, { $disabled: true }), join()), equals('1,2'))`),
 //       langService.disableEdits(),
 //       first()
 //     ),

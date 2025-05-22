@@ -4,7 +4,7 @@ const { log } = coreUtils
 const { lineColToOffset, closestComp } = jb.langServiceUtils
 
 jb.workspaceRegistry = {
-    activeUri, 
+    activeUri: null, 
     openDocs: {},
     lastEdit: null
 }

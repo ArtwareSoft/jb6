@@ -12,30 +12,12 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 // it is used by language services and wrapped by the class tgpModelForLangService
 
 async function importMap() {
-  if (globalThis.window) 
+  if (globalThis.window) {
     return fetch('/import-map.json').then(r=>r.json())
-  return importMapNode()
-}
-
-async function importMapNode() {
-  const { readdir } = await import('fs/promises')
-  const { fileURLToPath } = await import('url')
-  const __filename = fileURLToPath(import.meta.url)
-  const path = await import('path')
-
-  const __dirname = path.dirname(__filename)
-  const pkgsDir = path.join(__dirname, '../..')
-  const entries = await readdir(pkgsDir, { withFileTypes: true })
-  const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
-  const runtime = Object.fromEntries(
-      folders.flatMap(f => [
-        [`@jb6/${f}`,   `${pkgsDir}/${f}/index.js`],
-        [`@jb6/${f}/`, `${pkgsDir}/${f}/`]          // enables sub-path imports
-      ])
-    )
-  const internalAlias = { '#jb6/': `${pkgsDir}/` }
-  
-  return { imports: { ...runtime, ...internalAlias } }
+  } else { // node
+    const { calcImportMap } = await import('@jb6/server-utils')
+    return calcImportMap()
+  }
 }
 
 function resolveWithImportMap(specifier, { imports }) {
