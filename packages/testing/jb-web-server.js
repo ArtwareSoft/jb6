@@ -7,7 +7,7 @@ import { serveImportMap } from '@jb6/server-utils'
 const app = express()
 const port = process.env.PORT || 8083
 
-serveImportMap(app)
+serveImportMap(app, {express})
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`)
 })

@@ -13,6 +13,7 @@ function tgpEditorHost() {
 async function applyCompChange(editAndCursor, {ctx} = {}) {
     const host = tgpEditorHost()
     const { edit, cursorPos } = editAndCursor
+    if (!edit) return
     try {
         await host.saveDoc()
         await host.applyEdit(edit,{ctx})
@@ -24,7 +25,7 @@ async function applyCompChange(editAndCursor, {ctx} = {}) {
         }
     } catch (e) {
         host.log(`applyCompChange exception`)
-        logException(e, 'completion apply comp change', { item })
+        logException(e, 'completion apply comp change', { editAndCursor })
     }
 }
 

@@ -1,6 +1,6 @@
 import { parse } from '../lib/acorn.mjs'
 import { dsls, coreUtils } from '@jb6/core'
-const { jb, astNode, asJbComp, logError } = coreUtils
+const { jb, astNode, asJbComp, logError, calcImportMap } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -15,7 +15,6 @@ async function importMap() {
   if (globalThis.window) {
     return fetch('/import-map.json').then(r=>r.json())
   } else { // node
-    const { calcImportMap } = await import('@jb6/server-utils')
     return calcImportMap()
   }
 }

@@ -11,7 +11,8 @@
     "web-server": "node packages/testing/jb-web-server.js",
     "lang-server": "node packages/lang-service/server/lang-server.js",
     "vscode-package": "cd packages/vscode-tgp-lang && vsce package",
-    "upgradeVersion": "npx changeset version"
+    "upgradeVersion": "npx changeset version",
+    "publish": "npx changeset publish"
   },
   "workspaces": [
     "packages/*"

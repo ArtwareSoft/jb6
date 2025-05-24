@@ -114,6 +114,7 @@ Data('langService.editAndCursorOfCompletionItem', {
   ],
   impl: async (ctx,{item}) => {
     if (item.edit) return item
+    if (!item.compProps) return {}
     const { text, compId, comp, compLine, tgpModel } = item.compProps
     const itemProps = item.extend ? { ...item, ...item.extend() } : item
     const { op, path, resultPath, whereToLand } = itemProps

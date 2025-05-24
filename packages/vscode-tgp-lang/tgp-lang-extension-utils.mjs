@@ -6,6 +6,7 @@ const { langService } = ns
 
 let lastEdit
 let lastEditedCompId
+function host() { return jb.ext.tgpTextEditor.host }
 
 jb.ext.tgpTextEditor = { host:  {
     async applyEdit(edit, { uri, hash, activeTextEditor } = {}) {
@@ -80,9 +81,8 @@ vscodeNS.workspace.onDidChangeTextDocument(({document, reason, contentChanges}) 
     if (!contentChanges || contentChanges.length == 0) return
     if (!document.uri.toString().match(/^file:/)) return
     log('vscode onDidChangeTextDocument clean cache',{document, reason, contentChanges})
-    if (jb.path(contentChanges,'0.text') == jb.tgpTextEditor.lastEdit) {
-        jb.tgpTextEditor.lastEdit = ''
-    }
+    if (contentChanges?.[0]?.text == lastEdit)
+        lastEdit = ''
 })
 
 export function vsCodelog(...args) {
@@ -129,8 +129,8 @@ export async function provideReferences() {
 
 async function moveInArray(diff) {
     const {edit, cursorPos} = await new Ctx({data: diff}).run(langService.moveInArrayEdits('%%'))
-    await jb.tgpTextEditor.host.applyEdit(edit)
-    cursorPos && jb.tgpTextEditor.host.selectRange(cursorPos)
+    await host().applyEdit(edit)
+    cursorPos && host().selectRange(cursorPos)
 }
 
 export const commands = {
@@ -166,13 +166,13 @@ export const commands = {
     // },
 
     visitLastPath() { // ctrl-Q
-        jb.tgpTextEditor.visitLastPath()
+//        jb.tgpTextEditor.visitLastPath()
     },
 
     closeProbeResultEditor() { // ctrl-shift-I
-        delete jb.vscode.panels.inspect
-        delete jb.jbm.childJbms.vscode_inspect
-        vscodeNS.commands.executeCommand('workbench.action.editorLayoutSingle')
+        // delete jb.vscode.panels.inspect
+        // delete jb.jbm.childJbms.vscode_inspect
+        // vscodeNS.commands.executeCommand('workbench.action.editorLayoutSingle')
     },
 
     openLiveProbeResultPanel() {
@@ -188,7 +188,7 @@ export const commands = {
     // },
 
     openjBartTest() { // ctrl-shift-j - should open menu
-        const docProps = jb.tgpTextEditor.host.compTextAndCursor()
+        const docProps = host().compTextAndCursor()
         const testID = docProps.shortId
         // todo: move base url to setup
         vscodeNS.env.openExternal(`http://localhost8083/packages/tests-runner/tests.html?test=${testID}&show&spy=test`)
@@ -196,20 +196,20 @@ export const commands = {
 
     async delete() {
         const {edit, cursorPos, hash} = await langService.deleteEdits.$run()
-        await jb.tgpTextEditor.host.applyEdit(edit,{hash})
-        cursorPos && jb.tgpTextEditor.host.selectRange(cursorPos)
+        await host().applyEdit(edit,{hash})
+        cursorPos && host().selectRange(cursorPos)
     },
 
     // async disable() {
     //     const {edit, cursorPos, hash} = await jb.calc(langService.disableEdits())
-    //     await jb.tgpTextEditor.host.applyEdit(edit,{hash})
-    //     cursorPos && jb.tgpTextEditor.host.selectRange(cursorPos)
+    //     await host().applyEdit(edit,{hash})
+    //     cursorPos && host().selectRange(cursorPos)
     // },
 
     async duplicate() {
-        const {edit, cursorPos, hash} = await jb.calc(langService.duplicateEdits())
-        await jb.tgpTextEditor.host.applyEdit(edit,{hash})
-        cursorPos && jb.tgpTextEditor.host.selectRange(cursorPos)
+        const {edit, cursorPos, hash} = await langService.duplicateEdits().$run()
+        await host().applyEdit(edit,{hash})
+        cursorPos && host().selectRange(cursorPos)
     }
 }
 

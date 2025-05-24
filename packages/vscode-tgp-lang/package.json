@@ -17,9 +17,8 @@
 		"onLanguage:javascript"
 	],
 	"dependencies": {
-		"@jb6/core": "file:/home/shaiby/projects/jb6/packages/core",
-		"@jb6/lang-service": "file:/home/shaiby/projects/jb6/packages/lang-service",
-		"@jb6/server-utils": "file:/home/shaiby/projects/jb6/packages/server-utils"
+		"@jb6/core":  "^0.1.1",
+		"@jb6/lang-service": "^0.1.1"
 	},
 	"scripts": {},
 	"main": "csj-starter.js",
