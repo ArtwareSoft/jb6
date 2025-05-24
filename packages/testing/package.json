@@ -1,6 +1,6 @@
 {
     "name": "@jb6/testing",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "type": "module",
     "exports": {
         ".": "./index.js",
@@ -11,8 +11,8 @@
     ],
     "scripts": {},
     "dependencies": {
-        "@jb6/core": "^0.1.1",
-        "@jb6/common": "^0.1.1",
+        "@jb6/core": "^0.1.2",
+        "@jb6/common": "^0.1.2",
         "@jb6/server-utils": "^0.1.1",
         "express": "^4.18.2",
         "open": "^8.4.0",
