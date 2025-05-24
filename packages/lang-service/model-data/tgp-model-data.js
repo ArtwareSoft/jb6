@@ -20,21 +20,31 @@ async function importMap() {
   }
 }
 
-function resolveWithImportMap(specifier, { imports }) {
+function resolveWithImportMap(specifier, { imports, dirEntriesToServe }) {
   let winner = ''               // longest matching key
   for (const key in imports) {
     if (
       (specifier === key || specifier.startsWith(key)) &&
       key.length > winner.length
     ) {
-      winner = key;
+      winner = key
     }
   }
-  if (!winner) return specifier;   // no mapping → leave untouched
+  if (!winner) return specifier   // no mapping → leave untouched
 
-  const target = imports[winner];
-  const rest   = specifier.slice(winner.length); // part after the prefix
-  return target.endsWith('/') ? target + rest : target;
+  const target = imports[winner]
+  const rest   = specifier.slice(winner.length) // part after the prefix
+  const urlToBeServed = target.endsWith('/') ? target + rest : target
+  const dirEntry = (dirEntriesToServe || []).find(({dir}) => urlToBeServed.startsWith(`/packages/${dir}`))
+  if (dirEntry) {
+    const restPath = urlToBeServed.slice(`/packages/${dirEntry.dir}`.length)
+    return pathJoin(dirEntry.pkgDir, restPath)
+  }
+  return urlToBeServed
+
+  function pathJoin(a, b) {
+    return `${a.replace(/\/+$/, '')}/${b.replace(/^\/+/, '')}`;
+  }
 }
 
 async function doFetch(url) {
@@ -57,23 +67,27 @@ export async function calcTgpModelData({ filePath }) {
   await (async function crawl(url) {
     if (visited[url]) return
     visited[url] = true
-    const rUrl = resolveWithImportMap(url, _importMap)
-    const src = await doFetch(rUrl)
-    codeMap[url] = src
+    try {
+      const rUrl = resolveWithImportMap(url, _importMap)
+      const src = await doFetch(rUrl)
+      codeMap[url] = src
 
-    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+      const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
-    const imports = [
-	  ...ast.body.filter(n => n.type === 'ImportDeclaration').map(n => n.source.value)
-      	.filter(spec => ['/','.','@','#'].some(p=>spec.startsWith(p))).map(rel => resolvePath(rUrl, rel)),
-	  ...ast.body.filter(n => n.type === 'ExpressionStatement').map(n => n.expression)
-      	.filter(ex => ex.type === 'CallExpression' && ex.callee.type === 'Import')
-      	.map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(rUrl, rel))
-	  ].filter(x=>!x.match(/^\/libs\//))
+      const imports = [
+      ...ast.body.filter(n => n.type === 'ImportDeclaration').map(n => n.source.value)
+          .filter(spec => ['/','.','@','#'].some(p=>spec.startsWith(p))).map(rel => resolvePath(rUrl, rel)),
+      ...ast.body.filter(n => n.type === 'ExpressionStatement').map(n => n.expression)
+          .filter(ex => ex.type === 'CallExpression' && ex.callee.type === 'Import')
+          .map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(rUrl, rel))
+      ].filter(x=>!x.match(/^\/libs\//))
 
-	  await Promise.all(imports.map(url=>crawl(url)))
+        await Promise.all(imports.map(url => crawl(url)))
+    } catch (e) {
+      console.error(`Error crawling ${url}:`, e)
+    }
   })(filePath)
-
+  
   const tgpModel = {dsls: {}, ns: {}, typeRules: [], files: Object.keys(visited)}
   const {dsls, typeRules} = tgpModel
 
@@ -223,9 +237,3 @@ function offsetToLineCol(text, offset) {
   }
 }
 
-Data('tgpModelData.byFilePath', {
-  params: [
-	{id: 'filePath', as: 'string'}
-  ],
-  impl: ({},{filePath}) => calcTgpModelData({filePath})
-})

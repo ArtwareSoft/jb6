@@ -1,11 +1,11 @@
-import * as vscodeNS from 'vscode'
-import { coreUtils } from '@jb6/lang-service'
-import { provideCompletionItems, provideDefinition, provideReferences, vsCodelog, commands } from './tgp-lang-extension-utils.js'
+import { coreUtils } from '@jb6/core'
+jbVSCodeLog('core loaded')
+import { provideCompletionItems, provideDefinition, provideReferences, vsCodelog, commands } from './tgp-lang-extension-utils.mjs'
+jbVSCodeLog('utils loaded', commands)
 
 const { logException } = coreUtils
  
-export async function activate(context) {
-    //await jb.vscode.initVscodeAsHost({context})
+export async function doActivate(context) {
 
     // 'openProbeResultPanel','openjBartStudio','openProbeResultEditor','closeProbeResultEditor'
     ;['moveUp','moveDown','openjBartTest','visitLastPath','delete','duplicate','applyCompChangeOfCompletionItem']

@@ -62,6 +62,7 @@ function getPosOfPath(path, _where = 'edit', { compText, tgpModel } = {}) { // e
 function filePosOfPath(tgpPath, {tgpModel}) {
     const compId = tgpPath.split('~')[0]
     const loc = compByFullId(compId, tgpModel).$location
+    if (!loc) return
     const path = loc.path
     const compLine = (+loc.line) || 0
     const { line, col } = getPosOfPath(tgpPath, 'begin', {tgpModel})
@@ -199,22 +200,16 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
 
 function closestComp(docText, cursorLine, cursorCol, filePath) {
     const offset = lineColToOffset(docText,{line: cursorLine, col: cursorCol})
-    const span = findTopLevelSpan(docText, offset)
-    const compText = docText.slice(span.start, span.end)
-    const shortId = (compText.match(/^\s*\w+\(\s*(['"`])([\s\S]*?)\1/)||[])[2]
-    if (!shortId)
+    try {
+        const ast = parse(docText, { ecmaVersion:"latest", sourceType:"module", ranges:true })
+        const span = ast.body.find(n => n.start <= offset && offset < n.end)
+        const compText = docText.slice(span.start, span.end)
+        const shortId = span.expression?.arguments?.[0]?.value // (compText.match(/^\s*\w+\(\s*(['"`])([\s\S]*?)\1/)||[])[2]
+        if (!shortId) return { notJbCode: true }
+        const compLine = offsetToLineCol(docText,span.start).line
+        return { compText, compLine, inCompOffset: offset - span.start, shortId, cursorLine, cursorCol, filePath}
+    } catch (e) {
         return { notJbCode: true }
-    const compLine = offsetToLineCol(docText,span.start).line
-    return { compText, compLine, inCompOffset: offset - span.start, shortId, cursorLine, cursorCol, filePath}
-
-    function findTopLevelSpan(src, offset) {
-        let depth = 0, start = null
-        for (let tok of tokenizer(src, { ecmaVersion: 'latest', sourceType: 'module', ranges: true })) {
-          if (depth === 0 && start === null) start = tok.start
-          if (depth === 0 && start <= offset && offset < tok.start) return { start, end: tok.end }
-          if (tok.type === tokTypes.braceL) depth++
-          if (tok.type === tokTypes.braceR) depth--
-        }
     }
 }
 

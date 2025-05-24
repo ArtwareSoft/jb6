@@ -8,7 +8,7 @@ jb.langServiceRegistry = {
 }
 
 async function calcCompProps(_compTextAndCursor) {
-    const compTextAndCursor = await _compTextAndCursor
+    const compTextAndCursor = _compTextAndCursor ? await _compTextAndCursor : tgpEditorHost().compTextAndCursor()
     const { filePath, compText, inCompOffset } = compTextAndCursor
     jb.langServiceRegistry.tgpModels[filePath] = jb.langServiceRegistry.tgpModels[filePath] || new tgpModelForLangService(await calcTgpModelData({filePath}))
     const tgpModel = jb.langServiceRegistry.tgpModels[filePath]

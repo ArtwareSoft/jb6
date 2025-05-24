@@ -1,4 +1,3 @@
-import * as vscodeNS from 'vscode'
 import { coreUtils, dsls, ns } from '@jb6/core'
 import { langServiceUtils } from '@jb6/lang-service'
 const { jb, logError, asArray, log, Ctx } = coreUtils
@@ -8,7 +7,7 @@ const { langService } = ns
 let lastEdit
 let lastEditedCompId
 
-jb.tgpTextEditor.host = {
+jb.ext.tgpTextEditor = { host:  {
     async applyEdit(edit, { uri, hash, activeTextEditor } = {}) {
         const editor = activeTextEditor || vscodeNS.window.activeTextEditor
         if (!editor) return logError('No active editor found.')
@@ -75,7 +74,7 @@ jb.tgpTextEditor.host = {
     log(...args) {
         return vsCodelog(...args)
     }
-}
+}}
 
 vscodeNS.workspace.onDidChangeTextDocument(({document, reason, contentChanges}) => {
     if (!contentChanges || contentChanges.length == 0) return
@@ -86,11 +85,9 @@ vscodeNS.workspace.onDidChangeTextDocument(({document, reason, contentChanges}) 
     }
 })
 
-const jbVSCodeLog = vscodeNS.window.createOutputChannel('jbart')
-
 export function vsCodelog(...args) {
     asArray(args).map(x=>jbVSCodeLog(tryStringify(x)))
-    jbHost.log([...args,`time: ${new Date().getTime() % 100000}`])
+//    jbHost.log([...args,`time: ${new Date().getTime() % 100000}`])
 
     function tryStringify(x) {
         if (!x) return ''
@@ -137,8 +134,9 @@ async function moveInArray(diff) {
 }
 
 export const commands = {
-    applyCompChangeOfCompletionItem(item) {
-        return applyCompChange(item.edit ? item : langService.editAndCursorOfCompletionItem.$run(item))
+    async applyCompChangeOfCompletionItem(item) {
+        const editAndCursor = item.edit ? item : await langService.editAndCursorOfCompletionItem.$run({item})
+        return applyCompChange(editAndCursor)
     },
     moveUp() {
         return moveInArray(-1)
@@ -218,4 +216,3 @@ export const commands = {
 function toVscodeFormat(pos) {
     return { line: pos.line, character: pos.col }
 }
-

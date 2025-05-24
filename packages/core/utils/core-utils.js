@@ -91,7 +91,8 @@ const isPromise = v => v && v != null && typeof v.then === 'function'
 
 function compIdOfProfile(profile) {
   if (typeof profile.$$ == 'string') return profile.$$
-  return `${profile.$$.$dslType}${profile.$$.id}`
+  const comp = profile.$$ || profile.$
+  return `${comp.$dslType}${comp.id}`
 }
 
 const compParams = comp => comp?.params || []

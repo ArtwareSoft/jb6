@@ -35,45 +35,57 @@ export async function calcImportMap() {
     let rootPkgName = '', repoRoot = ''
     const dirEntriesToServe = []
     try {
-      repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
+      const repoRoot = calcRepoRoot()
       const root_pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
       rootPkgName = root_pkg.name
       dirEntriesToServe.push({dir: rootPkgName, pkgId: `@${rootPkgName}/`, pkgDir: repoRoot})
-      console.log(`Mounting client rep: /${rootPkgName} at ${repoRoot}/`)
+      console.log(`client rep: /${rootPkgName} at ${repoRoot}/`)
     } catch (e) {}
   
     const packages = await discoverPkgNames()
-    const requirePkg = createRequire(import.meta.url)
+    const requirePkg = createRequireFn()
     const imports = Object.fromEntries([[`@${rootPkgName}/`, `/${rootPkgName}/`], ...packages.flatMap(name => {
         const pkgId    = `@jb6/${name}`
         const pkgDir = path.dirname(requirePkg.resolve(pkgId))
         // mount this package
         dirEntriesToServe.push({dir: name, pkgId, pkgDir})
-        console.log(`Mounting package: /packages/${name} at ${pkgDir}/`)
+        console.log(`client package: /packages/${name} at ${pkgDir}/`)
         return [
           [`${pkgId}`,  `/packages/${name}/index.js`],
           [`${pkgId}/`,  `/packages/${name}/`]
         ]
       })
     ])
-    console.log('Client mode: serving installed @jb6/* packages', imports)
     return { imports, dirEntriesToServe }
   }
 }
 
+function calcRepoRoot() {
+  if (globalThis.vscodeNS)
+    return globalThis.vscodeNS.workspace.workspaceFolders[0]?.uri.fsPath
+  return execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
+}
+
 async function isJB6Dev() {
   try {
-    const repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
+    const repoRoot = calcRepoRoot()
     const rootPkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
     return rootPkg.name == 'jb6-monorepo'
-  } catch {
+  } catch (e) { 
+    debugger
+    console.log('Error checking JB6 repo', cwd, e)
     return false
   }
 }
 
+function createRequireFn() {
+  if (globalThis.VSCodeRequire)
+    return globalThis.VSCodeRequire // require('module').createRequire
+  return createRequire(import.meta.url)
+}
 
-async function discoverPkgNames(root = process.cwd()) {
-  const req = createRequire(import.meta.url), seen = new Set()
+async function discoverPkgNames(root = calcRepoRoot()) {
+  const req = createRequireFn(), seen = new Set()
 
   async function crawl(dir) {
     const pkg = JSON.parse(await readFile(path.join(dir, 'package.json'), 'utf8'))

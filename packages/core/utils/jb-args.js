@@ -23,6 +23,8 @@ function jbCompProxy(jbComp) {
       get: (o, p) => {
         if (p == '$run')
             return (...args) => jbComp.runProfile(resolveProfileArgs(calcArgs(jbComp, args)))
+        if (p == '$resolve')
+          return (...args) => resolveProfileArgs(calcArgs(jbComp, args))
         if (p == '$impl')
           return jbComp.impl
     

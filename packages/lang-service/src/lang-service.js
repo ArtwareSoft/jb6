@@ -10,7 +10,6 @@ const {
 
 
 Data('langService.completionItems', {
-    jsonrpc: true,
     params: [
         { id: 'compTextAndCursor', defaultValue: '%%' }
     ],
@@ -51,21 +50,24 @@ Data('langService.compReferences', {
     ],
     impl: async (ctx, { compTextAndCursor }) => {    
         const compProps = await calcCompProps(compTextAndCursor)
-        const { compId, prop } = calcCompId(compProps)
-        const { tgpModel } = compProps
-        const paths = tgpModel.comps().flatMap(comp=>scanForPath(comp,compId || ''))
-        return paths.map(path=>filePosOfPath(path, tgpModel))
+        const { compId: PTToSearch, prop } = PTInPath(compProps)
+        const { filePath } = compProps
+        const tgpModel = jb.langServiceRegistry.tgpModels[filePath]
+        // todo: scan files for references - TGP model does not have impl part
+        const paths = Object.entries(tgpModel.comps()).flatMap(([id,comp])=>scanForPT(comp,id))
+        return paths.map(path=>filePosOfPath(path, {tgpModel}))
 
-        function scanForPath(profile,path) {
+        function scanForPT(profile,path) {
             if (!profile || isPrimitiveValue(profile) || typeof profile == 'function') return []
-            const found = compByFullId(profile.$$, tgpModel)?.$$ == comp
+            const found = profile.$$ == PTToSearch
             const res = [path,prop].filter(Boolean).join('~')
             return [ 
                 ...(found ? [res] : []),
-                ...Object.keys(profile).flatMap(k=>scanForPath(profile[k],`${path}~${k}`))
+                ...Object.keys(profile).flatMap(k=>scanForPT(profile[k],`${path}~${k}`))
             ]
         }
-        function calcCompId(compProps) {
+
+        function PTInPath(compProps) {
             const { actionMap, inCompOffset, tgpModel, path, comp } = compProps
     
             const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))

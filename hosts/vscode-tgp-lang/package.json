@@ -1,13 +1,12 @@
 {
-	"name": "tgp-lang",
-	"displayName": "TGP Language",
+	"name": "jb6-tgp-lang",
+	"displayName": "jb6 TGP Language",
 	"description": "TGP language service and probe activation",
 	"version": "1.0.1",
 	"publisher": "artwaresoft",
 	"license": "MIT",
-	"type": "module",
 	"engines": {
-		"vscode": "^1.75.1"
+		"vscode": "^1.91.2"
 	},
 	"icon": "logo128.png",
 	"repository": {
@@ -18,12 +17,12 @@
 		"onLanguage:javascript"
 	],
 	"dependencies": {
-		"ws": "^8.18.0",
-		"@jb6/core": "file:../../packages/core",
-		"@jb6/lang-service": "file:../../packages/lang-service"
+		"@jb6/core": "file:/home/shaiby/projects/jb6/packages/core",
+		"@jb6/lang-service": "file:/home/shaiby/projects/jb6/packages/lang-service",
+		"@jb6/server-utils": "file:/home/shaiby/projects/jb6/packages/server-utils"
 	},
 	"scripts": {},
-	"main": "tgp-lang-extension.js",
+	"main": "csj-starter.js",
 	"contributes": {
 		"viewsContainers": {
 			"activitybar": [

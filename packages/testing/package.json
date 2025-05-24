@@ -27,7 +27,7 @@
         "access": "public"
     },
     "bin": {
-        "run-tests": "./run-tests-cli.js"
+        "jb-tests": "./run-tests-cli.js"
     }
 }
 

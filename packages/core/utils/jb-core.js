@@ -37,14 +37,14 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
     delete settings.resolvedCtx
     const { jbCtx } = ctx
     if (profile.data != null)
-        ctx = ctx.setData(run(profile.data, ctx.setTgpCtx(jbCtx.innerParam({id: 'data'}, profile)), settings))
+        ctx = ctx.setData(run(profile.data, ctx.setJbCtx(jbCtx.innerParam({id: 'data'}, profile)), settings))
 
 
     const {openExpression, openArray, openObj, openComp} = settings
     if (typeof profile == 'string' && openExpression)
         return toRTType(jbCtx.parentParam, calcExpression(profile, ctx))
     if (Array.isArray(profile) && openArray)
-        return profile.map((p,i) => run(p, ctx.setTgpCtx(jbCtx.innerDataPath(i)), settings))
+        return profile.map((p,i) => run(p, ctx.setJbCtx(jbCtx.innerDataPath(i)), settings))
     const arrayType = (jbCtx.parentParam?.type || '').indexOf('[]') != -1
     if (arrayType && Array.isArray(profile)) // array param
         return profile.flatMap(p => run(p, ctx, settings))
@@ -59,7 +59,7 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
         return profile(ctx, ctx.vars, jbCtx.args)
     
     if (profile && typeof profile == 'object' && openObj) {
-        return Object.fromEntries(Object.entries(profile).map(([id,p]) =>[id,run(p, ctx.setTgpCtx(jbCtx.innerDataPath(i)), settings)]))
+        return Object.fromEntries(Object.entries(profile).map(([id,p]) =>[id,run(p, ctx.setJbCtx(jbCtx.innerDataPath(i)), settings)]))
     }
     return profile
 }
@@ -107,21 +107,21 @@ class Ctx {
     setVars(vars) {
         return new Ctx({data: this.data, vars: {...this.vars, ...vars}, jbCtx: this.jbCtx})
     }
-    setTgpCtx(jbCtx) {
+    setJbCtx(jbCtx) {
         return new Ctx({data: this.data, vars: this.vars, jbCtx})
     }
     run(profile) {
         return run(resolveProfileArgs(profile),this)
     }
     exp(exp,jstype) { 
-        return calcExpression(exp, this.setTgpCtx(new JBCtx({...this.jbCtx, parentParam: {as: jstype}}))) 
+        return calcExpression(exp, this.setJbCtx(new JBCtx({...this.jbCtx, parentParam: {as: jstype}}))) 
     }
     runInner(profile, parentParam, innerPath) {
-        return run(profile, this.setTgpCtx(new JBCtx({...this.jbCtx, path: `${this.path}~${innerPath}`, parentParam, profile})))
+        return run(profile, this.setJbCtx(new JBCtx({...this.jbCtx, path: `${this.path}~${innerPath}`, parentParam, profile})))
     }
     extendWithVarsScript(vars) {
         const runInnerPathForVar = (profile = ({data}) => data, index, ctx) =>
-            run(profile, ctx.setTgpCtx(new JBCtx({...ctx.JBCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<common>'} })))
+            run(profile, ctx.setJbCtx(new JBCtx({...ctx.JBCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<common>'} })))
 
         vars = asArray(vars)
         if (vars.find(x=>x.async))
@@ -152,7 +152,7 @@ class jbComp {
             this.impl.compFunc = true
         if (!this?.$resolvedInner)
             resolveCompArgs(this)
-        return run(this.impl, ctx.setTgpCtx(ctx.jbCtx.newComp(this,compArgs)), settings)
+        return run(this.impl, ctx.setJbCtx(ctx.jbCtx.newComp(this,compArgs)), settings)
     }
 }
 
@@ -165,8 +165,8 @@ class param {
         const doResolve = ctxToUse => {
             const value = profile[this.id] == null && this.defaultValue == null ? null 
                 : profile[this.id] == null && this.defaultValue != null ? run(this.defaultValue, 
-                    ctxToUse.setTgpCtx(ctxToUse.jbCtx.paramDefaultValue(`${this.path}~defaultValue`, this)), settings )
-                : run(profile[this.id], ctxToUse.setTgpCtx(ctxToUse.jbCtx.innerParam(this, profile)), settings )
+                    ctxToUse.setJbCtx(ctxToUse.jbCtx.paramDefaultValue(`${this.path}~defaultValue`, this)), settings )
+                : run(profile[this.id], ctxToUse.setJbCtx(ctxToUse.jbCtx.innerParam(this, profile)), settings )
             return toRTType(this, value)
         }
 

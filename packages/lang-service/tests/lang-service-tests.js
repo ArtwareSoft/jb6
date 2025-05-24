@@ -374,6 +374,13 @@ Test('langServiceTest.provideDefinition', {
   })
 })
 
+Test('langServiceTest.closestComp', {
+  impl: dataTest({
+    calculate: calcCompTextAndCursor("ALL:const a = 3;\nData('cmp1', { impl: pipeline(li__st()) })"),
+    expectedResult: equals("Data('cmp1', { impl: pipeline(list()) })", '%compText%')
+  })
+})
+
 // Test('langServiceTest.provideDefinition.inFunc', {
 //   impl: dataTest({
 //     calculate: pipe(calcCompTextAndCursor(`dataTest('', () => { utils.prettyPrint('aa'); return 3})`), langService.definition()),
@@ -436,6 +443,13 @@ Test('langServiceTest.createTestEdits', {
     }))
   })
 })
+
+// Test('langServiceTest.compReferences.list', {
+//   impl: dataTest({
+//     calculate: langService.compReferences(calcCompTextAndCursor("dataTest('', e__quals(5))")),
+//     expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' })
+//   })
+// })
 
 // Test('langServiceTest.enableEdits', {
 //   impl: dataTest({

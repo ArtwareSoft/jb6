@@ -2,9 +2,9 @@ import { langServiceUtils } from '@jb6/lang-service'
 import { ns, dsls, coreUtils } from '@jb6/core'
 import { } from './mock-workspace.js'
 
-const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, ref } = coreUtils
+const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay } = coreUtils
 const { langService } = ns
-const { tgpEditorHost, tgpModelForLangService, tgpModels, calcCompProps, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
+const { tgpEditorHost, tgpModelForLangService, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
 
 const { 
   test: { Test, 
@@ -21,6 +21,7 @@ async function calcCompTextAndCursorsForTest({ctx,compText,filePath}) {
   filePath = filePath || '@jb6/testing'
   const testId = ctx.vars.testID
   const fullText = compText.match(/^[a-z]+Test\(/) ? `Test('x', {\n  impl: ${compText}\n})` 
+    : compText.match(/^ALL:/) ? compText.slice(4)
     : compText.match(/^[A-Z]/) ? compText
     : `Test('x', {\n  impl: uiTest(${compText})\n})`
   const parts = fixToUniqueName(fullText).split('__')
