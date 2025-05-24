@@ -19,6 +19,7 @@
     "#jb6/*": "./packages/*"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.4",
     "acorn": "^8.14.1",
     "dotenv": "^16.5.0",
     "express": "^5.1.0"

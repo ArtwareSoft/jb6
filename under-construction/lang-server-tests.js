@@ -2,7 +2,7 @@ import { dsls, ns, coreUtils } from '@jb6/core'
 import {} from '@jb6/testing'
 import {} from '@jb6/remote'
 import {} from '@jb6/lang-service'
-import {} from './lang-service-testers.js'
+import {} from '../packages/lang-service/tests/lang-service-testers.js'
 const { langService, jbm } = ns
 
 const { 
