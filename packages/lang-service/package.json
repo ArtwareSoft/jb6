@@ -1,6 +1,6 @@
 {
     "name": "@jb6/lang-service",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "type": "module",
     "exports": {
         ".": "./index.js"
@@ -11,7 +11,7 @@
     ],
     "scripts": {},
     "dependencies": {
-        "@jb6/core": "^0.1.0"
+        "@jb6/core": "^0.1.1"
     },
     "repository": {
         "type": "git",

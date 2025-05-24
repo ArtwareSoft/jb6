@@ -10,7 +10,8 @@
     "test-via-web": "start http://localhost:8083/packages/testing/tests.html",
     "web-server": "node packages/testing/jb-web-server.js",
     "lang-server": "node packages/lang-service/server/lang-server.js",
-    "vscode-package": "cd packages/vscode-tgp-lang && vsce package"
+    "vscode-package": "cd packages/vscode-tgp-lang && vsce package",
+    "upgradeVersion": "npx changeset version"
   },
   "workspaces": [
     "packages/*"
