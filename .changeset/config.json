@@ -7,9 +7,11 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": [
-    "@jb6/repo",
-    "@jb6/rx",
-    "@jb6/remote"
-  ]
+  "linked": [[
+    "!@jb6/core",
+    "!@jb6/common",
+    "!@jb6/lang-service",
+    "!@jb6/server-utils",
+    "!@jb6/testing"
+  ]]
 }
