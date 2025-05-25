@@ -13,7 +13,7 @@
     "vscode-package": "cd packages/vscode-tgp-lang && vsce package",
     "pre-add-version": "npx changeset add --bump patch",
     "upgradeVersion": "npx changeset version",
-    "publish": "npx changeset publish"
+    "npm-publish": "npx changeset publish"
   },
   "workspaces": [
     "packages/*"
@@ -24,8 +24,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.29.4",
     "acorn": "^8.14.1",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0"
+    "dotenv": "^16.5.0"
   },
   "keywords": [],
   "author": "",
