@@ -40,7 +40,7 @@ async function main() {
     for (let depType of ["dependencies","devDependencies","peerDependencies","optionalDependencies"]) {
       if (!json[depType]) continue
       for (let [dep, val] of Object.entries(json[depType])) {
-        if (dep.startsWith("@jb6/") && !dep == "@jb6/repo") {
+        if (dep.startsWith("@jb6/") && dep != "@jb6/repo") {
           json[depType][dep] = version
         }
       }

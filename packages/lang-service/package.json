@@ -1,27 +1,27 @@
 {
-    "name": "@jb6/lang-service",
-    "version": "0.1.2",
-    "type": "module",
-    "exports": {
-        ".": "./index.js"
-    },
-    "files": [
-        "*.js",
-        "lib/*.js"
-    ],
-    "scripts": {},
-    "dependencies": {
-        "@jb6/core": "^0.1.2"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/Artwaresoft/jb6.git",
-        "directory": "packages/lang-service"
-    },
-    "publishConfig": {
-        "access": "public"
-    },
-    "bin": {
-        "jb6-lang-server": "./server/lang-server.js"
-    }
+  "name": "@jb6/lang-service",
+  "version": "0.250525.0",
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "*.js",
+    "lib/*.js"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "@jb6/core": "0.250525.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Artwaresoft/jb6.git",
+    "directory": "packages/lang-service"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "jb6-lang-server": "./server/lang-server.js"
+  }
 }

@@ -1,24 +1,24 @@
 {
-    "name": "@jb6/common",
-    "version": "0.1.2",
-    "description": "JB6 common utilities package",
-    "type": "module",
-    "exports": {
-        ".": "./index.js"
-    },
-    "files": [
-        "*.js"
-    ],
-    "scripts": {},
-    "dependencies": {
-        "@jb6/core": "^0.1.2"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/Artwaresoft/jb6.git",
-        "directory": "packages/common"
-    },
-    "publishConfig": {
-        "access": "public"
-    }
+  "name": "@jb6/common",
+  "version": "0.250525.0",
+  "description": "JB6 common utilities package",
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "@jb6/core": "0.250525.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Artwaresoft/jb6.git",
+    "directory": "packages/common"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

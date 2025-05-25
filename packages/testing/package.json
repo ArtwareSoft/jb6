@@ -1,32 +1,32 @@
 {
-    "name": "@jb6/testing",
-    "version": "0.1.2",
-    "type": "module",
-    "exports": {
-        ".": "./index.js",
-        "./*": "./*"
-    },
-    "files": [
-        "*.*"
-    ],
-    "scripts": {},
-    "dependencies": {
-        "@jb6/core": "^0.1.2",
-        "@jb6/common": "^0.1.2",
-        "@jb6/server-utils": "^0.1.2",
-        "express": "^4.18.2",
-        "open": "^8.4.0",
-        "dotenv": "^16.1.0"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/Artwaresoft/jb6.git",
-        "directory": "packages/testing"
-    },
-    "publishConfig": {
-        "access": "public"
-    },
-    "bin": {
-        "jb-tests": "./run-tests-cli.js"
-    }
+  "name": "@jb6/testing",
+  "version": "0.250525.0",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./*": "./*"
+  },
+  "files": [
+    "*.*"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "@jb6/core": "0.250525.0",
+    "@jb6/common": "0.250525.0",
+    "@jb6/server-utils": "0.250525.0",
+    "express": "^4.18.2",
+    "open": "^8.4.0",
+    "dotenv": "^16.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Artwaresoft/jb6.git",
+    "directory": "packages/testing"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "jb-tests": "./run-tests-cli.js"
+  }
 }
