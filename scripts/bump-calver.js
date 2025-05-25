@@ -11,7 +11,7 @@ import { globby } from 'globby'
 
 async function main() {
   // 1. build the version string
-  const [ major = "1", patch = "0" ] = process.argv.slice(2)
+  const [ major = "0", patch = "0" ] = process.argv.slice(2)
   const now = new Date()
   const YY = String(now.getFullYear()).slice(2)
   const MM = String(now.getMonth()+1).padStart(2, "0")
@@ -30,7 +30,6 @@ async function main() {
   ])
 
   for (let pkgFile of pkgFiles) {
-    const root = path.dirname(pkgFile)
     const raw  = await fs.readFile(pkgFile, "utf8")
     const json = JSON.parse(raw)
 
@@ -41,7 +40,7 @@ async function main() {
     for (let depType of ["dependencies","devDependencies","peerDependencies","optionalDependencies"]) {
       if (!json[depType]) continue
       for (let [dep, val] of Object.entries(json[depType])) {
-        if (dep.startsWith("@jb6/")) {
+        if (dep.startsWith("@jb6/") && !dep == "@jb6/repo") {
           json[depType][dep] = version
         }
       }
