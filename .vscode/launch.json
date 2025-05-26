@@ -8,11 +8,11 @@
   
         // ▶ the only lines you really need to change
         "args": [
-          "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode-tgp-lang",
+          "--extensionDevelopmentPath=${workspaceFolder}/hosts/vscode-tgp-lang",
           "--disable-extensions"               // optional
         ],
         "outFiles": [
-          "${workspaceFolder}/packages/vscode-tgp-lang/**/*.js"
+          "${workspaceFolder}/hosts/vscode-tgp-lang/**/*.js"
         ]
       }
     ]

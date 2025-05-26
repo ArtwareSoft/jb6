@@ -8,6 +8,13 @@ const {
 
 Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 
+function log(...args) {
+  if (globalThis.jbVSCodeLog)
+    globalThis.jbVSCodeLog(...args)
+  else
+    console.log(...args)
+}
+
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
 
@@ -57,6 +64,7 @@ async function doFetch(url) {
 }
 
 export async function calcTgpModelData({ filePath }) {
+  log('calcTgpModelData', filePath)
   if (!filePath) return {}
   const _importMap = await importMap()
   const codeMap = {}
@@ -66,8 +74,9 @@ export async function calcTgpModelData({ filePath }) {
   await (async function crawl(url) {
     if (visited[url]) return
     visited[url] = true
+    let rUrl = ''
     try {
-      const rUrl = resolveWithImportMap(url, _importMap)
+      rUrl = resolveWithImportMap(url, _importMap)
       const src = await doFetch(rUrl)
       codeMap[url] = src
 
@@ -81,8 +90,9 @@ export async function calcTgpModelData({ filePath }) {
           .map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(rUrl, rel))
       ].filter(x=>!x.match(/^\/libs\//))
 
-        await Promise.all(imports.map(url => crawl(url)))
+      await Promise.all(imports.map(url => crawl(url)))
     } catch (e) {
+      log('imports error', rUrl, url, e)
       console.error(`Error crawling ${url}:`, e)
     }
   })(filePath)
@@ -90,7 +100,9 @@ export async function calcTgpModelData({ filePath }) {
   const tgpModel = {dsls: {}, ns: {}, typeRules: [], files: Object.keys(visited)}
   const {dsls, typeRules} = tgpModel
 
+//  log('codeMap', Object.keys(codeMap))
   // 2) Phase 1: find all `... = TgpType(...)`
+  log('codeMap', Object.entries(codeMap).map(([url, src]) => ({url, src: src.slice(0, 100)})))
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
@@ -111,6 +123,11 @@ export async function calcTgpModelData({ filePath }) {
     })
   })
 
+  log('tgp model data1', tgpModel)
+  if (!dsls.tgp) {
+    logError('calcTgpModelData no tgp', { url: filePath })
+    return tgpModel
+  }
   const compDefs = Object.fromEntries(Object.values(dsls).flatMap(dsl=>Object.values(dsl)).map(x=>[x.capitalLetterId,x]).filter(x=>x[0]))
   Object.assign(dsls.tgp.comp, compDefs)
   dsls.tgp.var.Var = jb.dsls.tgp.var.Var[asJbComp]
@@ -139,6 +156,8 @@ export async function calcTgpModelData({ filePath }) {
 
     typeRules.push(... declarations.filter(decl=>decl.id.name == 'typeRules').flatMap(decl=>astToObj(decl.init)))
   })
+
+  //log('tgp model data', tgpModel)
 
   return tgpModel
 
@@ -169,6 +188,7 @@ export async function calcTgpModelData({ filePath }) {
 function astToTgpObj(node) {
 	if (!node) return undefined
 	switch (node.type) {
+    case 'TemplateLiteral': return node.quasis.map(q=>q.value.raw).join('')
 	  case 'Literal': return node.value
 	  case 'ObjectExpression': return attachNode(
 			Object.fromEntries(node.properties.map(p=>[p.key.type === 'Identifier' ? p.key.name : p.key.value, astToTgpObj(p.value)])))

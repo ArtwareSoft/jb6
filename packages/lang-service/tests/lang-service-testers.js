@@ -1,3 +1,4 @@
+import {} from '@jb6/testing'
 import { langServiceUtils } from '@jb6/lang-service'
 import { ns, dsls, coreUtils } from '@jb6/core'
 import { } from './mock-workspace.js'

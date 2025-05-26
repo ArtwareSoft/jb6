@@ -92,11 +92,19 @@ function deltaFileContent(compText, newCompText, compLine) {
     }
 }
 
+function log(...args) {
+  if (globalThis.jbVSCodeLog)
+    globalThis.jbVSCodeLog(...args)
+  else
+    console.log(...args)
+}
+
 function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0])
     resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp})
     let compId = ''
     if (tgpType == 'comp<tgp>' && topComp.id) { // set compId and add to comps registry
+//        log('calcProfileActionMap', compText, topComp)
         const dslType = tgpModel.dsls.tgp.comp[topComp.$].dslType
         compId = `${dslType}${topComp.id}`
         const [ type, dsl ] = splitDslType(dslType)

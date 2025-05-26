@@ -1,15 +1,20 @@
 import { coreUtils } from './core-utils.js'
 
 coreUtils.calcImportMap = calcImportMap
+function log(...args) {
+  if (globalThis.jbVSCodeLog)
+    globalThis.jbVSCodeLog(...args)
+  else
+    console.log(...args)
+}
 
 async function calcImportMap() {
   const devMode  = await isJB6Dev()
   const { readdir, readFile } = await import('fs/promises')
   const path = await import('path')
+  const repoRoot = await calcRepoRoot()
   if (devMode) {
-    console.log('JB6 dev mode: serving mono-repo packages/')
-    const __dirname = path.dirname(new URL(import.meta.url).pathname)
-    const pkgsDir = path.resolve(__dirname, '..')
+    const pkgsDir = path.resolve(repoRoot, 'packages')
     const entries = await readdir(pkgsDir, { withFileTypes: true })
     const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
     const runtime = Object.fromEntries(
@@ -18,17 +23,18 @@ async function calcImportMap() {
         [`@jb6/${f}/`, `/packages/${f}/`]          // enables sub-path imports
       ])
     )    
-    const dirEntriesToServe = [{dir: 'packages', pkgId: '@jb6/packages', pkgDir: pkgsDir}]    
-    return { imports: { ...runtime, '#jb6/': '/packages/' }, dirEntriesToServe }
+    const dirEntriesToServe = [{dir: '', pkgId: '@jb6/packages', pkgDir: pkgsDir}]    
+    const res = { imports: { ...runtime, '#jb6/': '/packages/' }, dirEntriesToServe }
+    log('JB6 dev mode: calcImportMap', res)
+    return res
   } else {
     let rootPkgName = ''
     const dirEntriesToServe = []
     try {
-      const repoRoot = await calcRepoRoot()
       const root_pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
       rootPkgName = root_pkg.name
       dirEntriesToServe.push({dir: rootPkgName, pkgId: `@${rootPkgName}/`, pkgDir: repoRoot})
-      console.log(`client rep: /${rootPkgName} at ${repoRoot}/`)
+      log(`client rep: /${rootPkgName} at ${repoRoot}/`)
     } catch (e) {}
   
     const packages = await discoverPkgNames()
@@ -38,14 +44,15 @@ async function calcImportMap() {
         const pkgDir = path.dirname(requirePkg.resolve(pkgId))
         // mount this package
         dirEntriesToServe.push({dir: name, pkgId, pkgDir})
-        console.log(`client package: /packages/${name} at ${pkgDir}/`)
         return [
           [`${pkgId}`,  `/packages/${name}/index.js`],
           [`${pkgId}/`,  `/packages/${name}/`]
         ]
       })
     ])
-    return { imports, dirEntriesToServe }
+    const res = { imports, dirEntriesToServe }
+    log('calcImportMap', res)
+    return res
   }
 }
 
@@ -67,7 +74,7 @@ async function isJB6Dev() {
     return rootPkg.name == 'jb6-monorepo'
   } catch (e) { 
     debugger
-    console.log('Error checking JB6 repo', cwd, e)
+    log('Error checking JB6 repo', cwd, e)
     return false
   }
 }

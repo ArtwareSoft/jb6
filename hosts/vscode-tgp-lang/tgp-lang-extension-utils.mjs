@@ -50,8 +50,10 @@ jb.ext.tgpTextEditor = { host:  {
         const docProps = closestComp(editor.document.getText().replace(/\r\n/g,'\n'),
             editor.selection.active.line, editor.selection.active.character, path)
         if (docProps?.shortId) {
-            if (lastEditedCompId != docProps.shortId)
+            if (lastEditedCompId != docProps.shortId) {
+                vsCodelog('clean tgpModels cache')
                 jb.langServiceRegistry.tgpModels = {} // clean cache
+            }
             lastEditedCompId = docProps.shortId
         }
         return docProps

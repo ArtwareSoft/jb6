@@ -20,6 +20,18 @@ Test('completionTest.param1', {
   impl: completionOptionsTest(`uiTest(text(__'hello world', ''), contains('hello world'))`, ['style'])
 })
 
+Test('completionTest.calcTgpModelData.filePath', {
+  impl: completionOptionsTest(`dataTest(pipeline('a',__ '-%%-'))`, ['split'], {
+    filePath: '@jb6/lang-service/tests/lang-service-tests.js'
+  })
+})
+
+Test('completionTest.existingParam', {
+  impl: completionOptionsTest("Test('x', {impl: completionOptionsTest({compText: `a` __}) })", ['expectedSelections'], {
+    filePath: '@jb6/lang-service/tests/lang-service-tests.js'
+  })
+})
+
 Test('completionTest.param', {
   impl: completionOptionsTest({
     compText: `uiTest(__text(__'hello world',__ ''__)__,__ __contains('hello world')__)`,
