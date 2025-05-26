@@ -24,10 +24,51 @@ async function activate(context, ...rest) {
     logToChannel(args.map(arg =>
       typeof arg === 'object' ? safeStringify(arg) : String(arg)
     ).join(' '))
-  globalThis.console.error = globalThis.console.log
-
+    
   globalThis.vscodeNS       = vscode
   globalThis.VSCodeRequire  = require
+
+  globalThis.calcImportMapsFromVSCodeExt = async () => {
+    const { workspace, window } = vscode
+    const folders = workspace.workspaceFolders
+    if (!folders || folders.length === 0) {
+      window.showErrorMessage('Open a workspace to compute the import map')
+      return { imports: {}, dirEntriesToServe: [] }
+    }
+    const cwd = folders[0].uri.fsPath
+    jbVSCodeLog('calc-import-map cwd:', cwd)
+    // embed the CLI script inline
+    const inlineScript = `
+  import { coreUtils } from '@jb6/core'
+  ;(async()=>{
+    try {
+      const result = await coreUtils.calcImportMap()
+      process.stdout.write(JSON.stringify(result,null,2))
+    } catch (e) {
+      console.error(e)
+      process.exit(1)
+    }
+  })()`
+  
+    return new Promise((resolve, reject) => {
+      require('child_process').execFile( process.execPath, ['--input-type=module', '-e', inlineScript], { cwd, encoding: 'utf8' },
+        (err, stdout, stderr) => {
+          if (stderr) jbVSCodeLog(stderr)
+          if (err) {
+            window.showErrorMessage(`calc-import-map failed: ${stderr || err.message}`)
+            return reject(err)
+          }
+          try {
+            jbVSCodeLog('calc-import-map stdout:', stdout)
+            resolve(JSON.parse(stdout))
+          } catch {
+            window.showErrorMessage('Invalid JSON from calc-import-map')
+            reject(new Error('JSON parse error'))
+          }
+        }
+      )
+    })
+  }
 
   channel.appendLine('🔄 jbart extension starting…')
   try {

@@ -1,6 +1,6 @@
 {
   "name": "@jb6/core",
-  "version": "0.250525.0",
+  "version": "0.250526.0",
   "type": "module",
   "exports": {
     ".": "./index.js"

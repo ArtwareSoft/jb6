@@ -1,12 +1,7 @@
 import { coreUtils } from './core-utils.js'
 
+const { logCli } = coreUtils
 coreUtils.calcImportMap = calcImportMap
-function log(...args) {
-  if (globalThis.jbVSCodeLog)
-    globalThis.jbVSCodeLog(...args)
-  else
-    console.log(...args)
-}
 
 async function calcImportMap() {
   const devMode  = await isJB6Dev()
@@ -25,7 +20,7 @@ async function calcImportMap() {
     )    
     const dirEntriesToServe = [{dir: '', pkgId: '@jb6/packages', pkgDir: pkgsDir}]    
     const res = { imports: { ...runtime, '#jb6/': '/packages/' }, dirEntriesToServe }
-    log('JB6 dev mode: calcImportMap', res)
+    logCli('JB6 dev mode: calcImportMap', res)
     return res
   } else {
     let rootPkgName = ''
@@ -34,7 +29,7 @@ async function calcImportMap() {
       const root_pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
       rootPkgName = root_pkg.name
       dirEntriesToServe.push({dir: rootPkgName, pkgId: `@${rootPkgName}/`, pkgDir: repoRoot})
-      log(`client rep: /${rootPkgName} at ${repoRoot}/`)
+      //logCli(`client rep: /${rootPkgName} at ${repoRoot}/`)
     } catch (e) {}
   
     const packages = await discoverPkgNames()
@@ -51,15 +46,12 @@ async function calcImportMap() {
       })
     ])
     const res = { imports, dirEntriesToServe }
-    log('calcImportMap', res)
+    logCli('client mode: calcImportMap', res)
     return res
   }
 }
 
 async function calcRepoRoot() {
-  if (globalThis.vscodeNS)
-    return globalThis.vscodeNS.workspace.workspaceFolders[0]?.uri.fsPath
-
   const { execSync } = await import('child_process')
   return execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
 }
@@ -73,15 +65,12 @@ async function isJB6Dev() {
     const rootPkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
     return rootPkg.name == 'jb6-monorepo'
   } catch (e) { 
-    debugger
-    log('Error checking JB6 repo', cwd, e)
+    logCli('Error checking JB6 repo', e)
     return false
   }
 }
 
 async function createRequireFn() {
-  if (globalThis.VSCodeRequire)
-    return globalThis.VSCodeRequire // require('module').createRequire
   const { createRequire } = await import('module')
   return createRequire(import.meta.url)
 }

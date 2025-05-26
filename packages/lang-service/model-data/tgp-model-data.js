@@ -19,7 +19,10 @@ function log(...args) {
 // it is used by language services and wrapped by the class tgpModelForLangService
 
 async function importMap() {
-  if (globalThis.window) {
+  if (globalThis.calcImportMapsFromVSCodeExt) {
+    debugger
+    return calcImportMapsFromVSCodeExt()
+  } else if (globalThis.window) {
     return fetch('/import-map.json').then(r=>r.json())
   } else { // node
     return calcImportMap()

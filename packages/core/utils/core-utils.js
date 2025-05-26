@@ -254,8 +254,13 @@ function sortedArraysDiff(newArr, oldArr, compareFn) {
   return { inserted, updated, deleted }
 }
 
+function logCli(...args) {
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ')
+  console.error(msg)
+}
+
 export const coreUtils = jb.coreUtils = {
-  jb, RT_types, log, logError, logException, 
+  jb, RT_types, log, logError, logException, logCli,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff,
