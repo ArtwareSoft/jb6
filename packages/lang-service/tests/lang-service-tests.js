@@ -74,12 +74,6 @@ Test('completionTest.secondParamAsArray1', {
   impl: completionOptionsTest(`dataTest(pipeline('a',__ '-%%-', '%%'))`, ['split'])
 })
 
-// Test('completionTest.typeAdapter', {
-//   impl: completionOptionsTest(`uiTest(text(typeAdapter('state<location>', __TBD())))`, {
-//     expectedSelections: ['israel']
-//   })
-// })
-
 Test('completionTest.createPipelineFromComp', {
   impl: completionActionTest(`uiTest(text(__split()))`, {
     completionToActivate: 'pipeline',
@@ -129,6 +123,29 @@ Test('completionTest.singleArgAsArray.middle', {
 Test('completionTest.paramsAndProfiles', {
   impl: completionOptionsTest(`uiTest(__text(''))`, {
     expectedSelections: ['runBefore','button']
+  })
+})
+
+Test('completionTest.reformat', {
+  impl: completionOptionsTest(`uiTest(__text( ''))`, ['🔄 reformat'])
+})
+
+Test('completionTest.prettyPrintFunctionAsIs', {
+  impl: completionActionTest('dataTest({calculate: asIs({ range: { start: 3 }}) __})', {
+    completionToActivate: 'expectedResult',
+    expectedEdit: {
+      range: {start: {line: 1, col: 17}, end: {line: 1, col: 59}},
+      newText: 'asIs({range: {start: 3}}), true'
+    },
+    expectedCursorPos: '1,44'
+  })
+})
+
+Test('completionTest.prettyPrintFunction', {
+  impl: completionActionTest('dataTest({runBefore: () => {} __})', {
+    completionToActivate: 'calculate',
+    expectedEdit: asIs({range: {start: {line: 1, col: 17}, end: {line: 1, col: 18}}, newText: `'', { `}),
+    expectedCursorPos: '1,18'
   })
 })
 

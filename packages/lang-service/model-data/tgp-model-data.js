@@ -126,7 +126,6 @@ export async function calcTgpModelData({ filePath }) {
     })
   })
 
-  log('tgp model data1', tgpModel)
   if (!dsls.tgp) {
     logError('calcTgpModelData no tgp', { url: filePath })
     return tgpModel
@@ -160,7 +159,7 @@ export async function calcTgpModelData({ filePath }) {
     typeRules.push(... declarations.filter(decl=>decl.id.name == 'typeRules').flatMap(decl=>astToObj(decl.init)))
   })
 
-  //log('tgp model data', tgpModel)
+  log('tgp model data', tgpModel)
 
   return tgpModel
 
@@ -188,28 +187,33 @@ export async function calcTgpModelData({ filePath }) {
   }
 }
 
-function astToTgpObj(node) {
+function astToTgpObj(node, code) {
 	if (!node) return undefined
-	switch (node.type) {
-    case 'TemplateLiteral': return node.quasis.map(q=>q.value.raw).join('')
-	  case 'Literal': return node.value
-	  case 'ObjectExpression': return attachNode(
-			Object.fromEntries(node.properties.map(p=>[p.key.type === 'Identifier' ? p.key.name : p.key.value, astToTgpObj(p.value)])))
-	  case 'ArrayExpression': return attachNode(node.elements.map(el => astToTgpObj(el)))
-	  case 'UnaryExpression': return attachNode(node.operator === '-' ? -astToTgpObj(node.argument) : astToTgpObj(node.argument))
-	  case 'ExpressionStatement': return attachNode(astToTgpObj(node.expression))
-	  case 'CallExpression': {
-      const $unresolvedArgs = node.arguments.map(x=> astToTgpObj(x))
-      return attachNode({$: node.callee.name, $unresolvedArgs})
+  return toObj(node)
+
+  function toObj(node) {
+    switch (node.type) {
+      case 'TemplateLiteral': return node.quasis.map(q=>q.value.raw).join('')
+      case 'Literal': return node.value
+      case 'ObjectExpression': return attachNode(
+        Object.fromEntries(node.properties.map(p=>[p.key.type === 'Identifier' ? p.key.name : p.key.value, toObj(p.value)])))
+      case 'ArrayExpression': return attachNode(node.elements.map(el => toObj(el)))
+      case 'UnaryExpression': return attachNode(node.operator === '-' ? -toObj(node.argument) : toObj(node.argument))
+      case 'ExpressionStatement': return attachNode(toObj(node.expression))
+      case 'CallExpression': {
+        const $unresolvedArgs = node.arguments.map(x=> toObj(x))
+        return attachNode({$: node.callee.name, $unresolvedArgs})
+      }
+      case 'ArrowFunctionExpression': return attachNode(eval(code.slice(node.start, node.end)))
+
+      default: return undefined
     }
 
-	  default: return undefined
-	}
-
-	function attachNode(res) {
-		res[astNode] = node
-		return res
-	}
+    function attachNode(res) {
+      res[astNode] = node
+      return res
+    }
+  }
 }
 
 function astToObj(node) {

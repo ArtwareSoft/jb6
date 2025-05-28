@@ -15,19 +15,22 @@ Data('langService.completionItems', {
     ],
     impl: async (ctx, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { actionMap, reformatEdits, compLine, errors, cursorPos } = compProps
+        const { actionMap, compText, compLine, errors, cursorPos, compId, tgpModel, comp } = compProps
         let items = [], title = '', paramDef
-        if (reformatEdits) {
+        const formattedCompText = prettyPrint(comp, { initialPath: compId, tgpModel })
+
+        if (formattedCompText != compText) {
+            const reformatEdits = deltaFileContent(compText, formattedCompText , compLine)
             const item = {
-                kind: 4, id: 'reformat', insertText: '', label: 'reformat', sortText: '0001', edit: reformatEdits,
+                kind: 4, id: 'reformat', insertText: '', label: '🔄 reformat', sortText: '!!01', edit: reformatEdits,
                 command: { command: 'jbart.applyCompChangeOfCompletionItem', arguments: [{ edit: reformatEdits, cursorPos }] },
             }
-            title = 'bad format'
+            title = 'reformat'
             items = [item]
         } else if (actionMap) {
             ({items, paramDef} = await provideCompletionItems(compProps, ctx))
             items.forEach((item, i) => Object.assign(item, {
-                compLine, insertText: '', sortText: ('0000' + i).slice(-4), command: { command: 'jbart.applyCompChangeOfCompletionItem', 
+                compLine, insertText: '', sortText: '!' + String(i).padStart(3, '0'), command: { command: 'jbart.applyCompChangeOfCompletionItem', 
                 arguments: [item] 
             },
             }))
@@ -36,7 +39,7 @@ Data('langService.completionItems', {
         } else if (errors) {
             logError('completion provideCompletionItems', {errors, compProps})
             items = [ {
-                kind: 4, label: (errors[0]||'').toString(), sortText: '0001',
+                kind: 4, label: (errors[0]||'').toString(), sortText: '!!01',
             }]
             title = prettyPrint(errors)
         }

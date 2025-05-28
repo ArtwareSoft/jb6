@@ -201,8 +201,11 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       return asIsProps(profile,path)
 
     if (profile.$ == 'asIs') {
-      resolveProfileArgs(profile)
-      const content = prettyPrint(profile.$asIs,{noMacros: true})
+      const toPrint = {...profile}
+      delete toPrint.$
+      delete toPrint.$$
+      //resolveProfileArgs(profile)
+      const content = prettyPrint(toPrint,{noMacros: true})
       const tokens = [ 
         {token: 'asIs(', action: `begin!${path}`}, {token: '', action: `edit!${path}`},
         {token: content, action: `asIs!${path}`}, {token: ')', action: `end!${path}`}]

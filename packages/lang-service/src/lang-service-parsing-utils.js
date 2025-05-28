@@ -100,7 +100,7 @@ function log(...args) {
 }
 
 function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
-    const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0])
+    const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
     resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp})
     let compId = ''
     if (tgpType == 'comp<tgp>' && topComp.id) { // set compId and add to comps registry
@@ -138,6 +138,10 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
                 actionMap.push({ action: `edit!${path}`, from: ast.start, to: ast.start })
                 actionMap.push({ action: `insideToken!${path}`, from: ast.start+1, to: ast.end });
             }
+            return
+        }
+        if (typeof prof == 'function') {
+            actionMap.push({ action: `function!${path}`, from: ast.start, to: ast.end })
             return
         }
 

@@ -55,7 +55,7 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
     const isArrayElem = path.match(/~[0-9]+$/)
     const propStr = isArrayElem ? path.split('~').slice(-2).join('~') : path.split('~').pop()
     const propTitle = {
-        label: propStr + ': ' + tgpModel.paramType(path), kind: 25, path, extend: () => { },
+        label: propStr + ': ' + tgpModel.paramType(path), kind: 25, path, extend: () => { }, sortText: '!!02',
         detail: calcPath(tgpModel.paramDef(path), 'description')
     }
     return [propTitle, ...options]
