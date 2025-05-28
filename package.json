@@ -12,7 +12,8 @@
     "vscode-package": "cd hosts/vscode-tgp-lang && vsce package",
     "bump:calver": "node scripts/bump-calver.js",
     "jb6:publish": "bash scripts/publish.sh",
-    "update-vscode-ext": "bash scripts/update-vscode-ext.sh"
+    "update-vscode-ext": "bash scripts/update-vscode-ext.sh",
+    "publish-vscode-ext": "cd hosts/vscode-tgp-lang && vsce publish && cd ../../"
   },
   "workspaces": [
     "packages/*"
