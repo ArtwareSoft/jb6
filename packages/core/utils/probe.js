@@ -1,7 +1,53 @@
-import { coreUtils } from '@jb6/core'
-const { jb, Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, stripData } = coreUtils
+import { jb, coreUtils } from './core-utils.js'
+const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, stripData, asJbComp } = coreUtils
 
-export async function runCircuit(probePath,circuitCmpId,timeout,ctx) {
+jb.probeRepository = {
+    probeCounter: 0,
+    refs: {}
+}
+
+Object.assign(coreUtils, {runProbe, runProbeCli})
+
+async function runProbeCli(probePath, entryPoint, cwd = '') {
+    const { promisify } = await import('util')
+    const { execFile: execFileCb } = await import('child_process')
+    const execFile = promisify(execFileCb)
+  
+    // build the inline ESM script
+    const inlineScript = `
+      import { coreUtils } from '@jb6/core'
+      import '@jb6/core/utils/probe.js'
+      import '${entryPoint}'
+      ;(async () => {
+        try {
+          const result = await coreUtils.runProbe(${JSON.stringify(probePath)})
+          process.stdout.write(JSON.stringify(result, null, 2))
+        } catch (e) {
+          console.error(e)
+          process.exit(1)
+        }
+      })()
+    `
+  
+    try {
+        const { stdout } = await execFile(
+          process.execPath,
+          ['--input-type=module', '-e', inlineScript],
+          { cwd, encoding: 'utf8' }
+        )
+        return JSON.parse(stdout)
+    } catch (e) {
+        debugger
+        // if execFile succeeded but JSON.parse blew up, it'll be here with e.stdout
+        if (e.stdout) {            
+          console.log(`can not parse result json: ${e.stdout}`)
+        } else {
+          console.log(`can not run probe cli: ${e}`)
+        }
+    }  
+}
+
+async function runProbe(probePath, {circuitCmpId, timeout, ctx} = {}) {
     if (!probePath)
         return logError(`probe runCircuit missing probe path`, {})
     log('probe start run circuit',{probePath})
@@ -9,29 +55,22 @@ export async function runCircuit(probePath,circuitCmpId,timeout,ctx) {
     if (!circuit)
         return logError(`probe can not infer circuitCtx from ${probePath}`, {ctx})
 
-    return new Probe(circuit).runCircuit(probePath,timeout)
+    const probeObj = await new Probe(circuit).runCircuit(probePath,timeout)
+    return stripProbeResult(probeObj.result)
 
     function calcCircuit() {
         if (!probePath) 
             return logError(`calcCircuitPath : no probe path`, {ctx,probePath})
-        const cmpId = path.split('~')[0]
-        const resolvedComp = compByFullId(cmpId) 
-        const circuitCmpId = resolvedComp.circuit  || resolvedComp.impl?.expectedResult && cmpId // test
+        const cmpId = probePath.split('~')[0]
+        const comp = compByFullId(cmpId, jb)[asJbComp]
+        const circuitCmpId = comp.circuit  || comp.impl?.expectedResult && cmpId // test
                 || circuitOptions(cmpId)[0]?.id || cmpId
         return circuitCmpId
     }
 }
 
-export function stripProbeResult(result) {
+function stripProbeResult(result) {
   return (result || []).map (x => stripData({from: x.from, out: x.out,in: {data: x.in.data, params: x.in.cmpCtx?.params, vars: x.in.vars}}))
-}
-
-jb.probeRepository = {
-    probeCounter: 0,
-    singleVisitPaths: {},
-    singleVisitCounters: {},
-    http_get_cache: {},
-    refs: {}
 }
 
 class Probe {
@@ -40,7 +79,7 @@ class Probe {
         this.circuitCtx.jbCtx.probe = this
         this.records = {}
         this.visits = {}
-        this.circuitComp = compByFullId(circuitCmpId)
+        this.circuitComp = compByFullId(circuitCmpId, jb)[asJbComp]
         this.id = ++jb.probeRepository.probeCounter
     }
 
@@ -78,8 +117,6 @@ class Probe {
         if (probe.probePath.split('~')[0] != path.split('~')[0]) return
         probe.visits[path] = probe.visits[path] || 0
         probe.visits[path]++
-        //jb.probe.singleVisitPaths[path] = ctx
-        //jb.probe.singleVisitCounters[path] = (jb.probe.singleVisitCounters[path] || 0) + 1
         if (probe.probePath.indexOf(path) != 0) return
 
         const _ctx = data ? ctx = ctx.setData(data).setVars(vars||{}) : ctx // used by ctx.data(..,) in rx
@@ -90,7 +127,7 @@ class Probe {
             return
         }
         probe.startTime = probe.startTime || new Date().getTime() // for the remote probe
-        const now = new Date().getTime()
+        //const now = new Date().getTime()
         // if (now - probe.startTime > probe.maxTime && !ctx.vars.testID) {
         //     log('probe timeout',{ctx, probe,now})
         //     probe.active = false
@@ -110,12 +147,12 @@ class Probe {
 }
  
 function circuitOptions(compId) {
-    const refs = getOrCalcAllRefs()
+    const refs = jb.probeRepository.refs = jb.probeRepository.refs || calcAllRefs()
     const shortId = compId.split('>').pop().split('.').pop()
     const candidates = {[compId]: true}
     while (expand()) {}
     const comps = Object.keys(candidates).filter(compId => noOpenParams(compId))
-    return comps.sort((x,y) => mark(y) - mark(x)).map(id=>({id, shortId: id.split('>').pop(), location: jb.comps[id].$location}))
+    return comps.sort((x,y) => mark(y) - mark(x)).map(id=>({id, shortId: id.split('>').pop()}))
 
     function mark(id) {
       if (id.match(/^test<>/) && id.indexOf(shortId) != -1) return 20
@@ -124,7 +161,7 @@ function circuitOptions(compId) {
     }
 
     function noOpenParams(id) {
-      return (jb.comps[id].params || []).filter(p=>!p.defaultValue).length == 0
+      return (compByFullId(id, jb)[asJbComp]?.params || []).filter(p=>!p.defaultValue).length == 0
     }
 
     function expand() {
@@ -135,8 +172,7 @@ function circuitOptions(compId) {
     }
 }
 
-function getOrCalcAllRefs() {
-    if (Object.keys(jb.probeRepository.refs).length) return
+function calcAllRefs() {
     const refs = {}
     const comps = Object.fromEntries(Object.entries(jb.dsls).flatMap(([dsl,types]) => 
           Object.entries(types).flatMap(([type,tgpType]) => Object.entries(tgpType).map(([id,comp]) => [`${type}<${dsl}>${id}`, comp]))))
@@ -150,7 +186,7 @@ function getOrCalcAllRefs() {
       refs[k].refs.forEach(cross=>
         refs[cross] && refs[cross].by.push(k))
     )
-    jb.probeRepository.refs = refs
+    return refs
 
     function calcRefs(profile) {
       if (profile == null || typeof profile != 'object') return [];

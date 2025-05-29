@@ -273,7 +273,7 @@ function logCli(...args) {
 }
 
 
-function stripData(top, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000}) {
+function stripData(top, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000} = {}) {
   return doStripData(top, { depth: 0, path: ''})
 
   function doStripData(data, { depth, path} = {}) {

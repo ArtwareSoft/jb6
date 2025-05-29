@@ -87,7 +87,7 @@ class JBCtx {
     }
     newComp(comp, args) {
         return new JBCtx({...this, 
-            path: `${comp.id}.impl`, 
+            path: `${comp.$dslType}${comp.id}~impl`, 
             creatorStack: [...(this.creatorStack || []), this.path],
             args
         })

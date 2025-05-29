@@ -151,10 +151,12 @@ const printFail = line => {
 
 export async function runTests({specificTest,show,pattern,notPattern,take,remoteTests,repo,onlyTest,top,coveredTestsOf,showOnly}={}) {
     specificTest = specificTest && decodeURIComponent(specificTest).split('>').pop()
+    const isNode = !globalThis.document
 
     let tests = globalsOfType(Test)
         .filter(id =>!specificTest || id == specificTest)
         .filter(id => !Test[id][asJbComp]?.doNotRunInTests)
+        .filter(id => isNode || !Test[id][asJbComp]?.nodeOnly)
         .filter(id =>!pattern || id.match(pattern))
         .filter(id =>!notPattern || !id.match(notPattern))
         .map(id => ({testID:id}) ) // put in object to assign to groups

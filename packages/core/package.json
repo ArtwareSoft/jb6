@@ -3,7 +3,9 @@
   "version": "1.250526.0",
   "type": "module",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./tests/core-tests.js": "./tests/core-tests.js",
+    "./utils/probe.js": "./utils/probe.js"
   },
   "scripts": {},
   "dependencies": {

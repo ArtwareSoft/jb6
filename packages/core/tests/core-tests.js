@@ -1,5 +1,9 @@
 import { dsls, coreUtils } from '@jb6/core'
+import {} from '@jb6/core/utils/probe.js'
 import {} from '@jb6/testing'
+
+const { runProbe, runProbeCli } = coreUtils
+
 const { 
   tgp: { Const, TgpType, 
     var : { Var } 
@@ -71,8 +75,23 @@ const getAsBool = Data({
   impl: (ctx,{val}) => val
 })
 
-Test('myTests.HelloWorld', {
+Test('coreTest.HelloWorld', {
   impl: dataTest(pipeline('hello world'), contains('world'))
+})
+
+Test('probeTest.helloWorld', {
+  impl: dataTest({
+    calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~expectedResult'),
+    expectedResult: equals('hello world', '%0.in.data%')
+  })
+})
+
+Test('probeCliTest.helloWorld', {
+  nodeOnly: true,
+  impl: dataTest({
+    calculate: () => runProbeCli('test<test>coreTest.HelloWorld~impl~expectedResult','@jb6/core/tests/core-tests.js'),
+    expectedResult: equals('hello world', '%0.in.data%')
+  })
 })
 
 Test('coreTest.getExpValueAsBoolean', {
