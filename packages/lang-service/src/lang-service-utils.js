@@ -1,7 +1,10 @@
 import { coreUtils } from '@jb6/core'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
-const { tgpEditorHost, offsetToLineCol, calcProfileActionMap } = langServiceUtils
-const { jb, Ctx, isMacro, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, unique, compByFullId, splitDslType } = coreUtils
+import { } from '@jb6/core/utils/probe.js'
+import { } from './probe-suggestions.js'
+
+const { tgpEditorHost, offsetToLineCol, calcProfileActionMap, suggestionsOfProbe } = langServiceUtils
+const { jb, Ctx, isMacro, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, unique, compByFullId, splitDslType, runProbeCli } = coreUtils
 
 jb.langServiceRegistry = { 
     tgpModels : {}
@@ -160,9 +163,12 @@ async function dataCompletions(compProps, path, ctx) {
     const input = { value, selectionStart }
     const { line, col } = offsetToLineCol(text, item.from - startOffset - 1)
 
-    const suggestions = await ctx.setData(input).setVars({ filePath, probePath: path }).calc(
-        {$: 'langServer.remoteProbe', sourceCode: {$: 'source-code<jbm>probeServer', filePath: '%$filePath%'}, probePath: '%$probePath%', expressionOnly: true })
-    return (calcPath(suggestions, '0.options') || []).map(option => {
+    const probeObj = await runProbeCli(path, filePath)
+    const suggestions = suggestionsOfProbe(probeObj, input, path)
+
+    // ctx.setData(input).setVars({ filePath, probePath: path }).calc(
+    //     {$: 'langServer.remoteProbe', sourceCode: {$: 'source-code<jbm>probeServer', filePath: '%$filePath%'}, probePath: '%$probePath%', expressionOnly: true })
+    return (suggestions[0]?.options || []).map(option => {
         const { pos, toPaste, tail, text } = option
         const primiteVal = option.valueType != 'object'
         const suffix = primiteVal ? '%' : '/'

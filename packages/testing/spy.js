@@ -139,7 +139,7 @@ function registerEnrichers(_enrichers) {
     enrichers = [...enrichers, ..._enrichers]
 }
 
-function search(query = '',{slice = -1000, enrich = true}) { 
+function search(query = '',{slice = -1000, enrich = true} = {}) { 
     const _or = query.toLowerCase().split(/,|\|/)
     return _or.reduce((acc,exp) =>
         unify(acc, exp.split(' ').reduce((acc,logNameExp) => filter(acc,logNameExp), logs.slice(slice))) 

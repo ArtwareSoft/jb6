@@ -3,7 +3,7 @@ import {} from './lang-service-testers.js'
 const { langService } = ns
 
 const {
-  tgp: {
+  tgp: { Const,
     any: { asIs }
   },
   test: { Test,
@@ -271,13 +271,19 @@ Test('completionTest.fixEditedCompWrongName', {
 })
 */
 
+Const('peopleArray', {
+    people: [
+      {name: 'Homer Simpson', age: 42, male: true},
+      {name: 'Marge Simpson', age: 38, male: false},
+      {name: 'Bart Simpson', age: 12, male: true}
+    ]
+})
 /*
 Test('completionTest.people', {
   impl: completionOptionsTest(`dataTest('%$peopleArray/__')`, {
     expectedSelections: ['people (3 items)']
   })
 })
-
 
 Test('completionTest.person', {
   impl: completionOptionsTest(`dataTest('%$__')`, {

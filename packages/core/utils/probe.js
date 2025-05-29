@@ -37,7 +37,18 @@ async function runProbe(probePath, {circuitCmpId, timeout, ctx} = {}) {
         return logError(`probe can not infer circuitCtx from ${probePath}`, {ctx})
 
     const probeObj = await new Probe(circuit).runCircuit(probePath,timeout)
-    return stripProbeResult(probeObj.result)
+
+    const result = {
+        circuitCmpId, probePath,
+        visits: probeObj.visits,
+        totalTime: probeObj.totalTime,
+        result: stripProbeResult(probeObj.result),
+        circuitRes: probeObj.circuitRes,
+        errors: jb.ext.spy?.search('error'),
+        logs: jb.ext.spy?.logs
+    }
+
+    return result
 
     function calcCircuit() {
         if (!probePath) 

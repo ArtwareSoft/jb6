@@ -82,14 +82,15 @@ Test('coreTest.HelloWorld', {
 Test('probeTest.helloWorld', {
   impl: dataTest({
     calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~expectedResult'),
-    expectedResult: equals('hello world', '%0.in.data%')
+    expectedResult: equals('hello world', '%result.0.in.data%')
   })
 })
 
 Test('probeCliTest.helloWorld', {
   impl: dataTest({
     calculate: () => runProbeCli('test<test>coreTest.HelloWorld~impl~expectedResult','@jb6/core/tests/core-tests.js'),
-    expectedResult: equals('hello world', '%0.in.data%')
+    expectedResult: equals('hello world', '%result.0.in.data%'),
+    timeout: 1000
   })
 })
 
