@@ -1,5 +1,6 @@
 import { jb, coreUtils } from './core-utils.js'
-const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, stripData, asJbComp } = coreUtils
+import { } from './jb-cli.js'
+const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, stripData, asJbComp, runCliInContext } = coreUtils
 
 jb.probeRepository = {
     probeCounter: 0,
@@ -9,11 +10,6 @@ jb.probeRepository = {
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
 async function runProbeCli(probePath, entryPoint, cwd = '') {
-    const { promisify } = await import('util')
-    const { execFile: execFileCb } = await import('child_process')
-    const execFile = promisify(execFileCb)
-  
-    // build the inline ESM script
     const inlineScript = `
       import { coreUtils } from '@jb6/core'
       import '@jb6/core/utils/probe.js'
@@ -28,23 +24,8 @@ async function runProbeCli(probePath, entryPoint, cwd = '') {
         }
       })()
     `
-  
-    try {
-        const { stdout } = await execFile(
-          process.execPath,
-          ['--input-type=module', '-e', inlineScript],
-          { cwd, encoding: 'utf8' }
-        )
-        return JSON.parse(stdout)
-    } catch (e) {
-        debugger
-        // if execFile succeeded but JSON.parse blew up, it'll be here with e.stdout
-        if (e.stdout) {            
-          console.log(`can not parse result json: ${e.stdout}`)
-        } else {
-          console.log(`can not run probe cli: ${e}`)
-        }
-    }  
+
+    return runCliInContext(inlineScript, cwd)
 }
 
 async function runProbe(probePath, {circuitCmpId, timeout, ctx} = {}) {

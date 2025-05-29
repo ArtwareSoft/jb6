@@ -87,7 +87,6 @@ Test('probeTest.helloWorld', {
 })
 
 Test('probeCliTest.helloWorld', {
-  nodeOnly: true,
   impl: dataTest({
     calculate: () => runProbeCli('test<test>coreTest.HelloWorld~impl~expectedResult','@jb6/core/tests/core-tests.js'),
     expectedResult: equals('hello world', '%0.in.data%')

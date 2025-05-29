@@ -5,6 +5,7 @@
   "exports": {
     ".": "./index.js",
     "./tests/core-tests.js": "./tests/core-tests.js",
+    "./utils/jb-cli.js": "./utils/jb-cli.js",
     "./utils/probe.js": "./utils/probe.js"
   },
   "scripts": {},
