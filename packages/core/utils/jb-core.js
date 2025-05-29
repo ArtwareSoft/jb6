@@ -26,7 +26,7 @@ dynamic function 'hold' and keeps the args until called by client with ctx. it h
 }
 */
 import { jb } from './core-utils.js'
-const { RT_types, utils, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray } = jb.coreUtils
+const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray } = jb.coreUtils
 
 function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArray: false, openObj: false, openComp: true}) {
     // changing context with data and vars
@@ -39,29 +39,28 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
     if (profile.data != null)
         ctx = ctx.setData(run(profile.data, ctx.setJbCtx(jbCtx.innerParam({id: 'data'}, profile)), settings))
 
-
     const {openExpression, openArray, openObj, openComp} = settings
+    let res = profile
     if (typeof profile == 'string' && openExpression)
-        return toRTType(jbCtx.parentParam, calcExpression(profile, ctx))
-    if (Array.isArray(profile) && openArray)
-        return profile.map((p,i) => run(p, ctx.setJbCtx(jbCtx.innerDataPath(i)), settings))
-    const arrayType = (jbCtx.parentParam?.type || '').indexOf('[]') != -1
-    if (arrayType && Array.isArray(profile)) // array param
-        return profile.flatMap(p => run(p, ctx, settings))
-    if (profile && profile.$ && openComp) {
+        res = toRTType(jbCtx.parentParam, calcExpression(profile, ctx))
+    else if (Array.isArray(profile) && openArray)
+        res = profile.map((p,i) => run(p, ctx.setJbCtx(jbCtx.innerDataPath(i)), settings))
+    else if ((jbCtx.parentParam?.type || '').indexOf('[]') != -1 && Array.isArray(profile)) // array param
+        res = profile.flatMap(p => run(p, ctx, settings))
+    else if (profile && profile.$ && openComp) {
         const comp = asComp(profile.$) // also lazy resolve
         const ret = comp.runProfile(profile, ctx, settings)
-        return toRTType(jbCtx.parentParam, ret)
-    }
-    if (typeof profile == 'function' && profile.compFunc)
-        return profile(ctx, jbCtx.args)
-    if (typeof profile == 'function')
-        return profile(ctx, ctx.vars, jbCtx.args)
+        res = toRTType(jbCtx.parentParam, ret)
+    } else if (typeof profile == 'function' && profile.compFunc)
+        res = profile(ctx, jbCtx.args)
+    else if (typeof profile == 'function')
+        res = profile(ctx, ctx.vars, jbCtx.args)
+    else if (profile && typeof profile == 'object' && openObj)
+        res = Object.fromEntries(Object.entries(profile).map(([id,p]) =>[id,run(p, ctx.setJbCtx(jbCtx.innerDataPath(i)), settings)]))
     
-    if (profile && typeof profile == 'object' && openObj) {
-        return Object.fromEntries(Object.entries(profile).map(([id,p]) =>[id,run(p, ctx.setJbCtx(jbCtx.innerDataPath(i)), settings)]))
-    }
-    return profile
+    if (jbCtx.probe)
+        jbCtx.probe.record(ctx, res, ctx.data, ctx.vars)
+    return res
 }
 
 function toRTType(parentParam, value) {

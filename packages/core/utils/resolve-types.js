@@ -1,9 +1,9 @@
 import { coreUtils } from './core-utils.js'
-const { asJbComp, astNode, OrigArgs, systemParams, jbComp, unique, asArray, isPrimitiveValue, logError, splitDslType } = coreUtils
+const { asJbComp, astNode, OrigArgs, systemParams, jbComp, unique, asArray, isPrimitiveValue, logError, splitDslType, compByFullId } = coreUtils
 
 export const primitivesAst = Symbol.for('primitivesAst')
 
-Object.assign(coreUtils, {resolveProfileTypes, primitivesAst, compByFullId})
+Object.assign(coreUtils, {resolveProfileTypes, primitivesAst})
 
 function calcDslType(fullId) {
     if (typeof fullId != 'string') return
@@ -24,7 +24,7 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
     const comp = prof.$ instanceof jbComp ? prof.$
         : resolveCompTypeWithId(prof.$$ || prof.$, tgpModel, { dslType, parent, parentProp, topComp, parentType, remoteCode })
     if (comp)
-      prof.$$ = prof.$ instanceof jbComp ? prof.$ : `${dslType}${comp.id}`
+      prof.$$ = prof.$ instanceof jbComp ? prof.$ : `${comp.$dslType}${comp.id}`
     if (prof.$$ == 'pipeline') debugger
     if (prof.$unresolvedArgs && comp) {
       Object.assign(prof, argsToProfile(prof, comp), {[astNode]: prof[astNode]})
@@ -195,9 +195,4 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentProp, paren
         : rule.isOfWhenEndsWith && type.endsWith(rule.isOfWhenEndsWith[0]) && rule.isOfWhenEndsWith[0] != type ? rule.isOfWhenEndsWith[1]
         : []))          
   }
-}
-
-function compByFullId(id, tgpModel) {
-  const [type, dsl, shortId] = id.match(/^([^<]+)<([^>]+)>(.+)$/).slice(1)
-  return tgpModel.dsls[dsl||'common'][type][shortId]
 }

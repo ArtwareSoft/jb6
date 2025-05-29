@@ -220,6 +220,19 @@ function objectDiff(newObj, orig) {
     }, deletedValues)
 }
 
+function compareArrays(arr1, arr2) {
+  if (arr1 === arr2)
+    return true
+  if (!Array.isArray(arr1) && !Array.isArray(arr2)) return arr1 === arr2
+  if (!arr1 || !arr2 || arr1.length != arr2.length) return false
+  for (let i = 0; i < arr1.length; i++) {
+    const key1 = (arr1[i]||{}).key, key2 = (arr2[i]||{}).key
+    if (key1 && key2 && key1 === key2 && arr1[i].val === arr2[i].val)
+      continue
+    if (arr1[i] !== arr2[i]) return false
+  }
+  return true
+}
 
 function sortedArraysDiff(newArr, oldArr, compareFn) {
   const inserted = [], updated  = [], deleted  = []
@@ -259,11 +272,45 @@ function logCli(...args) {
   console.error(msg)
 }
 
+
+function stripData(top, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000}) {
+  return doStripData(top, { depth: 0, path: ''})
+
+  function doStripData(data, { depth, path} = {}) {
+      if (data == null || (path||'').match(/parentNode$/)) return
+      const innerDepthAndPath = key => ({depth: (depth || 0) +1, path: [path,key].filter(x=>x).join('~') })
+
+      if (['string','boolean','number'].indexOf(typeof data) != -1) return data
+      if (typeof data == 'function')
+          return 'function'
+      if (depth > MAX_OBJ_DEPTH) {
+          logError('stripData too deep object, maybe recursive',{top, path, depth, data})
+          return
+      }
+
+      if (Array.isArray(data) && data.length > MAX_ARRAY_LENGTH)
+          logError('stripData slicing large array',{data})
+      if (Array.isArray(data))
+          return data.slice(0,MAX_ARRAY_LENGTH).map((x,i)=>doStripData(x, innerDepthAndPath(i)))
+      if (typeof data == 'object' && ['DOMRect'].indexOf(data.constructor.name) != -1)
+          return Object.fromEntries(Object.keys(data.__proto__).map(k=>[k,data[k]]))
+      if (typeof data == 'object' && (data.constructor?.name || '').match(/Error$/))
+          return {$$: 'Error', message: data.toString() }
+      if (typeof data == 'object' && ['Object','Array'].indexOf(data.constructor?.name) == -1)
+          return { $$: data.constructor?.name }
+      if (typeof data == 'object')
+          return Object.fromEntries(Object.entries(data)
+              .filter(e=> data.$ || typeof e[1] != 'function') // if not a profile, block functions
+  //                .map(e=>e[0] == '$' ? [e[0], jb.path(data,[jb.core.CT,'comp',jb.core.CT,'fullId']) || e[1]] : e)
+              .map(e=>[e[0],doStripData(e[1], innerDepthAndPath(e[0]) )]))
+  }
+}
+
 export const coreUtils = jb.coreUtils = {
   jb, RT_types, log, logError, logException, logCli,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
-  compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
-  delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff,
+  compIdOfProfile, compParams, parentPath, calcPath, splitDslType, stripData,
+  delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
   calcValue
 }
 

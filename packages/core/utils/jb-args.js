@@ -103,6 +103,11 @@ function argsToProfile(prof, comp) {
     }
 }
 
+function compByFullId(id, tgpModel) {
+  const [type, dsl, shortId] = id.match(/^([^<]+)<([^>]+)>(.+)$/).slice(1)
+  return tgpModel.dsls[dsl||'common'][type][shortId]
+}
+
 function resolveProfileTop(comp) {
     const dsl = comp.dsl || ''
     comp.$dslType = comp.type.indexOf('>') == -1 ? `${comp.type}<${dsl}>` : comp.type
@@ -154,4 +159,5 @@ function resolveProfileArgs(prof) {
   return prof
 }
 
-Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, isMacro, asJbComp, OrigArgs, sysProps, systemParams, titleToId, asComp, jbCompProxy})
+Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, isMacro, asJbComp, OrigArgs, sysProps, systemParams, 
+  titleToId, asComp, jbCompProxy, compByFullId})

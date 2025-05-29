@@ -17,17 +17,8 @@ Data('langService.completionItems', {
         const compProps = await calcCompProps(compTextAndCursor)
         const { actionMap, compText, compLine, errors, cursorPos, compId, tgpModel, comp } = compProps
         let items = [], title = '', paramDef
-        const formattedCompText = prettyPrint(comp, { initialPath: compId, tgpModel })
 
-        if (formattedCompText != compText) {
-            const reformatEdits = deltaFileContent(compText, formattedCompText , compLine)
-            const item = {
-                kind: 4, id: 'reformat', insertText: '', label: '🔄 reformat', sortText: '!!01', edit: reformatEdits,
-                command: { command: 'jbart.applyCompChangeOfCompletionItem', arguments: [{ edit: reformatEdits, cursorPos }] },
-            }
-            title = 'reformat'
-            items = [item]
-        } else if (actionMap) {
+        if (actionMap) {
             ({items, paramDef} = await provideCompletionItems(compProps, ctx))
             items.forEach((item, i) => Object.assign(item, {
                 compLine, insertText: '', sortText: '!' + String(i).padStart(3, '0'), command: { command: 'jbart.applyCompChangeOfCompletionItem', 
@@ -42,6 +33,17 @@ Data('langService.completionItems', {
                 kind: 4, label: (errors[0]||'').toString(), sortText: '!!01',
             }]
             title = prettyPrint(errors)
+        }
+
+        const formattedCompText = prettyPrint(comp, { initialPath: compId, tgpModel })
+        if (formattedCompText != compText) {
+            const reformatEdits = deltaFileContent(compText, formattedCompText , compLine)
+            const item = {
+                kind: 4, id: 'reformat', insertText: '', label: '🔄 reformat', sortText: '!!01', edit: reformatEdits,
+                command: { command: 'jbart.applyCompChangeOfCompletionItem', arguments: [{ edit: reformatEdits, cursorPos }] },
+            }
+            title = 'reformat'
+            items.unshift(item)
         }
         return { items, title, paramDef, errors }
     }
