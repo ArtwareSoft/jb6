@@ -120,7 +120,7 @@ class Ctx {
     }
     extendWithVarsScript(vars) {
         const runInnerPathForVar = (profile = ({data}) => data, index, ctx) =>
-            run(profile, ctx.setJbCtx(new JBCtx({...ctx.JBCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<common>'} })))
+            run(profile, ctx.setJbCtx(new JBCtx({...ctx.jbCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<common>'} })))
 
         vars = asArray(vars)
         if (vars.find(x=>x.async))

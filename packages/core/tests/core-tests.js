@@ -68,6 +68,17 @@ Test('coreTest.DefaultValueComp', {
   impl: dataTest(withDefaultValueComp(), equals(5))
 })
 
+const withVarUsingParam = Data('withVarUsingParam', {
+  params: [
+    {id: 'val', defaultValue: pipeline('5')}
+  ],
+  impl: pipeline(Var('val1', '%$val%'), '%$val1%')
+})
+
+Test('coreTest.withVarUsingParam', {
+  impl: dataTest(withVarUsingParam(), equals(5))
+})
+
 const getAsBool = Data({
   params: [
     {id: 'val', as: 'boolean', type: 'boolean'}
