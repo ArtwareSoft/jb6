@@ -155,20 +155,24 @@ function wrapWithArray(path, compProps) {
 }
 
 async function dataCompletions(compProps, path, ctx) {
-    const { actionMap, inCompOffset, text, startOffset, filePath, compLine } = compProps
+    const { actionMap, inCompOffset, text, filePath, compLine } = compProps
     const item = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
         .find(e => e.action.indexOf('insideText!') == 0)
-    const value = text.slice(item.from - startOffset - 1, item.to - startOffset - 1)
+    const value = text.slice(item.from - 1, item.to - 1)
     const selectionStart = inCompOffset - item.from + 1
     const input = { value, selectionStart }
-    const { line, col } = offsetToLineCol(text, item.from - startOffset - 1)
+    const { line, col } = offsetToLineCol(text, item.from - 1)
 
-    const probeObj = await runProbeCli(path, filePath)
-    const suggestions = suggestionsOfProbe(probeObj, input, path)
+    const extraCode = `
+const { test: { Test, test: { dataTest } } } = dsls
+${text}
+`
+    const probeObj = await runProbeCli(path, filePath, {ctx, extraCode })
+    const suggestions = suggestionsOfProbe(probeObj, input, path) || []
 
     // ctx.setData(input).setVars({ filePath, probePath: path }).calc(
     //     {$: 'langServer.remoteProbe', sourceCode: {$: 'source-code<jbm>probeServer', filePath: '%$filePath%'}, probePath: '%$probePath%', expressionOnly: true })
-    return (suggestions[0]?.options || []).map(option => {
+    return (suggestions.options || []).map(option => {
         const { pos, toPaste, tail, text } = option
         const primiteVal = option.valueType != 'object'
         const suffix = primiteVal ? '%' : '/'
@@ -182,7 +186,7 @@ async function dataCompletions(compProps, path, ctx) {
     })
 
     function calcOverlap(s1, s2) {
-        for (i = 0; i < s1.length; i++)
+        for (let i = 0; i < s1.length; i++)
             if (s1[i] != s2[i]) return i
         return s1.length
     }

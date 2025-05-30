@@ -99,7 +99,7 @@ Test('probeTest.helloWorld', {
 
 Test('probeCliTest.helloWorld', {
   impl: dataTest({
-    calculate: () => runProbeCli('test<test>coreTest.HelloWorld~impl~expectedResult','@jb6/core/tests/core-tests.js'),
+    calculate: (ctx) => runProbeCli('test<test>coreTest.HelloWorld~impl~expectedResult','@jb6/core/tests/core-tests.js', {ctx}),
     expectedResult: equals('hello world', '%result.0.in.data%'),
     timeout: 1000
   })

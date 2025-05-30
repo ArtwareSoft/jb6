@@ -1,6 +1,6 @@
 import { langServiceUtils } from './lang-service-parsing-utils.js'
 import { coreUtils } from '@jb6/core'
-const { jb, toArray, unique, calcVar, log, isPrimitiveValue, calcValue } = coreUtils
+const { jb, toArray, unique, calcVar, log, isPrimitiveValue, calcValue, Ctx } = coreUtils
 const { consts } = jb.coreRegistry
 
 Object.assign(langServiceUtils, { suggestionsOfProbe, applyOption })
@@ -38,9 +38,9 @@ class suggestions {
     }
     
     calcOptions(probeObj, path) {
-      const probeCtx = probeObj.result?.[0]?.in || {jbCtx:{}}
+      const probeCtx = new Ctx(probeObj.result?.[0]?.in || {})
       const visits = probeObj.visits
-      const circuitCmpId = probeObj.circuitCmpId.slice('>').pop()
+      const circuitCmpId = probeObj.circuitCmpId.split('>').pop()
 
       let options = []
       const nonOptionProps = [this.pos,this.tail,this.input,this.base]
@@ -73,7 +73,7 @@ class suggestions {
       }
       function innerPropsOptions(baseVal) {
         return toArray(baseVal).slice(0,2)
-          .flatMap(x=>entries(x).map(x=> valueOption(x[0],x[1],nonOptionProps)))
+          .flatMap(x=>Object.entries(x).map(x=> valueOption(x[0],x[1],nonOptionProps)))
       }
     }
 }

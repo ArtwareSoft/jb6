@@ -202,7 +202,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
             if (!isCli) {
                 updateTestHeader(document)
                 addHTML(document.body, testResultHtml(res, repo), {beforeResult: singleTest && res.renderDOM})
-                console.log('res',res)
+                //console.log('res',res)
             }
             if (!res.success)
                  printFail(`${testID} ${res.reason || JSON.stringify(res,2,null) || 'unknown error'}`)

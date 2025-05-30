@@ -278,13 +278,14 @@ Const('peopleArray', {
       {name: 'Bart Simpson', age: 12, male: true}
     ]
 })
-/*
+
 Test('completionTest.people', {
   impl: completionOptionsTest(`dataTest('%$peopleArray/__')`, {
     expectedSelections: ['people (3 items)']
   })
 })
 
+/*
 Test('completionTest.person', {
   impl: completionOptionsTest(`dataTest('%$__')`, {
     expectedSelections: ['$person (4 props)']

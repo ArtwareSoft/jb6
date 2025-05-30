@@ -69,7 +69,7 @@ Test('completionOptionsTest', {
         await pr
         host.selectRange(inCompPos)
         const compTextAndCursor = host.compTextAndCursor()
-        const options = (await langService.completionItems.$run({compTextAndCursor})).items.map(x=>x.label)
+        const options = (await ctx.run(langService.completionItems({compTextAndCursor}))).items.map(x=>x.label)
         acc.push({options})
       }, Promise.resolve())
       return acc
@@ -103,7 +103,7 @@ Test('completionActionTest', {
   impl: dataTest({
     calculate: async (ctx,{}, {compText,completionToActivate, filePath, dsl, remoteSuggestions }) => {
         const { compTextAndCursor, host} = await calcCompTextAndCursorsForTest({ctx,compText,filePath,dsl,remoteSuggestions})
-        const {items} = await langService.completionItems.$run({compTextAndCursor})
+        const {items} = await ctx.run(langService.completionItems({compTextAndCursor}))
         if (items.find(x=>x.label == 'reformat'))
             return { testFailure: `bad comp format` }
 
@@ -112,7 +112,7 @@ Test('completionActionTest', {
         if (!item) 
           return { items: items.map(x=>x.label), toActivate }
 
-        const edit = item.edit ? item : await langService.editAndCursorOfCompletionItem.$impl(ctx,{item})
+        const edit = item.edit ? item : await ctx.run(langService.editAndCursorOfCompletionItem({item}))
         await applyCompChange(edit, {ctx})
         await delay(1) // wait for cursor change
         const {cursorLine, cursorCol } = host.compTextAndCursor()

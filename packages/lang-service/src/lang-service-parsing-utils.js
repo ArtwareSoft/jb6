@@ -54,10 +54,10 @@ function lineColToOffset(text, { line, col }) {
 }
 
 function getPosOfPath(path, _where = 'edit', { compText, tgpModel } = {}) { // edit,begin,end,function
-    const { actionMap, text, startOffset = 0 } = calcProfileActionMap(compText, {tgpModel, expectedPath: path})
+    const { actionMap, text } = calcProfileActionMap(compText, {tgpModel, expectedPath: path})
     const item = asArray(_where).reduce((acc,where) => acc || actionMap.find(e => e.action == `${where}!${path}`), null)
     if (!item) return { line: 0, col: 0 }
-    return offsetToLineCol(text, item.from - startOffset)
+    return offsetToLineCol(text, item.from )
 }
 
 function filePosOfPath(tgpPath, {tgpModel}) {

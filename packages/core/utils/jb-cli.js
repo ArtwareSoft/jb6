@@ -3,16 +3,16 @@ import { coreUtils } from './core-utils.js'
 const { logCli, logError, logException } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext})
 
-async function runCliInContext(script, cwd = '') {
+async function runCliInContext(script, {cwd = '', ctx} = {}) {
     const isNode = !globalThis.document
     if (isNode) {
-        return runNodeCli(script, cwd)
+        return runNodeCli(script, {cwd, ctx})
     } else {
-        return runNodeCliViaJbWebServer(script, cwd)
+        return runCliInIframe(script, {ctx, cwd})
     }
 }
 
-async function runNodeCli(script, cwd = '') {
+async function runNodeCli(script, {cwd = ''} = {}) {
   const { promisify } = await import('util')
   const { execFile: execFileCb } = await import('child_process')
   const execFile = promisify(execFileCb)
@@ -34,7 +34,7 @@ async function runNodeCli(script, cwd = '') {
   }  
 }
 
-async function runNodeCliViaJbWebServer(script, cwd = '', expressUrl = '') {
+async function runNodeCliViaJbWebServer(script, {cwd = '', expressUrl = '', ctx} = {}) {
   const res = await fetch(`${expressUrl}/run-cli`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -50,3 +50,62 @@ async function runNodeCliViaJbWebServer(script, cwd = '', expressUrl = '') {
   if (error) logError(`CLI error: ${error}`)
   return result
 }
+
+async function runCliInIframe(userScript, {ctx, cwd} = {}) {
+  const cliId = 'cli_' + Math.random().toString(36).slice(2)
+
+  return new Promise( resolve => {
+    const iframe = document.createElement('iframe')
+    iframe.style.display = 'none'
+
+    function onMsg(e) {
+      if (e.source === iframe.contentWindow && e.data?.cliId === cliId) {
+        window.removeEventListener('message', onMsg)
+        document.body.removeChild(iframe)
+
+        if (e.data.error) console.error(e.data.error)
+        return resolve(e.data.result)
+      }
+    }
+    window.addEventListener('message', onMsg)
+
+    const importMap = document.querySelector('script[type="importmap"]')?.outerHTML || ''
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        ${importMap}
+      <script type="module">
+            const cliId = '${cliId}'
+            const send = msg => parent.postMessage({ cliId, ...msg }, '*')
+
+            globalThis.process = {
+              stdout: {
+                write: s => {
+                  try {
+                    send({ result: JSON.parse(s) })
+                  } catch {
+                    send({ result: s })
+                  }
+                }
+              },
+              exit: code => {}
+            }
+
+            console.error = (...args) => send({ error: args.map(String).join(' ') })
+            console.log = (...args) => send({ log: args.map(String).join(' ') })
+        </script>
+      </head>
+      <body>
+        <script type="module">
+            ${userScript}
+        </script>
+      </body>
+      </html>
+    `
+    iframe.srcdoc = html
+    document.body.appendChild(iframe)
+  })
+}
+

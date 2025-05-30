@@ -9,23 +9,23 @@ jb.probeRepository = {
 
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
-async function runProbeCli(probePath, entryPoint, cwd = '') {
+async function runProbeCli(probePath, entryPoint, {cwd = '', ctx, extraCode} = {}) {
     const inlineScript = `
-      import { coreUtils } from '@jb6/core'
+      import { coreUtils, dsls } from '@jb6/core'
       import '@jb6/core/utils/probe.js'
       import '${entryPoint}'
       ;(async () => {
         try {
+          ${extraCode || ''}
           const result = await coreUtils.runProbe(${JSON.stringify(probePath)})
           process.stdout.write(JSON.stringify(result, null, 2))
         } catch (e) {
           console.error(e)
-          process.exit(1)
         }
       })()
     `
 
-    return runCliInContext(inlineScript, cwd)
+    return runCliInContext(inlineScript, {cwd, ctx})
 }
 
 async function runProbe(probePath, {circuitCmpId, timeout, ctx} = {}) {
@@ -39,7 +39,8 @@ async function runProbe(probePath, {circuitCmpId, timeout, ctx} = {}) {
     const probeObj = await new Probe(circuit).runCircuit(probePath,timeout)
 
     const result = {
-        circuitCmpId, probePath,
+        circuitCmpId : circuit, 
+        probePath,
         visits: probeObj.visits,
         totalTime: probeObj.totalTime,
         result: stripProbeResult(probeObj.result),

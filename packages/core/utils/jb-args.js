@@ -23,10 +23,6 @@ function jbCompProxy(jbComp) {
       get: (o, p) => {
         if (p == '$run')
             return (...args) => jbComp.runProfile(resolveProfileArgs(calcArgs(jbComp, args)))
-        if (p == '$resolve')
-          return (...args) => resolveProfileArgs(calcArgs(jbComp, args))
-        if (p == '$impl')
-          return jbComp.impl
     
         return p === asJbComp && jbComp
       },
@@ -42,7 +38,7 @@ function calcArgs(jbComp,$unresolvedArgs) {
   return { $: jbComp, $unresolvedArgs }
 }
 
-// function getInnerMacro(ns, innerId) {
+// function getInnerMacro(ns, innerId) { 
 //   return (...allArgs) => {
 //       const { args, system } = splitSystemArgs(allArgs)
 //       return { $: `${ns}.${innerId}`, 
