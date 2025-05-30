@@ -4,12 +4,12 @@ const { logCli, logError, logException } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext})
 
 async function runCliInContext(script, {cwd = ''} = {}) {
-    const isNode = !globalThis.document
-    if (isNode) {
-        return runNodeCli(script, {cwd})
-    } else {
-        return runCliInIframe(script, {cwd})
-    }
+  if (globalThis.jbVSCodeCli)
+    return jbVSCodeCli(script, {cwd})
+  else if (globalThis.document)
+    return runCliInIframe(script, {cwd})
+  else
+    return runNodeCli(script, {cwd})
 }
 
 async function runNodeCli(script, {cwd = ''} = {}) {

@@ -1,5 +1,6 @@
 const path            = require('path')
 const { pathToFileURL } = require('url')
+const { execFile } = require('child_process')
 
 async function activate(context, ...rest) {
   const vscode = require('vscode')
@@ -28,7 +29,7 @@ async function activate(context, ...rest) {
   globalThis.vscodeNS       = vscode
   globalThis.VSCodeRequire  = require
 
-  globalThis.calcImportMapsFromVSCodeExt = async () => {
+  globalThis.jbVSCodeCli = async (script, {cwd = ''} = {}) => {
     const { workspace, window } = vscode
     const folders = workspace.workspaceFolders
     if (!folders || folders.length === 0) {
@@ -37,7 +38,27 @@ async function activate(context, ...rest) {
     }
     const cwd = folders[0].uri.fsPath
     jbVSCodeLog('calc-import-map cwd:', cwd)
-    // embed the CLI script inline
+
+    return new Promise(resolve => execFile( process.execPath, ['--input-type=module', '-e', script], { cwd, encoding: 'utf8' },
+        (err, stdout, stderr) => {
+          if (stderr) jbVSCodeLog(stderr)
+          if (err) {
+            jbVSCodeLog(`CLI execution failed: ${stderr || err.message}`)
+            return resolve(null)
+          }
+          try {
+            const json = JSON.parse(stdout)
+            return resolve(json)
+          } catch (e) {
+            jbVSCodeLog(`Invalid JSON from CLI: ${stdout}`)
+            return resolve(null)
+          }
+        }
+      )
+    )
+  }
+
+  globalThis.calcImportMapsFromVSCodeExt = async () => {
     const inlineScript = `
   import { coreUtils } from '@jb6/core'
   ;(async()=>{
@@ -46,28 +67,9 @@ async function activate(context, ...rest) {
       process.stdout.write(JSON.stringify(result,null,2))
     } catch (e) {
       console.error(e)
-      process.exit(1)
     }
   })()`
-  
-    return new Promise((resolve, reject) => {
-      require('child_process').execFile( process.execPath, ['--input-type=module', '-e', inlineScript], { cwd, encoding: 'utf8' },
-        (err, stdout, stderr) => {
-          if (stderr) jbVSCodeLog(stderr)
-          if (err) {
-            window.showErrorMessage(`calc-import-map failed: ${stderr || err.message}`)
-            return reject(err)
-          }
-          try {
-            jbVSCodeLog('calc-import-map stdout:', stdout)
-            resolve(JSON.parse(stdout))
-          } catch {
-            window.showErrorMessage('Invalid JSON from calc-import-map')
-            reject(new Error('JSON parse error'))
-          }
-        }
-      )
-    })
+    return jbVSCodeCli(inlineScript)
   }
 
   channel.appendLine('🔄 jbart extension starting…')

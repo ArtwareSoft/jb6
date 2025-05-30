@@ -163,15 +163,15 @@ async function dataCompletions(compProps, path, ctx) {
     const input = { value, selectionStart }
     const { line, col } = offsetToLineCol(text, item.from - 1)
 
-    const extraCode = `
+    const inCompletionTest = ctx.jbCtx?.creatorStack?.find(x=> x && x.indexOf('completionTest') != -1)
+    const extraCode = inCompletionTest ? `
 const { test: { Test, test: { dataTest } } } = dsls
 ${text}
-`
+` : ''
+
     const probeObj = await runProbeCli(path, filePath, {ctx, extraCode })
     const suggestions = suggestionsOfProbe(probeObj, input, path) || []
 
-    // ctx.setData(input).setVars({ filePath, probePath: path }).calc(
-    //     {$: 'langServer.remoteProbe', sourceCode: {$: 'source-code<jbm>probeServer', filePath: '%$filePath%'}, probePath: '%$probePath%', expressionOnly: true })
     return (suggestions.options || []).map(option => {
         const { pos, toPaste, tail, text } = option
         const primiteVal = option.valueType != 'object'
