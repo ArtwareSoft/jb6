@@ -39,7 +39,7 @@ class suggestions {
     
     calcOptions(probeObj, path) {
       const probeCtx = new Ctx(probeObj.result?.[0]?.in || {})
-      const visits = probeObj.visits
+      const visits = probeObj.visits?.[probeObj.probePath]
       const circuitCmpId = probeObj.circuitCmpId.split('>').pop()
 
       let options = []

@@ -29,7 +29,7 @@ async function activate(context, ...rest) {
   globalThis.vscodeNS       = vscode
   globalThis.VSCodeRequire  = require
 
-  globalThis.jbVSCodeCli = async (script, {cwd = ''} = {}) => {
+  globalThis.jbVSCodeCli = async (script) => {
     const { workspace, window } = vscode
     const folders = workspace.workspaceFolders
     if (!folders || folders.length === 0) {
