@@ -3,12 +3,12 @@ import { coreUtils } from './core-utils.js'
 const { logCli, logError, logException } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext})
 
-async function runCliInContext(script, {cwd = '', ctx} = {}) {
+async function runCliInContext(script, {cwd = ''} = {}) {
     const isNode = !globalThis.document
     if (isNode) {
-        return runNodeCli(script, {cwd, ctx})
+        return runNodeCli(script, {cwd})
     } else {
-        return runCliInIframe(script, {ctx, cwd})
+        return runCliInIframe(script, {cwd})
     }
 }
 
@@ -34,7 +34,7 @@ async function runNodeCli(script, {cwd = ''} = {}) {
   }  
 }
 
-async function runNodeCliViaJbWebServer(script, {cwd = '', expressUrl = '', ctx} = {}) {
+async function runNodeCliViaJbWebServer(script, {cwd = '', expressUrl = ''} = {}) {
   const res = await fetch(`${expressUrl}/run-cli`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -51,7 +51,7 @@ async function runNodeCliViaJbWebServer(script, {cwd = '', expressUrl = '', ctx}
   return result
 }
 
-async function runCliInIframe(userScript, {ctx, cwd} = {}) {
+async function runCliInIframe(userScript, {cwd} = {}) {
   const cliId = 'cli_' + Math.random().toString(36).slice(2)
 
   return new Promise( resolve => {

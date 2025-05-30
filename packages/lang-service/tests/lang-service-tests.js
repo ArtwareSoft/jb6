@@ -285,7 +285,7 @@ Test('completionTest.people', {
   })
 })
 
-/*
+
 Test('completionTest.person', {
   impl: completionOptionsTest(`dataTest('%$__')`, {
     expectedSelections: ['$person (4 props)']
@@ -331,45 +331,6 @@ Test('completionTest.writePreviewValue', {
     expectedCursorPos: '1,39'
   })
 })
-*/
-/*
-Test('completionTest.dslTest.createProp', {
-  impl: completionActionTest(`state(__)`, {
-    completionToActivate: 'capital',
-    expectedEdit: asIs({range: {start: {line: 1, col: 14}, end: {line: 1, col: 14}}, newText: 'TBD()'}),
-    expectedCursorPos: '1,14',
-    dsl: 'location'
-  })
-})
-
-Test('completionTest.dslTest.nameOverride', {
-  impl: completionOptionsTest(`state(pipeline(__))`, {
-    expectedSelections: ['checkNameOverride'],
-    dsl: 'location'
-  })
-})
-
-Test('completionTest.dslTest.top', {
-  impl: completionOptionsTest(`state(__)`, {
-    expectedSelections: ['capital'],
-    dsl: 'location'
-  })
-})
-
-Test('completionTest.dslTest.typeRules', {
-  impl: completionOptionsTest(`Test('x', {\n  type: 'data',\n  impl: pipeline('__')\n})`, ['split'], {
-    dsl: 'location'
-  })
-})
-
-Test('completionTest.dslTest.defaultValue', {
-  impl: completionOptionsTest({
-    compText: `Test('x', {\n  type: 'data<common>',\n  params: [\n    {id: 'p1', type: 'state<location>', defaultValue: __israel()}\n  ]\n})`,
-    expectedSelections: ['israel2'],
-    filePath: '/plugins/core/dsl-tests.js'
-  })
-})
-*/
 
 Test('completionTest.multiLine', {
   impl: completionActionTest({
