@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <base href="/">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="./images/wonder-tests.svg">
 <link rel="icon" href="./jbart-tests.png" type="image/png">
+<script src="./3rd-party/react-18-umd/react.development.js"></script>
+<script src="./3rd-party/react-18-umd/react-dom.development.js"></script>
+
 <style>
 	.test-button { opacity: 0 }
 	.test-button:hover { opacity: 1 }
@@ -28,16 +33,11 @@
     const urlQuery = prop => new URLSearchParams(location.search).get(prop)
 
     await loadJbImportMap()
-    const { coreUtils } = await import('@jb6/core')
     const { runTests } = await import('@jb6/testing')
     const { spy } = await import('@jb6/testing/spy.js')
-    const modulePath = urlQuery('modulePath') || '@jb6/testing/all-jb6-tests.js'
+    const modulePath = urlQuery('modulePath') || '/packages/genie/tests/basic-tests.js'
     console.log('modulePath', modulePath)
     await import(modulePath)
-
-    // show: urlQuery('show') != null,
-    //     showOnly: urlQuery('showOnly') != null,
-    // onlyTest: urlQuery('show') == 'onlyTest',
 
     const params = { 
         specificTest: urlQuery('test'),
@@ -45,19 +45,7 @@
         ...Object.fromEntries(['pattern','take'].map(x=>[x,urlQuery(x)]))
     }
     spy.initSpyByUrl()
-    if (urlQuery('probe')) {
-      const { waitForReact, reactUtils } = await import('@jb6/react')
-      const { h } = reactUtils
-      waitForReact() // start loading react
-      const { } = await import('@jb6/core/utils/probe.js')
-      const { runProbeCli } = coreUtils
-      const probeRes = await runProbeCli(urlQuery('probe'), urlQuery('entryPoint') || modulePath)
-      await waitForReact()
-      const { probeResultView } = await import('./probe-ui.js')
-      ReactDOM.createRoot(show).render(h(probeResultView,{probeRes}))
-    } else {
-      runTests(params)
-    }
+    runTests(params)
   </script>
 </body>
 </html>

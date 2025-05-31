@@ -2,21 +2,15 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="./jbart-tests.png" type="image/png">
+<script type="importmap">
+  VS_CODE_IMPORT_MAP
+</script>
+<link rel="icon" href="@jb6/testing/jbart-tests.png" type="image/png">
 <style>
 	.test-button { opacity: 0 }
 	.test-button:hover { opacity: 1 }
 </style>
 
-<script>
-  async function loadJbImportMap() {
-    const map = await fetch('/import-map.json').then(r => r.json())
-    const s = document.createElement('script')
-    s.type = 'importmap'
-    s.textContent = JSON.stringify(map,null,2)
-    document.head.append(s)
-  }
-</script>
 </head>
 <body>
 	<div id="remoteTests"> </div>
@@ -25,26 +19,15 @@
 	<div id="testElem"> </div>
 	<div id="show"> </div>
  <script type="module">
-    const urlQuery = prop => new URLSearchParams(location.search).get(prop)
+    const query_params = QUERY_PARAMS_JSON
+    const urlQuery = prop => query_params[prop]
 
-    await loadJbImportMap()
     const { coreUtils } = await import('@jb6/core')
     const { runTests } = await import('@jb6/testing')
-    const { spy } = await import('@jb6/testing/spy.js')
-    const modulePath = urlQuery('modulePath') || '@jb6/testing/all-jb6-tests.js'
+    const modulePath = urlQuery('modulePath') || '/all-tests.js'
     console.log('modulePath', modulePath)
     await import(modulePath)
 
-    // show: urlQuery('show') != null,
-    //     showOnly: urlQuery('showOnly') != null,
-    // onlyTest: urlQuery('show') == 'onlyTest',
-
-    const params = { 
-        specificTest: urlQuery('test'),
-        notPattern: urlQuery('not'),
-        ...Object.fromEntries(['pattern','take'].map(x=>[x,urlQuery(x)]))
-    }
-    spy.initSpyByUrl()
     if (urlQuery('probe')) {
       const { waitForReact, reactUtils } = await import('@jb6/react')
       const { h } = reactUtils
@@ -56,6 +39,11 @@
       const { probeResultView } = await import('./probe-ui.js')
       ReactDOM.createRoot(show).render(h(probeResultView,{probeRes}))
     } else {
+      const params = { 
+        specificTest: urlQuery('test'),
+        notPattern: urlQuery('not'),
+        ...Object.fromEntries(['pattern','take'].map(x=>[x,urlQuery(x)]))
+      }
       runTests(params)
     }
   </script>

@@ -1,5 +1,8 @@
 import { coreUtils, dsls, ns } from '@jb6/core'
 import { langServiceUtils } from '@jb6/lang-service'
+import {} from '@jb6/core/utils/probe.js'
+import { readFile } from 'fs/promises'
+
 const { jb, logError, asArray, log, Ctx } = coreUtils
 const { calcHash, closestComp, applyCompChange } = langServiceUtils
 const { langService } = ns
@@ -135,6 +138,18 @@ async function moveInArray(diff) {
     cursorPos && host().selectRange(cursorPos)
 }
 
+let testingHtmlTemplate = null
+async function getTestingHtmlTemplate() {
+    if (!testingHtmlTemplate) {
+        const importmap = await calcImportMapsFromVSCodeExt()
+        const jbTestingDir = importmap.imports['@jb6/testing']
+        testingHtmlTemplate = await readFile(`${jbTestingDir}/tests-in-vscode.html`,'utf-8')
+        testingHtmlTemplate = testingHtmlTemplate.replace('VS_CODE_IMPORT_MAP', JSON.stringify(importmap,null,2))
+    }
+    return testingHtmlTemplate
+}
+
+const panels = {}
 export const commands = {
     async applyCompChangeOfCompletionItem(item) {
         const editAndCursor = item.edit ? item : await langService.editAndCursorOfCompletionItem.$run({item})
@@ -147,34 +162,33 @@ export const commands = {
         return moveInArray(1)
     },
 
-    // async openProbeResultEditor() { // ctrl-I
-    //     vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows')
-    //     const compProps = await jb.calc(langService.calcCompProps()) // IMPORTANT - get comp props here. opening the view will change the current editor
-    //     if (!jb.vscode.panels.inspect) {
-    //         jb.vscode.panels.inspect = {}
-    //         const panel = jb.vscode.panels.inspect.panel = vscodeNS.window.createWebviewPanel('jbart.inpect', 'inspect', vscodeNS.ViewColumn.Two, { enableScripts: true })
-    //         panel.onDidDispose(() => { 
-    //             delete jb.vscode.panels.inspect
-    //             delete jb.jbm.childJbms.vscode_inspect
-    //         })
-    //         jb.vscode.panels.inspect.jbm = await jb.exec(jbm.start(vscodeWebView({ id: 'vscode_inspect', panel: () => panel})))
-    //     }
-    //     const probeRes = await new Ctx({data: compProps}).run(langServer.probe()) || { compProps, errors: ['null probe res']}
-    //     probeRes.$$asIs = true
-    //     probeRes.badFormat = (probeRes.errors || []).find(x=>x.err == 'reformat edits') && true
-
-    //     return new Ctx({data: probeRes}).run(
-    //         remote.action(renderWidget({$: 'probeUI.probeResViewForVSCode', probeRes: '%%'}, '#main'), ()=> jb.vscode.panels.inspect.jbm))
-    // },
+    async openProbeResultEditor() { // ctrl-I
+        vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows')        
+        const compProps = await langService.calcCompProps.$run() // IMPORTANT - get comp props here. opening the view will change the current editor
+        if (!panels.inspect) {
+            panels.inspect = vscodeNS.window.createWebviewPanel('jbart.inpect', 'inspect', vscodeNS.ViewColumn.Two, { enableScripts: true })
+            panels.inspect.onDidDispose(() => { delete panels.inspect })
+        }
+        const { path, filePath } = compProps
+        const queryParams = {
+            probe: path,
+            modulePath: filePath
+        }
+     
+        const probeResultTemplate = await getTestingHtmlTemplate()
+        const html = probeResultTemplate.replace('QUERY_PARAMS_JSON', JSON.stringify(queryParams) + ';debugger;')
+        vsCodelog(html)
+        panels.inspect.webview.html = 'hello'
+    },
 
     visitLastPath() { // ctrl-Q
 //        jb.tgpTextEditor.visitLastPath()
     },
 
     closeProbeResultEditor() { // ctrl-shift-I
-        // delete jb.vscode.panels.inspect
+        delete panels.inspect
         // delete jb.jbm.childJbms.vscode_inspect
-        // vscodeNS.commands.executeCommand('workbench.action.editorLayoutSingle')
+        vscodeNS.commands.executeCommand('workbench.action.editorLayoutSingle')
     },
 
     openLiveProbeResultPanel() {

@@ -2,7 +2,7 @@
   "name": "jb6-tgp-lang",
   "displayName": "jb6 TGP Language",
   "description": "TGP language service and probe activation",
-  "version": "2505.30.3",
+  "version": "2505.31.6",
   "publisher": "artwaresoft",
   "license": "MIT",
   "engines": {
@@ -17,9 +17,13 @@
     "onLanguage:javascript"
   ],
   "dependencies": {
-    "@jb6/repo": "file:../../packages/repo",
-    "@jb6/core": "file:lib/jb6-core-1.250530.0.tgz",
-    "@jb6/lang-service": "file:lib/jb6-lang-service-1.250530.0.tgz"
+    "@jb6/repo": "file:lib/jb6-repo-1.0.0.tgz",
+    "@jb6/core": "file:lib/jb6-core-1.250531.0.tgz",
+    "@jb6/lang-service": "file:lib/jb6-lang-service-1.250531.0.tgz",
+    "@jb6/react": "file:lib/jb6-react-1.250531.0.tgz",
+    "@jb6/testing": "file:lib/jb6-testing-1.250531.0.tgz",
+    "@jb6/common": "file:lib/jb6-common-1.250531.0.tgz",
+    "@jb6/server-utils": "file:lib/jb6-server-utils-1.250531.0.tgz"
   },
   "scripts": {},
   "main": "csj-starter.js",
@@ -126,32 +130,7 @@
       },
       {
         "command": "jbart.openProbeResultEditor",
-        "key": "ctrl+I",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "jbart.closeProbeResultEditor",
-        "key": "ctrl+Shift+I",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "jbart.openProbeResultPanel",
-        "key": "ctrl+U",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "jbart.openjBartStudio",
         "key": "ctrl+J",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "jbart.openjBartTest",
-        "key": "ctrl+Shift+J",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "jbart.openLastCmd",
-        "key": "ctrl+Alt+J",
         "when": "editorTextFocus"
       },
       {

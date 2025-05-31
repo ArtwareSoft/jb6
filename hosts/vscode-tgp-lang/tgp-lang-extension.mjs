@@ -8,7 +8,8 @@ const { logException } = coreUtils
 export async function doActivate(context) {
 
     // 'openProbeResultPanel','openjBartStudio','openProbeResultEditor','closeProbeResultEditor'
-    ;['moveUp','moveDown','openjBartTest','visitLastPath','delete','duplicate','applyCompChangeOfCompletionItem']
+    ;['moveUp','moveDown','openjBartTest','visitLastPath','delete','duplicate','applyCompChangeOfCompletionItem'
+        ,'openProbeResultEditor','closeProbeResultEditor']
             .forEach(cmd => vscodeNS.commands.registerCommand(`jbart.${cmd}`, commands[cmd]))
     
 

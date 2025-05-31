@@ -108,9 +108,9 @@ Data('langService.definition', {
 
 Data('langService.calcCompProps', {
   params: [
-    {id: 'includeCircuitOptions', as: 'boolean', type: 'boolean<common>', byName: true}
+    {id: 'compTextAndCursor', defaultValue: '%%'}
   ],
-  impl: (ctx,{includeCircuitOptions}) => calcCompProps(ctx,{includeCircuitOptions})
+  impl: (ctx, { compTextAndCursor }) => calcCompProps(compTextAndCursor)
 })
 
 Data('langService.editAndCursorOfCompletionItem', {

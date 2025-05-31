@@ -1,6 +1,6 @@
 import { parse } from '../lib/acorn.mjs'
 import { dsls, coreUtils } from '@jb6/core'
-const { jb, astNode, asJbComp, logError, calcImportMap } = coreUtils
+const { jb, astNode, asJbComp, logError, importMapByEnv, resolveWithImportMap, fetchByEnv, logByEnv } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -8,68 +8,13 @@ const {
 
 Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 
-function log(...args) {
-  if (globalThis.jbVSCodeLog)
-    globalThis.jbVSCodeLog(...args)
-  else
-    console.log(...args)
-}
-
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
 
-async function importMap() {
-  if (globalThis.calcImportMapsFromVSCodeExt) {
-    debugger
-    return calcImportMapsFromVSCodeExt()
-  } else if (globalThis.window) {
-    return fetch('/import-map.json').then(r=>r.json())
-  } else { // node
-    return calcImportMap()
-  }
-}
-
-function resolveWithImportMap(specifier, { imports, dirEntriesToServe }) {
-  let winner = ''               // longest matching key
-  for (const key in imports) {
-    if (
-      (specifier === key || specifier.startsWith(key)) &&
-      key.length > winner.length
-    ) {
-      winner = key
-    }
-  }
-  if (!winner) return specifier   // no mapping → leave untouched
-
-  const target = imports[winner]
-  const rest   = specifier.slice(winner.length) // part after the prefix
-  const urlToBeServed = target.endsWith('/') ? target + rest : target
-  const dirEntry = (dirEntriesToServe || []).find(({dir}) => urlToBeServed.startsWith(`/packages/${dir}`))
-  if (dirEntry) {
-    const restPath = urlToBeServed.slice(`/packages/${dirEntry.dir}`.length)
-    return pathJoin(dirEntry.pkgDir, restPath)
-  }
-  return urlToBeServed
-
-  function pathJoin(a, b) {
-    return `${a.replace(/\/+$/, '')}/${b.replace(/^\/+/, '')}`;
-  }
-}
-
-async function doFetch(url) {
-  if (globalThis.window) {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`fetch ${url} → ${res.status}`)
-    return await res.text()
-  }
-  const { readFile } = await import('fs/promises')
-  return await readFile(url, 'utf8')
-}
-
 export async function calcTgpModelData({ filePath }) {
-  log('calcTgpModelData', filePath)
+  logByEnv('calcTgpModelData', filePath)
   if (!filePath) return {}
-  const _importMap = await importMap()
+  const _importMap = await importMapByEnv()
   const codeMap = {}
   const visited = {}  // urls seen
 
@@ -80,7 +25,7 @@ export async function calcTgpModelData({ filePath }) {
     let rUrl = ''
     try {
       rUrl = resolveWithImportMap(url, _importMap)
-      const src = await doFetch(rUrl)
+      const src = await fetchByEnv(rUrl)
       codeMap[url] = src
 
       const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
@@ -95,7 +40,7 @@ export async function calcTgpModelData({ filePath }) {
 
       await Promise.all(imports.map(url => crawl(url)))
     } catch (e) {
-      log('imports error', rUrl, url, e)
+      logByEnv('imports error', rUrl, url, e)
       console.error(`Error crawling ${url}:`, e)
     }
   })(filePath)
@@ -103,9 +48,9 @@ export async function calcTgpModelData({ filePath }) {
   const tgpModel = {dsls: {}, ns: {}, typeRules: [], files: Object.keys(visited)}
   const {dsls, typeRules} = tgpModel
 
-//  log('codeMap', Object.keys(codeMap))
+//  logByEnv('codeMap', Object.keys(codeMap))
   // 2) Phase 1: find all `... = TgpType(...)`
-  log('codeMap', Object.entries(codeMap).map(([url, src]) => ({url, src: src.slice(0, 100)})))
+  logByEnv('codeMap', Object.entries(codeMap).map(([url, src]) => ({url, src: src.slice(0, 100)})))
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
@@ -159,7 +104,7 @@ export async function calcTgpModelData({ filePath }) {
     typeRules.push(... declarations.filter(decl=>decl.id.name == 'typeRules').flatMap(decl=>astToObj(decl.init)))
   })
 
-  log('tgp model data', tgpModel)
+  logByEnv('tgp model data', tgpModel)
 
   return tgpModel
 

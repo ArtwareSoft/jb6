@@ -1,7 +1,61 @@
 import { coreUtils } from './core-utils.js'
 
 const { logCli } = coreUtils
-coreUtils.calcImportMap = calcImportMap
+Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, importMapByEnv, fetchByEnv, logByEnv })
+
+function logByEnv(...args) {
+  if (globalThis.jbVSCodeLog)
+    globalThis.jbVSCodeLog(...args)
+  else
+    console.log(...args)
+}
+
+async function fetchByEnv(url) {
+  if (globalThis.window) {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`fetch ${url} → ${res.status}`)
+    return await res.text()
+  }
+  const { readFile } = await import('fs/promises')
+  return await readFile(url, 'utf8')
+}
+
+async function importMapByEnv() {
+  if (globalThis.calcImportMapsFromVSCodeExt) {
+    return calcImportMapsFromVSCodeExt()
+  } else if (globalThis.window) {
+    return fetch('/import-map.json').then(r=>r.json())
+  } else { // node
+    return calcImportMap()
+  }
+}
+
+function resolveWithImportMap(specifier, { imports, dirEntriesToServe }) {
+  let winner = ''               // longest matching key
+  for (const key in imports) {
+    if (
+      (specifier === key || specifier.startsWith(key)) &&
+      key.length > winner.length
+    ) {
+      winner = key
+    }
+  }
+  if (!winner) return specifier   // no mapping → leave untouched
+
+  const target = imports[winner]
+  const rest   = specifier.slice(winner.length) // part after the prefix
+  const urlToBeServed = target.endsWith('/') ? target + rest : target
+  const dirEntry = (dirEntriesToServe || []).find(({dir}) => urlToBeServed.startsWith(`/packages/${dir}`))
+  if (dirEntry) {
+    const restPath = urlToBeServed.slice(`/packages/${dirEntry.dir}`.length)
+    return pathJoin(dirEntry.pkgDir, restPath)
+  }
+  return urlToBeServed
+
+  function pathJoin(a, b) {
+    return `${a.replace(/\/+$/, '')}/${b.replace(/^\/+/, '')}`;
+  }
+}
 
 async function calcImportMap() {
   const devMode  = await isJB6Dev()
