@@ -160,15 +160,12 @@ async function getHtmlTemplate(templateId, filePath, webview) {
 
         const header = csp + `\n<script nonce="NONCE" type="importmap">${JSON.stringify(importmap,null,2)}\n</script>`
         const reactBase = convertFilePathToVSCode(resolveWithImportMap('@jb6/react/lib', studioImportMap), webview)
-        const PROJECT_IMPORT_MAP_JSON = JSON.stringify(convertImportMapToVSCode(projectImportMap, webview),null,2)
         return template.replace('VSCODE_HEADER', header).replace(/NONCE/g, nonce).replace(/REACT_BASE/g, reactBase)
-            .replace(/PROJECT_IMPORT_MAP_JSON/g, PROJECT_IMPORT_MAP_JSON)
 }
 
 function  convertFilePathToVSCode(path, webview){
     const diskUri = vscodeNS.Uri.file(path)
-    const webviewUri = webview.asWebviewUri(diskUri).toString()
-    return webviewUri + (path.endsWith('/') ? '/' : '')
+    return webview.asWebviewUri(diskUri).toString()
 }
 
 function convertImportMapToVSCode(rawMap, webview) {
@@ -194,20 +191,22 @@ export const commands = {
     },
 
     async openProbeResultEditor() { // ctrl-I
-        vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows')        
+        vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows') 
         const compProps = await langService.calcCompProps.$run() // IMPORTANT - get comp props here. opening the view will change the current editor
         if (!panels.inspect) {
-            panels.inspect = vscodeNS.window.createWebviewPanel('jbart.inpect', 'inspect', vscodeNS.ViewColumn.Two, { enableScripts: true })
+            panels.inspect = vscodeNS.window.createWebviewPanel('jbart.inpect', 'inspect', vscodeNS.ViewColumn.Two, { 
+                enableScripts: true,
+                localResourceRoots: [VSCodeWorkspaceProjectRoot,VSCodeStudioExtensionRoot,VSCodeStudioExtensionRootLinked]
+                    .map(x=>vscodeNS.Uri.file(x))
+            })
             panels.inspect.onDidDispose(() => { delete panels.inspect })
         }
         const { path, filePath } = compProps
-        const queryParams = {
-            probe: path,
-            modulePath: convertFilePathToVSCode(filePath, panels.inspect.webview)
-        }
      
         const probeResultTemplate = await getHtmlTemplate('probe', filePath, panels.inspect.webview)
-        const html = probeResultTemplate.replace('QUERY_PARAMS_JSON', JSON.stringify(queryParams))
+        const projectRoot = VSCodeWorkspaceProjectRoot
+        const probeRes = await coreUtils.runProbeCli(path, filePath, {importMap: {projectRoot}})
+        const html = probeResultTemplate.replace('PROBE_RES', JSON.stringify(probeRes))
         vsCodelog(html)
         panels.inspect.webview.html = html
     },

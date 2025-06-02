@@ -14,7 +14,7 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 export async function calcTgpModelData({ filePath }) {
   logByEnv('calcTgpModelData', filePath)
   if (!filePath) return {}
-  const { studioImportMap, projectImportMap } = await studioAndProjectImportMaps(filePath)
+  const { projectImportMap } = await studioAndProjectImportMaps(filePath)
   const codeMap = {}
   const visited = {}  // urls seen
 
@@ -22,19 +22,10 @@ export async function calcTgpModelData({ filePath }) {
   await (async function crawl(url) {
     if (visited[url]) return
     visited[url] = true
-    let rUrl = '', src = ''
+    let rUrl = ''
     try {
-      rUrl = resolveWithImportMap(url, projectImportMap)
-      if (rUrl) {
-        src = await fetchByEnv(rUrl, projectImportMap.serveEntries)
-      } else {
-        rUrl = resolveWithImportMap(url, studioImportMap)
-        if (rUrl) {
-          src = await fetchByEnv(rUrl, studioImportMap.serveEntries)
-        } else {
-          src = await fetchByEnv(url, projectImportMap.serveEntries)
-        }
-      }
+      rUrl = resolveWithImportMap(url, projectImportMap) || url
+      const src = await fetchByEnv(rUrl, projectImportMap.serveEntries)
       codeMap[url] = src
 
       const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })

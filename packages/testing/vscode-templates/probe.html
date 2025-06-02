@@ -24,22 +24,15 @@ VSCODE_HEADER
 	<div id="show"> </div>
   <script nonce="NONCE" type="module">
     async function run() {
-      debugger
-      const query_params = QUERY_PARAMS_JSON
-      const projectImportMap = PROJECT_IMPORT_MAP_JSON
-      const urlQuery = prop => query_params[prop]
-  
+      const probeRes = PROBE_RES
       const { coreUtils } = await import('@jb6/core')
-      const { } = await import('@jb6/core/utils/probe.js')
-      const { runProbeCli } = coreUtils
+  
       const { reactUtils } = await import('@jb6/react')
-      const { probeResultView } = await import('./probe-ui.js')
+      const { probeResultView } = await import('@jb6/testing/probe-ui.js')
       const { h } = reactUtils
+      console.log(h)
 
-      const probeRes = await runProbeCli(
-          urlQuery('probe') || 'test<test>myTests.HelloWorld~impl~expectedResult', 
-          urlQuery('entryPoint') || '/hosts/test-project/my-test.js', {importMap: projectImportMap})
-      ReactDOM.createRoot(show).render(h(probeResultView,{probeRes}))
+      ReactDOM.createRoot(document.getElementById('show')).render(h(probeResultView,{probeRes}))
     }
     globalThis.run = run
     document.getElementById('run-tests-button').addEventListener('click', run)

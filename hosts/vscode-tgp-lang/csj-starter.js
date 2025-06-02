@@ -1,9 +1,7 @@
 const path            = require('path')
 const { pathToFileURL } = require('url')
 const { execFile } = require('child_process')
-const realRequire = eval('require')
-const { createRequire } = realRequire('module')
-
+const { realpath } = require('fs/promises')
 
 async function activate(context, ...rest) {
   const vscode = require('vscode')
@@ -12,6 +10,8 @@ async function activate(context, ...rest) {
   context.subscriptions.push(channel)
 
   globalThis.VSCodeStudioExtensionRoot = context.extensionPath
+  globalThis.VSCodeStudioExtensionRootLinked = path.dirname(await realpath(VSCodeStudioExtensionRoot + '/node_modules/@jb6/repo'))
+
   const folders = workspace.workspaceFolders
   globalThis.VSCodeWorkspaceProjectRoot = folders?.[0]?.uri.fsPath
 
@@ -35,10 +35,8 @@ async function activate(context, ...rest) {
     ).join(' '))
     
   globalThis.vscodeNS       = vscode
-  globalThis.VSCodeRequire  = require
 
   globalThis.requireResolve = path => require.resolve(path)
-  globalThis.VSCodeCreateRequire = createRequire
 
   // globalThis.jbVSCodeCli = async (script, {importMap} = {}) => {
   //   const cwd = VSCodeWorkspaceProjectRoot || '' // todo check importmap to run in studio root (no case yet)

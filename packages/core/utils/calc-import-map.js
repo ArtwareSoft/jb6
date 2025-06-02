@@ -35,7 +35,7 @@ async function studioAndProjectImportMaps(filePath) {
 
   return { 
       studioImportMap: await calcImportMapOfRepoRoot(studioRoot, { servingRoot: repoRoot }), 
-      projectImportMap: {projectRoot, ...await calcImportMapOfRepoRoot(projectRoot, { servingRoot: repoRoot, includeTesting: true, useCli: globalThis.VSCodeStudioExtensionRoot }) },
+      projectImportMap: {projectRoot, ...await calcImportMapOfRepoRoot(projectRoot, { servingRoot: repoRoot, includeTesting: true }) },
     }
 }
 
@@ -108,73 +108,52 @@ async function calcImportMap() {
   }
 }
 
-async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTesting, useCli } = {}) {
-  if (useCli) {
+async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTesting } = {}) {
+  if (globalThis.VSCodeStudioExtensionRoot) {
     return await calcImportMapOfRepoRootCli(repoRoot, { servingRoot, includeTesting })
   }
-  let { createRequire } = await import('module')
-  const { readFile } = await import('fs/promises')
+  const { readFile, realpath } = await import('fs/promises')
   const path = await import('path')
-  const root_pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
-  const rootPkgName = root_pkg.name
-  const serveEntries = root_pkg.serveEntries || []
-  const packages = await discoverPkgNames(repoRoot)
-  const requirePkg = createRequire(repoRoot)
-  const relativeServingRoot = repoRoot.replace(servingRoot, '')
-  const rootPkgId = rootPkgName.split('@jb6/').pop()
-  //serveEntries.push({dir: rootPkgId, pkgDir: repoRoot})
-  const rootEntry = rootPkgName.indexOf('@jb6') == 0 
-    ? [`${rootPkgName}/`, `/packages/${rootPkgId}/`] 
-    : [`${rootPkgName}/`, relativeServingRoot]
-  const imports = Object.fromEntries([rootEntry, ...packages.flatMap(name => {
-      const pkgId    = `@jb6/${name}`
+  const { createRequire } = await import('module')
+
+  const serveEntries = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8')).serveEntries || []
+
+  const packages = {}
+  const visited = new Set()
+  await crawl(repoRoot)
+
+  const imports = Object.fromEntries(Object.entries(packages).flatMap(([pkgId, {pkgDir, pkgPath}]) => {
+      const localDir = pkgDir.replace(servingRoot,'')
+      serveEntries.push({dir: localDir, pkgDir, pkgId})
+      return [
+        [ pkgId,  pkgPath.replace(servingRoot,'')],
+        [`${pkgId}/`, `${localDir}/`]
+      ]
+    }))
+        
+  return { imports, serveEntries }
+
+  async function crawl(dir) {
+    if (visited.has(dir)) return
+    visited.add(dir)
+    const pkg = JSON.parse(await readFile(path.join(dir, 'package.json'), 'utf8'))
+    const dependencies = [...Object.keys(pkg.dependencies || {}), 
+      ...Object.keys(pkg.devDependencies || {}),
+      ...(dir == repoRoot && includeTesting ? ['@jb6/testing'] : [])].filter(d=>d.startsWith('@jb6/'))
+    const localCreateRequire = createRequire(path.join(dir, 'package.json'))
+    const resolved = Object.fromEntries(dependencies.flatMap(d=>{ 
       try {
-        const pkgDir = path.dirname(requirePkg.resolve(pkgId))
-        serveEntries.push({dir: `/packages/${name}`, pkgDir, pkgId})
+        return [[d,localCreateRequire.resolve(d)]]
       } catch (e) {
-        logCli(`calcImportMapOfRepoRoot: Can not find module ${pkgId} in ${repoRoot}/package.json`)
+        console.error(`Error resolving ${d} in ${dir}`, e)
         return []
       }
-      // mount this package
-      return [
-        [`${pkgId}`,  `/packages/${name}/index.js`],
-        [`${pkgId}/`,  `/packages/${name}/`]
-      ]
-    })
-  ])
-  const res = { imports, serveEntries }
-//  logCli('client mode: calcImportMap', res)
-  return res
-
-  async function discoverPkgNames(root) {
-    const seen = new Set()
-  
-    async function crawl(dir) {
-      const pkg = JSON.parse(await readFile(path.join(dir, 'package.json'), 'utf8'))
-      const localRequire = createRequire(dir)
-      for (const t of ['dependencies', 'devDependencies'])
-        for (const full of Object.keys(pkg[t] || {}))
-          if (full.startsWith('@jb6/')) {
-            const name = full.slice(5)
-            if (!seen.has(name)) {
-              seen.add(name)
-              try {
-                const pkgDir = path.dirname(localRequire.resolve(full)) // look in node_modules
-                await crawl(pkgDir)
-              } catch (e) {
-                logCli(`discoverPkgNames: Can not find module ${full} in ${dir}/package.json under ${root}`, e)
-              }
-            }
-          }
-    }
-  
-    await crawl(root)
-    if (includeTesting && !seen.has('testing')) {
-      seen.add('testing')
-      const pkgDir = path.dirname(createRequire(root).resolve('@jb6/testing'))
+    }))
+    await Promise.all(Object.entries(resolved).map( async ([pkgId, pkgPath]) => {
+      const pkgDir = await realpath(path.dirname(pkgPath))
+      packages[pkgId] = {pkgDir, pkgPath}
       await crawl(pkgDir)
-    }
-    return [...seen]
+    }))
   }
 }
 
@@ -193,9 +172,9 @@ async function calcImportMapOfRepoRootCli(repoRoot, { servingRoot = '', includeT
 
   logCli(`node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`)
 
-  return runCliInContext(script, {importMap : {projectRoot: repoRoot}})
+  const res = await runCliInContext(script, {importMap : {projectRoot: repoRoot}})
+  return res
 }
-
 
 async function calcRepoRoot() {
   const { execSync } = await import('child_process')

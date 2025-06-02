@@ -102,6 +102,7 @@ async function runCliInIframe(script, {importMap} = {}) {
       </head>
       <body>
         <script type="module">
+            debugger;
             ${script}
         </script>
       </body>

@@ -53,7 +53,7 @@ export const probeResultView = ({probeRes}) => {
             h('div', {},
               h('div:flex items-center gap-1 mb-1', {},
                 h('span:font-medium text-gray-600', {}, 'In:'),
-                result.in.data.length > 30 && h('button:text-blue-600 text-xs', {
+                result.in.data?.length > 30 && h('button:text-blue-600 text-xs', {
                   onClick: () => handleInputFocus(index)
                 }, focusedInput === index ? 'hide' : 'focus')
               ),

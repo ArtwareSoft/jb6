@@ -7,9 +7,6 @@
     "./express-testing-utils.js": "./express-testing-utils.js",
     "./*": "./*"
   },
-  "files": [
-    "*.*"
-  ],
   "scripts": {},
   "dependencies": {
     "@jb6/core": "1.250531.3",
