@@ -1,4 +1,5 @@
-import { jb, coreUtils } from './core-utils.js'
+import { jb } from './core-utils.js'
+const { coreUtils } = jb
 const { logError } = coreUtils
 
 const isMacro = Symbol.for('isMacro')

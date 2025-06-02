@@ -3,7 +3,7 @@ import { langServiceUtils } from '@jb6/lang-service'
 import {} from '@jb6/core/utils/probe.js'
 import { readFile } from 'fs/promises'
 
-const { jb, logError, asArray, log, Ctx } = coreUtils
+const { jb, logError, asArray, log, Ctx, resolveWithImportMap, studioAndProjectImportMaps } = coreUtils
 const { calcHash, closestComp, applyCompChange } = langServiceUtils
 const { langService } = ns
 
@@ -139,14 +139,47 @@ async function moveInArray(diff) {
 }
 
 let testingHtmlTemplate = null
-async function getTestingHtmlTemplate() {
+async function getTestingHtmlTemplate(filePath, webview) {
     if (!testingHtmlTemplate) {
-        const importmap = await calcImportMapsFromVSCodeExt()
-        const jbTestingDir = importmap.imports['@jb6/testing']
-        testingHtmlTemplate = await readFile(`${jbTestingDir}/tests-in-vscode.html`,'utf-8')
-        testingHtmlTemplate = testingHtmlTemplate.replace('VS_CODE_IMPORT_MAP', JSON.stringify(importmap,null,2))
+        const { studioImportMap, projectImportMap } = await studioAndProjectImportMaps(filePath)
+        const importmap = convertImportMapToVSCode(_importmap, webview)
+        const path = requireResolve('@jb6/testing/tests-in-vscode.html')
+        testingHtmlTemplate = await readFile(path,'utf-8')
+
+        const nonce = [...Array(16)].map(() => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.random() * 62 | 0)).join('')
+
+        const csp = `
+        <meta http-equiv="Content-Security-Policy"
+                content="
+                default-src 'none';
+                script-src 'nonce-${nonce}' ${webview.cspSource};
+                style-src  ${webview.cspSource} 'unsafe-inline';
+                img-src    'self' ${webview.cspSource} data:;
+                worker-src ${webview.cspSource} blob:;
+                connect-src ${webview.cspSource};
+                ">
+        `
+
+        const header = csp + `\n<script nonce="NONCE" type="importmap">${JSON.stringify(importmap,null,2)}\n</script>`
+        const reactBase = convertFilePathToVSCode(resolveWithImportMap('@jb6/react/lib', _importmap), webview)
+        testingHtmlTemplate = testingHtmlTemplate.replace('VSCODE_HEADER', header).replace(/NONCE/g, nonce).replace(/REACT_BASE/g, reactBase)
     }
     return testingHtmlTemplate
+}
+
+function  convertFilePathToVSCode(path, webview){
+    const diskUri = vscodeNS.Uri.file(path)
+    const webviewUri = webview.asWebviewUri(diskUri).toString()
+    return webviewUri + (path.endsWith('/') ? '/' : '')
+}
+
+function convertImportMapToVSCode(rawMap, webview) {
+    const fixed = {}
+    for (const specifier in rawMap.imports) {
+        const onDiskOrUrl = resolveWithImportMap(specifier, rawMap)
+        fixed[specifier] = convertFilePathToVSCode(onDiskOrUrl, webview)
+    }
+    return { imports: fixed }
 }
 
 const panels = {}
@@ -172,13 +205,13 @@ export const commands = {
         const { path, filePath } = compProps
         const queryParams = {
             probe: path,
-            modulePath: filePath
+            modulePath: convertFilePathToVSCode(filePath, panels.inspect.webview)
         }
      
-        const probeResultTemplate = await getTestingHtmlTemplate()
+        const probeResultTemplate = await getTestingHtmlTemplate(filePath, panels.inspect.webview)
         const html = probeResultTemplate.replace('QUERY_PARAMS_JSON', JSON.stringify(queryParams) + ';debugger;')
         vsCodelog(html)
-        panels.inspect.webview.html = 'hello'
+        panels.inspect.webview.html = html
     },
 
     visitLastPath() { // ctrl-Q

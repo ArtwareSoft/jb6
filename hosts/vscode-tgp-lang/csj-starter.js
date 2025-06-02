@@ -29,12 +29,14 @@ async function activate(context, ...rest) {
   globalThis.vscodeNS       = vscode
   globalThis.VSCodeRequire  = require
 
+  globalThis.requireResolve = path => require.resolve(path)
+
   globalThis.jbVSCodeCli = async (script) => {
     const { workspace, window } = vscode
     const folders = workspace.workspaceFolders
     if (!folders || folders.length === 0) {
       window.showErrorMessage('Open a workspace to compute the import map')
-      return { imports: {}, dirEntriesToServe: [] }
+      return { imports: {}, serveEntries: [] }
     }
     const cwd = folders[0].uri.fsPath
     jbVSCodeLog('calc-import-map cwd:', cwd)
@@ -57,20 +59,21 @@ async function activate(context, ...rest) {
       )
     )
   }
+  globalThis.VSCodeStudioExtensionRoot = context.extensionPath
 
-  globalThis.calcImportMapsFromVSCodeExt = async () => {
-    const inlineScript = `
-  import { coreUtils } from '@jb6/core'
-  ;(async()=>{
-    try {
-      const result = await coreUtils.calcImportMap()
-      process.stdout.write(JSON.stringify(result,null,2))
-    } catch (e) {
-      console.error(e)
-    }
-  })()`
-    return jbVSCodeCli(inlineScript)
-  }
+  // globalThis.calcImportMapsFromVSCodeExt = async () => {
+  //   const inlineScript = `
+  // import { coreUtils } from '@jb6/core'
+  // ;(async()=>{
+  //   try {
+  //     const result = await coreUtils.calcImportMap()
+  //     process.stdout.write(JSON.stringify(result,null,2))
+  //   } catch (e) {
+  //     console.error(e)
+  //   }
+  // })()`
+  //   return jbVSCodeCli(inlineScript)
+  // }
 
   channel.appendLine('🔄 jbart extension starting…')
   try {

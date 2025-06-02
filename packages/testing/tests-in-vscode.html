@@ -2,9 +2,11 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script type="importmap">
-  VS_CODE_IMPORT_MAP
-</script>
+VSCODE_HEADER
+
+<script nonce="NONCE" src="REACT_BASE/react.development.js"></script>
+<script nonce="NONCE" src="REACT_BASE/react-dom.development.js"></script>
+
 <link rel="icon" href="@jb6/testing/jbart-tests.png" type="image/png">
 <style>
 	.test-button { opacity: 0 }
@@ -13,39 +15,45 @@
 
 </head>
 <body>
+  HELLO TESTS IN VSCODE
+  <button id="run-tests-button">Run all tests</button>
 	<div id="remoteTests"> </div>
 
 	<div id="mem"> </div>
 	<div id="testElem"> </div>
 	<div id="show"> </div>
- <script type="module">
-    const query_params = QUERY_PARAMS_JSON
-    const urlQuery = prop => query_params[prop]
-
-    const { coreUtils } = await import('@jb6/core')
-    const { runTests } = await import('@jb6/testing')
-    const modulePath = urlQuery('modulePath') || '/all-tests.js'
-    console.log('modulePath', modulePath)
-    await import(modulePath)
-
-    if (urlQuery('probe')) {
-      const { waitForReact, reactUtils } = await import('@jb6/react')
-      const { h } = reactUtils
-      waitForReact() // start loading react
-      const { } = await import('@jb6/core/utils/probe.js')
-      const { runProbeCli } = coreUtils
-      const probeRes = await runProbeCli(urlQuery('probe'), urlQuery('entryPoint') || modulePath)
-      await waitForReact()
-      const { probeResultView } = await import('./probe-ui.js')
-      ReactDOM.createRoot(show).render(h(probeResultView,{probeRes}))
-    } else {
-      const params = { 
-        specificTest: urlQuery('test'),
-        notPattern: urlQuery('not'),
-        ...Object.fromEntries(['pattern','take'].map(x=>[x,urlQuery(x)]))
-      }
-      runTests(params)
+  <script nonce="NONCE" type="module">
+    async function runAll() {
+      debugger
+      const query_params = QUERY_PARAMS_JSON
+      const urlQuery = prop => query_params[prop]
+  
+      const { runTests } = await import('@jb6/testing')
+      const modulePath = urlQuery('modulePath') || '/all-tests.js'
+      console.log('modulePath', modulePath)
+      await import(modulePath)
+  
+      if (urlQuery('probe')) {
+        const { reactUtils } = await import('@jb6/react')
+        const { h } = reactUtils
+        const { } = await import('@jb6/core/utils/probe.js')
+        const { coreUtils } = await import('@jb6/core')
+        const { runProbeCli } = coreUtils
+        console.log(coreUtils, reactUtils)
+        const probeRes = await runProbeCli(urlQuery('probe'), modulePath)
+        const { probeResultView } = await import('./probe-ui.js')
+        ReactDOM.createRoot(show).render(h(probeResultView,{probeRes}))
+      } else {
+        const params = { 
+          specificTest: urlQuery('test'),
+          notPattern: urlQuery('not'),
+          ...Object.fromEntries(['pattern','take'].map(x=>[x,urlQuery(x)]))
+        }
+          runTests(params)
+        }
     }
+    globalThis.runAll = runAll
+    document.getElementById('run-tests-button').addEventListener('click', runAll)
   </script>
 </body>
 </html>

@@ -5,6 +5,7 @@ export const reactUtils = jb.reactUtils = { h, L, waitForReact }
 
 let reactPromise
 function waitForReact() {
+  if (globalThis.React && globalThis.ReactDOM) return Promise.resolve(globalThis.React)
   if (!reactPromise) {
     const urls = [
       '/packages/react/lib/react.development.js',
@@ -16,7 +17,7 @@ function waitForReact() {
       s = document.createElement('script')
       s.src = src
       s.onload = resolve
-      s.onerror = () => reject(new Error(`Failed to load ${src}`))
+      s.onerror = (e) => reject(new Error(`Failed to load ${src}: ${e.message}`))
       document.head.appendChild(s)
     }))).then(() => React)
   }

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'none';
+          script-src 'self' http://localhost:3000;
+          worker-src 'self' http://localhost:3000 blob:;
+          style-src 'unsafe-inline' http://localhost:3000;
+          img-src http://localhost:3000 data:;
+          connect-src http://localhost:3000;
+        ">
+</head>
+<body>
+    <div id="main">Hello Main</div>
+</body>
+</html>

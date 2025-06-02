@@ -1,4 +1,5 @@
-import { coreUtils, jb } from './core-utils.js'
+import { jb } from './core-utils.js'
+const { coreUtils } = jb
 const { log, logError, isRefType, resolveFinishedPromise, toString, toNumber, RT_types, calcValue } = coreUtils
 
 const isRef = v => jb.dbUtils ? jb.dbUtils.isRef(v) : false

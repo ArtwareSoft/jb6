@@ -1,19 +1,19 @@
-import { jb, coreUtils } from './core-utils.js'
+import { jb } from './core-utils.js'
+const { coreUtils } = jb
 import { } from './jb-cli.js'
-const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, stripData, asJbComp, runCliInContext } = coreUtils
+const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, stripData, asJbComp, runCliInContext, absPathToUrl } = coreUtils
 
 jb.probeRepository = {
     probeCounter: 0,
     refs: {}
 }
-
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
-async function runProbeCli(probePath, entryPoint, {cwd = '', ctx, extraCode} = {}) {
+async function runProbeCli(probePath, entryPoint, {cwd = '', ctx, extraCode, projectImportMap} = {}) {
     const inlineScript = `
       import { coreUtils, dsls } from '@jb6/core'
       import '@jb6/core/utils/probe.js'
-      import '${entryPoint}'
+      import '${absPathToUrl(entryPoint, projectImportMap?.serveEntries || [])}'
       ;(async () => {
         try {
           ${extraCode || ''}
@@ -25,7 +25,7 @@ async function runProbeCli(probePath, entryPoint, {cwd = '', ctx, extraCode} = {
       })()
     `
 
-    return runCliInContext(inlineScript, {cwd, ctx})
+    return runCliInContext(inlineScript, {cwd})
 }
 
 async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {

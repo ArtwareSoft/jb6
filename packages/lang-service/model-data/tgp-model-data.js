@@ -1,6 +1,6 @@
 import { parse } from '../lib/acorn.mjs'
 import { dsls, coreUtils } from '@jb6/core'
-const { jb, astNode, asJbComp, logError, importMapByEnv, resolveWithImportMap, fetchByEnv, logByEnv } = coreUtils
+const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, logByEnv } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -14,7 +14,7 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 export async function calcTgpModelData({ filePath }) {
   logByEnv('calcTgpModelData', filePath)
   if (!filePath) return {}
-  const _importMap = await importMapByEnv()
+  const { studioImportMap, projectImportMap } = await studioAndProjectImportMaps(filePath)
   const codeMap = {}
   const visited = {}  // urls seen
 
@@ -24,8 +24,8 @@ export async function calcTgpModelData({ filePath }) {
     visited[url] = true
     let rUrl = ''
     try {
-      rUrl = resolveWithImportMap(url, _importMap)
-      const src = await fetchByEnv(rUrl)
+      rUrl = resolveWithImportMap(url, projectImportMap)
+      const src = await fetchByEnv(rUrl, projectImportMap.serveEntries)
       codeMap[url] = src
 
       const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
@@ -45,7 +45,7 @@ export async function calcTgpModelData({ filePath }) {
     }
   })(filePath)
   
-  const tgpModel = {dsls: {}, ns: {}, typeRules: [], files: Object.keys(visited)}
+  const tgpModel = {dsls: {}, ns: {}, typeRules: [], files: Object.keys(visited), projectImportMap}
   const {dsls, typeRules} = tgpModel
 
 //  logByEnv('codeMap', Object.keys(codeMap))

@@ -1,0 +1,22 @@
+{
+  "name": "jb6-test-project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@jb6/testing": "file:../../packages/testing"
+  },
+  "serveEntries": [
+    {
+      "pkgDir": "/home/shaiby/projects/jb6/hosts/test-project",
+      "dir": "/hosts/test-project",
+      "pkgId": "jb6-test-project"
+    }
+  ]
+}

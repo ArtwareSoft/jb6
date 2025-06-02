@@ -1,4 +1,5 @@
-import { coreUtils } from './core-utils.js'
+import { jb } from './core-utils.js'
+const { coreUtils } = jb
 const { asJbComp, astNode, OrigArgs, systemParams, jbComp, unique, asArray, isPrimitiveValue, logError, splitDslType, compByFullId } = coreUtils
 
 export const primitivesAst = Symbol.for('primitivesAst')

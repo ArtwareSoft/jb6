@@ -1,4 +1,5 @@
-import { coreUtils } from './core-utils.js'
+import { jb } from './core-utils.js'
+const { coreUtils } = jb
 
 const { logCli, logError, logException } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext})
@@ -41,17 +42,19 @@ async function runNodeCliViaJbWebServer(script, {cwd = '', expressUrl = ''} = {}
     body: JSON.stringify({ script, cwd })
   })
 
+  console.log(`node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`)
   if (!res.ok) {
     const text = await res.text()
     logError(`runNodeCliViaExpress failed: ${res.status} – ${text}`)
   }
+  
 
   const { result, error } = await res.json()
   if (error) logError(`CLI error: ${error}`)
   return result
 }
 
-async function runCliInIframe(userScript, {cwd} = {}) {
+async function runCliInIframe(script, {cwd} = {}) {
   const cliId = 'cli_' + Math.random().toString(36).slice(2)
 
   return new Promise( resolve => {
@@ -99,7 +102,7 @@ async function runCliInIframe(userScript, {cwd} = {}) {
       </head>
       <body>
         <script type="module">
-            ${userScript}
+            ${script}
         </script>
       </body>
       </html>

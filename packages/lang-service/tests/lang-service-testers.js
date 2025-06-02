@@ -18,8 +18,15 @@ jb.langServiceTestRegistry = {
   uniqueNameCounter: 0,
 }
 
-async function calcCompTextAndCursorsForTest({ctx,compText,filePath}) {
-  filePath = filePath || '@jb6/testing'
+let _repoRoot = ''
+async function filePathForLangServiceTest() {
+  if (!_repoRoot)
+    _repoRoot = await fetch('/repoRoot').then(r => r.text())
+  return `${_repoRoot}/hosts/test-project/my-test.js`
+}
+
+async function calcCompTextAndCursorsForTest({ctx,compText}) {
+  const filePath = await filePathForLangServiceTest()
   const testId = ctx.vars.testID
   const fullText = compText.match(/^[a-z]+Test\(/) ? `Test('x', {\n  impl: ${compText}\n})` 
     : compText.match(/^ALL:/) ? compText.slice(4)
@@ -181,8 +188,8 @@ Test('actionMapTest', {
   })
 })
 
-async function getTgpModel(filePath) {
-  filePath = filePath || '@jb6/testing'
+async function getTgpModel() {
+  const filePath = await filePathForLangServiceTest()
   jb.langServiceRegistry.tgpModels[filePath] = jb.langServiceRegistry.tgpModels[filePath] 
      || new tgpModelForLangService(await calcTgpModelData({filePath}))
   const tgpModel = jb.langServiceRegistry.tgpModels[filePath]

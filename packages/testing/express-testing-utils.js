@@ -1,12 +1,13 @@
 import express from 'express'
 import child from 'child_process'
+import path from 'path'
 import { serveImportMap } from '@jb6/server-utils'
 import { coreUtils } from '@jb6/core'
 import { } from '@jb6/core/utils/jb-cli.js'
 
-const { runNodeCli}  = coreUtils
+const { runNodeCli, calcRepoRoot}  = coreUtils
 
-export function expressTestServices(app) {
+export async function expressTestServices(app) {
   app.use(express.json({ limit: '10mb' }))
   app.use(express.urlencoded({ extended: true, limit: '10mb' }))  
 
@@ -25,4 +26,10 @@ export function expressTestServices(app) {
     const result = await runNodeCli(script, cwd)
     res.status(200).json({ result })
   })
+
+  const repoRoot = await calcRepoRoot()
+  app.get('/repoRoot', async (req, res) => {
+    res.status(200).send(repoRoot)
+  })
+  app.use('/hosts', express.static(path.join(repoRoot, 'hosts')))
 }
