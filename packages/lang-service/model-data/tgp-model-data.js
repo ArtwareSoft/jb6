@@ -22,10 +22,19 @@ export async function calcTgpModelData({ filePath }) {
   await (async function crawl(url) {
     if (visited[url]) return
     visited[url] = true
-    let rUrl = ''
+    let rUrl = '', src = ''
     try {
       rUrl = resolveWithImportMap(url, projectImportMap)
-      const src = await fetchByEnv(rUrl, projectImportMap.serveEntries)
+      if (rUrl) {
+        src = await fetchByEnv(rUrl, projectImportMap.serveEntries)
+      } else {
+        rUrl = resolveWithImportMap(url, studioImportMap)
+        if (rUrl) {
+          src = await fetchByEnv(rUrl, studioImportMap.serveEntries)
+        } else {
+          src = await fetchByEnv(url, projectImportMap.serveEntries)
+        }
+      }
       codeMap[url] = src
 
       const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })

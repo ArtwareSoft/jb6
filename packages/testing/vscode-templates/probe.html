@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+VSCODE_HEADER
+
+<script nonce="NONCE" src="REACT_BASE/react.development.js"></script>
+<script nonce="NONCE" src="REACT_BASE/react-dom.development.js"></script>
+
+<link rel="icon" href="@jb6/testing/jbart-tests.png" type="image/png">
+<style>
+	.test-button { opacity: 0 }
+	.test-button:hover { opacity: 1 }
+</style>
+
+</head>
+<body>
+  HELLO TESTS IN VSCODE
+  <button id="run-tests-button">Run all tests</button>
+	<div id="remoteTests"> </div>
+
+	<div id="mem"> </div>
+	<div id="testElem"> </div>
+	<div id="show"> </div>
+  <script nonce="NONCE" type="module">
+    async function run() {
+      debugger
+      const query_params = QUERY_PARAMS_JSON
+      const projectImportMap = PROJECT_IMPORT_MAP_JSON
+      const urlQuery = prop => query_params[prop]
+  
+      const { coreUtils } = await import('@jb6/core')
+      const { } = await import('@jb6/core/utils/probe.js')
+      const { runProbeCli } = coreUtils
+      const { reactUtils } = await import('@jb6/react')
+      const { probeResultView } = await import('./probe-ui.js')
+      const { h } = reactUtils
+
+      const probeRes = await runProbeCli(
+          urlQuery('probe') || 'test<test>myTests.HelloWorld~impl~expectedResult', 
+          urlQuery('entryPoint') || '/hosts/test-project/my-test.js', {importMap: projectImportMap})
+      ReactDOM.createRoot(show).render(h(probeResultView,{probeRes}))
+    }
+    globalThis.run = run
+    document.getElementById('run-tests-button').addEventListener('click', run)
+    run()
+  </script>
+</body>
+</html>

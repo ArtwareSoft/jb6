@@ -269,7 +269,10 @@ function sortedArraysDiff(newArr, oldArr, compareFn) {
 
 function logCli(...args) {
   const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ')
-  console.error(msg)
+  if (globalThis.jbVSCodeLog)
+    globalThis.jbVSCodeLog(msg)
+  else
+    console.error(msg)
 }
 
 

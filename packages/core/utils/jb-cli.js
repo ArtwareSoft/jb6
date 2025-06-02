@@ -4,16 +4,14 @@ const { coreUtils } = jb
 const { logCli, logError, logException } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext})
 
-async function runCliInContext(script, {cwd = ''} = {}) {
-  if (globalThis.jbVSCodeCli)
-    return jbVSCodeCli(script, {cwd})
-  else if (globalThis.document)
-    return runCliInIframe(script, {cwd})
+async function runCliInContext(script, {importMap} = {}) {
+  if (globalThis.document)
+    return runCliInIframe(script, {importMap})
   else
-    return runNodeCli(script, {cwd})
+    return runNodeCli(script, {importMap})
 }
 
-async function runNodeCli(script, {cwd = ''} = {}) {
+async function runNodeCli(script, {importMap} = {}) {
   const { promisify } = await import('util')
   const { execFile: execFileCb } = await import('child_process')
   const execFile = promisify(execFileCb)
@@ -22,7 +20,7 @@ async function runNodeCli(script, {cwd = ''} = {}) {
       const { stdout } = await execFile(
         process.execPath,
         ['--input-type=module', '-e', script],
-        { cwd, encoding: 'utf8' }
+        { cwd: importMap?.projectRoot || '', encoding: 'utf8' }
       )
       return JSON.parse(stdout)
   } catch (e) {
@@ -35,11 +33,11 @@ async function runNodeCli(script, {cwd = ''} = {}) {
   }  
 }
 
-async function runNodeCliViaJbWebServer(script, {cwd = '', expressUrl = ''} = {}) {
+async function runNodeCliViaJbWebServer(script, {importMap, expressUrl = ''} = {}) {
   const res = await fetch(`${expressUrl}/run-cli`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ script, cwd })
+    body: JSON.stringify({ script, importMap })
   })
 
   console.log(`node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`)
@@ -54,7 +52,7 @@ async function runNodeCliViaJbWebServer(script, {cwd = '', expressUrl = ''} = {}
   return result
 }
 
-async function runCliInIframe(script, {cwd} = {}) {
+async function runCliInIframe(script, {importMap} = {}) {
   const cliId = 'cli_' + Math.random().toString(36).slice(2)
 
   return new Promise( resolve => {
@@ -72,13 +70,15 @@ async function runCliInIframe(script, {cwd} = {}) {
     }
     window.addEventListener('message', onMsg)
 
-    const importMap = document.querySelector('script[type="importmap"]')?.outerHTML || ''
+    //const importMap = document.querySelector('script[type="importmap"]')?.outerHTML || ''
 
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
-        ${importMap}
+        <script type="importmap">
+        ${JSON.stringify(importMap,null,2)}
+        </script>
       <script type="module">
             const cliId = '${cliId}'
             const send = msg => parent.postMessage({ cliId, ...msg }, '*')

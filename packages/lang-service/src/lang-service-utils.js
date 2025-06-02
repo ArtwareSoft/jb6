@@ -169,7 +169,7 @@ const { test: { Test, test: { dataTest } } } = dsls
 ${text}
 ` : ''
 
-    const probeObj = await runProbeCli(path, filePath, {ctx, extraCode, projectImportMap: compProps.tgpModel.projectImportMap })
+    const probeObj = await runProbeCli(path, filePath, { extraCode, importMap: compProps.tgpModel.projectImportMap })
     const suggestions = suggestionsOfProbe(probeObj, input, path) || []
 
     return (suggestions.options || []).map(option => {

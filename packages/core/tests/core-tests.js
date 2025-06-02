@@ -99,7 +99,12 @@ Test('probeTest.helloWorld', {
 
 Test('probeCliTest.helloWorld', {
   impl: dataTest({
-    calculate: (ctx) => runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult','/hosts/test-project/my-test.js', {ctx}),
+    calculate: async () => {
+      const repoRoot = await fetch('/repoRoot').then(r => r.text())
+      const filePath = `${repoRoot}/hosts/test-project/my-test.js`
+      const { studioImportMap, projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
+      return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',filePath,{importMap: projectImportMap})
+    },
     expectedResult: equals('hello world', '%result.0.in.data%'),
     timeout: 1000
   })

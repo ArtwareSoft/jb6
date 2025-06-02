@@ -9,11 +9,11 @@ jb.probeRepository = {
 }
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
-async function runProbeCli(probePath, entryPoint, {cwd = '', ctx, extraCode, projectImportMap} = {}) {
+async function runProbeCli(probePath, filePath, {extraCode, importMap} = {}) {
     const inlineScript = `
       import { coreUtils, dsls } from '@jb6/core'
       import '@jb6/core/utils/probe.js'
-      import '${absPathToUrl(entryPoint, projectImportMap?.serveEntries || [])}'
+      import '${absPathToUrl(filePath, importMap?.serveEntries || [])}'
       ;(async () => {
         try {
           ${extraCode || ''}
@@ -25,7 +25,7 @@ async function runProbeCli(probePath, entryPoint, {cwd = '', ctx, extraCode, pro
       })()
     `
 
-    return runCliInContext(inlineScript, {cwd})
+    return runCliInContext(inlineScript, {importMap})
 }
 
 async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {

@@ -138,13 +138,11 @@ async function moveInArray(diff) {
     cursorPos && host().selectRange(cursorPos)
 }
 
-let testingHtmlTemplate = null
-async function getTestingHtmlTemplate(filePath, webview) {
-    if (!testingHtmlTemplate) {
+async function getHtmlTemplate(templateId, filePath, webview) {
         const { studioImportMap, projectImportMap } = await studioAndProjectImportMaps(filePath)
-        const importmap = convertImportMapToVSCode(_importmap, webview)
-        const path = requireResolve('@jb6/testing/tests-in-vscode.html')
-        testingHtmlTemplate = await readFile(path,'utf-8')
+        const importmap = convertImportMapToVSCode(studioImportMap, webview)
+        const path = requireResolve(`@jb6/testing/vscode-templates/${templateId}.html`)
+        const template = await readFile(path,'utf-8')
 
         const nonce = [...Array(16)].map(() => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.random() * 62 | 0)).join('')
 
@@ -161,10 +159,10 @@ async function getTestingHtmlTemplate(filePath, webview) {
         `
 
         const header = csp + `\n<script nonce="NONCE" type="importmap">${JSON.stringify(importmap,null,2)}\n</script>`
-        const reactBase = convertFilePathToVSCode(resolveWithImportMap('@jb6/react/lib', _importmap), webview)
-        testingHtmlTemplate = testingHtmlTemplate.replace('VSCODE_HEADER', header).replace(/NONCE/g, nonce).replace(/REACT_BASE/g, reactBase)
-    }
-    return testingHtmlTemplate
+        const reactBase = convertFilePathToVSCode(resolveWithImportMap('@jb6/react/lib', studioImportMap), webview)
+        const PROJECT_IMPORT_MAP_JSON = JSON.stringify(convertImportMapToVSCode(projectImportMap, webview),null,2)
+        return template.replace('VSCODE_HEADER', header).replace(/NONCE/g, nonce).replace(/REACT_BASE/g, reactBase)
+            .replace(/PROJECT_IMPORT_MAP_JSON/g, PROJECT_IMPORT_MAP_JSON)
 }
 
 function  convertFilePathToVSCode(path, webview){
@@ -208,8 +206,8 @@ export const commands = {
             modulePath: convertFilePathToVSCode(filePath, panels.inspect.webview)
         }
      
-        const probeResultTemplate = await getTestingHtmlTemplate(filePath, panels.inspect.webview)
-        const html = probeResultTemplate.replace('QUERY_PARAMS_JSON', JSON.stringify(queryParams) + ';debugger;')
+        const probeResultTemplate = await getHtmlTemplate('probe', filePath, panels.inspect.webview)
+        const html = probeResultTemplate.replace('QUERY_PARAMS_JSON', JSON.stringify(queryParams))
         vsCodelog(html)
         panels.inspect.webview.html = html
     },

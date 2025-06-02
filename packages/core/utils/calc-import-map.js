@@ -1,7 +1,9 @@
 import { jb } from './core-utils.js'
+import {} from './jb-cli.js'
 const { coreUtils } = jb
-const { logCli } = coreUtils
-Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, fetchByEnv, logByEnv, studioAndProjectImportMaps, calcRepoRoot, absPathToUrl })
+const { logCli, runCliInContext } = coreUtils
+Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, fetchByEnv, logByEnv, 
+  studioAndProjectImportMaps, calcRepoRoot, absPathToUrl, calcImportMapOfRepoRoot })
 
 // async function importMapByEnv() {
 //   if (globalThis.calcImportMapsFromVSCodeExt) {
@@ -27,15 +29,13 @@ async function studioAndProjectImportMaps(filePath) {
   })()`
     return await coreUtils.runNodeCliViaJbWebServer(script)
   }
-  debugger
-  const repoRoot = await calcRepoRoot()
+  const repoRoot = globalThis.VSCodeWorkspaceProjectRoot || await calcRepoRoot()
   const studioRoot = globalThis.VSCodeStudioExtensionRoot || `${repoRoot}/hosts/vscode-tgp-lang`
   const projectRoot = await findProjectRoot(filePath, repoRoot)
 
   return { 
       studioImportMap: await calcImportMapOfRepoRoot(studioRoot, { servingRoot: repoRoot }), 
-      projectImportMap: await calcImportMapOfRepoRoot(projectRoot, { servingRoot: repoRoot, includeTesting: true }),
-      projectRoot
+      projectImportMap: {projectRoot, ...await calcImportMapOfRepoRoot(projectRoot, { servingRoot: repoRoot, includeTesting: true, useCli: globalThis.VSCodeStudioExtensionRoot }) },
     }
 }
 
@@ -66,14 +66,14 @@ function resolveWithImportMap(specifier, { imports, serveEntries }) {
       winner = key
     }
   }
-  if (!winner) return specifier   // no mapping → leave untouched
+  if (!winner) return
 
   const target = imports[winner]
   const rest   = specifier.slice(winner.length) // part after the prefix
   const urlToBeServed = target.endsWith('/') ? target + rest : target
-  const dirEntry = (serveEntries || []).find(({dir}) => urlToBeServed.startsWith(`/packages/${dir}`))
+  const dirEntry = (serveEntries || []).find(({dir}) => urlToBeServed.startsWith(dir))
   if (dirEntry) {
-    const restPath = urlToBeServed.slice(`/packages/${dirEntry.dir}`.length)
+    const restPath = urlToBeServed.slice(dirEntry.dir.length)
     return pathJoin(dirEntry.pkgDir, restPath)
   }
   return urlToBeServed
@@ -108,9 +108,11 @@ async function calcImportMap() {
   }
 }
 
-async function calcImportMapOfRepoRoot(repoRoot, { createRequireFn, servingRoot = '', includeTesting } = {}) {
+async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTesting, useCli } = {}) {
+  if (useCli) {
+    return await calcImportMapOfRepoRootCli(repoRoot, { servingRoot, includeTesting })
+  }
   let { createRequire } = await import('module')
-  createRequire = createRequireFn || createRequire
   const { readFile } = await import('fs/promises')
   const path = await import('path')
   const root_pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
@@ -126,9 +128,14 @@ async function calcImportMapOfRepoRoot(repoRoot, { createRequireFn, servingRoot 
     : [`${rootPkgName}/`, relativeServingRoot]
   const imports = Object.fromEntries([rootEntry, ...packages.flatMap(name => {
       const pkgId    = `@jb6/${name}`
-      const pkgDir = path.dirname(requirePkg.resolve(pkgId))
+      try {
+        const pkgDir = path.dirname(requirePkg.resolve(pkgId))
+        serveEntries.push({dir: `/packages/${name}`, pkgDir, pkgId})
+      } catch (e) {
+        logCli(`calcImportMapOfRepoRoot: Can not find module ${pkgId} in ${repoRoot}/package.json`)
+        return []
+      }
       // mount this package
-      serveEntries.push({dir: name, pkgDir, pkgId})
       return [
         [`${pkgId}`,  `/packages/${name}/index.js`],
         [`${pkgId}/`,  `/packages/${name}/`]
@@ -136,7 +143,7 @@ async function calcImportMapOfRepoRoot(repoRoot, { createRequireFn, servingRoot 
     })
   ])
   const res = { imports, serveEntries }
-  logCli('client mode: calcImportMap', res)
+//  logCli('client mode: calcImportMap', res)
   return res
 
   async function discoverPkgNames(root) {
@@ -151,8 +158,12 @@ async function calcImportMapOfRepoRoot(repoRoot, { createRequireFn, servingRoot 
             const name = full.slice(5)
             if (!seen.has(name)) {
               seen.add(name)
-              const pkgDir = path.dirname(localRequire.resolve(full)) // look in node_modules
-              await crawl(pkgDir)
+              try {
+                const pkgDir = path.dirname(localRequire.resolve(full)) // look in node_modules
+                await crawl(pkgDir)
+              } catch (e) {
+                logCli(`discoverPkgNames: Can not find module ${full} in ${dir}/package.json under ${root}`, e)
+              }
             }
           }
     }
@@ -165,6 +176,24 @@ async function calcImportMapOfRepoRoot(repoRoot, { createRequireFn, servingRoot 
     }
     return [...seen]
   }
+}
+
+async function calcImportMapOfRepoRootCli(repoRoot, { servingRoot = '', includeTesting } = {}) {
+  const script = `
+    import { coreUtils } from '@jb6/core'
+    ;(async()=>{
+      try {
+        const result = await coreUtils.calcImportMapOfRepoRoot('${repoRoot}', { servingRoot: '${servingRoot}', includeTesting: ${includeTesting ? 'true' : 'false'} })
+        process.stdout.write(JSON.stringify(result,null,2))
+      } catch (e) {
+        console.error(e)
+      }
+    })()
+  `
+
+  logCli(`node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`)
+
+  return runCliInContext(script, {importMap : {projectRoot: repoRoot}})
 }
 
 
@@ -208,5 +237,5 @@ async function fetchByEnv(url, serveEntries = []) {
 
 function absPathToUrl(path, serveEntries = []) {
     const servedEntry = serveEntries.find(x => path.indexOf(x.pkgDir) == 0)
-    return servedEntry ? path.replace(servedEntry.pkgDir, (servedEntry.pkgId.indexOf('@jb6/') == 0 ? '/packages/' : '') + servedEntry.dir) : path
+    return servedEntry ? path.replace(servedEntry.pkgDir, servedEntry.dir) : path
 }

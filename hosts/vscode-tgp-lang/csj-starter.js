@@ -1,11 +1,19 @@
 const path            = require('path')
 const { pathToFileURL } = require('url')
 const { execFile } = require('child_process')
+const realRequire = eval('require')
+const { createRequire } = realRequire('module')
+
 
 async function activate(context, ...rest) {
   const vscode = require('vscode')
-  const channel = vscode.window.createOutputChannel('jbart')
+  const { workspace, window } = vscode
+  const channel = window.createOutputChannel('jbart')
   context.subscriptions.push(channel)
+
+  globalThis.VSCodeStudioExtensionRoot = context.extensionPath
+  const folders = workspace.workspaceFolders
+  globalThis.VSCodeWorkspaceProjectRoot = folders?.[0]?.uri.fsPath
 
   const logToChannel = line => channel.appendLine(line)
 
@@ -30,36 +38,28 @@ async function activate(context, ...rest) {
   globalThis.VSCodeRequire  = require
 
   globalThis.requireResolve = path => require.resolve(path)
+  globalThis.VSCodeCreateRequire = createRequire
 
-  globalThis.jbVSCodeCli = async (script) => {
-    const { workspace, window } = vscode
-    const folders = workspace.workspaceFolders
-    if (!folders || folders.length === 0) {
-      window.showErrorMessage('Open a workspace to compute the import map')
-      return { imports: {}, serveEntries: [] }
-    }
-    const cwd = folders[0].uri.fsPath
-    jbVSCodeLog('calc-import-map cwd:', cwd)
-
-    return new Promise(resolve => execFile( process.execPath, ['--input-type=module', '-e', script], { cwd, encoding: 'utf8' },
-        (err, stdout, stderr) => {
-          if (stderr) jbVSCodeLog(stderr)
-          if (err) {
-            jbVSCodeLog(`CLI execution failed: ${stderr || err.message}`)
-            return resolve(null)
-          }
-          try {
-            const json = JSON.parse(stdout)
-            return resolve(json)
-          } catch (e) {
-            jbVSCodeLog(`Invalid JSON from CLI: ${stdout}`)
-            return resolve(null)
-          }
-        }
-      )
-    )
-  }
-  globalThis.VSCodeStudioExtensionRoot = context.extensionPath
+  // globalThis.jbVSCodeCli = async (script, {importMap} = {}) => {
+  //   const cwd = VSCodeWorkspaceProjectRoot || '' // todo check importmap to run in studio root (no case yet)
+  //   return new Promise(resolve => execFile( process.execPath, ['--input-type=module', '-e', script], { cwd, encoding: 'utf8' },
+  //       (err, stdout, stderr) => {
+  //         if (stderr) jbVSCodeLog(stderr)
+  //         if (err) {
+  //           jbVSCodeLog(`CLI execution failed: ${stderr || err.message}`)
+  //           return resolve(null)
+  //         }
+  //         try {
+  //           const json = JSON.parse(stdout)
+  //           return resolve(json)
+  //         } catch (e) {
+  //           jbVSCodeLog(`Invalid JSON from CLI: ${stdout}`)
+  //           return resolve(null)
+  //         }
+  //       }
+  //     )
+  //   )
+  // }
 
   // globalThis.calcImportMapsFromVSCodeExt = async () => {
   //   const inlineScript = `

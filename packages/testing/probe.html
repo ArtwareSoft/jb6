@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="./jbart-tests.png" type="image/png">
+  <style>
+    .test-button { opacity: 0 }
+    .test-button:hover { opacity: 1 }
+  </style>
+
+  <script src="/packages/react/lib/react.development.js"></script>
+  <script src="/packages/react/lib/react-dom.development.js"></script>
+
+  <script type="module">
+    const importMap = await fetch('/import-map.json').then(r => r.json())
+    const im = document.createElement('script')
+    im.type = 'importmap'
+    im.textContent = JSON.stringify(importMap, null, 2)
+    document.head.appendChild(im)
+    
+    const urlQuery = prop => new URLSearchParams(location.search).get(prop)
+    const { coreUtils } = await import('@jb6/core')
+    const { } = await import('@jb6/core/utils/probe.js')
+    const { runProbeCli } = coreUtils
+    const { reactUtils } = await import('@jb6/react')
+    const { probeResultView } = await import('./probe-ui.js')
+    const { h } = reactUtils
+
+    const repoRoot = await fetch('/repoRoot').then(r => r.text())
+    const filePath = `${repoRoot}/hosts/test-project/my-test.js`
+    const { studioImportMap, projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
+
+    const probeRes = await runProbeCli(
+        urlQuery('probe') || 'test<test>myTests.HelloWorld~impl~expectedResult', 
+        urlQuery('entryPoint') || '/hosts/test-project/my-test.js', {importMap: projectImportMap})
+    ReactDOM.createRoot(show).render(h(probeResultView,{probeRes}))
+  </script>
+</head>
+
+<body>
+  <div id="remoteTests"></div>
+  <div id="mem"></div>
+  <div id="testElem"></div>
+  <div id="show"></div>
+</body>
+</html>
