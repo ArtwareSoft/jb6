@@ -141,7 +141,7 @@ async function moveInArray(diff) {
 async function getHtmlTemplate(templateId, filePath, webview) {
         const { studioImportMap, projectImportMap } = await studioAndProjectImportMaps(filePath)
         const importmap = convertImportMapToVSCode(studioImportMap, webview)
-        const path = requireResolve(`@jb6/testing/vscode-templates/${templateId}.html`)
+        const path = requireResolve(templateId)
         const template = await readFile(path,'utf-8')
 
         const nonce = [...Array(16)].map(() => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.random() * 62 | 0)).join('')
@@ -203,7 +203,7 @@ export const commands = {
         }
         const { path, filePath } = compProps
      
-        const probeResultTemplate = await getHtmlTemplate('probe', filePath, panels.inspect.webview)
+        const probeResultTemplate = await getHtmlTemplate('./probe.html', filePath, panels.inspect.webview)
         const projectRoot = VSCodeWorkspaceProjectRoot
         const probeRes = await coreUtils.runProbeCli(path, filePath, {importMap: {projectRoot}})
         const html = probeResultTemplate.replace('PROBE_RES', JSON.stringify(probeRes))

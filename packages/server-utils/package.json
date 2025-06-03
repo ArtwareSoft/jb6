@@ -1,6 +1,6 @@
 {
   "name": "@jb6/server-utils",
-  "version": "1.250531.3",
+  "version": "1.250603.3",
   "description": "Server-side utilities (import-map, serveRpc, etc) for JB6",
   "type": "module",
   "main": "index.js",

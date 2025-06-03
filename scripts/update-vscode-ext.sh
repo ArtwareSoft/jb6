@@ -9,7 +9,7 @@ EXT_DIR="$REPO_ROOT/hosts/vscode-tgp-lang"
 EXT_LIB="$EXT_DIR/lib"
 
 # List of all packages under packages/ that we want to pack
-declare -a PKGS=(repo core lang-service react common server-utils testing)
+declare -a PKGS=(repo core lang-service react)
 # npm scope prefix
 SCOPE="@jb6"
 
