@@ -163,7 +163,7 @@ async function getHtmlTemplate(templateId, filePath, webview) {
         return template.replace('VSCODE_HEADER', header).replace(/NONCE/g, nonce).replace(/REACT_BASE/g, reactBase)
 }
 
-function  convertFilePathToVSCode(path, webview){
+function convertFilePathToVSCode(path, webview){
     const diskUri = vscodeNS.Uri.file(path)
     return webview.asWebviewUri(diskUri).toString()
 }
@@ -203,10 +203,13 @@ export const commands = {
         }
         const { path, filePath } = compProps
      
-        const probeResultTemplate = await getHtmlTemplate('./probe.html', filePath, panels.inspect.webview)
+        const webview = panels.inspect.webview
+        const probeResultTemplate = await getHtmlTemplate('./probe.html', filePath, webview)
         const projectRoot = VSCodeWorkspaceProjectRoot
-        const probeRes = await coreUtils.runProbeCli(path, filePath, {importMap: {projectRoot}})
+        const runProbeCli = jb.ext.extensionSetup?.runProbeCli || coreUtils.runProbeCli
+        const probeRes = await runProbeCli(path, filePath, {importMap: {projectRoot}})
         const html = probeResultTemplate.replace('PROBE_RES', JSON.stringify(probeRes))
+            .replace('PROJECT_REPO_ROOT', convertFilePathToVSCode(VSCodeWorkspaceProjectRoot, webview))
         vsCodelog(html)
         panels.inspect.webview.html = html
     },

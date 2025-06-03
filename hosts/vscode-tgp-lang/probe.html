@@ -28,6 +28,13 @@ VSCODE_HEADER
       const { reactUtils } = await import('@jb6/react')
       const { h } = reactUtils
       console.log(h)
+      const configFile = 'PROJECT_REPO_ROOT/jb6.config-views.js'
+      try {
+          const { setUpJb6Views } = await import(configFile)
+          await setUpJb6Views(coreUtils)
+      } catch (e) {}
+
+      const probeResultView = jb.ext.extensionSetup?.probeResultView || _probeResultView
 
       ReactDOM.createRoot(document.getElementById('show')).render(h(probeResultView,{probeRes}))
     }
@@ -35,7 +42,7 @@ VSCODE_HEADER
     document.getElementById('run-tests-button').addEventListener('click', run)
     run()
 
-  function probeResultView({probeRes}) {
+  function _probeResultView({probeRes}) {
     const { h, L, useState, useEffect, useRef, useContext } = jb.reactUtils
 
     const [showJson, setShowJson] = useState(false)

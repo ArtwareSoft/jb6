@@ -1,9 +1,8 @@
 const path            = require('path')
 const { pathToFileURL } = require('url')
-const { execFile } = require('child_process')
 const { realpath } = require('fs/promises')
 
-async function activate(context, ...rest) {
+async function activate(context) {
   const vscode = require('vscode')
   const { workspace, window } = vscode
   const channel = window.createOutputChannel('jbart')
@@ -15,7 +14,7 @@ async function activate(context, ...rest) {
   const folders = workspace.workspaceFolders
   globalThis.VSCodeWorkspaceProjectRoot = folders?.[0]?.uri.fsPath
 
-  const logToChannel = line => channel.appendLine(line)
+  const vsCodelog = line => channel.appendLine(line)
 
   // safe JSON.stringify wrapper
   function safeStringify(obj) {
@@ -30,23 +29,20 @@ async function activate(context, ...rest) {
 
   // redirect console.log/error globally
   globalThis.jbVSCodeLog = globalThis.console.log = (...args) =>
-    logToChannel(args.map(arg =>
+    vsCodelog(args.map(arg =>
       typeof arg === 'object' ? safeStringify(arg) : String(arg)
     ).join(' '))
     
   globalThis.vscodeNS       = vscode
-
   globalThis.requireResolve = path => require.resolve(path)
 
-  channel.appendLine('🔄 jbart extension starting…')
+  vsCodelog('🔄 jbart extension starting…')
   try {
-    const fileUrl = pathToFileURL(path.join(__dirname, 'tgp-lang-extension.mjs')).href
-    channel.appendLine(`Loading ESM from: ${fileUrl}`)
-    const { doActivate } = await import(fileUrl)
+    const { doActivate } = await import(pathToFileURL(path.join(__dirname, 'tgp-lang-extension.mjs')).href)
     doActivate(context)
   } catch (err) {
-    channel.appendLine('❌ failed to load ESM extension:')
-    channel.appendLine(err.stack)
+    vsCodelog('❌ failed to load ESM extension:')
+    vsCodelog(err.stack)
     throw err
   }
 }

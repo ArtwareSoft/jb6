@@ -1,5 +1,5 @@
-import { coreUtils } from '@jb6/core'
-jbVSCodeLog('core loaded')
+import { coreUtils } from '@jb6/core'   
+import { existsSync } from 'fs'
 import { provideCompletionItems, provideDefinition, provideReferences, vsCodelog, commands } from './tgp-lang-extension-utils.mjs'
 jbVSCodeLog('utils loaded', commands)
 
@@ -47,3 +47,14 @@ export async function doActivate(context) {
         }
 	})) 
 }
+
+async function initConfig() {
+    const configFile = `${VSCodeWorkspaceProjectRoot}/jb6.config.js`
+    const exists = await existsSync(configFile)
+    if (exists) {
+        vsCodelog('local jb6.config.js found and loaded', configFile)
+        const { setUpJb6 } = await import(configFile)
+        setUpJb6(coreUtils)
+    }
+}
+await initConfig()
