@@ -309,8 +309,10 @@ function stripData(top, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000} = {}) {
   }
 }
 
+const isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string'
+
 export const coreUtils = jb.coreUtils = {
-  jb, RT_types, log, logError, logException, logCli,
+  jb, RT_types, log, logError, logException, logCli, isNode,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType, stripData,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,

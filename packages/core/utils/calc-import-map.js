@@ -1,22 +1,12 @@
 import { jb } from './core-utils.js'
 import {} from './jb-cli.js'
 const { coreUtils } = jb
-const { logCli, runCliInContext } = coreUtils
+const { logCli, isNode } = coreUtils
 Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, fetchByEnv, logByEnv, 
   studioAndProjectImportMaps, calcRepoRoot, absPathToUrl, calcImportMapOfRepoRoot })
 
-// async function importMapByEnv() {
-//   if (globalThis.calcImportMapsFromVSCodeExt) {
-//     return calcImportMapsFromVSCodeExt()
-//   } else if (globalThis.window) {
-//     return fetch('/import-map.json').then(r=>r.json())
-//   } else { // node
-//     return calcImportMap()
-//   }
-// }
-
 async function studioAndProjectImportMaps(filePath) {
-  if (globalThis.document && !globalThis.VSCodeStudioExtensionRoot) {
+  if (!isNode) {
         const script = `
   import { coreUtils } from '@jb6/core'
   ;(async()=>{
@@ -44,7 +34,6 @@ async function findProjectRoot(filePath, repoRoot) {
   const { access } = await import('fs/promises')
   
   let currentDir = path.dirname(filePath)
-  //currentDir = currentDir.replace(/^\/hosts\//, `${repoRoot}/hosts/`) // used by tests
   
   while (currentDir != repoRoot && currentDir != '/') {
     try {
@@ -109,9 +98,9 @@ async function calcImportMap() {
 }
 
 async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTesting } = {}) {
-  if (globalThis.VSCodeStudioExtensionRoot) {
-    return await calcImportMapOfRepoRootCli(repoRoot, { servingRoot, includeTesting })
-  }
+  // if (globalThis.VSCodeStudioExtensionRoot) {
+  //   return await calcImportMapOfRepoRootCli(repoRoot, { servingRoot, includeTesting })
+  // }
   const { readFile, realpath } = await import('fs/promises')
   const path = await import('path')
   const { createRequire } = await import('module')
@@ -155,25 +144,6 @@ async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTest
       await crawl(pkgDir)
     }))
   }
-}
-
-async function calcImportMapOfRepoRootCli(repoRoot, { servingRoot = '', includeTesting } = {}) {
-  const script = `
-    import { coreUtils } from '@jb6/core'
-    ;(async()=>{
-      try {
-        const result = await coreUtils.calcImportMapOfRepoRoot('${repoRoot}', { servingRoot: '${servingRoot}', includeTesting: ${includeTesting ? 'true' : 'false'} })
-        process.stdout.write(JSON.stringify(result,null,2))
-      } catch (e) {
-        console.error(e)
-      }
-    })()
-  `
-
-  logCli(`node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`)
-
-  const res = await runCliInContext(script, {importMap : {projectRoot: repoRoot}})
-  return res
 }
 
 async function calcRepoRoot() {

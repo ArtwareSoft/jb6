@@ -38,41 +38,6 @@ async function activate(context, ...rest) {
 
   globalThis.requireResolve = path => require.resolve(path)
 
-  // globalThis.jbVSCodeCli = async (script, {importMap} = {}) => {
-  //   const cwd = VSCodeWorkspaceProjectRoot || '' // todo check importmap to run in studio root (no case yet)
-  //   return new Promise(resolve => execFile( process.execPath, ['--input-type=module', '-e', script], { cwd, encoding: 'utf8' },
-  //       (err, stdout, stderr) => {
-  //         if (stderr) jbVSCodeLog(stderr)
-  //         if (err) {
-  //           jbVSCodeLog(`CLI execution failed: ${stderr || err.message}`)
-  //           return resolve(null)
-  //         }
-  //         try {
-  //           const json = JSON.parse(stdout)
-  //           return resolve(json)
-  //         } catch (e) {
-  //           jbVSCodeLog(`Invalid JSON from CLI: ${stdout}`)
-  //           return resolve(null)
-  //         }
-  //       }
-  //     )
-  //   )
-  // }
-
-  // globalThis.calcImportMapsFromVSCodeExt = async () => {
-  //   const inlineScript = `
-  // import { coreUtils } from '@jb6/core'
-  // ;(async()=>{
-  //   try {
-  //     const result = await coreUtils.calcImportMap()
-  //     process.stdout.write(JSON.stringify(result,null,2))
-  //   } catch (e) {
-  //     console.error(e)
-  //   }
-  // })()`
-  //   return jbVSCodeCli(inlineScript)
-  // }
-
   channel.appendLine('🔄 jbart extension starting…')
   try {
     const fileUrl = pathToFileURL(path.join(__dirname, 'tgp-lang-extension.mjs')).href

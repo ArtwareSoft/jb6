@@ -1,12 +1,14 @@
 import { jb } from './core-utils.js'
 const { coreUtils } = jb
 
-const { logCli, logError, logException } = coreUtils
+const { logCli, logError, isNode } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext})
 
-async function runCliInContext(script, {importMap} = {}) {
-  if (globalThis.document)
+async function runCliInContext(script, {requireNode, importMap} = {}) {
+  if (!isNode && !requireNode)
     return runCliInIframe(script, {importMap})
+  else if (!isNode && requireNode)
+    return runNodeCliViaJbWebServer(script, {importMap})
   else
     return runNodeCli(script, {importMap})
 }
@@ -24,12 +26,8 @@ async function runNodeCli(script, {importMap} = {}) {
       )
       return JSON.parse(stdout)
   } catch (e) {
-      // if execFile succeeded but JSON.parse blew up, it'll be here with e.stdout
-      if (e.stdout) {            
-        logCli(`can not parse result json: ${e.stdout}`)
-      } else {
-        logCli(`can not run probe cli: ${e}`)
-      }
+      const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
+      logCli(`error in run node cli: \n${cmd}\n${e}\n${JSON.stringify(importMap,null,2)} \nstdout: ${e.stdout}`)
   }  
 }
 

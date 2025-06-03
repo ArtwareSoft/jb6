@@ -2,7 +2,7 @@ import { coreUtils, dsls } from '@jb6/core'
 import {} from '@jb6/common'
 import { spy } from './spy.js'
 
-const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfType, unique } = coreUtils
+const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfType, unique, isNode } = coreUtils
 
 const { 
   tgp: {TgpType}
@@ -128,12 +128,11 @@ function spyParamForTest(testID) {
     return testID.match(/uiTest|[Ww]idget/) ? 'test,uiTest,headless' : 'test'
 }
 
-const isCli          = !globalThis.document
 let   lastLineLength = 0     // to wipe residual chars when we overwrite
 
 const printLive = line => {
   const pad = ' '.repeat(Math.max(lastLineLength - line.length, 0))
-  if (isCli)
+  if (isNode)
     process.stdout.write('\r' + line + pad)
   else
     console.log(line)
@@ -142,7 +141,7 @@ const printLive = line => {
 
 const printFail = line => {
   const redLine = `\x1b[31m${line}\x1b[0m`; // Add red color
-  if (isCli)
+  if (isNode)
     process.stdout.write('\r' + redLine + '\n')   // newline keeps the failure
   else
     console.log(redLine)
@@ -151,7 +150,6 @@ const printFail = line => {
 
 export async function runTests({specificTest,show,pattern,notPattern,take,remoteTests,repo,onlyTest,top,coveredTestsOf,showOnly}={}) {
     specificTest = specificTest && decodeURIComponent(specificTest).split('>').pop()
-    const isNode = !globalThis.document
 
     let tests = globalsOfType(Test)
         .filter(id =>!specificTest || id == specificTest)
@@ -188,7 +186,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
 
         let res
         if (!showOnly) {
-            !isCli && (document.getElementById('progress').innerHTML = runningMsg)
+            !isNode && (document.getElementById('progress').innerHTML = runningMsg)
             printLive(runningMsg)
             res = await runTest(testID, { fullTestId, singleTest })
             res = { ...res, fullTestId, testID}
@@ -197,9 +195,9 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
             // const summary = `total: ${tests.length}, \x1b[32msuccess: ${success_counter}, \x1b[31mfailures: ${fail_counter}, \x1b[33mmemory: ${usedJSHeapSize()}M, time: ${Date.now() - startTime} ms`
             // const finishedMsg = `${summary} ${testID}>${counter}: finished`
             // const finishedMsgColor = res.success ? '\x1b[32m' : '\x1b[31m'; // Green for success, Red for failure
-            // //isCli ? printLive(finishedMsgColor + finishedMsg + '\x1b[0m') : document.getElementById('progress').innerHTML = `${testID}>${counter}: finished`
+            // //isNode ? printLive(finishedMsgColor + finishedMsg + '\x1b[0m') : document.getElementById('progress').innerHTML = `${testID}>${counter}: finished`
 
-            if (!isCli) {
+            if (!isNode) {
                 updateTestHeader(document)
                 addHTML(document.body, testResultHtml(res, repo), {beforeResult: singleTest && res.renderDOM})
                 //console.log('res',res)
@@ -215,7 +213,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
         }
     }, Promise.resolve())
     const summary = `total: ${tests.length}, \x1b[32msuccess: ${success_counter}, \x1b[31mfailures: ${fail_counter}, \x1b[33mmemory: ${usedJSHeapSize()}M, time: ${Date.now() - startTime} ms`
-    isCli && printLive(summary+'\n')
+    isNode && printLive(summary+'\n')
 }
 
 function testResultHtml(res, repo) {
