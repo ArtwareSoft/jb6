@@ -1,4 +1,4 @@
-import { parse } from '../lib/acorn.mjs'
+import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
 const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, logByEnv } = coreUtils
 const { 
@@ -75,6 +75,7 @@ export async function calcTgpModelData({ filePath }) {
     logError('calcTgpModelData no tgp', { url: filePath })
     return tgpModel
   }
+  // compDefs may need revisiting, it is global rather than file based
   const compDefs = Object.fromEntries(Object.values(dsls).flatMap(dsl=>Object.values(dsl)).map(x=>[x.capitalLetterId,x]).filter(x=>x[0]))
   Object.assign(dsls.tgp.comp, compDefs)
   dsls.tgp.var.Var = jb.dsls.tgp.var.Var[asJbComp]
@@ -149,13 +150,23 @@ function astToTgpObj(node, code) {
         const $unresolvedArgs = node.arguments.map(x=> toObj(x))
         return attachNode({$: node.callee.name, $unresolvedArgs})
       }
-      case 'ArrowFunctionExpression': return attachNode(eval(code.slice(node.start, node.end)))
+      case 'ArrowFunctionExpression': {
+        let func 
+        try {
+          func = eval(code.slice(node.start, node.end))
+        } catch (e) {
+          logError('astToTgpObj ArrowFunctionExpression eval exception', {message: e.message, e, code, node})
+          func = undefined
+        }
+        return attachNode(func)
+      }
 
       default: return undefined
     }
 
     function attachNode(res) {
-      res[astNode] = node
+      if (res)
+        res[astNode] = node
       return res
     }
   }

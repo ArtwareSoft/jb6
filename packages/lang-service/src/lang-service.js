@@ -1,7 +1,7 @@
 import { coreUtils, dsls } from '@jb6/core'
 import { update } from '../lib/immutable.js'
 
-const { jb, resolveCompArgs, prettyPrint, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique } = coreUtils
+const { jb, resolveCompArgs, prettyPrint, prettyPrintComp, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique } = coreUtils
 const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems, filePosOfPath, getPosOfPath, calcHash } = jb.langServiceUtils
 
 const { 
@@ -35,7 +35,7 @@ Data('langService.completionItems', {
             title = prettyPrint(errors)
         }
 
-        const formattedCompText = prettyPrint(comp, { initialPath: compId, tgpModel })
+        const formattedCompText = prettyPrintComp(comp, { initialPath: compId, tgpModel })
         if (formattedCompText != compText) {
             const reformatEdits = deltaFileContent(compText, formattedCompText , compLine)
             const item = {
@@ -128,7 +128,7 @@ Data('langService.editAndCursorOfCompletionItem', {
     calcPath(opOnComp,path.split('~').slice(1),op) // create op as nested object
     const newComp = update(comp,opOnComp)
     resolveCompArgs(newComp,{tgpModel})
-    const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+    const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
     const edit = deltaFileContent(text, newcompText , compLine)
 
     const cursorPos = itemProps.cursorPos || calcNewPos(newcompText)
@@ -166,7 +166,7 @@ Data('langService.deleteEdits', {
 
         const newComp = update(comp,opOnComp)
         resolveCompArgs(newComp,{tgpModel})
-        const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+        const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
         const edit = deltaFileContent(text, newcompText , compLine)
         
         return { edit, cursorPos: calcNewPos(newcompText), hash: calcHashNoTitle(text) }
@@ -201,14 +201,14 @@ Data('langService.duplicateEdits', {
             const toAdd = cloneProfile(calcPath(comp,pathAr))
             calcPath(opOnComp,pathAr.slice(0, -1),{$splice: [[indexInArray, 0, toAdd]] })    
             const newComp = update(comp,opOnComp)
-            const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+            const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
             const edit = deltaFileContent(text, newcompText , compLine)
             log('lang services duplicate', { edit, ...compProps })
             const targetPath = [compId,...pathAr.slice(0, -1),indexInArray+1].join('~')
             return { edit, cursorPos: calcNewPos(targetPath, newcompText), hash: calcHashNoTitle(text) }
         } else if (path.indexOf('~') == -1) { // duplicate component
             const noOfLines = (text.match(/\n/g) || []).length+1
-            const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+            const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
             const edit = deltaFileContent('', newcompText, compLine+noOfLines)
             log('lang services duplicate comp', { edit, ...compProps })
             return { edit, cursorPos: {line: compLine+noOfLines+1, col: 0}}
@@ -265,7 +265,7 @@ Data('langService.moveInArrayEdits', {
                 const opOnComp = {}
                 calcPath(opOnComp,arrayPath,op) // create opOnComp as nested object
                 const newComp = update(comp,opOnComp)
-                const newcompText = prettyPrint(newComp, { initialPath: compId, tgpModel })
+                const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
                 const edit = deltaFileContent(text, newcompText , compLine)
                 log('tgpTextEditor moveInArray', { op, edit, ...compProps })
 

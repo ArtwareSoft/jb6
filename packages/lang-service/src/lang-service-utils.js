@@ -4,7 +4,8 @@ import { } from '@jb6/core/utils/probe.js'
 import { } from './probe-suggestions.js'
 
 const { tgpEditorHost, offsetToLineCol, calcProfileActionMap, suggestionsOfProbe } = langServiceUtils
-const { jb, Ctx, isMacro, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, unique, compByFullId, splitDslType, runProbeCli } = coreUtils
+const { jb, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, 
+    unique, compByFullId, splitDslType, runProbeCli, asJbComp } = coreUtils
 
 jb.langServiceRegistry = { 
     tgpModels : {}
@@ -22,7 +23,7 @@ async function provideCompletionItems(compProps, ctx) {
     const { actionMap, inCompOffset, tgpModel } = compProps
     const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
         .map(e => e.action).filter(e => e.indexOf('edit!') != 0 && e.indexOf('begin!') != 0 && e.indexOf('end!') != 0)
-    if (actions.length == 0) return []
+    if (actions.length == 0) return { items: [] }
     const priorities = ['addProp']
     let paramDef = null
     const sortedActions = unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
@@ -67,7 +68,7 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
         const index = opKind == 'append' ? -1 : opKind == 'insert' ? (+path.split('~').pop() + 1) : opKind == 'prepend' && 0
         const basePath = opKind == 'insert' ? path.split('~').slice(0, -1).join('~') : path
         const basedOnVal = opKind == 'set' && tgpModel.valOfPath(path)
-        const { result, cursorPath, whereToLand } = newProfile(tgpModel.compById(compId), {basedOnVal})
+        const { result, cursorPath, whereToLand } = newProfile(compByFullId(compId, tgpModel), {basedOnVal})
         const res = opKind == 'set' ? setOp(path, result, ctx) : addArrayItemOp(basePath, { toAdd: result, index, ctx })
         return {...res, resultPath: [res.resultPath || path,cursorPath].filter(x=>x).join('~'), whereToLand }
     }
@@ -206,9 +207,8 @@ class tgpModelForLangService {
         Object.assign(this,tgpModel)
         this.ptsOfTypeCache = {}
     }
-    valOfPath(path, silent){ 
-        const res = calcPath(this.compById(path.split('~')[0], silent),path.split('~').slice(1))
-        return res && res[isMacro] ? res() : res
+    valOfPath(path){ 
+        return calcPath(this.compById(path.split('~')[0]),path.split('~').slice(1))
     }
     compIdOfPath(path) {
         if (path.indexOf('~') == -1)

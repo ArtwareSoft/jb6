@@ -3,14 +3,13 @@ import {} from './lang-service-testers.js'
 const { langService } = ns
 
 const {
-  tgp: { Const,
-    any: { asIs }
+  tgp: { Const
   },
   test: { Test,
     test: { dataTest, completionOptionsTest, completionActionTest }
   },
   common: { Data, Action, Boolean,
-    data: { calcCompTextAndCursor, pipeline, list, filter, join, property, obj, delay, pipe, first, slice }, 
+    data: { calcCompTextAndCursor, pipeline, list, filter, join, property, obj, delay, pipe, first, slice, asIs }, 
     boolean: { equals, contains, notContains, and, not },
     prop: { prop },
   },
@@ -351,6 +350,70 @@ Test('completionTest.multiLineFeatures', {
   })
 })
 */
+
+Test('completionActionTest.defaultValueAsProfile', {
+  impl: completionActionTest(`ALL:Data('cmp1', __{ params: [{id: 'x', defaultValue: list()}] })`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({
+        range: {start: {line: 0, col: 14}, end: {line: 0, col: 57}},
+        newText: `\n  params: [\n    {id: 'x', defaultValue: list()}\n  ]\n`
+    }),
+    expectedCursorPos: '0,13'
+  })
+})
+
+Test('completionActionTest.defaultValueWithDslType', {
+  impl: completionActionTest(`ALL:Control('ctrl1', __{ params: [{id: 'f', type: 'feature', defaultValue: method()}] })`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({
+        range: {start: {line: 0, col: 18}, end: {line: 0, col: 80}},
+        newText: `\n  params: [\n    {id: 'f', type: 'feature', defaultValue: method()}\n  ]\n`
+    }),
+    expectedCursorPos: '0,17'
+  })
+})
+
+Test('completionActionTest.macroByValue', {
+  impl: completionActionTest(`ALL:Data('cmp1', __{ macroByValue: true, params: [{id: 'p'}] })`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({
+        range: {start: {line: 0, col: 14}, end: {line: 0, col: 55}},
+        newText: `\n  macroByValue: true,\n  params: [\n    {id: 'p'}\n  ]\n`
+    }),
+    expectedCursorPos: '0,13'
+  })
+})
+
+Test('completionActionTest.asIsJson', {
+  impl: completionActionTest(`ALL:Data('cmp1', __{ impl: asIs({"a": 3}) })`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({range: {start: {line: 0, col: 14}, end: {line: 0, col: 36}}, newText: '\n  impl: asIs({a: 3})\n'}),
+    expectedCursorPos: '0,13'
+  })
+})
+
+Test('completionActionTest.asIsArray', {
+  impl: completionActionTest(`ALL:Data('cmp1', __{ impl: asIs([{a: 3}]) })`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({
+        range: {start: {line: 0, col: 14}, end: {line: 0, col: 36}},
+        newText: '\n  impl: asIs([{a: 3}])\n'
+    }),
+    expectedCursorPos: '0,13'
+  })
+})
+
+Test('completionActionTest.defaultValueWithDslType', {
+  impl: completionActionTest(`ALL:Control('ctrl1', __{ params: [{id: 'f', type: 'feature', defaultValue: method()}] })`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({
+        range: {start: {line: 0, col: 18}, end: {line: 0, col: 80}},
+        newText: `\n  params: [\n    {id: 'f', type: 'feature', defaultValue: method()}\n  ]\n`
+    }),
+    expectedCursorPos: '0,17'
+  })
+})
+
 
 Test('langServiceTest.provideDefinition', {
   impl: dataTest({

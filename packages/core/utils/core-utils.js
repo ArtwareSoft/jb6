@@ -116,13 +116,15 @@ function logError(err,logObj) {
   globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, callerStack, creatorStack)
   const errObj = { err , ...logObj, callerStack, creatorStack}
   globalThis.jbHost?.process && globalThis.jbHost.process.stderr.write(err)
+  logCli('error', errObj)
   jb.ext.spy?.log('error', errObj)
 }
 
 function logException(e,err,logObj) {
   globalThis.window && globalThis.console.log('%c Exception: ','color: red', err, e, logObj)
-  const errObj = { e, err, stack: e.stack||'', ...logObj}
+  const errObj = { message: e.message, err, stack: e.stack||'', ...logObj, e}
   globalThis.jbHost?.process && globalThis.jbHost.process.stderr.write(`${err}\n${e}`)
+  logCli('exception', errObj)
   jb.ext.spy?.log('exception error', errObj)
 }
 

@@ -1,7 +1,7 @@
 import { jb } from './core-utils.js'
 const { coreUtils } = jb
 
-const { logCli, logError, isNode } = coreUtils
+const { logException, logError, isNode } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext})
 
 async function runCliInContext(script, {requireNode, importMap} = {}) {
@@ -27,7 +27,7 @@ async function runNodeCli(script, {importMap} = {}) {
       return JSON.parse(stdout)
   } catch (e) {
       const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
-      logCli(`error in run node cli: \n${cmd}\n${e}\n${JSON.stringify(importMap,null,2)} \nstdout: ${e.stdout}`)
+      logException(e, 'error in run node cli', {cmd, importMap, stdout: e.stdout})
   }  
 }
 

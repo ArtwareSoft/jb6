@@ -2,7 +2,6 @@ import { jb } from './core-utils.js'
 const { coreUtils } = jb
 const { logError } = coreUtils
 
-const isMacro = Symbol.for('isMacro')
 const asJbComp = Symbol.for('asJbComp')
 const OrigArgs = Symbol.for('OrigArgs')
 const astNode = Symbol.for('astNode')
@@ -34,7 +33,7 @@ function jbCompProxy(jbComp) {
 }
 
 function calcArgs(jbComp,$unresolvedArgs) {
-  if (jbComp.id == 'asIs') // any<tgp>asIs
+  if (jbComp.id == 'asIs')
     return () => $unresolvedArgs[0]
   return { $: jbComp, $unresolvedArgs }
 }
@@ -156,5 +155,5 @@ function resolveProfileArgs(prof) {
   return prof
 }
 
-Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, isMacro, asJbComp, OrigArgs, sysProps, systemParams, 
+Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, asJbComp, OrigArgs, sysProps, systemParams, 
   titleToId, asComp, jbCompProxy, compByFullId})

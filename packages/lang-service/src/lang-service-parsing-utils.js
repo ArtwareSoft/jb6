@@ -1,6 +1,6 @@
-import { parse, tokenizer, tokTypes } from '../lib/acorn.mjs'
+import { parse } from '../lib/acorn-loose.mjs'
 import { coreUtils } from '@jb6/core'
-const { jb, systemParams, astToTgpObj, astNode, logException, 
+const { jb, systemParams, astToTgpObj, astNode, logException, logError, resolveProfileTop, asJbComp, resolveProfileArgs,
     resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType } = coreUtils
 
 export const langServiceUtils = jb.langServiceUtils = { closestComp, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath, 
@@ -92,13 +92,6 @@ function deltaFileContent(compText, newCompText, compLine) {
     }
 }
 
-function log(...args) {
-  if (globalThis.jbVSCodeLog)
-    globalThis.jbVSCodeLog(...args)
-  else
-    console.log(...args)
-}
-
 function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
     resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp})
@@ -109,8 +102,13 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
         compId = `${dslType}${topComp.id}`
         const [ type, dsl ] = splitDslType(dslType)
         tgpModel.dsls[dsl][type][topComp.id] = topComp
+
+        // Object.assign(topComp, {type,dsl})
+        // resolveProfileTop(topComp)
+        // delete topComp.type; delete topComp.dsl; // for pretty print
     }
     const actionMap = []
+
 
     calcActionMap(topComp, compId, topComp[astNode])
     const path = expectedPath || actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to)
@@ -213,15 +211,32 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
 
 function closestComp(docText, cursorLine, cursorCol, filePath) {
     const offset = lineColToOffset(docText,{line: cursorLine, col: cursorCol})
+    let compText = ''
+    let ast
     try {
-        const ast = parse(docText, { ecmaVersion:"latest", sourceType:"module", ranges:true })
-        const span = ast.body.find(n => n.start <= offset && offset < n.end)
-        const compText = docText.slice(span.start, span.end)
-        const shortId = span.expression?.arguments?.[0]?.value // (compText.match(/^\s*\w+\(\s*(['"`])([\s\S]*?)\1/)||[])[2]
-        if (!shortId) return { notJbCode: true }
+        ast = parse(docText, { ecmaVersion:"latest", sourceType:"module", ranges:true })
+    } catch (e) {
+        logException(e, 'closestComp parse exception', {docText, filePath, offset, cursorLine, cursorCol})
+        return { notJbCode: true }
+    }
+    try {
+        let span = ast.body.find(n => n.start <= offset && offset < n.end)
+        if (!span) {
+            logError(`closestComp can not find top span`, { docText, offset, cursorLine, cursorCol, filePath})
+            return { notJbCode: true }
+        }
+        if (span.kind == 'const')
+            span = span.declarations?.[0]?.init
+        compText = docText.slice(span.start, span.end)
+        const shortId = (span.expression || span)?.arguments?.[0]?.value // (compText.match(/^\s*\w+\(\s*(['"`])([\s\S]*?)\1/)||[])[2]
+        if (!shortId) {
+            logError('closestComp no shortId', {compText, filePath, span})
+            return { notJbCode: true }
+        }
         const compLine = offsetToLineCol(docText,span.start).line
         return { compText, compLine, inCompOffset: offset - span.start, shortId, cursorLine, cursorCol, filePath}
     } catch (e) {
+        logException(e, 'closestComp exception', {compText, docText, filePath, offset, cursorLine, cursorCol})
         return { notJbCode: true }
     }
 }

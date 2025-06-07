@@ -9,7 +9,7 @@ const {
     var : { Var } 
   },
   common: { Data, Action, Boolean,
-    data: { pipeline, filter, join, property, obj, delay }, 
+    data: { pipeline, filter, join, property, obj, delay, asIs }, 
     Boolean: { contains, equals },
     Prop: { prop }
   },
@@ -185,6 +185,10 @@ Test('coreTest.usingArrayParam', {
   impl: dataTest(withArrayParam2(t1(), t1()), equals(join(','), 'txt,txt'))
 })
 
+Test('coreTest.asIsArray', {
+  impl: dataTest(pipeline(asIs([{a: 1}, {a: 2}]), '%a%', join()), equals('1,2'))
+})
+
 Test('expTest.select', {
   impl: dataTest({
     calculate: pipeline('%$peopleWithChildren%', pipeline(Var('parent'), '%children%', '%name% is child of %$parent/name%'), join()),
@@ -244,3 +248,4 @@ Test('expTest.expWithArrayVar', {
     expectedResult: equals('Bart')
   })
 })
+

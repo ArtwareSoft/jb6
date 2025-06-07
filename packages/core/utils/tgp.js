@@ -14,9 +14,10 @@ const tgpComp = CompDef({ // bootstraping
     {id: 'id', as: 'string', mandatory: true},
     {id: 'type', as: 'string', byName: true},
     {id: 'dsl', as: 'string'},
+    {id: 'macroByValue', as: 'boolean'},
     {id: 'description', as: 'string'},
     {id: 'params', type: 'param[]'},
-    {id: 'impl', dynamicTypeFromParent: (parent, dsls) => dsls.tgp.comp[parent.$]?.dslType, mandatory: true}
+    {id: 'impl', dynamicTypeFromParent: (parent, dsls) => dsls.tgp.comp[parent.$]?.dslType, mandatory: true},
   ]
 })
 
@@ -160,11 +161,11 @@ function globalsOfType(tgpType) { // not via tgpModel
 //     notifications.push({ext, extObj, level})
 // }
 
-Any('asIs', {
+Data('asIs', {
   params: [
     {id: 'val', ignore: true}
   ],
-  impl: ctx => { debugger; ctx.args.val }
+  impl: ctx => ctx.args.val
 })
 
 Any('If', {

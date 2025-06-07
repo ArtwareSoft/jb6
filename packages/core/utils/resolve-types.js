@@ -107,7 +107,7 @@ function argsToProfile(prof, comp) {
   
     const paramsByNameAst = argsAst.filter(n=>n.type=='ObjectExpression')[0]
     const propsPrimitivesByName =  Object.entries(propsByName).filter(e=>isPrimitiveValue(e[1]))
-        .map(([k,v])=> [k,paramsByNameAst.properties.find(p=>p.key.name == k).value, v])
+        .map(([k,v])=> [k,paramsByNameAst.properties.find(p=>p.key.name == k || p.key.value == k).value, v])
     return [...propsByValue, ...propsPrimitivesByName].filter(v=>isPrimitiveValue(v[2])).map(x=>x.slice(0,2))
   }
 

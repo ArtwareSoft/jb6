@@ -1,7 +1,7 @@
 import { jb } from './core-utils.js'
 import {} from './jb-cli.js'
 const { coreUtils } = jb
-const { logCli, isNode } = coreUtils
+const { isNode, logException } = coreUtils
 Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, fetchByEnv, logByEnv, 
   studioAndProjectImportMaps, calcRepoRoot, absPathToUrl, calcImportMapOfRepoRoot })
 
@@ -90,7 +90,7 @@ async function calcImportMap() {
     )    
     const serveEntries = [{dir: '', pkgId: '@jb6/packages', pkgDir: pkgsDir}]    
     const res = { imports: { ...runtime, '#jb6/': '/packages/' }, serveEntries }
-    logCli('JB6 dev mode: calcImportMap', res)
+    //logCli('JB6 dev mode: calcImportMap', res)
     return res
   } else {
     return calcImportMapOfRepoRoot(repoRoot)
@@ -160,7 +160,7 @@ async function isJB6Dev() {
     const rootPkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
     return rootPkg.name == 'jb6-monorepo'
   } catch (e) { 
-    logCli('Error checking JB6 repo', e)
+    logException(e, 'Error checking JB6 repo')
     return false
   }
 }

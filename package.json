@@ -1,14 +1,13 @@
 {
   "name": "jb6-monorepo",
   "private": true,
-  "version": "1.250603.3",
+  "version": "1.250606.0",
   "description": "JB6 core + plugins (pure-JS workspaces mono-repo)",
   "type": "module",
   "scripts": {
     "test": "node packages/testing/run-tests-cli.js all",
     "test-via-web": "start http://localhost:8083/packages/testing/tests.html",
-    "jb-server": "node packages/testing/jb-web-server.js",
-    "lang-server": "node packages/lang-service/server/lang-server.js",
+    "local": "node packages/testing/jb-web-server.js",
     "vscode-package": "cd hosts/vscode-tgp-lang && vsce package",
     "bump:calver": "node scripts/bump-calver.js",
     "jb6:publish": "bash scripts/publish.sh",
@@ -23,11 +22,13 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.4",
-    "acorn": "^8.14.1",
     "dotenv": "^16.5.0",
     "globby": "^14.1.0"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "acorn-loose": "^8.5.0"
+  }
 }

@@ -1,12 +1,12 @@
 import { dsls, coreUtils } from '@jb6/core'
 
-const { resolveCompArgs, resolveProfileArgs, titleToId, sysProps, isMacro, 
+const { resolveCompArgs, resolveProfileArgs, resolveProfileTypes, titleToId, sysProps, resolveProfileTop, OrigArgs,
   jbComp, asJbComp, isPrimitiveValue, asArray, calcValue, compIdOfProfile, compByFullId } = coreUtils
 const {
   common: { Data }
 } = dsls
 
-Object.assign(coreUtils,{ prettyPrint, prettyPrintWithPositions})
+Object.assign(coreUtils,{ prettyPrint, prettyPrintWithPositions, prettyPrintComp})
 
 Data('prettyPrint', {
   params: [
@@ -20,19 +20,29 @@ Data('prettyPrint', {
 
 const emptyLineWithSpaces = Array.from(new Array(200)).map(_=>' ').join('')
 
-// export function prettyPrintComp(compId,comp,settings={}) {
-//     return `${compHeader(compId)}${prettyPrint(comp,{ initialPath: compId, ...settings })})`
-// }
+function prettyPrintComp(comp,settings={}) {
+  const { tgpModel } = settings
+  const originalParams = comp.params ? (comp.params || []).map(p=>({...p})) : undefined
+  const { type, dsl } = tgpModel.dsls.tgp.comp[comp.$]
+  Object.assign(comp, {type,dsl})
+  resolveProfileTop(comp)
+  delete comp.type; delete comp.dsl
+  const resolvedParams = comp.params || []
+  comp.params = originalParams
+
+  return prettyPrintWithPositions(comp,{...settings, resolvedParams}).text
+}
+
 function prettyPrint(val,settings = {}) {
   if (val == null) return ''
-  return prettyPrintWithPositions(val,settings).text;
+  return prettyPrintWithPositions(val,settings).text
 }
 
 function compHeader(compId) {
   return `component('${compId.split('>').pop()}', `
 }
 
-function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros,singleLine, depth, tgpModel, type} = {}) {
+function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros,singleLine, depth, tgpModel, type, resolvedParams} = {}) {
   if (val[asJbComp]) {
     debugger
   }
@@ -201,16 +211,20 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       return asIsProps(profile,path)
 
     if (profile.$ == 'asIs') {
-      const toPrint = {...profile}
-      delete toPrint.$
-      delete toPrint.$$
-      //resolveProfileArgs(profile)
+      const toPrint = profile[OrigArgs][0]
       const content = prettyPrint(toPrint,{noMacros: true})
       const tokens = [ 
         {token: 'asIs(', action: `begin!${path}`}, {token: '', action: `edit!${path}`},
         {token: content, action: `asIs!${path}`}, {token: ')', action: `end!${path}`}]
       return props[path] = {tokens, len: content.length + 6, indentWithParent: true }
     }
+    if (path.match(/([0-9]+)~defaultValue$/)) {
+      const index = path.match(/([0-9]+)~defaultValue$/)[1]
+      const resolvedParam = resolvedParams[index]
+      const topComp = compByFullId(path.split('~')[0], tgpModel)
+      resolveProfileTypes(profile, {tgpModel, expectedType: resolvedParam.$dslType, topComp})
+    }
+
     if (profile.$comp) {
       const cleaned = {...profile }
       if (profile.params)
@@ -220,8 +234,9 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       return asIsProps(cleaned,path)
     }
     const fullptId = profile.$$ && compIdOfProfile(profile)
-    if (!fullptId)
+    if (!fullptId) {
       return asIsProps(profile,path)
+    }
 
     const comp = profile.$ instanceof jbComp ? profile.$ : compByFullId(fullptId, tgpModel)
     const id = fullptId == 'comp<tgp>tgpComp' ? profile.$ : fullptId.split('>').pop()
@@ -352,7 +367,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     if (val === undefined) return tokenProps('undefined', path)
 
     if (typeof val === 'object') return calcProfileProps(val, path,settings)
-    if (typeof val === 'function' && val[isMacro]) return '' //calcObjProps(val(), path)
+    //if (typeof val === 'function' && val[isMacro]) return '' //calcObjProps(val(), path)
     if (typeof val === 'function') return funcProps(val, path)
 
     const putNewLinesInString = typeof val === 'string' && val.match(/\n/) && settings?.newLinesInCode

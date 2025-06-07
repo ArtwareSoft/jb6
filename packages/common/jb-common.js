@@ -4,9 +4,10 @@ const { asArray, log, logError, waitForInnerElements, toArray, toString, isPromi
 const { 
   tgp: { Any, DefComponents, Const, TgpType, TgpTypeModifier,
     var : { Var }, 
-    any: { If, asIs} 
+    any: { If } 
   },
   common: { Data, Boolean,
+    data: {asIs}
   }
 } = dsls
 

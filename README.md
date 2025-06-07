@@ -44,3 +44,23 @@ const {
 Test('myTests.HelloWorld', {
   impl: dataTest(pipeline('hello world'), contains('world'))
 })
+
+##Profile Template (PT) example
+
+Test('dataTest', {
+  params: [
+    {id: 'calculate', type:'data', dynamic: true},
+    {id: 'expectedResult', type: 'boolean', dynamic: true},
+    {id: 'runBefore', type: 'action', dynamic: true},
+    {id: 'timeout', as: 'number', defaultValue: 200},
+    {id: 'allowError', as: 'boolean', dynamic: true, type: 'boolean'},
+    {id: 'cleanUp', type: 'action', dynamic: true},
+    {id: 'expectedCounters', as: 'single'},
+    {id: 'spy', as: 'string'},
+    {id: 'includeTestRes', as: 'boolean', type: 'boolean'},
+    {id: 'covers', as: 'array'},
+  ],
+  impl: (ctx,{ calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy,includeTestRes }) => {
+    //...
+  }
+})

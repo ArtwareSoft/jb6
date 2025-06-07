@@ -14,8 +14,6 @@ VSCODE_HEADER
 
 </head>
 <body>
-  HELLO TESTS IN VSCODE
-  <button id="run-tests-button">Run all tests</button>
 	<div id="remoteTests"> </div>
 
 	<div id="mem"> </div>
@@ -39,7 +37,6 @@ VSCODE_HEADER
       ReactDOM.createRoot(document.getElementById('show')).render(h(probeResultView,{probeRes}))
     }
     globalThis.run = run
-    document.getElementById('run-tests-button').addEventListener('click', run)
     run()
 
   function _probeResultView({probeRes}) {
