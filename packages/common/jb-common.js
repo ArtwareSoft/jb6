@@ -6,12 +6,10 @@ const {
     var : { Var }, 
     any: { If } 
   },
-  common: { Data, Boolean,
+  common: { Data, Action, Boolean,
     data: {asIs}
   }
 } = dsls
-
-const Action = TgpType('action','common')
 
 Data('log', {
   moreTypes: 'action',
@@ -425,19 +423,6 @@ Boolean('notEquals', {
     {id: 'item2', defaultValue: '%%', as: 'single'}
   ],
   impl: (ctx, {item1, item2}) => item1 != item2
-})
-
-Action('runActions', {
-  params: [
-    {id: 'actions', type: 'action[]', dynamic: true, composite: true, mandatory: true}
-  ],
-  impl: ctx => {
-    if (!ctx.jbCtx.profile) debugger;
-    const actions = asArray(ctx.jbCtx.profile.actions).filter(x=>x)
-    return actions.reduce((pr,action,index) =>
-        pr.finally(function runActions() {return ctx.runInner(action, { as: 'single'}, `items~${index}` ) })
-      ,Promise.resolve())
-  }
 })
 
 Action('runActionOnItem', {

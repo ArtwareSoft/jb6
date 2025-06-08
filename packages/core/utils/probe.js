@@ -1,6 +1,6 @@
 import { jb } from './core-utils.js'
 const { coreUtils } = jb
-import { } from './jb-cli.js'
+import './jb-cli.js'
 const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, stripData, asJbComp, runCliInContext, absPathToUrl } = coreUtils
 
 jb.probeRepository = {

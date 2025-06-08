@@ -3,7 +3,7 @@ import child from 'child_process'
 import path from 'path'
 import { serveImportMap } from '@jb6/server-utils'
 import { coreUtils } from '@jb6/core'
-import { } from '@jb6/core/utils/jb-cli.js'
+import '@jb6/core/utils/jb-cli.js'
 
 const { runNodeCli, calcRepoRoot}  = coreUtils
 

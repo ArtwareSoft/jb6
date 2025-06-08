@@ -1,8 +1,12 @@
-import { } from '@jb6/core'
-import { } from './model-data/tgp-model-data.js'
-import { } from './pretty-print.js'
+import '@jb6/core'
+import '@jb6/core/utils/resolve-types.js'
+import '@jb6/core/utils/calc-import-map.js'
+import '@jb6/core/utils/probe.js'
+
+import './model-data/tgp-model-data.js'
+import './pretty-print.js'
 import { langServiceUtils } from './src/lang-service-parsing-utils.js'
-import { } from './src/lang-service-utils.js'
-import { } from './src/lang-service.js'
+import './src/lang-service-utils.js'
+import './src/lang-service.js'
 
 export { langServiceUtils }

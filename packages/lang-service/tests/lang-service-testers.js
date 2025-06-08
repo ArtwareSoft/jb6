@@ -1,7 +1,7 @@
-import {} from '@jb6/testing'
+import '@jb6/testing'
 import { langServiceUtils } from '@jb6/lang-service'
 import { ns, dsls, coreUtils } from '@jb6/core'
-import { } from './mock-workspace.js'
+import './mock-workspace.js'
 
 const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay } = coreUtils
 const { langService } = ns

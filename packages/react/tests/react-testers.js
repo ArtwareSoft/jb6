@@ -1,6 +1,6 @@
 import { dsls, ns, coreUtils } from '@jb6/core'
 import { h, L, useState, useEffect, useRef, useContext, reactUtils, waitForReact } from '@jb6/react' 
-import {} from '@jb6/testing'
+import '@jb6/testing'
 const { asArray } = coreUtils
 
 const { 

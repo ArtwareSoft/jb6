@@ -1,10 +1,8 @@
 import { jb } from './utils/core-utils.js'
-import {} from './utils/jb-expression.js'
-import {} from './utils/jb-args.js'
-import {} from './utils/jb-core.js'
-import {} from './utils/tgp.js'
-import {} from './utils/resolve-types.js'
-import {} from './utils/calc-import-map.js'
+import './utils/jb-expression.js'
+import './utils/jb-args.js'
+import './utils/jb-core.js'
+import './utils/tgp.js'
 
 export const { dsls, ns, coreUtils } = jb
 export { jb }

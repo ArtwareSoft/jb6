@@ -1,5 +1,5 @@
 import { dsls, ns } from '@jb6/core'
-import {} from './lang-service-testers.js'
+import './lang-service-testers.js'
 const { langService } = ns
 
 const {

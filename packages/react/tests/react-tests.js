@@ -1,7 +1,7 @@
 import { dsls, ns } from '@jb6/core'
 import { h, L, useState, useEffect, useRef, useContext, reactUtils } from '@jb6/react'
 
-import { } from './react-testers.js'
+import './react-testers.js'
 
 const { 
   test: { Test, 

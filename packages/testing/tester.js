@@ -1,5 +1,5 @@
 import { coreUtils, dsls } from '@jb6/core'
-import {} from '@jb6/common'
+import '@jb6/common'
 import { spy } from './spy.js'
 
 const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfType, unique, isNode } = coreUtils

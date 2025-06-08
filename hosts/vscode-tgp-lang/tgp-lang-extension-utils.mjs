@@ -1,6 +1,6 @@
 import { coreUtils, dsls, ns } from '@jb6/core'
 import { langServiceUtils } from '@jb6/lang-service'
-import {} from '@jb6/core/utils/probe.js'
+import '@jb6/core/utils/probe.js'
 import { readFile } from 'fs/promises'
 
 const { jb, logError, asArray, log, Ctx, resolveWithImportMap, studioAndProjectImportMaps } = coreUtils

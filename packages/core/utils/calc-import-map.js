@@ -1,14 +1,16 @@
 import { jb } from './core-utils.js'
-import {} from './jb-cli.js'
+import './jb-cli.js'
 const { coreUtils } = jb
-const { isNode, logException } = coreUtils
-Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, fetchByEnv, logByEnv, 
-  studioAndProjectImportMaps, calcRepoRoot, absPathToUrl, calcImportMapOfRepoRoot })
+const { isNode, logException, fetchByEnv, logByEnv, absPathToUrl } = coreUtils
+Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, 
+  studioAndProjectImportMaps, calcRepoRoot, calcImportMapOfRepoRoot })
 
 async function studioAndProjectImportMaps(filePath) {
   if (!isNode) {
         const script = `
   import { coreUtils } from '@jb6/core'
+  import '@jb6/core/utils/calc-import-map.js'
+
   ;(async()=>{
     try {
       const result = await coreUtils.studioAndProjectImportMaps('${filePath}')
@@ -163,28 +165,4 @@ async function isJB6Dev() {
     logException(e, 'Error checking JB6 repo')
     return false
   }
-}
-
-
-function logByEnv(...args) {
-  if (globalThis.jbVSCodeLog)
-    globalThis.jbVSCodeLog(...args)
-  else
-    console.log(...args)
-}
-
-async function fetchByEnv(url, serveEntries = []) {
-  if (globalThis.window) {
-    const rUrl = absPathToUrl(url, serveEntries)
-    const res = await fetch(rUrl)
-    if (!res.ok) throw new Error(`fetch ${url} → ${res.status}`)
-    return await res.text()
-  }
-  const { readFile } = await import('fs/promises')
-  return await readFile(url, 'utf8')
-}
-
-function absPathToUrl(path, serveEntries = []) {
-    const servedEntry = serveEntries.find(x => path.indexOf(x.pkgDir) == 0)
-    return servedEntry ? path.replace(servedEntry.pkgDir, servedEntry.dir) : path
 }

@@ -20,8 +20,8 @@ Install the VS Code extension:
 ## Test Sample
 
 ```js
-import {} from "@jb6/testing"
-import {} from "@jb6/common"
+import "@jb6/testing"
+import "@jb6/common"
 import { dsls } from "@jb6/core"
 
 const {

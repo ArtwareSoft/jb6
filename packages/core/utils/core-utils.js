@@ -311,10 +311,33 @@ function stripData(top, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000} = {}) {
   }
 }
 
+function logByEnv(...args) {
+  if (globalThis.jbVSCodeLog)
+    globalThis.jbVSCodeLog(...args)
+  else
+    console.log(...args)
+}
+
+async function fetchByEnv(url, serveEntries = []) {
+  if (globalThis.window) {
+    const rUrl = absPathToUrl(url, serveEntries)
+    const res = await fetch(rUrl)
+    if (!res.ok) throw new Error(`fetch ${url} → ${res.status}`)
+    return await res.text()
+  }
+  const { readFile } = await import('fs/promises')
+  return await readFile(url, 'utf8')
+}
+
+function absPathToUrl(path, serveEntries = []) {
+    const servedEntry = serveEntries.find(x => path.indexOf(x.pkgDir) == 0)
+    return servedEntry ? path.replace(servedEntry.pkgDir, servedEntry.dir) : path
+}
+
 const isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string'
 
 export const coreUtils = jb.coreUtils = {
-  jb, RT_types, log, logError, logException, logCli, isNode,
+  jb, RT_types, log, logError, logException, logCli, isNode, logByEnv, fetchByEnv, absPathToUrl,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType, stripData,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,

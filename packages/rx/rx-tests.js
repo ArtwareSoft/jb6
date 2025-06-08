@@ -1,5 +1,5 @@
 import { utils } from '../testers/data-tester.js'
-import { } from './rx.js'
+import './rx.js'
 import { callbag } from './jb-callbag.js'
 import { dsls, ns } from '../core/all.js'
 

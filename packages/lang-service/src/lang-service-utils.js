@@ -1,7 +1,7 @@
 import { coreUtils } from '@jb6/core'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
-import { } from '@jb6/core/utils/probe.js'
-import { } from './probe-suggestions.js'
+
+import './probe-suggestions.js'
 
 const { tgpEditorHost, offsetToLineCol, calcProfileActionMap, suggestionsOfProbe } = langServiceUtils
 const { jb, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, 

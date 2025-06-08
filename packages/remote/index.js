@@ -1,1 +1,1 @@
-import {} from './remote.js'
+import './remote.js'

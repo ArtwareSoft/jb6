@@ -1,5 +1,5 @@
-import { } from '@jb6/lang-service'
-import { } from './lang-service-testers.js'
+import '@jb6/lang-service'
+import './lang-service-testers.js'
 import { dsls, coreUtils } from '@jb6/core'
 const { prettyPrint} = coreUtils
 

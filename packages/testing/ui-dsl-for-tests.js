@@ -1,6 +1,6 @@
 import { dsls } from '@jb6/core'
-import {} from '@jb6/testing'
-import {} from '@jb6/common'
+import '@jb6/testing'
+import '@jb6/common'
 
 const { 
     common: { Data },

@@ -71,33 +71,6 @@ const MetaVar = TgpType('var','tgp', {modifierId: 'Var'})
 const MetaComp = TgpType('comp','tgp')
 const MetaParam = TgpType('param','tgp')
 
-// MetaComp('tgpType', {
-//   id: 'comp<tgp>tgpType', // this id is used for tgp-model-data registration 
-//   dsl: 'tgp',
-//   type: 'comp',
-//   params: [
-//     {id: 'type', as: 'string', mandatory: true},
-//     {id: 'dsl', as: 'string', byName: true}
-//   ],
-//   instanceParams: [
-//     {id: 'id', as: 'string', mandatory: true},
-//     {id: 'description', as: 'string'},
-//     {id: 'params', type: 'param[]'},
-//     {id: 'impl', dynamicTypeFromParent: parent => parent.$dslType, mandatory: true}
-//   ]
-// })
-
-// MetaComp('tgpComp', { // appears also above, for bootstraping
-//   params: [
-//     {id: 'id', as: 'string', mandatory: true},
-//     {id: 'type', as: 'string', byName: true},
-//     {id: 'dsl', as: 'string'},
-//     {id: 'description', as: 'string'},
-//     {id: 'params', type: 'param[]'},
-//     {id: 'impl', dynamicTypeFromParent: parent => parent.$dslType, mandatory: true}
-//   ]
-// })
-
 MetaParam('param', {
   params: [
     {id: 'id', as: 'string', mandatory: true},
@@ -122,6 +95,7 @@ MetaVar('Var', {
 // common dsl
 const Data = TgpType('data','common')
 const Boolean = TgpType('boolean','common')
+const Action = TgpType('action','common')
 
 function DefComponents(items,def) { items.forEach(item=>def(item)) }
 
@@ -144,22 +118,6 @@ function globalsOfType(tgpType) { // not via tgpModel
   return Object.keys(tgpType).map(x=>tgpType[x]).map(x=>x[asJbComp]).filter(x=>x)
     .filter(x=>!(x.params || []).length).map(({id})=>id.split('>').pop())
 }
-
-// const extHandlers = {}
-// const notifications = []
-// export function onInjectExtension(ext, handler) {
-//     setTimeout(() => {
-//         extHandlers[ext] = extHandlers[ext] || []
-//         extHandlers[ext].push(handler)
-//         // notify older notifications
-//         notifications.filter(n=>n.ext == ext).forEach(({extObj, level})=>handler(extObj, level))
-//     },0)
-// }
-
-// export function notifyInjectExtension(ext, extObj, level=1) {
-//     (extHandlers[ext] || []).forEach(h=>h(extObj, level))
-//     notifications.push({ext, extObj, level})
-// }
 
 Data('asIs', {
   params: [
@@ -193,6 +151,17 @@ Any('runCtx', {
   ]
 })
 
-
+Action('runActions', {
+  params: [
+    {id: 'actions', type: 'action[]', dynamic: true, composite: true, mandatory: true}
+  ],
+  impl: ctx => {
+    if (!ctx.jbCtx.profile) debugger;
+    const actions = asArray(ctx.jbCtx.profile.actions).filter(x=>x)
+    return actions.reduce((pr,action,index) =>
+        pr.finally(function runActions() {return ctx.runInner(action, { as: 'single'}, `items~${index}` ) })
+      ,Promise.resolve())
+  }
+})
 
 

@@ -1,6 +1,6 @@
 import { dsls, coreUtils } from '@jb6/core'
-import {} from '@jb6/core/utils/probe.js'
-import {} from '@jb6/testing'
+import '@jb6/core/utils/probe.js'
+import '@jb6/testing'
 
 const { runProbe, runProbeCli } = coreUtils
 
