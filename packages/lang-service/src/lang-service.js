@@ -15,13 +15,13 @@ Data('langService.completionItems', {
     ],
     impl: async (ctx, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { actionMap, compText, compLine, errors, cursorPos, compId, tgpModel, comp } = compProps
+        const { actionMap, compText, compPos, errors, cursorPos, compId, tgpModel, comp } = compProps
         let items = [], title = '', paramDef
 
         if (actionMap) {
             ({items, paramDef} = await provideCompletionItems(compProps, ctx))
             items.forEach((item, i) => Object.assign(item, {
-                compLine, insertText: '', sortText: '!' + String(i).padStart(3, '0'), command: { command: 'jbart.applyCompChangeOfCompletionItem', 
+                compPos, insertText: '', sortText: '!' + String(i).padStart(3, '0'), command: { command: 'jbart.applyCompChangeOfCompletionItem', 
                 arguments: [item] 
             },
             }))
@@ -37,7 +37,7 @@ Data('langService.completionItems', {
 
         const formattedCompText = prettyPrintComp(comp, { initialPath: compId, tgpModel })
         if (formattedCompText != compText) {
-            const reformatEdits = deltaFileContent(compText, formattedCompText , compLine)
+            const reformatEdits = deltaFileContent(compText, formattedCompText , compPos)
             const item = {
                 kind: 4, id: 'reformat', insertText: '', label: '🔄 reformat', sortText: '!!01', edit: reformatEdits,
                 command: { command: 'jbart.applyCompChangeOfCompletionItem', arguments: [{ edit: reformatEdits, cursorPos }] },
@@ -120,7 +120,7 @@ Data('langService.editAndCursorOfCompletionItem', {
   impl: async (ctx,{item}) => {
     if (item.edit) return item
     if (!item.compProps) return {}
-    const { text, compId, comp, compLine, tgpModel } = item.compProps
+    const { text, compId, comp, compPos, tgpModel } = item.compProps
     const itemProps = item.extend ? { ...item, ...item.extend() } : item
     const { op, path, resultPath, whereToLand } = itemProps
 
@@ -129,7 +129,7 @@ Data('langService.editAndCursorOfCompletionItem', {
     const newComp = update(comp,opOnComp)
     resolveCompArgs(newComp,{tgpModel})
     const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
-    const edit = deltaFileContent(text, newcompText , compLine)
+    const edit = deltaFileContent(text, newcompText , compPos)
 
     const cursorPos = itemProps.cursorPos || calcNewPos(newcompText)
     return { edit, cursorPos }
@@ -139,7 +139,7 @@ Data('langService.editAndCursorOfCompletionItem', {
         const _whereToLand = TBD ? 'begin' : (whereToLand || 'edit')
         const expectedPath = resultPath || path
         const { line, col } = getPosOfPath(expectedPath, [_whereToLand,'prependPT','appendPT'], {compText, tgpModel})
-        return { TBD, line: line + compLine, col }
+        return { TBD, line: line + compPos.line, col }
     }    
   }
 })
@@ -150,7 +150,7 @@ Data('langService.deleteEdits', {
     ],
     impl: async (ctx, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { reformatEdits, text, comp, compLine, compId, errors, path, tgpModel, lineText } = compProps
+        const { reformatEdits, text, comp, compPos, compId, errors, path, tgpModel, lineText } = compProps
         if (reformatEdits)
             return { errors: ['delete - bad format'], ...compProps }
 
@@ -167,7 +167,7 @@ Data('langService.deleteEdits', {
         const newComp = update(comp,opOnComp)
         resolveCompArgs(newComp,{tgpModel})
         const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
-        const edit = deltaFileContent(text, newcompText , compLine)
+        const edit = deltaFileContent(text, newcompText , compPos)
         
         return { edit, cursorPos: calcNewPos(newcompText), hash: calcHashNoTitle(text) }
 
@@ -178,7 +178,7 @@ Data('langService.deleteEdits', {
             }
             if (!line && !col)
                 return logError('delete can not find path', { path })
-            return { line: line + compLine, col }
+            return { line: line + compPos.line, col }
         }
     }
 })
@@ -189,7 +189,7 @@ Data('langService.duplicateEdits', {
     ],
     impl: async (ctx, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { reformatEdits, text, shortId, comp, compLine, compId, errors, path, tgpModel, lineText } = compProps
+        const { reformatEdits, text, shortId, comp, compPos, compId, errors, path, tgpModel, lineText } = compProps
         if (reformatEdits)
             return { errors: ['duplicate - not in array'], ...compProps }
 
@@ -202,16 +202,16 @@ Data('langService.duplicateEdits', {
             calcPath(opOnComp,pathAr.slice(0, -1),{$splice: [[indexInArray, 0, toAdd]] })    
             const newComp = update(comp,opOnComp)
             const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
-            const edit = deltaFileContent(text, newcompText , compLine)
+            const edit = deltaFileContent(text, newcompText , compPos)
             log('lang services duplicate', { edit, ...compProps })
             const targetPath = [compId,...pathAr.slice(0, -1),indexInArray+1].join('~')
             return { edit, cursorPos: calcNewPos(targetPath, newcompText), hash: calcHashNoTitle(text) }
         } else if (path.indexOf('~') == -1) { // duplicate component
             const noOfLines = (text.match(/\n/g) || []).length+1
             const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
-            const edit = deltaFileContent('', newcompText, compLine+noOfLines)
+            const edit = deltaFileContent('', newcompText, compPos+noOfLines)
             log('lang services duplicate comp', { edit, ...compProps })
-            return { edit, cursorPos: {line: compLine+noOfLines+1, col: 0}}
+            return { edit, cursorPos: {line: compPos+noOfLines+1, col: 0}}
         }
         return { errors: ['duplicate - bad format'], ...compProps }
 
@@ -219,7 +219,7 @@ Data('langService.duplicateEdits', {
             let { line, col } = getPosOfPath(path, 'begin',{compText, tgpModel})
             if (!line && !col)
                 return logError('duplicate can not find target path', { path })
-            return { line: line + compLine, col }
+            return { line: line + compPos.line, col }
         }
     }
 })
@@ -230,16 +230,16 @@ Data('langService.createTestEdits', {
     ],
     impl: async (ctx, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { reformatEdits, text, shortId, compLine} = compProps
+        const { reformatEdits, text, shortId, compPos} = compProps
         if (reformatEdits)
             return { errors: ['createText - bad format'], ...compProps }
 
         const impl = `dataTest(${shortId}(), equals(''))`
         const newText = `\nTest('dataTest.${shortId}', {\n  impl: ${impl}\n})\n`        
         const noOfLines = (text.match(/\n/g) || []).length+1
-        const edit = deltaFileContent('', newText, compLine+noOfLines)
+        const edit = deltaFileContent('', newText, {line: compPos.line +noOfLines, col: 0})
         log('lang services duplicate comp', { edit, ...compProps })
-        return { edit, cursorPos: {line: compLine+noOfLines+1, col: 0}}
+        return { edit, cursorPos: {line: compPos.line+noOfLines+1, col: 0}}
     }
 })
 
@@ -250,7 +250,7 @@ Data('langService.moveInArrayEdits', {
     ],
     impl: async (ctx, {diff, compTextAndCursor}) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { reformatEdits, compId, compLine, actionMap, text, path, comp, tgpModel } = compProps
+        const { reformatEdits, compId, compPos, actionMap, text, path, comp, tgpModel } = compProps
         if (!reformatEdits && actionMap) {
             const rev = path.split('~').slice(1).reverse()
             const indexOfElem = rev.findIndex(x => x.match(/^[0-9]+$/))
@@ -266,7 +266,7 @@ Data('langService.moveInArrayEdits', {
                 calcPath(opOnComp,arrayPath,op) // create opOnComp as nested object
                 const newComp = update(comp,opOnComp)
                 const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
-                const edit = deltaFileContent(text, newcompText , compLine)
+                const edit = deltaFileContent(text, newcompText , compPos)
                 log('tgpTextEditor moveInArray', { op, edit, ...compProps })
 
                 const origPath = compProps.path.split('~')
@@ -282,7 +282,7 @@ Data('langService.moveInArrayEdits', {
             const { line, col } = getPosOfPath(path, 'begin',{compText, tgpModel})
             if (!line && !col)
                 return logError('moveInArray can not find path', { path })
-            return { line: line + compLine, col }
+            return { line: line + compPos.line, col }
         }
     }
 })

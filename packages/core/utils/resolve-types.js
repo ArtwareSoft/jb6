@@ -151,7 +151,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentProp, paren
     return jb.dsls.tgp.tgpComp[asJbComp]
   if (dslType) {
     const [type, dsl] = splitDslType(dslType)
-    const res = dsls[dsl||'common'][type][id]
+    const res = dsls[dsl||'common']?.[type]?.[id]
     if (res) return res
   }
 
@@ -172,7 +172,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentProp, paren
   const shortId = id.split('>').pop()
   const fromAllTypes = allTypes.map(dslType => {
     const [type, dsl] = splitDslType(dslType)
-    return dsls[dsl||'common'][type][shortId]
+    return dsls[dsl||'common']?.[type]?.[shortId]
   }).find(x=>x)
   if (fromAllTypes)
     return fromAllTypes

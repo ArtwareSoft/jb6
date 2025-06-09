@@ -156,7 +156,7 @@ function wrapWithArray(path, compProps) {
 }
 
 async function dataCompletions(compProps, path, ctx) {
-    const { actionMap, inCompOffset, text, filePath, compLine } = compProps
+    const { actionMap, inCompOffset, text, filePath, compPos } = compProps
     const item = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
         .find(e => e.action.indexOf('insideText!') == 0)
     const value = text.slice(item.from - 1, item.to - 1)
@@ -182,7 +182,7 @@ ${text}
         const overlap = calcOverlap(newText, input.value.slice(startInInput))
         const suffixExists = input.value.substr(startInInput + overlap)[0] == suffix
         const newVal = input.value.substr(0, startInInput) + newText + input.value.substr(startInInput + overlap + (suffixExists ? 1 : 0))
-        const cursorPos = { line: line + compLine, col: col + startInInput + toPaste.length + (suffix == '%' ? 2 : 1) }
+        const cursorPos = { line: line + compPos.line, col: compPos.col + col + startInInput + toPaste.length + (suffix == '%' ? 2 : 1) }
         return { label: text, path, kind: primiteVal ? 12 : 13, cursorPos, compProps,  op: { $set: newVal } }
     })
 

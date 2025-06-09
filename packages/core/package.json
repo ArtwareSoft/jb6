@@ -1,10 +1,11 @@
 {
   "name": "@jb6/core",
-  "version": "1.250608.2",
+  "version": "1.250608.3",
   "type": "module",
   "exports": {
     ".": "./index.js",
     "./utils/calc-import-map.js": "./utils/calc-import-map.js",
+    "./utils/resolve-types.js": "./utils/resolve-types.js",
     "./tests/core-tests.js": "./tests/core-tests.js",
     "./utils/jb-cli.js": "./utils/jb-cli.js",
     "./utils/probe.js": "./utils/probe.js"

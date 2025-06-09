@@ -53,7 +53,7 @@ async function calcCompTextAndCursorsForTest({ctx,compText}) {
 Data('calcCompTextAndCursor', {
   params: [
     {id: 'compText', as: 'string', mandatory: true, description: 'use __ for completion point'},
-    {id: 'filePath', as: 'string'},
+    {id: 'filePath', as: 'string'}
   ],
   impl: async (ctx,{compText, filePath}) => {
     const { compTextAndCursor } = await calcCompTextAndCursorsForTest({ctx, compText, filePath })

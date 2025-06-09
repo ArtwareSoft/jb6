@@ -94,16 +94,15 @@ export async function calcTgpModelData({ filePath }) {
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
-    // if (url.match(/ui.js/)) debugger
-    const declarations = ast.body.filter(n => n.type === 'ExportNamedDeclaration' && n.declaration?.type === 'VariableDeclaration')
-      .flatMap(n => n.declaration.declarations)
-    declarations.forEach(decl => parseCompDec({exportName: decl.id.name , decl: decl.init, url, src}))
+    //if (url.match(/ui-dsl/)) debugger
+    const exportDefs = ast.body.filter(n => n.type === 'ExportNamedDeclaration').flatMap(n => n.declaration?.declarations)
+    const constDefs =  ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations)
+    const allDefs = [...exportDefs, ...constDefs].filter(decl=>decl?.init)
 
-    // directCompDef
-    ast.body.flatMap(n => n.type === 'ExpressionStatement' ? [n.expression] : [])
-      .forEach(decl => parseCompDec({decl, url, src}))
+    allDefs.forEach(decl => parseCompDec({exportName: decl.id.name , decl: decl.init, url, src}))
+    const directDefs = ast.body.map(n => n?.expression).filter(Boolean)
+    directDefs.forEach(decl => parseCompDec({decl, url, src}))
 
-    typeRules.push(... declarations.filter(decl=>decl.id.name == 'typeRules').flatMap(decl=>astToObj(decl.init)))
   })
 
   logByEnv('tgp model data', tgpModel)

@@ -70,10 +70,11 @@ function filePosOfPath(tgpPath, {tgpModel}) {
     return { path, line: line + compLine, col }
 }
 
-function deltaFileContent(compText, newCompText, compLine) {
+function deltaFileContent(compText, newCompText, compPos) {
     const { common, oldText, newText } = calcDiff(compText, newCompText || '')
     const commonStartSplit = common.split('\n')
-    const start = { line: compLine + commonStartSplit.length - 1, col: commonStartSplit.slice(-1)[0].length }
+    const col = (commonStartSplit.length == 1 ? compPos.col : 0) + commonStartSplit.slice(-1)[0].length
+    const start = { line: compPos.line + commonStartSplit.length - 1, col }
     const end = {
         line: start.line + oldText.split('\n').length - 1,
         col: (oldText.split('\n').length - 1 ? 0 : start.col) + oldText.split('\n').pop().length
@@ -233,8 +234,8 @@ function closestComp(docText, cursorLine, cursorCol, filePath) {
             logError('closestComp no shortId', {compText, filePath, span})
             return { notJbCode: true }
         }
-        const compLine = offsetToLineCol(docText,span.start).line
-        return { compText, compLine, inCompOffset: offset - span.start, shortId, cursorLine, cursorCol, filePath}
+        const compPos = offsetToLineCol(docText,span.start)
+        return { compText, compPos, inCompOffset: offset - span.start, shortId, cursorLine, cursorCol, filePath}
     } catch (e) {
         logException(e, 'closestComp exception', {compText, docText, filePath, offset, cursorLine, cursorCol})
         return { notJbCode: true }

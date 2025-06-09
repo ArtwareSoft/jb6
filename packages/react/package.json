@@ -1,13 +1,13 @@
 {
   "name": "@jb6/react",
-  "version": "1.250608.2",
+  "version": "1.250608.3",
   "type": "module",
   "exports": {
     ".": "./index.js"
   },
   "scripts": {},
   "dependencies": {
-    "@jb6/core": "1.250608.2"
+    "@jb6/core": "1.250608.3"
   },
   "repository": {
     "type": "git",

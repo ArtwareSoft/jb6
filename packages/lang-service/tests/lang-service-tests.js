@@ -45,6 +45,10 @@ Test('completionTest.betweentwoFirstArgs', {
   impl: completionOptionsTest(`uiTest(text('hello world'),__ contains('hello world'))`, ['runBefore'])
 })
 
+Test('completionTest.VariableDeclarationBug', {
+  impl: completionOptionsTest(`group(__)`, ['button2'])
+})
+
 Test('completionTest.pipeline', {
   impl: completionOptionsTest(`uiTest(text(pipeline(''__)))`, ['split'])
 })
@@ -328,6 +332,15 @@ Test('completionTest.multiLine', {
   })
 })
 
+Test('completionTest.multiLineWithConstVar', {
+  impl: completionActionTest({
+    compText: `ALL:const aa = Test('x', {\n  impl: uiTest(group(__\n    text('hello'),\n    group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n    text('world')\n  ))\n})`,
+    completionToActivate: 'button',
+    expectedEdit: asIs({range: {start: {line: 2, col: 4}, end: {line: 2, col: 4}}, newText: `button('click me'),\n    `}),
+    expectedCursorPos: '2,12'
+  })
+})
+
 Test('completionTest.multiLineAddProp', {
   impl: completionActionTest({
     compText: `group(__\n    text('hello'),\n    group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n    text('world')\n  )`,
@@ -403,6 +416,17 @@ Test('completionActionTest.asIsArray', {
   })
 })
 
+Test('completionActionTest.keepName', {
+  impl: completionActionTest(`ALL:const cmp1 = Data('cmp1', __{ impl: asIs([{a: 3}]) })`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({
+        range: {start: {line: 0, col: 27}, end: {line: 0, col: 49}},
+        newText: '\n  impl: asIs([{a: 3}])\n'
+    }),
+    expectedCursorPos: '0,26'
+  })
+})
+
 Test('completionActionTest.defaultValueWithDslType', {
   impl: completionActionTest(`ALL:Control('ctrl1', __{ params: [{id: 'f', type: 'feature', defaultValue: method()}] })`, {
     completionToActivate: '🔄 reformat',
@@ -424,8 +448,8 @@ Test('langServiceTest.provideDefinition', {
 
 Test('langServiceTest.closestComp', {
   impl: dataTest({
-    calculate: calcCompTextAndCursor("ALL:const a = 3;\nData('cmp1', { impl: pipeline(li__st()) })"),
-    expectedResult: equals("Data('cmp1', { impl: pipeline(list()) })", '%compText%')
+    calculate: calcCompTextAndCursor(`ALL:const a = 3;\nData('cmp1', { impl: pipeline(li__st()) })`),
+    expectedResult: equals(`Data('cmp1', { impl: pipeline(list()) })`, '%compText%')
   })
 })
 
