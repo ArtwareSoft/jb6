@@ -1,4 +1,9 @@
-import { jb } from './core-utils.js'
+import { jb } from '@jb6/repo'
+import '../utils/core-utils.js'
+import '../utils/jb-expression.js'
+import '../utils/jb-args.js'
+import '../utils/jb-core.js'
+import '../utils/tgp.js'
 const { coreUtils } = jb
 const { asJbComp, astNode, OrigArgs, systemParams, jbComp, unique, asArray, isPrimitiveValue, logError, splitDslType, compByFullId } = coreUtils
 
@@ -178,7 +183,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentProp, paren
     return fromAllTypes
 
   if (id && !silent && !remoteCode) {
-    debugger
+    globalThis.showUserMessage && globalThis.showUserMessage('error', `no comp for id ${id}`)
     logError(`utils getComp - can not find comp for id ${id}`,{id, tgpModel, topComp, parent, parentType, allTypes, dslType})
   }
 

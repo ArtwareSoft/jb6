@@ -170,8 +170,12 @@ const { test: { Test, test: { dataTest } } } = dsls
 ${text}
 ` : ''
 
-    const probeObj = await runProbeCli(path, filePath, { extraCode, importMap: compProps.tgpModel.projectImportMap })
-    const suggestions = suggestionsOfProbe(probeObj, input, path) || []
+    const {probeRes, error, cmd} = await runProbeCli(path, filePath, { extraCode, importMap: compProps.tgpModel.projectImportMap })
+    if (error) {
+        globalThis.showUserMessage && showUserMessage('error', `probe cli failed: ${cmd}`)
+        return []
+    }
+    const suggestions = suggestionsOfProbe(probeRes, input, path) || []
 
     return (suggestions.options || []).map(option => {
         const { pos, toPaste, tail, text } = option

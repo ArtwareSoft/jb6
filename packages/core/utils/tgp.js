@@ -1,4 +1,5 @@
-import { jb } from './core-utils.js'
+import { jb } from '@jb6/repo'
+import './core-utils.js'
 const { coreUtils } = jb
 const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType } = coreUtils
 

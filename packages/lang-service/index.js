@@ -1,7 +1,7 @@
 import '@jb6/core'
-import '@jb6/core/utils/resolve-types.js'
-import '@jb6/core/utils/calc-import-map.js'
-import '@jb6/core/utils/probe.js'
+import '@jb6/core/misc/resolve-types.js'
+import '@jb6/core/misc/calc-import-map.js'
+import '@jb6/core/misc/probe.js'
 
 import './model-data/tgp-model-data.js'
 import './pretty-print.js'

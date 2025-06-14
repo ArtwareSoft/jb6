@@ -1,7 +1,7 @@
 {
   "name": "jb6-monorepo",
   "private": true,
-  "version": "1.250608.3",
+  "version": "1.250614.2",
   "description": "JB6 core + plugins (pure-JS workspaces mono-repo)",
   "type": "module",
   "scripts": {
@@ -9,8 +9,9 @@
     "test-via-web": "start http://localhost:8083/packages/testing/tests.html",
     "local": "node packages/testing/jb-web-server.js",
     "vscode-package": "cd hosts/vscode-tgp-lang && vsce package",
-    "bump:calver": "node scripts/bump-calver.js",
+    "jb6:bumpVer": "node scripts/bump-calver.js",
     "jb6:publish": "bash scripts/publish.sh",
+    "bumpPub": "npm run jb6:bumpVer && npm run jb6:publish",
     "update-vscode-ext": "bash scripts/update-vscode-ext.sh",
     "publish-vscode-ext": "cd hosts/vscode-tgp-lang && vsce publish && cd ../../"
   },

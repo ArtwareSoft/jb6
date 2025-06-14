@@ -99,6 +99,11 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
     let compId = ''
     if (tgpType == 'comp<tgp>' && topComp.id) { // set compId and add to comps registry
 //        log('calcProfileActionMap', compText, topComp)
+        const typeId = topComp.$
+        if (!tgpModel.dsls.tgp.comp[typeId]) {
+            globalThis.showUserMessage && globalThis.showUserMessage('error', `${typeId} not found`)
+            return { text: compText, compId, comp: topComp, actionMap: [], path: '' }
+        }
         const dslType = tgpModel.dsls.tgp.comp[topComp.$].dslType
         compId = `${dslType}${topComp.id}`
         const [ type, dsl ] = splitDslType(dslType)
@@ -109,7 +114,6 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
         // delete topComp.type; delete topComp.dsl; // for pretty print
     }
     const actionMap = []
-
 
     calcActionMap(topComp, compId, topComp[astNode])
     const path = expectedPath || actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to)

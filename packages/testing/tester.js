@@ -133,7 +133,7 @@ let   lastLineLength = 0     // to wipe residual chars when we overwrite
 const printLive = line => {
   const pad = ' '.repeat(Math.max(lastLineLength - line.length, 0))
   if (isNode)
-    process.stdout.write('\r' + line + pad)
+    console.log('\r' + line + pad)
   else
     console.log(line)
   lastLineLength = line.length
@@ -142,7 +142,7 @@ const printLive = line => {
 const printFail = line => {
   const redLine = `\x1b[31m${line}\x1b[0m`; // Add red color
   if (isNode)
-    process.stdout.write('\r' + redLine + '\n')   // newline keeps the failure
+    console.log('\r' + redLine + '\n')   // newline keeps the failure
   else
     console.log(redLine)
   lastLineLength = 0
@@ -213,7 +213,10 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
         }
     }, Promise.resolve())
     const summary = `total: ${tests.length}, \x1b[32msuccess: ${success_counter}, \x1b[31mfailures: ${fail_counter}, \x1b[33mmemory: ${usedJSHeapSize()}M, time: ${Date.now() - startTime} ms`
-    isNode && printLive(summary+'\n')
+    if (isNode) {
+        printLive(summary+'\n')
+        process.exit(0)
+    }
 }
 
 function testResultHtml(res, repo) {

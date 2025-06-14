@@ -36,6 +36,16 @@ async function activate(context) {
   globalThis.vscodeNS       = vscode
   globalThis.requireResolve = path => require.resolve(path)
 
+  function showUserMessage(severity, message) {
+    if (severity === 'info')      window.showInformationMessage(message)
+    else if (severity === 'warning') window.showWarningMessage(message)
+    else                           window.showErrorMessage(message)
+  }
+  globalThis.showUserMessage = showUserMessage
+  configFile = `${VSCodeWorkspaceProjectRoot}/jb6.config.js`
+  configFileUrl = pathToFileURL(configFile).href
+  globalThis.configFileSettings = { configFile, configFileUrl }
+
   vsCodelog('🔄 jbart extension starting…')
   try {
     const { doActivate } = await import(pathToFileURL(path.join(__dirname, 'tgp-lang-extension.mjs')).href)

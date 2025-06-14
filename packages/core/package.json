@@ -1,14 +1,14 @@
 {
   "name": "@jb6/core",
-  "version": "1.250608.3",
+  "version": "1.250614.2",
   "type": "module",
   "exports": {
     ".": "./index.js",
-    "./utils/calc-import-map.js": "./utils/calc-import-map.js",
-    "./utils/resolve-types.js": "./utils/resolve-types.js",
     "./tests/core-tests.js": "./tests/core-tests.js",
-    "./utils/jb-cli.js": "./utils/jb-cli.js",
-    "./utils/probe.js": "./utils/probe.js"
+    "./misc/calc-import-map.js": "./misc/calc-import-map.js",
+    "./misc/resolve-types.js": "./misc/resolve-types.js",
+    "./misc/jb-cli.js": "./misc/jb-cli.js",
+    "./misc/probe.js": "./misc/probe.js"
   },
   "scripts": {},
   "dependencies": {

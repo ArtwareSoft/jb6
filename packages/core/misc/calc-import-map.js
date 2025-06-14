@@ -1,7 +1,8 @@
-import { jb } from './core-utils.js'
+import { jb } from '@jb6/repo'
+import '../utils/core-utils.js'
 import './jb-cli.js'
 const { coreUtils } = jb
-const { isNode, logException, fetchByEnv, logByEnv, absPathToUrl } = coreUtils
+const { isNode, logException } = coreUtils
 Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, 
   studioAndProjectImportMaps, calcRepoRoot, calcImportMapOfRepoRoot })
 
@@ -9,7 +10,7 @@ async function studioAndProjectImportMaps(filePath) {
   if (!isNode) {
         const script = `
   import { coreUtils } from '@jb6/core'
-  import '@jb6/core/utils/calc-import-map.js'
+  import '@jb6/core/misc/calc-import-map.js'
 
   ;(async()=>{
     try {

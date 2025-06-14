@@ -20,7 +20,7 @@
     
     const urlQuery = prop => new URLSearchParams(location.search).get(prop)
     const { coreUtils } = await import('@jb6/core')
-    const { } = await import('@jb6/core/utils/probe.js')
+    const { } = await import('@jb6/core/misc/probe.js')
     const { runProbeCli } = coreUtils
     const { reactUtils } = await import('@jb6/react')
     const { probeResultView } = await import('./probe-ui.js')
@@ -30,7 +30,7 @@
     const filePath = `${repoRoot}/hosts/test-project/my-test.js`
     const { studioImportMap, projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
 
-    const probeRes = await runProbeCli(
+    const { probeRes, cmd, error } = await runProbeCli(
         urlQuery('probe') || 'test<test>myTests.HelloWorld~impl~expectedResult', 
         urlQuery('entryPoint') || '/hosts/test-project/my-test.js', {importMap: projectImportMap})
     ReactDOM.createRoot(show).render(h(probeResultView,{probeRes}))

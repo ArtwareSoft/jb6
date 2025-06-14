@@ -1,6 +1,12 @@
-import { jb } from './core-utils.js'
-const { coreUtils } = jb
+import { jb } from '@jb6/repo'
+import '../utils/core-utils.js'
+import '../utils/jb-expression.js'
+import '../utils/jb-args.js'
+import '../utils/jb-core.js'
+import '../utils/tgp.js'
 import './jb-cli.js'
+
+const { coreUtils } = jb
 const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, stripData, asJbComp, runCliInContext, absPathToUrl } = coreUtils
 
 jb.probeRepository = {
@@ -10,22 +16,29 @@ jb.probeRepository = {
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
 async function runProbeCli(probePath, filePath, {extraCode, importMap} = {}) {
-    const inlineScript = `
-      import { coreUtils, dsls } from '@jb6/core'
-      import '@jb6/core/utils/probe.js'
+    const script = `
+      import { jb, dsls } from '@jb6/core'
+      import '@jb6/core/misc/probe.js'
       import '${absPathToUrl(filePath, importMap?.serveEntries || [])}'
       ;(async () => {
         try {
           ${extraCode || ''}
-          const result = await coreUtils.runProbe(${JSON.stringify(probePath)})
+          const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath)})
           process.stdout.write(JSON.stringify(result, null, 2))
         } catch (e) {
           console.error(e)
         }
+        process.exit(0)
       })()
     `
 
-    return runCliInContext(inlineScript, {importMap})
+    try {
+      const { result, error, cmd } = await runCliInContext(script, {importMap})
+      return { probeRes: result, error, cmd, importMap }
+    } catch (error) {
+      debugger
+      return { probeRes: null, error, importMap}
+    }
 }
 
 async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
@@ -89,16 +102,18 @@ class Probe {
             this.circuitRes = await waitForInnerElements(this.circuitComp.runProfile({}, this.circuitCtx))
             this.result = this.records[probePath] || []
             await waitForInnerElements(this.result)
-            this.completed = true
-            this.totalTime = new Date().getTime()-this.startTime
             log('probe completed',{probePath, probe: this})
             // ref to values
             this.result.forEach(obj=> { obj.out = calcValue(obj.out) ; obj.in.data = calcValue(obj.in.data)})
 
             return this
         } catch (e) {
-            if (e != 'probe tails')
-                logException(e,'probe run',{probe: this})
+          if (typeof e.message == 'string' && e.message.match(/Cannot find module/))
+            this.error = e.message
+          this.totalTime = new Date().getTime()-this.startTime
+          this.result = this.result || []
+          if (e != 'probe tails')
+            logException(e,'probe run',{})
         } finally {
             this.active = false
         }

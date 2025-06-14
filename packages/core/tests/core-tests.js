@@ -1,5 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
-import '@jb6/core/utils/probe.js'
+import '../misc/probe.js'
 import '@jb6/testing'
 
 const { runProbe, runProbeCli } = coreUtils
@@ -10,7 +10,7 @@ const {
   },
   common: { Data, Action, Boolean,
     data: { pipeline, filter, join, property, obj, delay, asIs }, 
-    Boolean: { contains, equals },
+    Boolean: { contains, equals, and },
     Prop: { prop }
   },
   test: { Test,
@@ -87,13 +87,20 @@ const getAsBool = Data({
 })
 
 Test('coreTest.HelloWorld', {
-  impl: dataTest(pipeline('hello world'), contains('world'))
+  impl: dataTest(pipeline('hello world'), and(contains('hello'), contains('world')))
 })
 
 Test('probeTest.helloWorld', {
   impl: dataTest({
     calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~expectedResult'),
     expectedResult: equals('hello world', '%result.0.in.data%')
+  })
+})
+
+Test('probeTest.innerInArray', {
+  impl: dataTest({
+    calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~expectedResult~items~0'),
+    expectedResult: and(equals('hello world', '%result.0.in.data%'), equals('%result.0.out%', true))
   })
 })
 
@@ -105,7 +112,7 @@ Test('probeCliTest.helloWorld', {
       const { studioImportMap, projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
       return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',filePath,{importMap: projectImportMap})
     },
-    expectedResult: equals('hello world', '%result.0.in.data%'),
+    expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
     timeout: 1000
   })
 })

@@ -1,5 +1,5 @@
 import { coreUtils } from '@jb6/core'
-import '@jb6/core/utils/calc-import-map.js'
+import '@jb6/core/misc/calc-import-map.js'
 const { calcImportMap } = coreUtils
 
 export async function serveImportMap(app, {express}) {

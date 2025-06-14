@@ -1,4 +1,9 @@
-import { jb } from './core-utils.js'
+import { jb } from '@jb6/repo'
+import '../utils/core-utils.js'
+import '../utils/jb-expression.js'
+import '../utils/jb-args.js'
+import '../utils/jb-core.js'
+import '../utils/tgp.js'
 const { coreUtils } = jb
 
 const { logException, logError, isNode } = coreUtils
@@ -17,6 +22,7 @@ async function runNodeCli(script, {importMap} = {}) {
   const { promisify } = await import('util')
   const { execFile: execFileCb } = await import('child_process')
   const execFile = promisify(execFileCb)
+  const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
 
   try {
       const { stdout } = await execFile(
@@ -24,10 +30,10 @@ async function runNodeCli(script, {importMap} = {}) {
         ['--input-type=module', '-e', script],
         { cwd: importMap?.projectRoot || '', encoding: 'utf8' }
       )
-      return JSON.parse(stdout)
+      return { result: JSON.parse(stdout), cmd, importMap }
   } catch (e) {
-      const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
       logException(e, 'error in run node cli', {cmd, importMap, stdout: e.stdout})
+      return { error : e , cmd, importMap } 
   }  
 }
 
@@ -47,7 +53,7 @@ async function runNodeCliViaJbWebServer(script, {importMap, expressUrl = ''} = {
 
   const { result, error } = await res.json()
   if (error) logError(`CLI error: ${error}`)
-  return result
+  return result.result
 }
 
 async function runCliInIframe(script, {importMap} = {}) {
@@ -59,11 +65,12 @@ async function runCliInIframe(script, {importMap} = {}) {
 
     function onMsg(e) {
       if (e.source === iframe.contentWindow && e.data?.cliId === cliId) {
+        console.log('runCliInIframe',e)
         window.removeEventListener('message', onMsg)
         document.body.removeChild(iframe)
 
-        if (e.data.error) console.error(e.data.error)
-        return resolve(e.data.result)
+        //if (e.data.error) console.error(e.data.error)
+        return resolve({ result: e.data.result, error: e.data.error, cmd: 'iframe' })
       }
     }
     window.addEventListener('message', onMsg)
@@ -100,7 +107,6 @@ async function runCliInIframe(script, {importMap} = {}) {
       </head>
       <body>
         <script type="module">
-            debugger;
             ${script}
         </script>
       </body>

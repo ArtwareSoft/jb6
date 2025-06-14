@@ -1,6 +1,7 @@
 import { jb } from '@jb6/repo'
-export { jb }
+
 Object.assign(jb, {
+  coreUtils: {},
   proxies: {},
   ext: {},
   coreRegistry: {
@@ -336,11 +337,10 @@ function absPathToUrl(path, serveEntries = []) {
 
 const isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string'
 
-export const coreUtils = jb.coreUtils = {
+Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logCli, isNode, logByEnv, fetchByEnv, absPathToUrl,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType, stripData,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
   calcValue
-}
-
+})

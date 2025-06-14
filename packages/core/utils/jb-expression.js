@@ -1,4 +1,5 @@
-import { jb } from './core-utils.js'
+import { jb } from '@jb6/repo'
+import './core-utils.js'
 const { coreUtils } = jb
 const { log, logError, isRefType, resolveFinishedPromise, toString, toNumber, RT_types, calcValue } = coreUtils
 

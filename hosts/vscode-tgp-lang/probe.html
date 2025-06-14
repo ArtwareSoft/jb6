@@ -29,17 +29,18 @@ VSCODE_HEADER
       const configFile = 'PROJECT_REPO_ROOT/jb6.config-views.js'
       try {
           const { setUpJb6Views } = await import(configFile)
-          await setUpJb6Views(coreUtils)
-      } catch (e) {}
+          const { probeResultView } = await setUpJb6Views(coreUtils) || {}
+          const probeResultViewToShow = probeResultView || defaultProbeResultView
+          console.log('probeResultViewToShow',probeResultViewToShow)
 
-      const probeResultView = jb.ext.extensionSetup?.probeResultView || _probeResultView
-
-      ReactDOM.createRoot(document.getElementById('show')).render(h(probeResultView,{probeRes}))
+          ReactDOM.createRoot(document.getElementById('show')).render(h(probeResultViewToShow,{probeRes}))
+      } catch (e) {
+        console.error(e)
+      }
     }
-    globalThis.run = run
     run()
 
-  function _probeResultView({probeRes}) {
+  function defaultProbeResultView({probeRes}) {
     const { h, L, useState, useEffect, useRef, useContext } = jb.reactUtils
 
     const [showJson, setShowJson] = useState(false)

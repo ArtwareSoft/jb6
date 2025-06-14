@@ -25,7 +25,9 @@ so a full comp id is in the format: type<dsl>id
 dynamic function 'hold' and keeps the args until called by client with ctx. it has the creator jbCtx, the creator ctx and the caller ctx to merge.
 }
 */
-import { jb } from './core-utils.js'
+import { jb } from '@jb6/repo'
+import './core-utils.js'
+
 const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray } = jb.coreUtils
 
 function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArray: false, openObj: false, openComp: true}) {
@@ -46,7 +48,7 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
     else if (Array.isArray(profile) && openArray)
         res = profile.map((p,i) => run(p, ctx.setJbCtx(jbCtx.innerDataPath(i)), settings))
     else if ((jbCtx.parentParam?.type || '').indexOf('[]') != -1 && Array.isArray(profile)) // array param
-        res = profile.flatMap(p => run(p, ctx, settings))
+        res = profile.flatMap((p,i) => run(p, ctx.setJbCtx(jbCtx.innerArrayPath(i)), settings))
     else if (profile && profile.$ && openComp) {
         const comp = asComp(profile.$) // also lazy resolve
         const ret = comp.runProfile(profile, ctx, settings)
@@ -75,6 +77,9 @@ class JBCtx {
     }
     innerDataPath(path) {
         return new JBCtx({...this, path: `${this.path}~${path}`, parentParam: {$type: 'data<common>'}, profile: 'data path' })
+    }
+    innerArrayPath(index) {
+        return new JBCtx({...this, path: `${this.path}~${index}`, profile: this.profile[index] })
     }
     innerParam(parentParam, profile) {
         return new JBCtx({...this, path: `${this.path}~${parentParam.id}`, parentParam, profile: profile[parentParam.id]})

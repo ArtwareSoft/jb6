@@ -1,7 +1,7 @@
 import { coreUtils, dsls, ns } from '@jb6/core'
 import { langServiceUtils } from '@jb6/lang-service'
-import '@jb6/core/utils/probe.js'
 import { readFile } from 'fs/promises'
+import { existsSync } from 'fs'
 
 const { jb, logError, asArray, log, Ctx, resolveWithImportMap, studioAndProjectImportMaps } = coreUtils
 const { calcHash, closestComp, applyCompChange } = langServiceUtils
@@ -10,6 +10,7 @@ const { langService } = ns
 let lastEdit
 let lastEditedCompId
 function host() { return jb.ext.tgpTextEditor.host }
+let runProbeCliToUse = coreUtils.runProbeCli
 
 jb.ext.tgpTextEditor = { host:  {
     async applyEdit(edit, { uri, hash, activeTextEditor } = {}) {
@@ -55,6 +56,7 @@ jb.ext.tgpTextEditor = { host:  {
         if (docProps?.shortId) {
             if (lastEditedCompId != docProps.shortId) {
                 vsCodelog('clean tgpModels cache')
+                initConfig()
                 jb.langServiceRegistry.tgpModels = {} // clean cache
             }
             lastEditedCompId = docProps.shortId
@@ -193,6 +195,15 @@ export const commands = {
     async openProbeResultEditor() { // ctrl-I
         vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows') 
         const compProps = await langService.calcCompProps.$run() // IMPORTANT - get comp props here. opening the view will change the current editor
+        const { path, filePath } = compProps
+        const projectRoot = VSCodeWorkspaceProjectRoot
+        const probeRes = await runProbeCliToUse(path, filePath, {importMap: {projectRoot}})
+        if (probeRes.error) {
+            showUserMessage('error', `probe cli failed: ${probeRes.cmd}`)
+            vscodeNS.commands.executeCommand('workbench.action.editorLayoutSingle')
+            return
+        }
+
         if (!panels.inspect) {
             panels.inspect = vscodeNS.window.createWebviewPanel('jbart.inpect', 'inspect', vscodeNS.ViewColumn.Two, { 
                 enableScripts: true,
@@ -201,13 +212,9 @@ export const commands = {
             })
             panels.inspect.onDidDispose(() => { delete panels.inspect })
         }
-        const { path, filePath } = compProps
-     
         const webview = panels.inspect.webview
         const probeResultTemplate = await getHtmlTemplate('./probe.html', filePath, webview)
-        const projectRoot = VSCodeWorkspaceProjectRoot
-        const runProbeCli = jb.ext.extensionSetup?.runProbeCli || coreUtils.runProbeCli
-        const probeRes = await runProbeCli(path, filePath, {importMap: {projectRoot}})
+
         const html = probeResultTemplate.replace('PROBE_RES', JSON.stringify(probeRes))
             .replace('PROJECT_REPO_ROOT', convertFilePathToVSCode(VSCodeWorkspaceProjectRoot, webview))
         vsCodelog(html)
@@ -265,3 +272,17 @@ export const commands = {
 function toVscodeFormat(pos) {
     return { line: pos.line, character: pos.col }
 }
+
+async function initConfig() {
+    const {configFile, configFileUrl } = configFileSettings
+    const exists = existsSync(configFile)
+    if (exists) {
+        vsCodelog('local jb6.config.js found (1 of 3)', configFile)
+        const { setUpJb6 } = await import(`${configFileUrl}?update=${Date.now()}`)
+        vsCodelog('local jb6.config.js loaded (2 of 3)', setUpJb6.toString())
+        const { runProbeCli } = await setUpJb6(coreUtils) || {}
+        runProbeCliToUse = runProbeCli
+        vsCodelog('local jb6.config.js runProbeCliToUse set (3 of 3)', runProbeCliToUse.toString())
+    }
+}
+await initConfig()
