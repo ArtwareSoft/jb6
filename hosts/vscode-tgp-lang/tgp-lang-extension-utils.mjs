@@ -199,7 +199,8 @@ export const commands = {
         const projectRoot = VSCodeWorkspaceProjectRoot
         const probeRes = await runProbeCliToUse(path, filePath, {importMap: {projectRoot}})
         if (probeRes.error) {
-            showUserMessage('error', `probe cli failed: ${probeRes.cmd}`)
+            showUserMessage('error', `probe cli failed: ${probeRes.error}`)
+            showUserMessage('error', probeRes.cmd)
             vscodeNS.commands.executeCommand('workbench.action.editorLayoutSingle')
             return
         }

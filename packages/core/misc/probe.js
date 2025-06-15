@@ -7,7 +7,7 @@ import '../utils/tgp.js'
 import './jb-cli.js'
 
 const { coreUtils } = jb
-const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, stripData, asJbComp, runCliInContext, absPathToUrl } = coreUtils
+const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, asJbComp, runCliInContext, absPathToUrl } = coreUtils
 
 jb.probeRepository = {
     probeCounter: 0,
@@ -58,9 +58,9 @@ async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
         visits: probeObj.visits,
         totalTime: probeObj.totalTime,
         result: stripProbeResult(probeObj.result),
-        circuitRes: probeObj.circuitRes,
-        errors: jb.ext.spy?.search('error'),
-        logs: jb.ext.spy?.logs
+        circuitRes: stripData(probeObj.circuitRes),
+        errors: stripData(jb.ext.spy?.search('error')),
+        logs: stripData(jb.ext.spy?.logs)
     }
 
     return result
@@ -76,8 +76,52 @@ async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
     }
 }
 
-function stripProbeResult(result) {
-  return (result || []).map (x => stripData({from: x.from, out: x.out,in: {data: x.in.data, params: x.in.cmpCtx?.params, vars: x.in.vars}}))
+function stripProbeResult(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(entry => {
+    const { from = null, out = null, in: input = {} } = entry || {};
+    const safeIn = {
+      data:   input.data   ?? null,
+      params: input.cmpCtx?.params ?? null,
+      vars:   input.vars   ?? null
+    };
+    return stripData({ from, out, in: safeIn });
+  });
+}
+
+function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000 } = {}) {
+  return _strip(value, 0, '');
+
+  function _strip(data, depth, path) {
+    if (data == null) return data;
+    if (['string','number','boolean'].includes(typeof data)) {
+      return data;
+    }
+    if (typeof data === 'function') {
+      return '[Function]';
+    }
+    if (depth > MAX_OBJ_DEPTH) {
+      return `[Max depth reached at ${path}]`;
+    }
+    if (Array.isArray(data)) {
+      if (data.length > MAX_ARRAY_LENGTH) {
+        data = data.slice(0, MAX_ARRAY_LENGTH);
+      }
+      return data.map((item, i) => _strip(item, depth + 1, `${path}[${i}]`));
+    }
+    if (data instanceof Error) {
+      return { $$: 'Error', message: data.message };
+    }
+    if (typeof data === 'object' && data.constructor?.name !== 'Object') {
+      return { $$: data.constructor.name };
+    }
+    return Object.fromEntries(
+      Object.entries(data).map(([k, v]) => [
+        k,
+        _strip(v, depth + 1, path ? `${path}.${k}` : k)
+      ])
+    );
+  }
 }
 
 class Probe {
@@ -99,7 +143,8 @@ class Probe {
 
         try {
             this.active = true
-            this.circuitRes = await waitForInnerElements(this.circuitComp.runProfile({}, this.circuitCtx))
+            const res = await this.circuitComp.runProfile({}, this.circuitCtx)
+            this.circuitRes = await waitForInnerElements(res)
             this.result = this.records[probePath] || []
             await waitForInnerElements(this.result)
             log('probe completed',{probePath, probe: this})

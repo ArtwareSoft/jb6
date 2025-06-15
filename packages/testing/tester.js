@@ -55,7 +55,7 @@ Test('dataTest', {
 			testFailure = expectedResultRes?.testFailure
 			const success = !! (expectedResultRes && !countersErr && !testFailure)
 			log('check test result',{testRes, success,expectedResultRes, testFailure, countersErr, expectedResultCtx})
-			result = { id: testID, success, reason: countersErr || testFailure, ...(includeTestRes ? testRes : {})}
+			result = { id: testID, success, reason: countersErr || testFailure, ...(includeTestRes ? {testRes} : {})}
 		} catch (e) {
 			logException(e,'error in test',{ctx})
 			result = { testID, success: false, reason: 'Exception ' + e}
