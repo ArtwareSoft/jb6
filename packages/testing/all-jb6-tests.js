@@ -1,4 +1,5 @@
 import '../core/tests/core-tests.js'
+import '../core/tests/probe-tests.js'
 import '../lang-service/tests/action-map-tests.js'
 import '../lang-service/tests/lang-service-tests.js'
 import '../react/tests/react-tests.js'

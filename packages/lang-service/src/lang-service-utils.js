@@ -1,11 +1,12 @@
 import { coreUtils } from '@jb6/core'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
+import '@jb6/core/misc/calc-import-map.js'
 
 import './probe-suggestions.js'
 
 const { tgpEditorHost, offsetToLineCol, calcProfileActionMap, suggestionsOfProbe } = langServiceUtils
 const { jb, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, 
-    unique, compByFullId, splitDslType, runProbeCli, asJbComp } = coreUtils
+    unique, compByFullId, splitDslType, runProbeCli, studioAndProjectImportMaps } = coreUtils
 
 jb.langServiceRegistry = { 
     tgpModels : {}
@@ -170,7 +171,9 @@ const { test: { Test, test: { dataTest } } } = dsls
 ${text}
 ` : ''
 
-    const {probeRes, error, cmd} = await runProbeCli(path, filePath, { extraCode, importMap: compProps.tgpModel.projectImportMap })
+    
+    const { testFiles } = await studioAndProjectImportMaps(filePath)
+    const {probeRes, error, cmd} = await runProbeCli(path, filePath, { testFiles, extraCode, importMap: compProps.tgpModel.projectImportMap })
     if (error) {
         globalThis.showUserMessage && showUserMessage('error', `probe cli failed: ${cmd}`)
         return []

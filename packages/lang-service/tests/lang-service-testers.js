@@ -22,7 +22,7 @@ let _repoRoot = ''
 async function filePathForLangServiceTest() {
   if (!_repoRoot)
     _repoRoot = await fetch('/repoRoot').then(r => r.text())
-  return `${_repoRoot}/hosts/test-project/my-test.js`
+  return `${_repoRoot}/hosts/test-project/a-tests.js`
 }
 
 async function calcCompTextAndCursorsForTest({ctx,compText}) {

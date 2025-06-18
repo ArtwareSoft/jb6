@@ -7,19 +7,23 @@ import '../utils/tgp.js'
 import './jb-cli.js'
 
 const { coreUtils } = jb
-const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, asJbComp, runCliInContext, absPathToUrl } = coreUtils
+const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, 
+  asJbComp, runCliInContext, absPathToUrl, compIdOfProfile, isNode } = coreUtils
 
 jb.probeRepository = {
-    probeCounter: 0,
-    refs: {}
+    probeCounter: 0
 }
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
-async function runProbeCli(probePath, filePath, {extraCode, importMap} = {}) {
+async function runProbeCli(probePath, filePath, {extraCode, importMap, testFiles = [], requireNode} = {}) {
+    const serveEntries = importMap?.serveEntries || []
+    const usingNode = requireNode || isNode
+    const imports = [filePath, ...testFiles].map(f=>usingNode ? f : absPathToUrl(f, serveEntries))
+      .map(f=>`\timport '${f}'`).join('\n')
     const script = `
       import { jb, dsls } from '@jb6/core'
       import '@jb6/core/misc/probe.js'
-      import '${absPathToUrl(filePath, importMap?.serveEntries || [])}'
+${imports}
       ;(async () => {
         try {
           ${extraCode || ''}
@@ -33,7 +37,7 @@ async function runProbeCli(probePath, filePath, {extraCode, importMap} = {}) {
     `
 
     try {
-      const { result, error, cmd } = await runCliInContext(script, {importMap})
+      const { result, error, cmd } = await runCliInContext(script, {importMap, requireNode})
       return { probeRes: result, error, cmd, importMap }
     } catch (error) {
       debugger
@@ -47,8 +51,10 @@ async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
     const probePath = _probePath.indexOf('<') == -1 ? `test<test>${_probePath}` : _probePath
     log('probe start run circuit',{probePath})
     const circuit = circuitCmpId || calcCircuit()
+    if (circuit.error)
+      return circuit
     if (!circuit)
-        return logError(`probe can not infer circuitCtx from ${probePath}`, {ctx})
+        return { error: `probe can not infer circuitCtx from ${probePath}` }
 
     const probeObj = await new Probe(circuit).runCircuit(probePath,timeout)
 
@@ -67,9 +73,12 @@ async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
 
     function calcCircuit() {
         if (!probePath) 
-            return logError(`calcCircuitPath : no probe path`, {ctx,probePath})
+           return { error: `calcCircuitPath : no probe path` }
         const cmpId = probePath.split('~')[0]
-        const comp = compByFullId(cmpId, jb)[asJbComp]
+        const comp = compByFullId(cmpId, jb)?.[asJbComp]
+        if (!comp)
+          return { error: `calcCircuitPath : can not find comp ${cmpId} in jb repo` }
+
         const circuitCmpId = comp.circuit  || comp.impl?.expectedResult && cmpId // test
                 || circuitOptions(cmpId)[0]?.id || cmpId
         return circuitCmpId
@@ -136,7 +145,7 @@ class Probe {
 
     async runCircuit(probePath,maxTime) {
         this.maxTime = maxTime || 50
-        this.startTime = new Date().getTime()
+        this.startTime = Date.now()
         log('probe run circuit',{probePath, probe: this})
         this.records[probePath]
         this.probePath = probePath
@@ -155,11 +164,11 @@ class Probe {
         } catch (e) {
           if (typeof e.message == 'string' && e.message.match(/Cannot find module/))
             this.error = e.message
-          this.totalTime = new Date().getTime()-this.startTime
           this.result = this.result || []
           if (e != 'probe tails')
             logException(e,'probe run',{})
         } finally {
+            this.totalTime = Date.now()-this.startTime
             this.active = false
         }
     }
@@ -180,8 +189,8 @@ class Probe {
             throw 'probe tails'
             return
         }
-        probe.startTime = probe.startTime || new Date().getTime() // for the remote probe
-        //const now = new Date().getTime()
+        probe.startTime = probe.startTime || Date.now() // for the remote probe
+        //const now = Date.now()
         // if (now - probe.startTime > probe.maxTime && !ctx.vars.testID) {
         //     log('probe timeout',{ctx, probe,now})
         //     probe.active = false
@@ -209,8 +218,8 @@ function circuitOptions(compId) {
     return comps.sort((x,y) => mark(y) - mark(x)).map(id=>({id, shortId: id.split('>').pop()}))
 
     function mark(id) {
-      if (id.match(/^test<>/) && id.indexOf(shortId) != -1) return 20
-      if (id.match(/^test<>/)) return 10
+      if (id.match(/^test<>/) && id.indexOf(shortId) != -1) return 20 // test with cmp name
+      if (id.match(/^test</)) return 10 // just a test
       return 0
     }
 
@@ -229,7 +238,8 @@ function circuitOptions(compId) {
 function calcAllRefs() {
     const refs = {}
     const comps = Object.fromEntries(Object.entries(jb.dsls).flatMap(([dsl,types]) => 
-          Object.entries(types).flatMap(([type,tgpType]) => Object.entries(tgpType).map(([id,comp]) => [`${type}<${dsl}>${id}`, comp]))))
+          Object.entries(types).filter(([_,tgpType]) => typeof tgpType == 'object')
+            .flatMap(([type,tgpType]) => Object.entries(tgpType).map(([id,comp]) => [`${type}<${dsl}>${id}`, comp[asJbComp]]))))
 
     Object.keys(comps).filter(k=>comps[k]).forEach(k=>
       refs[k] = {
@@ -243,8 +253,9 @@ function calcAllRefs() {
     return refs
 
     function calcRefs(profile) {
-      if (profile == null || typeof profile != 'object') return [];
-      return Object.values(profile).reduce((res,v)=> [...res,...calcRefs(v)], [jb.utils.compName(profile)])
+      if (profile == null || typeof profile != 'object') return []
+      const cmpId = (profile.$$ || profile.$) ? [compIdOfProfile(profile)] : []
+      return Object.values(profile).reduce((res,v)=> [...res,...calcRefs(v)], cmpId)
     }    
 }
 

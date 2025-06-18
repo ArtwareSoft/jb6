@@ -20,16 +20,39 @@ async function studioAndProjectImportMaps(filePath) {
       console.error(e)
     }
   })()`
-    return await coreUtils.runNodeCliViaJbWebServer(script)
+    const res = await coreUtils.runNodeCliViaJbWebServer(script)
+    return res.result
   }
   const repoRoot = globalThis.VSCodeWorkspaceProjectRoot || await calcRepoRoot()
   const studioRoot = globalThis.VSCodeStudioExtensionRoot || `${repoRoot}/hosts/vscode-tgp-lang`
   const projectRoot = await findProjectRoot(filePath, repoRoot)
+  const testFiles = await findTestFiles(filePath)
 
   return { 
       studioImportMap: await calcImportMapOfRepoRoot(studioRoot, { servingRoot: repoRoot }), 
       projectImportMap: {projectRoot, ...await calcImportMapOfRepoRoot(projectRoot, { servingRoot: repoRoot, includeTesting: true }) },
+      testFiles
     }
+}
+
+async function findTestFiles(filePath) {
+  const path = await import('path')
+  const { readdir } = await import('fs/promises')
+
+  const dir = path.dirname(filePath)
+  const entries = await readdir(dir, { withFileTypes: true })
+
+  const testFiles = entries.filter(entry => entry.isFile() && entry.name.match(/-tests?\.js$/)).map(entry => path.join(dir, entry.name))
+
+  const testsDirEntry = entries.find(entry => entry.isDirectory() && entry.name === 'tests')
+  let testsDirFiles = []
+  if (testsDirEntry) {
+    const testsDir = path.join(dir, testsDirEntry.name)
+    const testEntries = await readdir(testsDir, { withFileTypes: true })
+    testsDirFiles = testEntries.filter(entry => entry.isFile() && entry.name.endsWith('.js')).map(entry => path.join(testsDir, entry.name))
+  }
+
+  return [...testFiles, ...testsDirFiles]
 }
 
 async function findProjectRoot(filePath, repoRoot) {

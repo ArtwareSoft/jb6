@@ -1,12 +1,14 @@
 import "@jb6/testing"
 import "@jb6/common"
 import { dsls } from "@jb6/core"
+import './main.js'
+
 const { 
     tgp: { Const, TgpType, 
       var : { Var } 
     },
     common: { Data, Action, Boolean,
-      data: { pipeline, filter, join, property, obj, delay }, 
+      data: { pipeline, cmpA, filter, join, property, obj, delay, asIs }, 
       Boolean: { contains, equals },
       Prop: { prop }
     },
@@ -19,4 +21,7 @@ Test('myTests.HelloWorld', {
   impl: dataTest(pipeline('hello world'), contains('world'))
 })
 
+Test('aTests.testCmpA', {
+  impl: dataTest(pipeline(Var('personA', asIs({name: 'Dan'})), 'hello', cmpA()), contains('hello cmpA'))
+})
 

@@ -10,12 +10,14 @@ const { logException, logError, isNode } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext})
 
 async function runCliInContext(script, {requireNode, importMap} = {}) {
+  let res = {}
   if (!isNode && !requireNode)
-    return runCliInIframe(script, {importMap})
+    res = await runCliInIframe(script, {importMap})
   else if (!isNode && requireNode)
-    return runNodeCliViaJbWebServer(script, {importMap})
+    res = await  runNodeCliViaJbWebServer(script, {importMap})
   else
-    return runNodeCli(script, {importMap})
+    res = await runNodeCli(script, {importMap})
+  return res
 }
 
 async function runNodeCli(script, {importMap} = {}) {
@@ -30,7 +32,8 @@ async function runNodeCli(script, {importMap} = {}) {
         ['--input-type=module', '-e', script],
         { cwd: importMap?.projectRoot || '', encoding: 'utf8' }
       )
-      return { result: JSON.parse(stdout), cmd, importMap }
+      const result = JSON.parse(stdout)
+      return { result , cmd, importMap }
   } catch (e) {
       logException(e, 'error in run node cli', {cmd, importMap, stdout: e.stdout})
       return { error : e , cmd, importMap } 
@@ -38,22 +41,25 @@ async function runNodeCli(script, {importMap} = {}) {
 }
 
 async function runNodeCliViaJbWebServer(script, {importMap, expressUrl = ''} = {}) {
-  const res = await fetch(`${expressUrl}/run-cli`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ script, importMap })
-  })
+  try { 
+    const res = await fetch(`${expressUrl}/run-cli`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ script, importMap })
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      return { error: `runNodeCliViaJbWebServer failed: ${res.status} – ${text}`}
+    }
+    
+    const { result, error } = await res.json()
+    if (error) 
+      return { error }
 
-  console.log(`node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`)
-  if (!res.ok) {
-    const text = await res.text()
-    logError(`runNodeCliViaExpress failed: ${res.status} – ${text}`)
+    return result
+  } catch (e) {
+    return { error: `runNodeCliViaJbWebServer exception: ${e.message}`}
   }
-  
-
-  const { result, error } = await res.json()
-  if (error) logError(`CLI error: ${error}`)
-  return result.result
 }
 
 async function runCliInIframe(script, {importMap} = {}) {

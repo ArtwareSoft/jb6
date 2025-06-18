@@ -1,5 +1,6 @@
 import { coreUtils, dsls, ns } from '@jb6/core'
 import { langServiceUtils } from '@jb6/lang-service'
+import '@jb6/core/misc/probe.js'
 import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 
@@ -140,8 +141,7 @@ async function moveInArray(diff) {
     cursorPos && host().selectRange(cursorPos)
 }
 
-async function getHtmlTemplate(templateId, filePath, webview) {
-        const { studioImportMap, projectImportMap } = await studioAndProjectImportMaps(filePath)
+async function getHtmlTemplate({templateId, webview, studioImportMap}) {
         const importmap = convertImportMapToVSCode(studioImportMap, webview)
         const path = requireResolve(templateId)
         const template = await readFile(path,'utf-8')
@@ -162,7 +162,12 @@ async function getHtmlTemplate(templateId, filePath, webview) {
 
         const header = csp + `\n<script nonce="NONCE" type="importmap">${JSON.stringify(importmap,null,2)}\n</script>`
         const reactBase = convertFilePathToVSCode(resolveWithImportMap('@jb6/react/lib', studioImportMap), webview)
-        return template.replace('VSCODE_HEADER', header).replace(/NONCE/g, nonce).replace(/REACT_BASE/g, reactBase)
+        const extensionBase = convertFilePathToVSCode(VSCodeStudioExtensionRoot, webview)
+        vsCodelog('extensionBase',extensionBase)
+
+        return template.replace('VSCODE_HEADER', header).replace(/NONCE/g, nonce)
+            .replace(/REACT_BASE/g, reactBase)
+            .replace(/EXT_BASE/g, extensionBase)
 }
 
 function convertFilePathToVSCode(path, webview){
@@ -197,7 +202,9 @@ export const commands = {
         const compProps = await langService.calcCompProps.$run() // IMPORTANT - get comp props here. opening the view will change the current editor
         const { path, filePath } = compProps
         const projectRoot = VSCodeWorkspaceProjectRoot
-        const probeRes = await runProbeCliToUse(path, filePath, {importMap: {projectRoot}})
+        const { studioImportMap, projectImportMap, testFiles } = await studioAndProjectImportMaps(filePath)
+
+        const probeRes = await runProbeCliToUse(path, filePath, {importMap: {projectRoot}, testFiles})
         if (probeRes.error) {
             showUserMessage('error', `probe cli failed: ${probeRes.error}`)
             showUserMessage('error', probeRes.cmd)
@@ -214,7 +221,7 @@ export const commands = {
             panels.inspect.onDidDispose(() => { delete panels.inspect })
         }
         const webview = panels.inspect.webview
-        const probeResultTemplate = await getHtmlTemplate('./probe.html', filePath, webview)
+        const probeResultTemplate = await getHtmlTemplate({templateId: './probe.html', webview, studioImportMap})
 
         const html = probeResultTemplate.replace('PROBE_RES', JSON.stringify(probeRes))
             .replace('PROJECT_REPO_ROOT', convertFilePathToVSCode(VSCodeWorkspaceProjectRoot, webview))
@@ -283,7 +290,7 @@ async function initConfig() {
         vsCodelog('local jb6.config.js loaded (2 of 3)', setUpJb6.toString())
         const { runProbeCli } = await setUpJb6(coreUtils) || {}
         runProbeCliToUse = runProbeCli
-        vsCodelog('local jb6.config.js runProbeCliToUse set (3 of 3)', runProbeCliToUse.toString())
+        vsCodelog('local jb6.config.js runProbeCliToUse set (3 of 3)', runProbeCliToUse?.toString())
     }
 }
 await initConfig()

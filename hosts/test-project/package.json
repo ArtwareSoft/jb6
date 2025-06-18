@@ -10,6 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@jb6/repo": "file:../../packages/repo",
+    "@jb6/common": "file:../../packages/common",
+    "@jb6/core": "file:../../packages/core",
     "@jb6/testing": "file:../../packages/testing"
   },
   "serveEntries": [

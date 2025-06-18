@@ -27,12 +27,12 @@
     const { h } = reactUtils
 
     const repoRoot = await fetch('/repoRoot').then(r => r.text())
-    const filePath = `${repoRoot}/hosts/test-project/my-test.js`
+    const filePath = `${repoRoot}/hosts/test-project/a-tests.js`
     const { studioImportMap, projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
 
     const { probeRes, cmd, error } = await runProbeCli(
         urlQuery('probe') || 'test<test>myTests.HelloWorld~impl~expectedResult', 
-        urlQuery('entryPoint') || '/hosts/test-project/my-test.js', {importMap: projectImportMap})
+        urlQuery('entryPoint') || '/hosts/test-project/a-tests.js', {importMap: projectImportMap})
     ReactDOM.createRoot(show).render(h(probeResultView,{probeRes}))
   </script>
 </head>

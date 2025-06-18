@@ -1,6 +1,6 @@
 {
   "name": "@jb6/remote",
-  "version": "1.250615.2",
+  "version": "1.250616.2",
   "description": "JB6 networking abstraction",
   "type": "module",
   "main": "index.js",

@@ -1,8 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
-import '../misc/probe.js'
 import '@jb6/testing'
-
-const { runProbe, runProbeCli } = coreUtils
 
 const { 
   tgp: { Const, TgpType, 
@@ -88,33 +85,6 @@ const getAsBool = Data({
 
 Test('coreTest.HelloWorld', {
   impl: dataTest(pipeline('hello world'), and(contains('hello'), contains('world')))
-})
-
-Test('probeTest.helloWorld', {
-  impl: dataTest({
-    calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~expectedResult'),
-    expectedResult: equals('hello world', '%result.0.in.data%')
-  })
-})
-
-Test('probeTest.innerInArray', {
-  impl: dataTest({
-    calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~expectedResult~items~0'),
-    expectedResult: and(equals('hello world', '%result.0.in.data%'), equals('%result.0.out%', true))
-  })
-})
-
-Test('probeCliTest.helloWorld', {
-  impl: dataTest({
-    calculate: async () => {
-      const repoRoot = await fetch('/repoRoot').then(r => r.text())
-      const filePath = `${repoRoot}/hosts/test-project/my-test.js`
-      const { studioImportMap, projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
-      return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',filePath,{importMap: projectImportMap})
-    },
-    expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
-    timeout: 1000
-  })
 })
 
 Test('coreTest.getExpValueAsBoolean', {
