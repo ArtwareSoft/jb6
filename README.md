@@ -58,7 +58,6 @@ Test('dataTest', {
     {id: 'expectedCounters', as: 'single'},
     {id: 'spy', as: 'string'},
     {id: 'includeTestRes', as: 'boolean', type: 'boolean'},
-    {id: 'covers', as: 'array'},
   ],
   impl: (ctx,{ calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy,includeTestRes }) => {
     //...

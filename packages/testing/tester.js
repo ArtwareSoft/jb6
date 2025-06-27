@@ -20,18 +20,18 @@ Test('dataTest', {
     {id: 'cleanUp', type: 'action', dynamic: true},
     {id: 'expectedCounters', as: 'single'},
     {id: 'spy', as: 'string'},
-    {id: 'includeTestRes', as: 'boolean', type: 'boolean'},
-    {id: 'covers', as: 'array'},
+    {id: 'includeTestRes', as: 'boolean', type: 'boolean'}
   ],
+//  resultSchema: asIs({testID: 'string', success: 'boolean', reason: 'string', testRes: 'any'}),
   impl: async function(ctx,{ calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy,includeTestRes }) {
 		const ctxToUse = ctx.vars.testID ? ctx : ctx.setVars({testID:'unknown'})
 		const {testID,singleTest,uiTest}  = ctxToUse.vars
 		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 5000 : null
 		const _timeout = singleTest ? Math.max(1000,timeout) : (remoteTimeout || timeout)
 		_spy && spy.setLogs(_spy+',error')
-		let result = null
+		let result = null, testRes
 		try {
-			const testRes = await Promise.race([ 
+			testRes = await Promise.race([ 
 				(async() => {
 					await delay(_timeout)
 					return {testFailure: `timeout ${_timeout}mSec`}
@@ -50,15 +50,16 @@ Test('dataTest', {
 			])
 			let testFailure = testRes?.[0]?.testFailure || testRes?.testFailure
 			const countersErr = countersErrors(expectedCounters,allowError)
+            const counters = Object.fromEntries(Object.keys(expectedCounters || {}).map(exp => [exp, spy.count(exp)]))
 			const expectedResultCtx = ctxToUse.setData(testRes)
 			const expectedResultRes = !testFailure && await expectedResult(expectedResultCtx)
 			testFailure = expectedResultRes?.testFailure
 			const success = !! (expectedResultRes && !countersErr && !testFailure)
 			log('check test result',{testRes, success,expectedResultRes, testFailure, countersErr, expectedResultCtx})
-			result = { id: testID, success, reason: countersErr || testFailure, ...(includeTestRes ? {testRes} : {})}
+			result = { id: testID, success, reason: countersErr || testFailure, testRes, counters}
 		} catch (e) {
 			logException(e,'error in test',{ctx})
-			result = { testID, success: false, reason: 'Exception ' + e}
+			result = { testID, success: false, reason: 'Exception ' + e, testRes}
 		} finally {
 			_spy && spy.setLogs('error')
 			const doNotClean = ctx.probe || singleTest
@@ -148,7 +149,7 @@ const printFail = line => {
   lastLineLength = 0
 }
 
-export async function runTests({specificTest,show,pattern,notPattern,take,remoteTests,repo,onlyTest,top,coveredTestsOf,showOnly}={}) {
+export async function runTests({specificTest,show,pattern,notPattern,take,repo,showOnly}={}) {
     specificTest = specificTest && decodeURIComponent(specificTest).split('>').pop()
 
     let tests = globalsOfType(Test)
@@ -179,10 +180,10 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
     await tests.reduce(async (pr,{testID}) => {
         await pr;
         counter++
-        if (counter % 100 == 0)
-            await delay(5) // gc
+        if (counter % 50 == 0)
+            await delay(1) // gc
         const fullTestId = `test<test>${testID}`
-        const runningMsg = `${testID}>${counter}: started`
+        const runningMsg = `${counter}: ${testID} started`
 
         let res
         if (!showOnly) {
@@ -192,15 +193,9 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
             res = { ...res, fullTestId, testID}
             res.success ? success_counter++ : fail_counter++
 
-            // const summary = `total: ${tests.length}, \x1b[32msuccess: ${success_counter}, \x1b[31mfailures: ${fail_counter}, \x1b[33mmemory: ${usedJSHeapSize()}M, time: ${Date.now() - startTime} ms`
-            // const finishedMsg = `${summary} ${testID}>${counter}: finished`
-            // const finishedMsgColor = res.success ? '\x1b[32m' : '\x1b[31m'; // Green for success, Red for failure
-            // //isNode ? printLive(finishedMsgColor + finishedMsg + '\x1b[0m') : document.getElementById('progress').innerHTML = `${testID}>${counter}: finished`
-
             if (!isNode) {
                 updateTestHeader(document)
                 addHTML(document.body, testResultHtml(res, repo), {beforeResult: singleTest && res.renderDOM})
-                //console.log('res',res)
             }
             if (!res.success)
                  printFail(`${testID} ${res.reason || JSON.stringify(res,2,null) || 'unknown error'}`)
@@ -222,19 +217,11 @@ export async function runTests({specificTest,show,pattern,notPattern,take,remote
 function testResultHtml(res, repo) {
     const baseUrl = globalThis.location.href.split('/tests.html')[0]
     const { success, duration, reason, testID} = res
-    const testComp = Test[testID][asJbComp]
-    //    const location = testComp.$location || {}
-    // const sourceCode = JSON.stringify(run(typeAdapter('source-code<jbm>', test({
-    //     filePath: () => location.path, repo: () => location.repo
-    // }))))
-    //const studioUrl = `http://localhost:8082/project/studio/${fullTestId}/${fullTestId}?sourceCode=${encodeURIComponent(sourceCode)}`
     const studioUrl = ''
     const _repo = repo ? `&repo=${repo}` : ''
-    const coveredTests = testComp.impl.covers ? `<a href="${baseUrl}/tests.html?coveredTestsOf=${testID}${_repo}">${testComp.impl.covers.length} dependent tests</a>` : ''
     return `<div class="${success ? 'success' : 'failure'}">
         <a href="${baseUrl}/tests.html?test=${testID}${_repo}&show&spy=${spyParamForTest(testID)}" style="color:${success ? 'green' : 'red'}">${testID}</a>
         <span> ${duration}mSec</span> 
-        ${coveredTests}
         <a class="test-button" href="javascript:goto_editor('${testID}','${repo||''}')">src</a>
         <a class="test-button" href="${studioUrl}">studio</a>
         <a class="test-button" href="javascript:profileSingleTest('${testID}')">profile</a>

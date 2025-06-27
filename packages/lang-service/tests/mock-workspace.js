@@ -45,6 +45,10 @@ jb.ext.tgpTextEditor = { host: {
         },
         async saveDoc() {
         },
+        gotoCompCommand(comp) {
+            const loc = comp.$location
+            return loc && { command: 'vscode.open', arguments: [loc.path, { selection: [loc.line - 1, 0, loc.line - 1, 0] } ] }
+        },
         initDoc(uri,text, selection = { start:{line:0,col:0}, end:{line:0,col:0} }) {
             openDocs[uri] = { text, selection}
             jb.workspaceRegistry.activeUri = uri

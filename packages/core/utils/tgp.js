@@ -17,6 +17,8 @@ const tgpComp = CompDef({ // bootstraping
     {id: 'dsl', as: 'string'},
     {id: 'macroByValue', as: 'boolean'},
     {id: 'description', as: 'string'},
+    {id: 'doNotRunInTests', as: 'boolean' },
+    {id: 'circuit', as: 'string' },
     {id: 'params', type: 'param[]'},
     {id: 'impl', dynamicTypeFromParent: (parent, dsls) => dsls.tgp.comp[parent.$]?.dslType, mandatory: true},
   ]
@@ -75,13 +77,15 @@ const MetaParam = TgpType('param','tgp')
 MetaParam('param', {
   params: [
     {id: 'id', as: 'string', mandatory: true},
-    {id: 'type', as: 'string'},
+    {id: 'type', as: 'string', description: 'type or type<dsl> e.g. control,control[],control<ui>'},
     {id: 'description', as: 'string'},
     {id: 'as', as: 'string', options: 'string,number,boolean,ref,single,array'},
-    {id: 'dynamic', type: 'boolean', as: 'boolean', defaultValue: true},
-    {id: 'mandatory', type: 'boolean', as: 'boolean', defaultValue: true},
-    {id: 'composite', type: 'boolean', as: 'boolean', defaultValue: true},
-    {id: 'defaultValue', dynamicType: '%type%'}
+    {id: 'dynamic', as: 'boolean' },
+    {id: 'mandatory', as: 'boolean' },
+    {id: 'composite', as: 'boolean' },
+    {id: 'defaultValue', dynamicType: '%type%'},
+    {id: 'byName', as: 'boolean'},
+    {id: 'secondParamAsArray', as: 'boolean'},
   ]
 })
 

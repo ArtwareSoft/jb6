@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "js_mcp": {
+      "type": "stdio",
+      "command": "/usr/bin/node",
+      "args": [
+        "/home/shaiby/projects/jb6/hosts/mcp/js_mcp.js"
+      ]   
+    }
+  }
+}

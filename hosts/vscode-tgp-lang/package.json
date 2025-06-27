@@ -2,7 +2,7 @@
   "name": "jb6-tgp-lang",
   "displayName": "jb6 TGP Language",
   "description": "TGP language service and probe activation",
-  "version": "2506.17.7",
+  "version": "2506.18.2",
   "publisher": "artwaresoft",
   "license": "MIT",
   "engines": {
@@ -47,14 +47,6 @@
       {
         "command": "jbart.applyCompChangeOfCompletionItem",
         "title": "apply component change from text editor"
-      },
-      {
-        "command": "jbart.restartLangServer",
-        "title": "restart tgp lang completion server"
-      },
-      {
-        "command": "jbart.gotoPath",
-        "title": "goto path"
       },
       {
         "command": "jbart.moveUp",

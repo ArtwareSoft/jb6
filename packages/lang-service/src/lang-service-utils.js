@@ -2,11 +2,9 @@ import { coreUtils } from '@jb6/core'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
 import '@jb6/core/misc/calc-import-map.js'
 
-import './probe-suggestions.js'
-
-const { tgpEditorHost, offsetToLineCol, calcProfileActionMap, suggestionsOfProbe } = langServiceUtils
+const { tgpEditorHost, offsetToLineCol, calcProfileActionMap } = langServiceUtils
 const { jb, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, 
-    unique, compByFullId, splitDslType, runProbeCli, studioAndProjectImportMaps } = coreUtils
+    unique, compByFullId, splitDslType, runProbeCli, studioAndProjectImportMaps, toArray, calcVar, Ctx } = coreUtils
 
 jb.langServiceRegistry = { 
     tgpModels : {}
@@ -156,50 +154,6 @@ function wrapWithArray(path, compProps) {
     }
 }
 
-async function dataCompletions(compProps, path, ctx) {
-    const { actionMap, inCompOffset, text, filePath, compPos } = compProps
-    const item = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
-        .find(e => e.action.indexOf('insideText!') == 0)
-    const value = text.slice(item.from - 1, item.to - 1)
-    const selectionStart = inCompOffset - item.from + 1
-    const input = { value, selectionStart }
-    const { line, col } = offsetToLineCol(text, item.from - 1)
-
-    const inCompletionTest = ctx.jbCtx?.creatorStack?.find(x=> x && x.indexOf('completionTest') != -1)
-    const extraCode = inCompletionTest ? `
-const { test: { Test, test: { dataTest } } } = dsls
-${text}
-` : ''
-
-    
-    const { testFiles } = await studioAndProjectImportMaps(filePath)
-    const {probeRes, error, cmd} = await runProbeCli(path, filePath, { testFiles, extraCode, importMap: compProps.tgpModel.projectImportMap })
-    if (error) {
-        globalThis.showUserMessage && showUserMessage('error', `probe cli failed: ${cmd}`)
-        return []
-    }
-    const suggestions = suggestionsOfProbe(probeRes, input, path) || []
-
-    return (suggestions.options || []).map(option => {
-        const { pos, toPaste, tail, text } = option
-        const primiteVal = option.valueType != 'object'
-        const suffix = primiteVal ? '%' : '/'
-        const newText = toPaste + suffix
-        const startInInput = pos - tail.length
-        const overlap = calcOverlap(newText, input.value.slice(startInInput))
-        const suffixExists = input.value.substr(startInInput + overlap)[0] == suffix
-        const newVal = input.value.substr(0, startInInput) + newText + input.value.substr(startInInput + overlap + (suffixExists ? 1 : 0))
-        const cursorPos = { line: line + compPos.line, col: compPos.col + col + startInInput + toPaste.length + (suffix == '%' ? 2 : 1) }
-        return { label: text, path, kind: primiteVal ? 12 : 13, cursorPos, compProps,  op: { $set: newVal } }
-    })
-
-    function calcOverlap(s1, s2) {
-        for (let i = 0; i < s1.length; i++)
-            if (s1[i] != s2[i]) return i
-        return s1.length
-    }
-}
-
 function setOp(path, value, srcCtx) {
     return { op: { $set: value }, path, srcCtx }
 }
@@ -286,6 +240,120 @@ class tgpModelForLangService {
     comps() {
         return Object.fromEntries(Object.entries(this.dsls).flatMap(([dsl,types]) => 
           Object.entries(types).flatMap(([type,tgpType]) => Object.entries(tgpType).map(([id,comp]) => [`${type}<${dsl}>${id}`, comp]))))
+    }
+}
+
+async function dataCompletions(compProps, path, ctx) {
+    const { actionMap, inCompOffset, text: compText, filePath, compPos, tgpModel } = compProps
+
+    const inCompletionTest = ctx.jbCtx?.creatorStack?.find(x=> x && x.indexOf('completionTest') != -1)
+    const extraCode = inCompletionTest ? `
+const { test: { Test, test: { dataTest } } } = dsls
+${compText}
+` : ''
+    
+    const { testFiles } = await studioAndProjectImportMaps(filePath)
+    const {probeRes, error, cmd} = await runProbeCli(path, filePath, { testFiles, extraCode, importMap: compProps.tgpModel.projectImportMap })
+    if (error) {
+        globalThis.showUserMessage && showUserMessage('error', `probe cli failed: ${cmd}`)
+        return []
+    }
+
+    const item = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
+        .find(e => e.action.indexOf('insideText!') == 0)
+    const inputValue = compText.slice(item.from - 1, item.to - 1)
+    const selectionStart = inCompOffset - item.from + 1
+    const { line, col } = offsetToLineCol(compText, item.from - 1)
+
+    const text = inputValue.substr(0,selectionStart).trim().slice(0,100)
+    const text_with_open_close = text.replace(/%([^%{}\s><"']*)%/g, (_,x) => `{${x}}`)
+    let exp = rev((rev(text_with_open_close).match(/([^\}%]*%)/) || ['',''])[1])
+    exp = exp || rev((rev(text_with_open_close).match(/([^\}=]*=)/) || ['',''])[1])
+    const tail = rev((rev(exp).match(/([^%.\/=]*)(\/|\.|%|=)/)||['',''])[1])
+    let tailSymbol = text_with_open_close.slice(-1-tail.length).slice(0,1) // % or /
+    if (tailSymbol == '%' && exp.slice(0,2) == '%$')
+      tailSymbol = '%$'
+    const base = exp.slice(0,-1-tail.length) + '%'
+
+    const probeCtx = new Ctx(probeRes.result?.[0]?.in || {})
+    const visits = probeRes.visits?.[probeRes.probePath]
+    const circuitCmpId = probeRes.circuitCmpId.split('>').pop()
+
+    let options = []
+
+    if (tailSymbol == '%')
+      options = [...innerPropsOptions(probeCtx.data), ...indexOptions(probeCtx.data), ...varsOfCtx(probeCtx) ]
+    else if (tailSymbol == '%$')
+      options = varsOfCtx(probeCtx)
+    else if (tailSymbol == '/' || tailSymbol == '.') {
+      const baseVal = probeCtx.exp(base)
+      options = [...innerPropsOptions(baseVal), ...indexOptions(baseVal)]
+    }
+
+    options = [
+      { ...valueOption('goto circuit', circuitCmpId), kind: 17, 
+        command : tgpEditorHost().gotoCompCommand(compByFullId(probeRes.circuitCmpId, tgpModel)) },
+      valueOption('#visits',''+visits),
+      valueOption('#data', probeCtx.data),
+      ...unique(options,x=>x.label)
+    ]        
+
+    return options
+
+
+    function calcOverlap(s1, s2) {
+        for (let i = 0; i < s1.length; i++)
+            if (s1[i] != s2[i]) return i
+        return s1.length
+    }
+
+    function indexOptions(baseVal) {
+      return Array.isArray(baseVal) ? baseVal.slice(0,2).map((v,i) => valueOption(''+i,v)) : []
+    }
+    function innerPropsOptions(baseVal) {
+      return toArray(baseVal).slice(0,2).flatMap(x=>Object.entries(x).map(x=> valueOption(x[0],x[1])))
+    }
+    function rev(str) {
+      return str.split('').reverse().join('')
+    }
+
+    function varsOfCtx(probeCtx) {
+        const { jbCtx: { args }} = probeCtx  
+    
+        const vars = [...Object.keys(args || {}), ...Object.keys(probeCtx.vars || {}), ...Object.keys(jb.coreRegistry.consts || {})]
+        return vars.map(x=> valueOption('$'+x,calcVar(x,probeCtx)))
+    }
+
+    function valueOption(toPaste, value) {
+        const primiteVal = isPrimitiveValue(value)
+        const summary = calcSummary()
+        const label = [toPaste,summary ? `(${summary})`: ''].filter(x=>x).join(' ')
+
+        const kind = primiteVal ? 12 : 13
+        const suffix = primiteVal ? '%' : '/'
+        const newText = toPaste + suffix
+        const startInInput = selectionStart - tail.length
+        const overlap = calcOverlap(newText, inputValue.slice(startInInput))
+        const suffixExists = inputValue.substr(startInInput + overlap)[0] == suffix
+        const newVal = inputValue.substr(0, startInInput) + newText + inputValue.substr(startInInput + overlap + (suffixExists ? 1 : 0))
+        const cursorPos = { line: line + compPos.line, col: compPos.col + col + startInInput + toPaste.length + (suffix == '%' ? 2 : 1) }
+        return { label, path, kind, cursorPos, compProps,  op: { $set: newVal } }
+  
+        function calcSummary() {
+            if (typeof value == 'string' && value.length > 30)
+                return `${value.substring(0,30)}...`
+            else if (primiteVal)
+                return ''+value
+            else if (value == null)
+                return 'null'
+            else if (Array.isArray(value) && value.every(x=>isPrimitiveValue(x)) && value.length < 4)
+                return `[${value.slice(0,3).join(',')}]`
+            else if (Array.isArray(value))
+                return `${value.length} item${value.length != 1 ? 's' : ''}`
+            else if (value && typeof value == 'object')
+                return `${Object.keys(value).length} prop${Object.keys(value).length != 1 ? 's' : ''}`
+            return typeof value
+        }
     }
 }
 

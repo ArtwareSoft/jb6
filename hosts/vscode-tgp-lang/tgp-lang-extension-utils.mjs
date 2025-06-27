@@ -67,6 +67,14 @@ jb.ext.tgpTextEditor = { host:  {
     async execCommand(cmd) {
         vscodeNS.commands.executeCommand(cmd)
     },
+    gotoCompCommand(comp) {
+        const loc = comp.$location
+        return { command: 'vscode.open', arguments: [
+                  vscodeNS.Uri.file(loc.path),
+                  { selection: new (vscodeNS.Range)(loc.line - 1, 0, loc.line - 1, 0) }
+              ] 
+        }
+    },
     saveDoc() {
         return vscodeNS.window.activeTextEditor.document.save()
     },

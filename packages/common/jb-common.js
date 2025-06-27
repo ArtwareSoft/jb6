@@ -350,9 +350,8 @@ Boolean('or', {
     (res,item,i) => res || ctx.runInner(item, { type: 'boolean' }, `items~${i}`), false)
 })
 
-Data('between', {
+Boolean('between', {
   description: 'checks if number is in range',
-  type: 'boolean',
   params: [
     { id: 'from', as: 'number', mandatory: true },
     { id: 'to', as: 'number', mandatory: true },

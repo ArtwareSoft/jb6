@@ -70,8 +70,7 @@ Test('uiTest', {
     {id: 'backEndJbm', type: 'jbm<jbm>'},
     {id: 'emulateFrontEnd', as: 'boolean', type: 'boolean'},
     {id: 'transactiveHeadless', as: 'boolean', type: 'boolean'},
-    {id: 'spy'},
-    {id: 'covers'}
+    {id: 'spy'}
   ]
 })
 
