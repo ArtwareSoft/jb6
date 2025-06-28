@@ -18,6 +18,10 @@ const {
   }
 } = dsls
 
+Test('coreTest.HelloWorld', {
+  impl: dataTest(pipeline('hello world', '%%', join('')), and(contains('hello'), contains('world')))
+})
+
 Test('probeTest.helloWorld', {
   impl: dataTest({
     calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~expectedResult'),
@@ -29,6 +33,13 @@ Test('probeTest.innerInArray', {
   impl: dataTest({
     calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~expectedResult~items~0'),
     expectedResult: and(equals('hello world', '%result.0.in.data%'), equals('%result.0.out%', true))
+  })
+})
+
+Test('probeTest.innerInPipeline', {
+  impl: dataTest({
+    calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~calculate~items~0'),
+    expectedResult: and(equals('hello world', '%result.0.in.data%'), equals('%result.0.out%', 'hello world'))
   })
 })
 
@@ -60,6 +71,7 @@ Test('probeCliTest.helloWorld', {
     timeout: 1000
   })
 })
+
 
 Test('probeCliTest.requireNode', {
   impl: dataTest({

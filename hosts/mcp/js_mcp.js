@@ -24,6 +24,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
+        name: "tgpModel",
+        description: `get TGP (Type-generic component-profile) model relevant for imports and exports of path`,
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "relative filePath of javascript file in the repo",
+            },
+            repoRoot: {
+              type: "string",
+              description: "filePath of the relevant repo of the project. when exist use top mono repo",
+            },
+          },
+          required: ["filePath","repoRoot"],
+        },
+      },
+      {
         name: "eval_js",
         description: `Execute JavaScript code and return the result. use process.stdout.write() for output`,
         inputSchema: {
@@ -41,52 +59,67 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   }
 })
 
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params
 
   if (name === "eval_js") {
-    const { code } = args
-    
-    return new Promise((resolve) => {
-      
-      //const fullCode = `(async()=>{try{const _=await(async()=>{${code}})();console.log(JSON.stringify({result:_}))}catch(e){console.error(JSON.stringify({error:e.message}));process.exit(1)}})()`
-      
-      const proc = spawn(process.execPath, ['-e', code], { 
-        cwd: process.cwd(), 
-        stdio: ['ignore', 'pipe', 'pipe'] 
-      })
-      
-      let out = '', err = ''
-      proc.stdout.on('data', c => out += c)
-      proc.stderr.on('data', c => err += c)
-      
-      proc.on('close', (exit) => {
-        if (exit === 0) {
-          let parsed
-          try { 
-            parsed = JSON.parse(out) 
-          } catch { 
-            parsed = null 
-          }
-          
-          const text = parsed?.result != null ? String(parsed.result) : out.trim()
-          resolve({ 
-            content: [{ type: 'text', text }], 
-            isError: false 
-          })
-        } else {
-          const msg = err.trim() || `Process exited with code ${exit}`
-          resolve({ 
-            content: [{ type: 'text', text: msg }], 
-            isError: true 
-          })
-        }
-      })
-    })
+    return evalCode(args.code)    
+  } else if (name === "tgpModel") {
+    return evalCode(`
+import { coreUtils } from '@jb6/core'
+import '@jb6/core/misc/calc-import-map.js'
+import '@jb6/lang-service'
+
+import { execSync } from 'child_process'
+import { join } from 'path'
+
+const res = await coreUtils.calcTgpModelData({ filePath: join('${args.repoRoot}','${args.filePath}') })
+process.stdout.write(JSON.stringify(res))
+      `,args.repoRoot)
   } else {
     throw new Error(`Unknown tool: ${name}`)
   }
 })
+
+function evalCode(script, repoRoot) {
+  const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
+
+  process.stderr.write(cmd)
+  return new Promise((resolve) => {            
+    const proc = spawn(process.execPath, ['--input-type=module','-e', script], { 
+      cwd: repoRoot || process.cwd(), 
+      stdio: ['ignore', 'pipe', 'pipe'] 
+    })
+    
+    let out = '', err = ''
+    proc.stdout.on('data', c => out += c)
+    proc.stderr.on('data', c => err += c)
+    
+    proc.on('close', (exit) => {
+      if (exit === 0) {
+        let parsed
+        try { 
+          parsed = JSON.parse(out) 
+        } catch { 
+          parsed = null 
+        }
+        
+        const text = parsed?.result != null ? String(parsed.result) : out.trim()
+        resolve({ 
+          content: [{ type: 'text', text }], 
+          isError: false 
+        })
+      } else {
+        const msg = err.trim() || `Process exited with code ${exit}`
+        resolve({ 
+          content: [{ type: 'text', text: msg }], 
+          isError: true 
+        })
+      }
+    })
+  })
+}
 
 async function main() {
   const transport = new StdioServerTransport()

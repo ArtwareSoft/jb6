@@ -8,7 +8,7 @@ import './jb-cli.js'
 
 const { coreUtils } = jb
 const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, 
-  asJbComp, runCliInContext, absPathToUrl, compIdOfProfile, isNode } = coreUtils
+  asJbComp, runCliInContext, absPathToUrl, compIdOfProfile, isNode, stripData } = coreUtils
 
 jb.probeRepository = {
     probeCounter: 0
@@ -56,7 +56,10 @@ async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
     if (!circuit)
         return { error: `probe can not infer circuitCtx from ${probePath}` }
 
-    const probeObj = await new Probe(circuit).runCircuit(probePath,timeout)
+    let probeObj = new Probe(circuit)
+    try {
+      await probeObj.runCircuit(probePath,timeout)
+    } catch (e) {}
 
     const result = {
         circuitCmpId : circuit, 
@@ -69,7 +72,7 @@ async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
         logs: stripData(jb.ext.spy?.logs)
     }
 
-    return result
+    return result 
 
     function calcCircuit() {
         if (!probePath) 
@@ -98,45 +101,11 @@ function stripProbeResult(raw) {
   });
 }
 
-function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000 } = {}) {
-  return _strip(value, 0, '');
-
-  function _strip(data, depth, path) {
-    if (data == null) return data;
-    if (['string','number','boolean'].includes(typeof data)) {
-      return data;
-    }
-    if (typeof data === 'function') {
-      return '[Function]';
-    }
-    if (depth > MAX_OBJ_DEPTH) {
-      return `[Max depth reached at ${path}]`;
-    }
-    if (Array.isArray(data)) {
-      if (data.length > MAX_ARRAY_LENGTH) {
-        data = data.slice(0, MAX_ARRAY_LENGTH);
-      }
-      return data.map((item, i) => _strip(item, depth + 1, `${path}[${i}]`));
-    }
-    if (data instanceof Error) {
-      return { $$: 'Error', message: data.message };
-    }
-    if (typeof data === 'object' && data.constructor?.name !== 'Object') {
-      return { $$: data.constructor.name };
-    }
-    return Object.fromEntries(
-      Object.entries(data).map(([k, v]) => [
-        k,
-        _strip(v, depth + 1, path ? `${path}.${k}` : k)
-      ])
-    );
-  }
-}
-
 class Probe {
     constructor(circuitCmpId) {
         this.circuitCtx = new Ctx()
         this.circuitCtx.jbCtx.probe = this
+        this.circuitCtx.jbCtx.path = circuitCmpId
         this.records = {}
         this.visits = {}
         this.circuitComp = compByFullId(circuitCmpId, jb)[asJbComp]
@@ -185,9 +154,9 @@ class Probe {
         const _ctx = data ? ctx = ctx.setData(data).setVars(vars||{}) : ctx // used by ctx.data(..,) in rx
         if (probe.id < jb.probeRepository.probeCounter) {
             log('probe probeCounter is larger than current',{ctx, probe, counter: jb.probeRepository.probeCounter})
-            probe.active = false
-            throw 'probe tails'
-            return
+            // probe.active = false
+            //throw { error: `probeCounter is larger than current. id: ${probe.id} counter: ${jb.probeRepository.probeCounter}`, path }
+            //return
         }
         probe.startTime = probe.startTime || Date.now() // for the remote probe
         //const now = Date.now()

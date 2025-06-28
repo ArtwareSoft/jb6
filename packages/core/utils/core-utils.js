@@ -117,7 +117,7 @@ function logError(err,logObj) {
   globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, callerStack, creatorStack)
   const errObj = { err , ...logObj, callerStack, creatorStack}
   globalThis.jbHost?.process && globalThis.jbHost.process.stderr.write(err)
-  logCli('error', errObj)
+  logCli('error', stripData(errObj))
   jb.ext.spy?.log('error', errObj)
 }
 
@@ -125,7 +125,7 @@ function logException(e,err,logObj) {
   globalThis.window && globalThis.console.log('%c Exception: ','color: red', err, e, logObj)
   const errObj = { message: e.message, err, stack: e.stack||'', ...logObj, e}
   globalThis.jbHost?.process && globalThis.jbHost.process.stderr.write(`${err}\n${e}`)
-  logCli('exception', errObj)
+  logCli('exception', stripData(errObj))
   jb.ext.spy?.log('exception error', errObj)
 }
 
@@ -304,10 +304,43 @@ function absPathToUrl(path, serveEntries = []) {
 
 const isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string'
 
+function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000 } = {}) {
+  const visited = new WeakSet()
+  return _strip(value, 0, '')
+
+  function _strip(data, depth, path) {
+    if (data == null) return data
+    if (isPrimitiveValue(data))
+      return data
+    if (typeof data === 'function')
+      return `[Function] ${data.toString()}`
+    if (depth > MAX_OBJ_DEPTH)
+      return `[Max depth reached at ${path}]`
+    if (typeof data === 'object') {
+      if (visited.has(data))
+        return `[Already visited at ${path}]`
+      visited.add(data)
+    }
+    if (Array.isArray(data)) {
+      if (data.length > MAX_ARRAY_LENGTH)
+        data = data.slice(0, MAX_ARRAY_LENGTH)
+      return data.map((item, i) => _strip(item, depth + 1, `${path}[${i}]`))
+    }
+    if (data instanceof Error)
+      return { $$: 'Error', message: data.message }
+    if (typeof data === 'object' && data.constructor?.name !== 'Object')
+      return { $$: data.constructor.name }
+    if (typeof data === 'object') {
+      return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, _strip(v, depth + 1, path ? `${path}.${k}` : k) ]))
+    }
+    return data
+  }
+}
+
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logCli, isNode, logByEnv, fetchByEnv, absPathToUrl,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue
+  calcValue, stripData
 })

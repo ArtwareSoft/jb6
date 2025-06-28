@@ -160,13 +160,7 @@ Action('runActions', {
   params: [
     {id: 'actions', type: 'action[]', dynamic: true, composite: true, mandatory: true}
   ],
-  impl: ctx => {
-    if (!ctx.jbCtx.profile) debugger;
-    const actions = asArray(ctx.jbCtx.profile.actions).filter(x=>x)
-    return actions.reduce((pr,action,index) =>
-        pr.finally(function runActions() {return ctx.runInner(action, { as: 'single'}, `items~${index}` ) })
-      ,Promise.resolve())
-  }
+  impl: (ctx, {actions}) => asArray(actions).reduce((pr,_,index) => pr.finally(() => ctx.runInnerArg(actions,index)), Promise.resolve())
 })
 
 

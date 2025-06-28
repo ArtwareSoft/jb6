@@ -26,27 +26,19 @@ Data('pipeline', {
     {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
     {id: 'items', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
-  impl: (ctx, { source } ) => asArray(ctx.jbCtx.profile.items).reduce( (dataArray,prof,index) => 
-    runAsAggregator(ctx, prof,index,dataArray, asArray(ctx.jbCtx.profile.items)), source())
+  impl: (ctx, { items, source } ) => asArray(items.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, items, index,dataArray,profile), source())
 })
 
 Data('pipe', {
   description: 'synch data, wait for promises and reactive (callbag) data',
   params: [
-    {id: 'items', type: 'data[]', dynamic: true, mandatory: true, composite: true}
+    {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
+    {id: 'items', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
-  impl: async ctx => {
-    const profiles = asArray(ctx.jbCtx.profile.items)
-    const source = ctx.runInner(profiles[0], profiles.length == 1 ? ctx.parentParam : null, `items~0`)
-    const _res = profiles.slice(1).reduce( async (pr,prof,index) => {
-      const dataArray = await waitForInnerElements(pr)
-      log(`pipe elem resolved input for ${index+1}`,{dataArray,ctx})
-      return runAsAggregator(ctx, prof,index+1,dataArray, profiles)
-    }, source)
-    const res = await waitForInnerElements(_res)
-    log(`pipe result`,{res,ctx})
-    return res
-  }
+  impl: async (ctx, {items,source}) => waitForInnerElements(asArray(items.profile).reduce(async (dataArrayPromise, profile,index) => {
+      const dataArray = await waitForInnerElements(dataArrayPromise)
+      return runAsAggregator(ctx, items, index, dataArray, profile)
+    }, waitForInnerElements(source()) ))
 })
 
 const Aggregator = TgpTypeModifier('Aggregator', { aggregator: true, dsl: 'common', type: 'data'})
@@ -60,7 +52,7 @@ Aggregator('join', {
     {id: 'itemText', as: 'string', dynamic: true, defaultValue: '%%'}
   ],
   impl: (ctx,{ separator,prefix,suffix,items,itemText}) => {
-		const itemToText = ctx.jbCtx.profile.itemText ? item => itemText(ctx.setData(item)) : item => toString(item)
+		const itemToText = ctx.jbCtx.args.itemText ? item => itemText(ctx.setData(item)) : item => toString(item)
 		return prefix + items.map(itemToText).join(separator) + suffix;
 	}
 })
@@ -334,20 +326,18 @@ Boolean('and', {
   description: 'logical and',
   type: 'boolean',
   params: [
-    {id: 'items', type: 'boolean[]', ignore: true, mandatory: true, composite: true}
+    {id: 'items', type: 'boolean[]', dynamic: true, mandatory: true, composite: true}
   ],
-  impl: ctx => (ctx.jbCtx.profile.items || []).reduce(
-    (res,item,i) => res && ctx.runInner(item, { type: 'boolean' }, `items~${i}`), true)
+  impl: (ctx, {items}) => asArray(items.profile).reduce((res,_,i) => res && ctx.runInnerArg(items,i), true)
 })
 
 Boolean('or', {
   description: 'logical or',
   type: 'boolean',
   params: [
-    {id: 'items', type: 'boolean[]', ignore: true, mandatory: true, composite: true}
+    {id: 'items', type: 'boolean[]', dynamic: true, mandatory: true, composite: true}
   ],
-  impl: ctx => (ctx.jbCtx.profile.items || []).reduce(
-    (res,item,i) => res || ctx.runInner(item, { type: 'boolean' }, `items~${i}`), false)
+  impl: (ctx, {items}) => asArray(items.profile).reduce((res,_,i) => res || ctx.runInnerArg(items,i), false)
 })
 
 Boolean('between', {
@@ -360,20 +350,20 @@ Boolean('between', {
   impl: (ctx, { from, to, val }) => val >= from && val <= to
 })
 
-Data('object', {
-  impl: ctx => {
-    const obj = ctx.jbCtx.profile.$object || ctx.jbCtx.profile
-    if (Array.isArray(obj)) return obj
+// Data('object', {
+//   impl: ctx => {
+//     const obj = ctx.jbCtx.profile.$object || ctx.jbCtx.profile
+//     if (Array.isArray(obj)) return obj
 
-    const result = {}
-    for(let prop in obj) {
-      if ((prop == '$' && obj[prop] == 'object') || obj[prop] == null)
-        continue
-      result[prop] = ctx.runInner(obj[prop],null,prop)
-    }
-    return result
-  }
-})
+//     const result = {}
+//     for(let prop in obj) {
+//       if ((prop == '$' && obj[prop] == 'object') || obj[prop] == null)
+//         continue
+//       result[prop] = ctx.runInnerArg(prop)
+//     }
+//     return result
+//   }
+// })
 
 Boolean('isNull', {
   description: 'is null or undefined',
@@ -663,13 +653,12 @@ Boolean('notContains', {
   impl: not(contains('%$text%', { allText: '%$allText%' }))
 })
 
-function runAsAggregator(ctx, profile,i, dataArray,profiles) {
+function runAsAggregator(ctx, arg, index, dataArray, profile) {
     if (!profile || profile.$disabled) return dataArray
-    const parentParam = (i < profiles.length - 1) ? { as: 'array'} : (ctx.parentParam || {}) // use parent param for last element to convert to client needs
     if (profile.$?.aggregator)
-      return ctx.setData(asArray(dataArray)).runInner(profile, parentParam, `items~${i}`)
+      return ctx.setData(asArray(dataArray)).runInnerArg(arg, index)
     return asArray(dataArray)
-      .map(item => ctx.setData(item).runInner(profile, parentParam, `items~${i}`))
+      .map(item => ctx.setData(item).runInnerArg(arg, index))
       .filter(x=>x!=null)
       .flatMap(x=> asArray(calcValue(x)))
 }

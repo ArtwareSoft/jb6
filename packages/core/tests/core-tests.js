@@ -83,10 +83,6 @@ const getAsBool = Data({
   impl: (ctx,{val}) => val
 })
 
-Test('coreTest.HelloWorld', {
-  impl: dataTest(pipeline('hello world'), and(contains('hello'), contains('world')))
-})
-
 Test('coreTest.getExpValueAsBoolean', {
   impl: dataTest(getAsBool('%$person/name%==Homer Simpson'), ({data}) => data === true)
 })

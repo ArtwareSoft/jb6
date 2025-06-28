@@ -88,7 +88,7 @@ class JBCtx {
         return new JBCtx({...this, creatorStack: [...(this.creatorStack || []), this.path, path], path, parentParam, profile: parentParam.defaultValue})
     }
     callCtx(callerCtx) {
-        return new JBCtx({...this, path: `${this.path}~${parentParam.id}`, callerStack: [...(this.callerStack||[]), callerCtx]})
+        return new JBCtx({...this, callerStack: [...(this.callerStack||[]), callerCtx]})
     }
     newComp(comp, args) {
         return new JBCtx({...this, 
@@ -120,12 +120,12 @@ class Ctx {
     exp(exp,jstype) { 
         return calcExpression(exp, this.setJbCtx(new JBCtx({...this.jbCtx, parentParam: {as: jstype}}))) 
     }
-    runInner(profile, parentParam, innerPath) {
-        return run(profile, this.setJbCtx(new JBCtx({...this.jbCtx, path: `${this.path}~${innerPath}`, parentParam, profile})))
+    runInnerArg(arg, arrayIndex) {
+        return arg(this, arrayIndex)
     }
     extendWithVarsScript(vars) {
         const runInnerPathForVar = (profile = ({data}) => data, index, ctx) =>
-            run(profile, ctx.setJbCtx(new JBCtx({...ctx.jbCtx, path: `${this.path}~vars~${index}~val`, parentParam: {$type: 'data<common>'} })))
+            run(profile, ctx.setJbCtx(new JBCtx({...ctx.jbCtx, path: `${this.jbCtx.path}~vars~${index}~val`, parentParam: {$type: 'data<common>'} })))
 
         vars = asArray(vars)
         if (vars.find(x=>x.async))
@@ -146,11 +146,11 @@ class jbComp {
         Object.assign(this, compData)
     }
     calcParams() {
-        this._params = this._params || (this.params || []).map(p=>new param(p, this.id))
+        this._params = this._params || (this.params || []).map(p=>new paramRunner(p, this.id))
         return this._params
     }
     runProfile(profile, ctx = new Ctx(), settings) {
-        const compArgs = Object.fromEntries(this.calcParams().map(p =>[p.id, p.resolve(profile, ctx, settings)]))
+        const compArgs = Object.fromEntries(this.calcParams().map(p =>[p.id, p.resolve(profile, ctx.setJbCtx(ctx.jbCtx.innerParam(p, profile)), settings)]))
         if (this.impl == null) return compArgs
         if (typeof this.impl == 'function')
             this.impl.compFunc = true
@@ -160,29 +160,34 @@ class jbComp {
     }
 }
 
-class param {
+class paramRunner {
     constructor(_param,compFullPath) {
         Object.assign(this,_param)
         this.path = `${compFullPath}~params~${_param.id}`
     }
     resolve(profile, creatorCtx, settings) {
         const doResolve = ctxToUse => {
-            const value = profile[this.id] == null && this.defaultValue == null ? null 
-                : profile[this.id] == null && this.defaultValue != null ? run(this.defaultValue, 
+            const innerProfile = ctxToUse.jbCtx.profile
+            const value = innerProfile == null && this.defaultValue == null ? null 
+                : innerProfile == null && this.defaultValue != null ? run(this.defaultValue, 
                     ctxToUse.setJbCtx(ctxToUse.jbCtx.paramDefaultValue(`${this.path}~defaultValue`, this)), settings )
-                : run(profile[this.id], ctxToUse.setJbCtx(ctxToUse.jbCtx.innerParam(this, profile)), settings )
+                : run(innerProfile, ctxToUse, settings )
             return toRTType(this, value)
         }
 
         if (this.dynamic == true) {
-            const res = callerCtx => doResolve(mergeDataCtx(creatorCtx, callerCtx))
+            const res = (callerCtx, arrayIndex) => {
+                const _creatorCtx = arrayIndex != null ? creatorCtx.setJbCtx(creatorCtx.jbCtx.innerArrayPath(arrayIndex)) : creatorCtx
+                return doResolve(mergeDataCtx(_creatorCtx, callerCtx))
+            }
+            res.profile = profile[this.id] // use by pipeline
             res.creatorCtx = creatorCtx
-            res.profile = profile[this.id]
             return res
         }                
         return doResolve(creatorCtx)
 
-        function mergeDataCtx(creatorCtx, callerCtx) {
+        function mergeDataCtx(_creatorCtx, callerCtx) {
+            const creatorCtx = callerCtx ? _creatorCtx.setJbCtx(_creatorCtx.jbCtx.callCtx(callerCtx)) : _creatorCtx
             if (callerCtx == null) return creatorCtx
             const noOfVars = Object.keys(callerCtx.vars || []).length
             if (noOfVars == 0 && callerCtx.data == null)
