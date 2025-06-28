@@ -40,15 +40,24 @@ Aggregator('unique', {
 })
 
 Aggregator('max', {
-  impl: ctx => Math.max.apply(0,asArray(ctx.data))
+  params: [
+    {id: 'items', as: 'array', defaultValue: '%%'}
+  ],
+  impl: (ctx,{items}) => Math.max.apply(0,items)
 })
 
 Aggregator('min', {
-  impl: ctx => Math.min.apply(0,asArray(ctx.data))
+  params: [
+    {id: 'items', as: 'array', defaultValue: '%%'}
+  ],
+  impl: (ctx,{items}) => Math.min.apply(0,items)
 })
 
 Aggregator('sum', {
-  impl: ctx => asArray(ctx.data).reduce((acc,item) => +item+acc, 0)
+  params: [
+    {id: 'items', as: 'array', defaultValue: '%%'}
+  ],
+  impl: (ctx,{items}) => items.reduce((acc,item) => +item+acc, 0)
 })
 
 Aggregator('sort', {

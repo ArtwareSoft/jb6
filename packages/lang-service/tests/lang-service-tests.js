@@ -453,13 +453,6 @@ Test('langServiceTest.closestComp', {
   })
 })
 
-// Test('langServiceTest.provideDefinition.inFunc', {
-//   impl: dataTest({
-//     calculate: pipe(calcCompTextAndCursor(`dataTest('', () => { utils.prettyPrint('aa'); return 3})`), langService.definition()),
-//     expectedResult: equals('/plugins/tgp/formatter/pretty-print.js', { data: '%path%' })
-//   })
-// })
-
 Test('langServiceTest.provideDefinition.firstInPipe', {
   impl: dataTest({
     calculate: langService.definition(calcCompTextAndCursor('dataTest(pipeline(l__ist()))')),

@@ -46,7 +46,7 @@ export async function calcTgpModelData({ filePath }) {
     }
   })(filePath)
   
-  const tgpModel = {dsls: {}, ns: {}, typeRules: [], files: Object.keys(visited), projectImportMap}
+  const tgpModel = {dsls: {}, ns: {}, typeRules: [], imports: Object.keys(codeMap), files: Object.keys(visited), projectImportMap}
   const {dsls, typeRules} = tgpModel
 
 //  logByEnv('codeMap', Object.keys(codeMap))

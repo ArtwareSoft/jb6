@@ -16,66 +16,54 @@ const {
   }
 } = dsls
 
-
-Const('people2', [
+Const('people', [
     {name: 'Homer Simpson', age: 42, male: true},
     {name: 'Marge Simpson', age: 38, male: false},
     {name: 'Bart Simpson', age: 12, male: true}
 ])
 
 Test('piplineTest.filter', {
-  impl: dataTest(pipeline('%$people2%', filter('%age%==42'), '%name%'), contains('Homer'))
+  impl: dataTest(pipeline('%$people%', filter('%age%==42'), '%name%'), equals('Homer Simpson'))
 })
 
 Test('pipelineTest.join', {
-  impl: dataTest(
-    pipeline('%$people2%', join(',', '', '', '%name%')), 
-    contains('Homer Simpson,Marge Simpson,Bart Simpson')
-  )
+  impl: dataTest(pipeline('%$people/name%', join()), equals('Homer Simpson,Marge Simpson,Bart Simpson'))
 })
 
 Test('pipelineTest.count', {
-  impl: dataTest(pipeline('%$people2%', count()), equals(3))
+  impl: dataTest(pipeline('%$people%', count()), equals(3))
 })
 
 Test('pipelineTest.maxAge', {
-  impl: dataTest(
-    pipeline('%$people2%', max('%age%')),
-    equals(42)
-  )
+  impl: dataTest(pipeline('%$people/age%', max()), equals(42))
 })
 
 Test('pipelineTest.minAge', {
-  impl: dataTest(
-    pipeline('%$people2%', min('%age%')),
-    equals(12)
-  )
+  impl: dataTest(pipeline('%$people/age%', min()), equals(12))
+})
+
+Test('aggregatorTest.minAge', {
+  impl: dataTest(min('%$people/age%'), equals(12))
 })
 
 Test('pipelineTest.first', {
-  impl: dataTest(
-    pipeline('%$people2%', first()),
-    equals({name: 'Homer Simpson', age: 42, male: true})
-  )
+  impl: dataTest(pipeline('%$people%', first()), equals())
 })
 
 Test('pipelineTest.last', {
-  impl: dataTest(
-    pipeline('%$people2%', last()),
-    equals({name: 'Bart Simpson', age: 12, male: true})
-  )
+  impl: dataTest(pipeline('%$people%', last()), equals())
 })
 
 Test('pipelineTest.filterMale', {
   impl: dataTest(
-    pipeline('%$people2%', filter('%male%==true'), '%name%'),
+    pipeline('%$people%', filter('%male%==true'), '%name%'),
     contains('Homer Simpson')
   )
 })
 
 Test('pipelineTest.notContains', {
   impl: dataTest(
-    pipeline('%$people2%', '%name%'),
+    pipeline('%$people%', '%name%'),
     notContains(['Lisa'], '%name%')
   )
 })
@@ -103,7 +91,7 @@ Test('pipelineTest.not', {
 
 Test('pipelineTest.slice', {
   impl: dataTest(
-    pipeline('%$people2%', slice(1, 3), '%name%'),
+    pipeline('%$people%', slice(1, 3), '%name%'),
     contains('Marge Simpson')
   )
 })

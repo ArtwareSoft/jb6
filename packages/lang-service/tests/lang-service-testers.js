@@ -3,7 +3,7 @@ import { langServiceUtils } from '@jb6/lang-service'
 import { ns, dsls, coreUtils } from '@jb6/core'
 import './mock-workspace.js'
 
-const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay } = coreUtils
+const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, runSnippetCli } = coreUtils
 const { langService } = ns
 const { tgpEditorHost, tgpModelForLangService, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
 
@@ -185,6 +185,24 @@ Test('actionMapTest', {
     },
     includeTestRes: true,
     timeout: 1000
+  })
+})
+
+Test('snippetTest', {
+  params: [
+    {id: 'compText'},
+    {id: 'expectedResult', type: 'boolean', as: 'boolean', dynamic: true},
+    {id: 'filePath', dynamic: true, defaultValue: () => filePathForLangServiceTest() },
+    {id: 'packages', as: 'array'}
+  ],
+  impl: dataTest({
+    calculate: async ({},{},args) => {
+      const filePath = await args.filePath()
+      return runSnippetCli({...args, filePath})
+    },
+    expectedResult: '%$expectedResult()%',
+    timeout: 1000,
+    includeTestRes: true
   })
 })
 

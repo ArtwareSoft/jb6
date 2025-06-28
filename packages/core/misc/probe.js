@@ -8,7 +8,7 @@ import './jb-cli.js'
 
 const { coreUtils } = jb
 const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, 
-  asJbComp, runCliInContext, absPathToUrl, compIdOfProfile, isNode, stripData } = coreUtils
+  asJbComp, runCliInContext, absPathToUrl, compIdOfProfile, isNode, stripData, unique } = coreUtils
 
 jb.probeRepository = {
     probeCounter: 0
@@ -18,7 +18,7 @@ Object.assign(coreUtils, {runProbe, runProbeCli})
 async function runProbeCli(probePath, filePath, {extraCode, importMap, testFiles = [], requireNode} = {}) {
     const serveEntries = importMap?.serveEntries || []
     const usingNode = requireNode || isNode
-    const imports = [filePath, ...testFiles].map(f=>usingNode ? f : absPathToUrl(f, serveEntries))
+    const imports = unique([filePath, ...testFiles]).map(f=>usingNode ? f : absPathToUrl(f, serveEntries))
       .map(f=>`\timport '${f}'`).join('\n')
     const script = `
       import { jb, dsls } from '@jb6/core'
