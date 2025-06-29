@@ -218,7 +218,9 @@ class tgpModelForLangService {
         return this.PTsOfType(type,dsl)
     }
     paramType(path) {
-        const type = this.paramDef(path)?.$dslType
+        const param = this.paramDef(path)         
+        const dynamicTypeFromParent = param?.dynamicTypeFromParent?.(this.valOfPath(parentPath(path)),this.dsls)
+        const type = dynamicTypeFromParent || param?.$dslType
         return type == '$asParent' ? this.paramType(parentPath(path)) : type
     }
     enumOptions(path) { 

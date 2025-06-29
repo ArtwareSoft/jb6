@@ -21,23 +21,26 @@ async function runCliInContext(script, {requireNode, importMap} = {}) {
 }
 
 async function runNodeCli(script, {importMap} = {}) {
-  const { promisify } = await import('util')
-  const { execFile: execFileCb } = await import('child_process')
-  const execFile = promisify(execFileCb)
-  const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
-
+  const { execFile } = await import('child_process')
+  const cwd = importMap?.projectRoot || ''
+  const args = ['--input-type=module', '-e', script]
+  const cmd = process.execPath + ' ' + args.map(a => JSON.stringify(a)).join(' ')
+  const { error, stdout } = await new Promise(res =>
+    execFile(process.execPath, args, { cwd, encoding: 'utf8' }, (err, out) =>
+      res({ error: err, stdout: out })
+    )
+  )
+  if (error) {
+    logException(error, 'error in run node cli', { cmd, importMap, stdout })
+    return { error, cmd, importMap }
+  }
   try {
-      const { stdout } = await execFile(
-        process.execPath,
-        ['--input-type=module', '-e', script],
-        { cwd: importMap?.projectRoot || '', encoding: 'utf8' }
-      )
-      const result = JSON.parse(stdout)
-      return { result , cmd, importMap }
+    const result = JSON.parse(stdout)
+    return { result, cmd, importMap }
   } catch (e) {
-      logException(e, 'error in run node cli', {cmd, importMap, stdout: e.stdout})
-      return { error : e , cmd, importMap } 
-  }  
+    logException(e, 'error in run node cli', { cmd, importMap, stdout })
+    return { error: e, cmd, importMap }
+  }
 }
 
 async function runNodeCliViaJbWebServer(script, {importMap, expressUrl = ''} = {}) {

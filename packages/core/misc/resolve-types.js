@@ -18,17 +18,17 @@ function calcDslType(fullId) {
     return (fullId || '').split('>')[0] + '>'
 }
 
-export function resolveProfileTypes(prof, { astFromParent, expectedType, parent, parentProp, tgpModel, topComp, parentType, remoteCode} = {}) {
+export function resolveProfileTypes(prof, { astFromParent, expectedType, parent, parentParam, tgpModel, topComp, parentType, remoteCode} = {}) {
     if (!prof || !prof.constructor || ['Object','Array'].indexOf(prof.constructor.name) == -1) return prof
     const typeFromParent = expectedType == '$asParent<>' ? (parentType || calcDslType(parent?.$$)) : expectedType
-    const dynamicTypeFromParent = parentProp?.dynamicTypeFromParent?.(parent,tgpModel.dsls)
+    const dynamicTypeFromParent = parentParam?.dynamicTypeFromParent?.(parent,tgpModel.dsls,topComp)
     const fromFullId = calcDslType(prof.$$)
     const dslType = dynamicTypeFromParent || typeFromParent || fromFullId 
     if (!dslType || dslType?.indexOf('<') == -1) debugger
     const ast = prof[astNode] || astFromParent
 
     const comp = prof.$ instanceof jbComp ? prof.$
-        : resolveCompTypeWithId(prof.$$ || prof.$, tgpModel, { dslType, parent, parentProp, topComp, parentType, remoteCode })
+        : resolveCompTypeWithId(prof.$$ || prof.$, tgpModel, { dslType, parent, parentParam, topComp, parentType, remoteCode })
     if (comp)
       prof.$$ = prof.$ instanceof jbComp ? prof.$ : `${comp.$dslType}${comp.id}`
     if (prof.$$ == 'pipeline') debugger
@@ -40,10 +40,10 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
 
     if (Array.isArray(prof)) {
       prof[primitivesAst] = Object.fromEntries(prof.map( (val,i) => isPrimitiveValue(val) && [i,ast?.elements[i]]).filter(Boolean))
-      prof.forEach((v,i) =>resolveProfileTypes(v, { astFromParent: prof[primitivesAst][i], expectedType: dslType, parent, parentProp, topComp, tgpModel, parentType, remoteCode}))
+      prof.forEach((v,i) =>resolveProfileTypes(v, { astFromParent: prof[primitivesAst][i], expectedType: dslType, parent, parentParam, topComp, tgpModel, parentType, remoteCode}))
     } else if (comp && prof.$ != 'asIs') {
       ;[...(comp.params || []), ...systemParams].forEach(p=> 
-          resolveProfileTypes(prof[p.id], { astFromParent: prof[primitivesAst]?.[p.id], expectedType: p.$dslType, parentType: dslType, parent: prof, parentProp: p, topComp, tgpModel, remoteCode}))
+          resolveProfileTypes(prof[p.id], { astFromParent: prof[primitivesAst]?.[p.id], expectedType: p.$dslType, parentType: dslType, parent: prof, parentParam: p, topComp, tgpModel, remoteCode}))
     } else if (!comp && prof.$) {
         logError(`resolveProfile - can not resolve ${prof.$} at ${topComp && topComp.$$} expected type ${dslType || 'unknown'}`, 
             {tgpModel, compId: prof.$, prof, expectedType, dslType, topComp, parentType})
@@ -149,7 +149,7 @@ function argsToProfile(prof, comp) {
   }
 }
 
-function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentProp, parent, topComp, parentType, remoteCode, dsl} = {}) {
+function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, parent, topComp, parentType, remoteCode, dsl} = {}) {
   if (!id) return
   const dsls = tgpModel.dsls
   if (dslType == 'comp<tgp>')
@@ -168,8 +168,8 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentProp, paren
     if (res) return res
   }
 
-  const typeFromParent = parentProp?.typeAsParent === true && parentType
-  const dynamicTypeFromParent = typeof parentProp?.dynamicTypeFromParent == 'function' && parentProp.dynamicTypeFromParent(parent, tgpModel.dsls)
+  const typeFromParent = parentParam?.typeAsParent === true && parentType
+  const dynamicTypeFromParent = typeof parentParam?.dynamicTypeFromParent == 'function' && parentParam.dynamicTypeFromParent(parent, tgpModel.dsls)
   const byTypeRules = [dynamicTypeFromParent,typeFromParent,dslType].filter(x=>x).join(',').split(',').filter(x=>x)
     .flatMap(t=>moreTypesByTypeRules(t)).join(',')
 

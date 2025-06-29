@@ -1,5 +1,6 @@
 import { dsls } from "@jb6/core"
 import '@jb6/common'
+import '@jb6/llm-guide'
 
 const { 
     common: { Data, 

@@ -185,6 +185,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
 
       const singleArgAsArrayPath = singleArgAsArray ? `${path}~${singleArgAsArray}` : path
       const actionForFirstArgByValue = !singleArgAsArray || singleLine ? `addProp!${path}` : `prependPT!${singleArgAsArrayPath}`
+      const firstArgByValueIsPrimitive = ['string','token'].includes(argsByValue[0]?.type)
       const firstInArray = path.match(/~0$/)
       const parentPath = path.split('~').slice(0,-1).join('~')
       return [
@@ -194,7 +195,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
           {token: '', action: `endToken!${path}`},
           {token: '', action: `edit!${path}`},
           //{token: '', action: `addProp!${path}`},
-          ...(argsByValue.length && !mixedFold ? [{token: newLine(), action: actionForFirstArgByValue}] : []),
+          ...(argsByValue.length && !mixedFold && !firstArgByValueIsPrimitive ? [{token: newLine(), action: actionForFirstArgByValue}] : []),
           ..._argsByValue,
           ...propsByNameSection,
           {token: argsByValue.length && !mixedFold ? newLine(-1) : '', 
@@ -399,7 +400,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       {token: '', action: `endToken!${path}`},
       {token: '', action: `end!${path}`}
     ]
-    return props[path] = {tokens, len: str.length + 2}
+    return props[path] = {tokens, len: str.length + 2, type: 'string'}
   }    
   function tokenProps(str, path) {
     const tokens = [ 
@@ -410,7 +411,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       {token: '', action: `endToken!${path}`},
       {token: '', action: `end!${path}`}
     ]
-    return props[path] = {tokens, len: str.length }
+    return props[path] = {tokens, len: str.length, type: 'token' }
   }
   function funcProps(func,path) {
     let asStr = func.toString().trim().replace(/^'([a-zA-Z_\-0-9]+)'/,'$1')

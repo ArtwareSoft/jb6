@@ -72,7 +72,6 @@ Test('probeCliTest.helloWorld', {
   })
 })
 
-
 Test('probeCliTest.requireNode', {
   impl: dataTest({
     calculate: async () => {

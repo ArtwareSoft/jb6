@@ -108,7 +108,13 @@ function compByFullId(id, tgpModel) {
 function resolveProfileTop(comp) {
     const dsl = comp.dsl || ''
     comp.$dslType = comp.type.indexOf('>') == -1 ? `${comp.type}<${dsl}>` : comp.type
-    ;(comp.params || []).filter(p=> !p.dynamicTypeFromParent).forEach(p=> {
+    ;(comp.params || []).forEach(p=> {
+      if (typeof p.dynamicTypeFromParent == 'string') {
+        const attName = p.dynamicTypeFromParent
+        p.dynamicTypeFromParent = parent => parent[attName]
+      }
+      if (p.dynamicTypeFromParent) return
+      
       if (p.type == 'boolean') p.type = 'boolean<common>'
       if (p.type == 'data' || !p.type) p.type = 'data<common>'
       if (p.type == 'action') p.type = 'action<common>'

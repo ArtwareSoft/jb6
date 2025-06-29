@@ -154,7 +154,7 @@ async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTest
     const pkg = JSON.parse(await readFile(path.join(dir, 'package.json'), 'utf8'))
     const dependencies = [...Object.keys(pkg.dependencies || {}), 
       ...Object.keys(pkg.devDependencies || {}),
-      ...(dir == repoRoot && includeTesting ? ['@jb6/testing'] : [])].filter(d=>d.startsWith('@jb6/'))
+      ...(dir == repoRoot && includeTesting ? ['@jb6/testing','@jb6/llm-guide'] : [])].filter(d=>d.startsWith('@jb6/'))
     const localCreateRequire = createRequire(path.join(dir, 'package.json'))
     const resolved = Object.fromEntries(dependencies.flatMap(d=>{ 
       try {

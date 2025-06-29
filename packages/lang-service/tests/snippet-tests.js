@@ -15,5 +15,5 @@ const {
 } = dsls
 
 Test('snippet.pipeline', {
-  impl: snippetTest(`Data('x', { impl: pipeline('hello')}) `, equals('hello', '%result%'))
+  impl: snippetTest(`Data({ impl: pipeline('hello')}) `, equals('hello', '%result%'))
 })

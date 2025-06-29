@@ -4,7 +4,7 @@
       "type": "stdio",
       "command": "/usr/bin/node",
       "args": [
-        "/home/shaiby/projects/jb6/hosts/mcp/js_mcp.js"
+        "/home/shaiby/projects/jb6/packages/mcp/index.js"
       ]   
     }
   }

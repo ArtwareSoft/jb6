@@ -41,7 +41,7 @@ export async function calcTgpModelData({ filePath }) {
 
       await Promise.all(imports.map(url => crawl(url)))
     } catch (e) {
-      logByEnv('imports error', rUrl, url, e)
+      logByEnv('calcTgpModelData imports error', {rUrl, url, projectImportMap, e})
       console.error(`Error crawling ${url}:`, e)
     }
   })(filePath)

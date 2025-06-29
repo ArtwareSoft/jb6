@@ -2,7 +2,7 @@
   "name": "jb6-test-project",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
   },
   "type": "module",
@@ -13,6 +13,7 @@
     "@jb6/repo": "file:../../packages/repo",
     "@jb6/common": "file:../../packages/common",
     "@jb6/core": "file:../../packages/core",
+    "@jb6/llm-guide": "file:../../packages/llm-guide",
     "@jb6/testing": "file:../../packages/testing"
   },
   "serveEntries": [

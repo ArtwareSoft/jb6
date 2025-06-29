@@ -3,7 +3,7 @@ import './core-utils.js'
 const { coreUtils } = jb
 const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType } = coreUtils
 
-Object.assign(coreUtils, { globalsOfType })
+Object.assign(coreUtils, { globalsOfType, ptsOfType })
 
 const CompDef = comp => jbCompProxy(new jbComp(resolveProfileTop(comp)))
 
@@ -85,6 +85,7 @@ MetaParam('param', {
     {id: 'composite', as: 'boolean' },
     {id: 'defaultValue', dynamicType: '%type%'},
     {id: 'byName', as: 'boolean'},
+    {id: 'dynamicTypeFromParent', as: 'string'},
     {id: 'secondParamAsArray', as: 'boolean'},
   ]
 })
@@ -120,8 +121,11 @@ function calcSourceLocation(errStack) {
 }
 
 function globalsOfType(tgpType) { // not via tgpModel
-  return Object.keys(tgpType).map(x=>tgpType[x]).map(x=>x[asJbComp]).filter(x=>x)
-    .filter(x=>!(x.params || []).length).map(({id})=>id.split('>').pop())
+  return Object.keys(tgpType).map(x=>tgpType[x]).map(x=>x[asJbComp]).filter(x=>x).filter(x=>!(x.params || []).length).map(({id})=>id.split('>').pop())
+}
+
+function ptsOfType(tgpType) { // not via tgpModel
+  return Object.keys(tgpType).map(x=>tgpType[x]).map(x=>x[asJbComp]).filter(x=>x).filter(x=>(x.params || []).length).map(({id})=>id.split('>').pop())
 }
 
 Data('asIs', {
@@ -139,6 +143,14 @@ Any('If', {
     {id: 'Else', type: '$asParent', dynamic: true}
   ],
   impl: ({},{ condition, then, Else}) => condition() ? then() : Else()
+})
+
+Any('typeAdapter', {
+  params: [
+    {id: 'fromType', as: 'string', mandatory: true, description: 'e.g. type1<myDsl>'},
+    {id: 'val', dynamicTypeFromParent: 'fromType', mandatory: true}
+  ],
+  impl: (ctx, {val}) => val
 })
 
 Any('TBD', {

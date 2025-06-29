@@ -1,6 +1,5 @@
 import { dsls, ns } from '@jb6/core'
 import { h, L, useState, useEffect, useRef, useContext, reactUtils } from '@jb6/react'
-
 import './react-testers.js'
 
 const { 
@@ -11,7 +10,13 @@ const {
     data: { pipeline, filter, join, property, obj, delay }, 
     Boolean: { contains, equals },
     Prop: { prop }
-  }
+  },
+  doclet: { Doclet,
+    doclet: { exercise },
+    guidance: { solution, doNot, bestPractice }, 
+    explanation: { explanation }, 
+    explanationPoint: { whenToUse, performance, comparison } 
+  } 
 } = dsls
 
 Test('reactTest.HelloWorld', {

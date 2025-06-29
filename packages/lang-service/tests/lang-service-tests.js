@@ -37,6 +37,14 @@ Test('completionTest.text', {
   impl: completionOptionsTest(`uiTest(text(__'__hello'__, __'__'__))`, ['style','pipeline','style','style','pipeline','style'])
 })
 
+Test('completionTest.doclet', {
+  impl: completionOptionsTest(`ALL:Doclet('countUnder30', { impl: exercise('count people', { guidance: __solution(pipeline()) })`, ['solution'])
+})
+
+Test('completionTest.typeAdapter', {
+  impl: completionOptionsTest(`ALL:Data('x', {impl: typeAdapter('boolean<common>', '__')})`, ['or'])
+})
+
 Test('completionTest.mixedSingleArgAsArrayMiddle', {
   impl: completionOptionsTest(`group(button('click me')__,__ { features: method() })`, ['button','button'])
 })

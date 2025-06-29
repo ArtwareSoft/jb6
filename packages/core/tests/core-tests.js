@@ -1,5 +1,6 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/testing'
+import '@jb6/llm-guide'
 
 const { 
   tgp: { Const, TgpType, 
@@ -12,6 +13,12 @@ const {
   },
   test: { Test,
     test: { dataTest }
+  },
+  doclet: { Doclet,
+    doclet: { exercise },
+    guidance: { solution, doNot, bestPractice }, 
+    explanation: { explanation }, 
+    explanationPoint: { whenToUse, performance, comparison } 
   }
 } = dsls
 
@@ -222,3 +229,17 @@ Test('expTest.expWithArrayVar', {
   })
 })
 
+Doclet('countUnder30', {
+  impl: exercise('count people under 30', {
+    guidance: [
+      solution(pipeline(''), explanation(
+        'count() uses %% parameter by default',
+        whenToUse('in pipelines when chaining operations'),
+        performance('good for small datasets, slower on 10k+ items')
+      )),
+      doNot('%$people[age<30]%', { reason: 'XPath syntax not supported' }),
+      doNot('SELECT COUNT(*) FROM people WHERE age < 30', { reason: 'SQL queries not supported' }),
+      doNot('$.people[?(@.age<30)].length', { reason: 'JSONPath not supported' })
+    ]
+  })
+})

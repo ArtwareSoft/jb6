@@ -46,8 +46,10 @@ ${imports}
 }
 
 async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
-    if (!_probePath)
-        return logError(`probe runCircuit missing probe path`, {})
+    if (!_probePath) {
+       logError(`probe runCircuit missing probe path`, {})
+       return { error: `probe runCircuit missing probe path` }
+    }
     const probePath = _probePath.indexOf('<') == -1 ? `test<test>${_probePath}` : _probePath
     log('probe start run circuit',{probePath})
     const circuit = circuitCmpId || calcCircuit()

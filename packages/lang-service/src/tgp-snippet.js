@@ -5,7 +5,7 @@ import '@jb6/core/misc/calc-import-map.js'
 const { unique, resolveProfileTypes, astToTgpObj, calcTgpModelData, studioAndProjectImportMaps, runCliInContext } = coreUtils
 Object.assign(coreUtils,{runSnippetCli})
 
-async function runSnippetCli({compText, filePath, extraCode = '', packages = [] } = {}) {
+async function runSnippetCli({compText, filePath, setupCode = '', packages = [] } = {}) {
     const { projectImportMap } = await studioAndProjectImportMaps(filePath)
 
     const tgpModel = await calcTgpModelData({filePath}) // todo: support packages
@@ -13,7 +13,11 @@ async function runSnippetCli({compText, filePath, extraCode = '', packages = [] 
     resolveProfileTypes(comp, {tgpModel, expectedType: 'comp<tgp>', comp})
     const dslsSection = calcDslsSection([comp])
     const _compPath = comp.impl?.$$?.match(/([^<]+)<([^>]+)>(.+)/)
-    const compPath = `${_compPath[2]}.${_compPath[1]}.${comp.id}`
+    if (!_compPath)
+      return { error: 'compText must be wrapped with compDef of its type. e,g, Data({impl: ...}), Test({impl:...}) ', script}
+    const compPath = comp.id ? `dsls['${_compPath[2]}']['${_compPath[1]}']['${comp.id}']` : 'x'
+    const compIdPrefix = comp.id ? '' : 'const x = '
+    const compId = comp.id || 'x'
 
     const imports = unique([filePath, ...packages]).map(f=>`\timport '${f}'`).join('\n')
     const script = `
@@ -22,20 +26,22 @@ ${imports}
 ${dslsSection}
       ;(async () => {
         try {
-          ${extraCode}
-          ${compText}
-          const result = await dsls.${compPath}.$run()
+          ${setupCode}
+          ${compIdPrefix}${compText}
+          const res = await ${compPath}.$run()
+          const result = res && typeof res == 'object' ? {...res, compId: '${compId}'} : {compId: '${compId}', result: res}
           process.stdout.write(JSON.stringify(coreUtils.stripData(result), null, 2))
         } catch (e) {
-          console.error(e)
+          process.stdout.write(JSON.stringify(coreUtils.stripData(e), null, 2))
         }
         process.exit(0)
       })()
     `
 
     try {
+        debugger
       const result = await runCliInContext(script, {importMap: projectImportMap, requireNode: true})
-      return result
+      return { ...result, script }
     } catch (error) {
       return { error, script }
     }
@@ -43,7 +49,8 @@ ${dslsSection}
 
 function calcDslsSection(comps) {
     const _items = []
-    const compDefs = comps.map(comp=>({ dsl: comp.impl?.$$?.match(/([^<]+)<([^>]+)>(.+)/)[2], id: comp.$ }))
+    const defaultCompDefs = [{ dsl: 'tgp', id: 'Const'}]
+    const compDefs = [...defaultCompDefs, ...comps.map(comp=>({ dsl: comp.impl?.$$?.match(/([^<]+)<([^>]+)>(.+)/)[2], id: comp.$ }))]
     comps.forEach(calcItems)
     const items = unique(_items.filter(x=>x))
 
