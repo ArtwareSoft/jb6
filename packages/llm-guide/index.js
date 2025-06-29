@@ -1,5 +1,5 @@
 import './llm-guide.js'
-import './building-llm-guide.js'
+import './llm-guide-principles.js'
 import './building-new-dsl.js'
 import './extending-existing-dsl.js'
 import './working-with-existing-dsl.js'

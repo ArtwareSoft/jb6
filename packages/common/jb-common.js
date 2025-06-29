@@ -24,20 +24,20 @@ Data('pipeline', {
   description: 'flat map data arrays one after the other, does not wait for promises and rx',
   params: [
     {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
-    {id: 'items', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
+    {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
-  impl: (ctx, { items, source } ) => asArray(items.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, items, index,dataArray,profile), source())
+  impl: (ctx, { operators, source } ) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
 })
 
 Data('pipe', {
   description: 'synch data, wait for promises and reactive (callbag) data',
   params: [
     {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
-    {id: 'items', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
+    {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
-  impl: async (ctx, {items,source}) => waitForInnerElements(asArray(items.profile).reduce(async (dataArrayPromise, profile,index) => {
+  impl: async (ctx, {operators,source}) => waitForInnerElements(asArray(operators.profile).reduce(async (dataArrayPromise, profile,index) => {
       const dataArray = await waitForInnerElements(dataArrayPromise)
-      return runAsAggregator(ctx, items, index, dataArray, profile)
+      return runAsAggregator(ctx, operators, index, dataArray, profile)
     }, waitForInnerElements(source()) ))
 })
 
@@ -92,16 +92,16 @@ Aggregator('slice', {
 
 Data('firstSucceeding', {
   params: [
-    {id: 'items', type: 'data[]', as: 'array', composite: true}
+    {id: 'operators', type: 'data[]', as: 'array', composite: true}
   ],
-  impl: ({},{ items }) => {
-    for(let i=0;i<items.length;i++) {
-      const val = calcValue(items[i])
+  impl: ({},{ operators }) => {
+    for(let i=0;i<operators.length;i++) {
+      const val = calcValue(operators[i])
       const isNumber = typeof val === 'number'
       if (val !== '' && val != null && (!isNumber || (!isNaN(val)) && val !== Infinity && val !== -Infinity))
-        return items[i]
+        return operators[i]
     }
-		return items.slice(-1)[0];
+		return operators.slice(-1)[0];
 	}
 })
 

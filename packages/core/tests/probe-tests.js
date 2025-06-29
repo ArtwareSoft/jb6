@@ -38,7 +38,7 @@ Test('probeTest.innerInArray', {
 
 Test('probeTest.innerInPipeline', {
   impl: dataTest({
-    calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~calculate~items~0'),
+    calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~calculate~operators~0'),
     expectedResult: and(equals('hello world', '%result.0.in.data%'), equals('%result.0.out%', 'hello world'))
   })
 })

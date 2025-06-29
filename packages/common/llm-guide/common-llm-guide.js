@@ -26,6 +26,8 @@ Doclet('countUnder30', {
       code: pipeline('%$people%', filter('%age% < 30'), count()),
       expl: explanation(
         'count() uses %% parameter by default',
+        syntax('%$people%', 'get the content of the variable "people" use it as source'),
+        syntax(`filter('%age% < 30')`, 'use filter with expression, filter can also have boolean components "filter(between(1,10))"'),
         whenToUse('in pipelines when chaining operations'),
         performance('good for small datasets, slower on 10k+ items')
       )
@@ -34,6 +36,10 @@ Doclet('countUnder30', {
       code: count(pipeline('%$people%', filter('%age% < 30'))),
       expl: explanation(
         'explicit parameter to count()',
+        syntax({
+          expression: 'count(data_exp)',
+          explain: 'count first param is "items". it counts them. when inside a pipe the items defaultValue is "%%", means the array passed in the pipe'
+        }),
         whenToUse('when you need more control over data flow'),
         comparison('pipeline approach', { advantage: 'clearer data flow' })
       )
@@ -45,7 +51,8 @@ Doclet('countUnder30', {
     )),
     doNot('%$people[age<30]%', { reason: 'XPath syntax not supported' }),
     doNot('SELECT COUNT(*) FROM people WHERE age < 30', { reason: 'SQL queries not supported' }),
-    doNot('$.people[?(@.age<30)].length', { reason: 'JSONPath not supported' })
+    doNot('$.people[?(@.age<30)].length', { reason: 'JSONPath not supported' }),
+    mechanismUnderTheHood('')
   )
 })
 

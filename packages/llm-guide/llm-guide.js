@@ -34,6 +34,7 @@ Doclet('principle', {
     { id: 'importance', as: 'string', mandatory: true, description: '1-5' },
     { id: 'rule', as: 'string', mandatory: true, description: 'The principle statement' },
     { id: 'rationale', as: 'string', mandatory: true, description: 'Why this principle matters' },
+    { id: 'dslCompIds', type: 'data[]', description: "Full component IDs to use. E.g., 'guidance<doclet>doNot'" },
     { id: 'evidence', type: 'explanation<doclet>', description: 'Supporting evidence and examples' }
   ]
 })
@@ -64,6 +65,14 @@ Guidance('bestPractice', {
   ]
 })
 
+Guidance('illegalSyntax', {
+  description: 'Documents a piece of code that is syntactically invalid.',
+  params: [
+    { id: 'badCode', as: 'string', mandatory: true },
+    { id: 'reason', as: 'string', mandatory: true, byName: true }
+  ]
+})
+
 Guidance('research', {
   description: 'Research findings and evidence base',
   params: [
@@ -72,6 +81,15 @@ Guidance('research', {
     { id: 'impact', as: 'string', description: 'Measured impact or improvement' }
   ]
 })
+
+Guidance('mechanismUnderTheHood', {
+  description: 'code snippets that explain the dsl implementation',
+  params: [
+    {id: 'snippet', as: 'string', mandatory: true},
+    {id: 'explain', as: 'string'}
+  ]
+})
+
 
 // =============================================================================
 // TYPE: explanation - Structured explanation container
@@ -87,6 +105,13 @@ Explanation('explanation', {
 // =============================================================================
 // TYPE: explanationPoint - Individual explanation components
 // =============================================================================
+
+ExplanationPoint('syntax', {
+  params: [
+    {id: 'expression', as: 'string', mandatory: true},
+    {id: 'explain', as: 'string', mandatory: true}
+  ]
+})
 
 ExplanationPoint('whenToUse', {
   params: [
@@ -116,24 +141,21 @@ ExplanationPoint('tradeoff', {
 })
 
 ExplanationPoint('evidence', {
-  description: 'Research evidence supporting a claim',
   params: [
-    { id: 'data', as: 'string', mandatory: true, description: 'Specific evidence or measurement' }
+    { id: 'evidence', as: 'string', mandatory: true }
   ]
 })
 
 ExplanationPoint('impact', {
-  description: 'Real-world impact or consequence',
   params: [
-    { id: 'effect', as: 'string', mandatory: true, description: 'What effect this has in practice' }
+    { id: 'impact', as: 'string', mandatory: true }
   ]
 })
 
 ExplanationPoint('methodology', {
-  description: 'How to apply this principle or technique',
   params: [
-    { id: 'steps', as: 'string', mandatory: true, description: 'Practical application steps' },
-    { id: 'tools', as: 'string', description: 'Tools or components to use' }
+    {id: 'steps', as: 'string', mandatory: true},
+    {id: 'tools', as: 'string'}
   ]
 })
 

@@ -42,18 +42,18 @@ Test('actionMapTest.singleParamByName', {
 })
 
 Test('actionMapTest.secondParamAsArray', {
-  impl: actionMapTest(() => pipeline(list(1,2), '%%'), 'data<common>', 'begin!~items~0', '20,20')
+  impl: actionMapTest(() => pipeline(list(1,2), '%%'), 'data<common>', 'begin!~operators~0', '20,20')
 })
 
 Test('actionMapTest.secondParamAsArrayWithVars', {
-  impl: actionMapTest(() => pipeline(Var('a', 3), '%%', 'aa'), 'data<common>', 'begin!~items~0', '28,28')
+  impl: actionMapTest(() => pipeline(Var('a', 3), '%%', 'aa'), 'data<common>', 'begin!~operators~0', '28,28')
 })
 
 Test('actionMapTest.secondParamAsArrayWithLongVars', {
   impl: actionMapTest({
     profile: () => pipeline(Var('a', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'), '%%', 'aaaaaaaaaaaaaaaaaaaaaadasdaaaaaaaaaaaaaaaaaaaaa'),
     expectedType: 'data<common>',
-    path: 'begin!~items~0',
+    path: 'begin!~operators~0',
     expectedPos: '82,82'
   })
 })
@@ -142,12 +142,12 @@ Data('test.foldFunction', {
   impl: pipeline({
     source: () => prettyPrintWithPositions(frontEnd.var('itemPropsProfile', ({ }, { $model }) => 
       $model.itemProps.profile) , {type: 'feature<>', }),
-    items: ['%text%']
+    operators: ['%text%']
   })
 })
 
 Test('actionMapTest.posOfFoldFunctionBug', {
-  impl: dataTest(() => getPosOfPath('data<common>test.foldFunction~impl~items~0'), equals('%line%', 4))
+  impl: dataTest(() => getPosOfPath('data<common>test.foldFunction~impl~operators~0'), equals('%line%', 4))
 })
 
 Test('actionMapTest.singleFunc', {
