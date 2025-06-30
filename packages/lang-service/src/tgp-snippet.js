@@ -5,16 +5,17 @@ import '@jb6/core/misc/calc-import-map.js'
 const { unique, resolveProfileTypes, astToTgpObj, calcTgpModelData, studioAndProjectImportMaps, runCliInContext } = coreUtils
 Object.assign(coreUtils,{runSnippetCli})
 
-async function runSnippetCli({compText, filePath, setupCode = '', packages = [] } = {}) {
+async function runSnippetCli({compText: _compText, filePath, setupCode = '', packages = [] } = {}) {
     const { projectImportMap } = await studioAndProjectImportMaps(filePath)
 
     const tgpModel = await calcTgpModelData({filePath}) // todo: support packages
+    const compText = (_compText[0]||'').match(/[A-Z]/) ? _compText : `Data({impl: ${_compText}})`
     const comp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
     resolveProfileTypes(comp, {tgpModel, expectedType: 'comp<tgp>', comp})
     const dslsSection = calcDslsSection([comp])
     const _compPath = comp.impl?.$$?.match(/([^<]+)<([^>]+)>(.+)/)
     if (!_compPath)
-      return { error: 'compText must be wrapped with compDef of its type. e,g, Data({impl: ...}), Test({impl:...}) ', script}
+      return { error: 'can not eval compText. if not data<common> compText must be wrapped with compDef of its type. e,g, Test({impl:...}) '}
     const compPath = comp.id ? `dsls['${_compPath[2]}']['${_compPath[1]}']['${comp.id}']` : 'x'
     const compIdPrefix = comp.id ? '' : 'const x = '
     const compId = comp.id || 'x'

@@ -16,6 +16,7 @@ const Doclet = TgpType('doclet', 'doclet')           // Main documentation conta
 const Guidance = TgpType('guidance', 'doclet')       // Solution/anti-pattern components
 const Explanation = TgpType('explanation', 'doclet') // Structured explanation container
 const ExplanationPoint = TgpType('explanationPoint', 'doclet') // Individual explanation components
+const ProblemStatement = TgpType('problemStatement', 'doclet') // New: Problem statement container
 
 // =============================================================================
 // TYPE: doclet - Main documentation container
@@ -23,8 +24,21 @@ const ExplanationPoint = TgpType('explanationPoint', 'doclet') // Individual exp
 
 Doclet('exercise', {
   params: [
-    { id: 'problem', as: 'string', mandatory: true },
-    { id: 'guidance', type: 'guidance[]', secondParamAsArray: true }
+    {id: 'problem', type: 'problemStatement', mandatory: true},
+    {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
+    {id: 'outro', as: 'string', newLinesInCode: true, description: 'Concluding explanation for the exercise'}
+  ]
+})
+
+// =============================================================================
+// TYPE: problemStatement - Problem statement components
+// =============================================================================
+
+ProblemStatement('problem', {
+  description: 'Defines the problem statement for an exercise, including an optional introduction.',
+  params: [
+    {id: 'statement', as: 'string', newLinesInCode: true, mandatory: true, description: 'The core problem statement'},
+    {id: 'intro', as: 'string', newLinesInCode: true, description: 'Introductory explanation for the problem'}
   ]
 })
 
@@ -45,15 +59,15 @@ Doclet('principle', {
 
 Guidance('solution', {
   params: [
-    {id: 'code', type: 'data<common>', mandatory: true}, // dynamicTypeFromParent: "(parent, dsls, topComp) => topComp?.impl?.resultType || 'data<common>'"
+    {id: 'code', newLinesInCode: true, mandatory: true},
     {id: 'expl', type: 'explanation<doclet>'}
   ]
 })
 
 Guidance('doNot', {
   params: [
-    { id: 'badCode', as: 'string', mandatory: true },
-    { id: 'reason', as: 'string', mandatory: true, byName: true }
+    {id: 'badCode', as: 'string', mandatory: true},
+    {id: 'reason', as: 'string', mandatory: true, byName: true}
   ]
 })
 
@@ -85,7 +99,7 @@ Guidance('research', {
 Guidance('mechanismUnderTheHood', {
   description: 'code snippets that explain the dsl implementation',
   params: [
-    {id: 'snippet', as: 'string', mandatory: true},
+    {id: 'snippet', newLinesInCode: true, as: 'string', mandatory: true},
     {id: 'explain', as: 'string'}
   ]
 })
@@ -97,8 +111,8 @@ Guidance('mechanismUnderTheHood', {
 
 Explanation('explanation', {
   params: [
-    { id: 'text', as: 'string', mandatory: true },
-    { id: 'points', type: 'explanationPoint[]', as: 'array', composite: true, secondParamAsArray: true }
+    {id: 'text', as: 'string', newLinesInCode: true, mandatory: true},
+    {id: 'points', type: 'explanationPoint[]', as: 'array', composite: true, secondParamAsArray: true}
   ]
 })
 

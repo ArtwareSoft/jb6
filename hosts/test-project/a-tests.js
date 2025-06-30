@@ -25,3 +25,4 @@ Test('aTests.testCmpA', {
   impl: dataTest(pipeline(Var('personA', asIs({name: 'Dan'})), 'hello', cmpA()), contains('hello cmpA'))
 })
 
+Test('how', { impl: '' })

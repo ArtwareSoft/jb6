@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "js_mcp": {
+    "jb_mcp": {
       "type": "stdio",
       "command": "/usr/bin/node",
       "args": [

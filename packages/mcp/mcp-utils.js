@@ -1,6 +1,8 @@
 import { dsls, coreUtils } from '@jb6/core'
 import { Server } from "@modelcontextprotocol/sdk/server/index.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
+import { z } from 'zod'
+
 import { spawn } from 'child_process'
 
 import { 
@@ -9,7 +11,26 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema 
 } from "@modelcontextprotocol/sdk/types.js"
-  
+
+const GenericToolCallSchema = z.object({
+  jsonrpc: z.literal("2.0"),
+  id: z.union([z.string(), z.number(), z.null()]),
+  method: z.literal("callTool"),
+  params: z.object({
+    name: z.enum([
+      "runSnippet",
+      "runSnippets", 
+      "getFileContent",
+      "replaceComponent",
+      "addComponent",
+      "overrideFileContent",
+      "tgpModel",
+      "evalJs"
+    ]),
+    arguments: z.record(z.unknown())
+  })
+})
+
 const { ptsOfType, asJbComp } = coreUtils
 const { 
     common: { Data, Action },
@@ -32,7 +53,7 @@ export const runNodeScript = Data('runNodeScript', {
       
       return new Promise((resolve) => {
         const scriptToRun = `console.log = () => {};\n${script}`
-        const proc = spawn(process.execPath, ['--input-type=module', '-e', scriptToRun], { 
+        const proc = spawn('node', ['--input-type=module', '-e', scriptToRun], { 
           cwd: repoRoot || process.cwd(), 
           stdio: ['ignore', 'pipe', 'pipe'] 
         })
@@ -67,9 +88,8 @@ export const runNodeScript = Data('runNodeScript', {
     }
 })
   
-export function startMcpServer() {
+export async function startMcpServer() {
     // Get all tools from the repository
-    debugger
     const allTools = ptsOfType(Tool)
     const toolConfigs = allTools.map(toolId => {
       const toolComp = dsls.mcp.tool[toolId][asJbComp]
@@ -120,10 +140,29 @@ export function startMcpServer() {
     }))
   
     mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
+      console.error('Received tool call request:', JSON.stringify(request, null, 2))
+      debugger
       const { name, arguments: args } = request.params      
       const result = await dsls.mcp.tool[name].$run(args)
       return result
     })
+
+    mcpServer.setRequestHandler(GenericToolCallSchema, async (request) => {
+      console.error('Received generic tool call request:', JSON.stringify(request, null, 2))
+      debugger
+      
+      const { name, arguments: args } = request.params
+      
+      try {
+        // Execute the tool using the DSL system
+        const result = await dsls.mcp.tool[name].$run(args)
+        return result
+      } catch (error) {
+        console.error(`Error executing tool ${name}:`, error)
+        throw error
+      }
+    })
+    
 
     mcpServer.setRequestHandler(ListPromptsRequestSchema, async () => ({
       prompts: promptConfigs
@@ -144,7 +183,6 @@ export function startMcpServer() {
   
     // Start stdio transport
     const transport = new StdioServerTransport()
-    mcpServer.connect(transport).then(() => {
-      console.error(`JB6 MCP Server running on stdio`)
-    })
+    await mcpServer.connect(transport)
+    console.error(`JB6 MCP Server running on stdio`)
 }

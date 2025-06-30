@@ -45,6 +45,10 @@ Test('completionTest.typeAdapter', {
   impl: completionOptionsTest(`ALL:Data('x', {impl: typeAdapter('boolean<common>', '__')})`, ['or'])
 })
 
+Test('completionTest.topLevel', {
+  impl: completionOptionsTest(`ALL:Test('x', {impl: '__')`, ['dataTest'])
+})
+
 Test('completionTest.mixedSingleArgAsArrayMiddle', {
   impl: completionOptionsTest(`group(button('click me')__,__ { features: method() })`, ['button','button'])
 })

@@ -87,6 +87,7 @@ MetaParam('param', {
     {id: 'byName', as: 'boolean'},
     {id: 'dynamicTypeFromParent', as: 'string'},
     {id: 'secondParamAsArray', as: 'boolean'},
+    {id: 'newLinesInCode', as: 'boolean'},
   ]
 })
 

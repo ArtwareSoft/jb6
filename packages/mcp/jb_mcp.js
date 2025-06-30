@@ -333,7 +333,7 @@ function evalCode(script, repoRoot) {
 
   process.stderr.write(cmd)
   return new Promise((resolve) => {            
-    const proc = spawn(process.execPath, ['--input-type=module','-e', script], { 
+    const proc = spawn('node', ['--input-type=module','-e', script], { 
       cwd: repoRoot || process.cwd(), 
       stdio: ['ignore', 'pipe', 'pipe'] 
     })

@@ -214,6 +214,10 @@ class tgpModelForLangService {
     }
     PTsOfPath(path) {
         const dslType = this.paramType(path)
+        if (!path) {
+            logError(`PTsOfPath can not find dsl type of path ${path}`)
+            return []
+        }
         const [type, dsl] = splitDslType(dslType)
         return this.PTsOfType(type,dsl)
     }

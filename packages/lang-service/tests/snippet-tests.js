@@ -14,6 +14,13 @@ const {
   },
 } = dsls
 
-Test('snippet.pipeline', {
-  impl: snippetTest(`Data({ impl: pipeline('hello')}) `, equals('hello', '%result%'))
+Test('snippet.Data', {
+  impl: snippetTest(`pipeline('hello')`, equals('hello', '%result%'))
+})
+
+Test('snippet.filePath', {
+  doNotRunInTests: true,
+  impl: snippetTest(`Data({ impl: pipeline('hello')}) `, equals('hello', '%result%'), {
+    filePath: '/home/shaiby/projects/jb6/packages/common/llm-guide/common-llm-guide.js'
+  })
 })

@@ -12,7 +12,7 @@ const {
 Tool('evalJs', {
     description: 'Execute JavaScript code and return the result',
     params: [
-      { id: 'code', as: 'string', mandatory: true, description: 'JavaScript code to execute' }
+      { id: 'code', newLinesInCode: true, as: 'string', mandatory: true, description: 'JavaScript code to execute' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({ script: '%$code%' }))
 })

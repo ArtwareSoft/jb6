@@ -37,10 +37,7 @@ export function runInSeparateProcess({ entryPoints, compName, args }) {
   return new Promise((resolve, reject)=>{
     let out = ''
     let err = ''
-    const child = spawn(
-      process.execPath,
-      ['--input-type=module','-e',code],
-      { stdio:['ignore','pipe','pipe'] }
+    const child = spawn('node', ['--input-type=module','-e',code], { stdio:['ignore','pipe','pipe'] }
     )
     child.stdout.on('data', c=> out += c)
     child.stderr.on('data', c=> err += c)
