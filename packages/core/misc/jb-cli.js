@@ -20,28 +20,55 @@ async function runCliInContext(script, {requireNode, importMap} = {}) {
   return res
 }
 
+// async function runNodeCli(script, {importMap} = {}) {
+//   const { execFile } = await import('child_process')
+//   const cwd = importMap?.projectRoot || ''
+//   const args = ['--input-type=module', '-e', script]
+//   const cmd = process.execPath + ' ' + args.map(a => JSON.stringify(a)).join(' ')
+//   const { error, stdout } = await new Promise(res =>
+//     execFile(process.execPath, args, { cwd, encoding: 'utf8' }, (err, out) =>
+//       res({ error: err, stdout: out })
+//     )
+//   )
+//   if (error) {
+//     logException(error, 'error in run node cli', { cmd, importMap, stdout })
+//     return { error, cmd, importMap }
+//   }
+//   try {
+//     const result = JSON.parse(stdout)
+//     return { result, cmd, importMap }
+//   } catch (e) {
+//     logException(e, 'error in run node cli', { cmd, importMap, stdout })
+//     return { error: e, cmd, importMap }
+//   }
+// }
+
 async function runNodeCli(script, {importMap} = {}) {
-  const { execFile } = await import('child_process')
+  const {spawn} = await import('child_process')
   const cwd = importMap?.projectRoot || ''
-  const args = ['--input-type=module', '-e', script]
-  const cmd = process.execPath + ' ' + args.map(a => JSON.stringify(a)).join(' ')
-  const { error, stdout } = await new Promise(res =>
-    execFile(process.execPath, args, { cwd, encoding: 'utf8' }, (err, out) =>
-      res({ error: err, stdout: out })
-    )
-  )
-  if (error) {
-    logException(error, 'error in run node cli', { cmd, importMap, stdout })
-    return { error, cmd, importMap }
-  }
-  try {
-    const result = JSON.parse(stdout)
-    return { result, cmd, importMap }
-  } catch (e) {
-    logException(e, 'error in run node cli', { cmd, importMap, stdout })
-    return { error: e, cmd, importMap }
-  }
+  const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
+  const scriptToRun = `console.log = () => {};\n${script}`
+  return new Promise(resolve => {
+    let out = '', err = ''
+    const child = spawn('/bin/node', ['--input-type=module', '-e', scriptToRun], {cwd, encoding: 'utf8'})
+    child.stdout.on('data', d => out += d)
+    child.stderr.on('data', d => err += d)
+    child.on('close', code => {
+      if (code !== 0) {
+        const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
+        logException(error, 'error in run node cli', {cmd, importMap, stdout: out})
+        return resolve({error, cmd, importMap})
+      }
+      try {
+        resolve({result: JSON.parse(out), cmd, importMap})
+      } catch (e) {
+        logException(e, 'error in run node cli', {cmd, importMap, stdout: out})
+        resolve({error: e, cmd, importMap})
+      }
+    })
+  })
 }
+
 
 async function runNodeCliViaJbWebServer(script, {importMap, expressUrl = ''} = {}) {
   try { 

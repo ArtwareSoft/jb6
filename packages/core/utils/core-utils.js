@@ -34,6 +34,13 @@ const RT_types = {
       if (typeof(value) == 'undefined') return ''
       return '' + value
     },
+    text(value) { // multi line
+      if (Array.isArray(value)) value = value[0]
+      if (value == null) return ''
+      value = calcValue(value)
+      if (typeof(value) == 'undefined') return ''
+      return '' + value
+    },
     number(value) {
       if (Array.isArray(value)) value = value[0]
       if (value == null || value == undefined) return null // 0 is not null

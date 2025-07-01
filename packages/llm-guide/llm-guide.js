@@ -8,13 +8,15 @@ const {
 } = dsls
 
 // ============================================================================= 
-// DOCLET DSL - A language to describe documentation patterns for LLMs
+// DOCLET DSL - 
+// Guidance LLM doclets codify expert task-solving patterns into structured, reusable templates 
+// that teach LLMs how to perform complex tasks consistently and effectively.
 // =============================================================================
 
 // Define the DSL types
 const Doclet = TgpType('doclet', 'doclet')           // Main documentation container
 const Guidance = TgpType('guidance', 'doclet')       // Solution/anti-pattern components
-const Explanation = TgpType('explanation', 'doclet') // Structured explanation container
+const Evidence = TgpType('evidence', 'doclet') 
 const ExplanationPoint = TgpType('explanationPoint', 'doclet') // Individual explanation components
 const ProblemStatement = TgpType('problemStatement', 'doclet') // New: Problem statement container
 
@@ -26,7 +28,7 @@ Doclet('exercise', {
   params: [
     {id: 'problem', type: 'problemStatement', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
-    {id: 'outro', as: 'string', newLinesInCode: true, description: 'Concluding explanation for the exercise'}
+    {id: 'outro', as: 'string', newLinesInCode: true, description: 'Concluding explanation'}
   ]
 })
 
@@ -35,7 +37,6 @@ Doclet('exercise', {
 // =============================================================================
 
 ProblemStatement('problem', {
-  description: 'Defines the problem statement for an exercise, including an optional introduction.',
   params: [
     {id: 'statement', as: 'string', newLinesInCode: true, mandatory: true, description: 'The core problem statement'},
     {id: 'intro', as: 'string', newLinesInCode: true, description: 'Introductory explanation for the problem'}
@@ -59,8 +60,8 @@ Doclet('principle', {
 
 Guidance('solution', {
   params: [
-    {id: 'code', newLinesInCode: true, mandatory: true},
-    {id: 'expl', type: 'explanation<doclet>'}
+    {id: 'code', newLinesInCode: true, mandatory: true, byName: true},
+    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true}
   ]
 })
 
@@ -87,38 +88,20 @@ Guidance('illegalSyntax', {
   ]
 })
 
-Guidance('research', {
-  description: 'Research findings and evidence base',
-  params: [
-    { id: 'findings', as: 'string', mandatory: true, description: 'Key research conclusions' },
-    { id: 'methodology', as: 'string', description: 'How the research was conducted' },
-    { id: 'impact', as: 'string', description: 'Measured impact or improvement' }
-  ]
-})
-
 Guidance('mechanismUnderTheHood', {
   description: 'code snippets that explain the dsl implementation',
   params: [
-    {id: 'snippet', newLinesInCode: true, as: 'string', mandatory: true},
+    {id: 'snippet', newLinesInCode: true, as: 'text', mandatory: true},
     {id: 'explain', as: 'string'}
   ]
 })
 
 
-// =============================================================================
-// TYPE: explanation - Structured explanation container
-// =============================================================================
-
-Explanation('explanation', {
+ExplanationPoint('explanation', {
   params: [
     {id: 'text', as: 'string', newLinesInCode: true, mandatory: true},
-    {id: 'points', type: 'explanationPoint[]', as: 'array', composite: true, secondParamAsArray: true}
   ]
 })
-
-// =============================================================================
-// TYPE: explanationPoint - Individual explanation components
-// =============================================================================
 
 ExplanationPoint('syntax', {
   params: [
@@ -154,22 +137,49 @@ ExplanationPoint('tradeoff', {
   ]
 })
 
-ExplanationPoint('evidence', {
+// ExplanationPoint('evidence', {
+//   params: [
+//     { id: 'evidence', as: 'string', mandatory: true }
+//   ]
+// })
+
+// ExplanationPoint('impact', {
+//   params: [
+//     { id: 'impact', as: 'string', mandatory: true }
+//   ]
+// })
+
+// ExplanationPoint('methodology', {
+//   params: [
+//     {id: 'steps', as: 'string', mandatory: true},
+//     {id: 'tools', as: 'string'}
+//   ]
+// })
+
+Evidence('research', {
+  description: 'Research findings and evidence base',
   params: [
-    { id: 'evidence', as: 'string', mandatory: true }
+    { id: 'findings', as: 'text', mandatory: true, description: 'Key research conclusions' },
+    { id: 'methodology', as: 'text', description: 'How the research was conducted' },
+    { id: 'impact', as: 'text', description: 'Measured impact or improvement' }
   ]
 })
 
-ExplanationPoint('impact', {
+Evidence('measurement', {
+  description: 'Quantified performance or effectiveness data',
   params: [
-    { id: 'impact', as: 'string', mandatory: true }
+    { id: 'metric', as: 'text', mandatory: true, description: 'What was measured' },
+    { id: 'value', as: 'text', mandatory: true, description: 'The measured value' },
+    { id: 'conditions', as: 'text', description: 'Under what conditions this was measured' }
   ]
 })
 
-ExplanationPoint('methodology', {
+Evidence('benchmark', {
+  description: 'Comparative performance data against alternatives',
   params: [
-    {id: 'steps', as: 'string', mandatory: true},
-    {id: 'tools', as: 'string'}
+    { id: 'baseline', as: 'text', mandatory: true, description: 'What was compared against' },
+    { id: 'improvement', as: 'text', mandatory: true, description: 'How much better/worse' },
+    { id: 'context', as: 'text', description: 'Testing context and conditions' }
   ]
 })
 

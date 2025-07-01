@@ -27,7 +27,7 @@ function calc(_exp, ctx, overrideParentParam ) {
     const parentParam = overrideParentParam || ctxParentParam
     const jstype = parentParam?.ref ? 'ref' : parentParam?.as
     let exp = '' + _exp
-    if (jstype == 'boolean') return calcBool(exp, ctx, parentParam)
+    if (jstype == 'boolean' || parentParam?.type?.startsWith('boolean')) return calcBool(exp, ctx, parentParam)
     if (exp.indexOf('$debugger:') == 0) {
       debugger
       exp = exp.split('$debugger:')[1]

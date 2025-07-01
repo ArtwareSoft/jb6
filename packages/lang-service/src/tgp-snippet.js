@@ -1,5 +1,5 @@
 import { parse } from '../lib/acorn-loose.mjs'
-import { coreUtils } from '@jb6/core'
+import { coreUtils, dsls } from '@jb6/core'
 import '@jb6/core/misc/calc-import-map.js'
 
 const { unique, resolveProfileTypes, astToTgpObj, calcTgpModelData, studioAndProjectImportMaps, runCliInContext } = coreUtils

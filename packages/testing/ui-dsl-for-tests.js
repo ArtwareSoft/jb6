@@ -57,6 +57,15 @@ Control('text', {
   ]
 })
 
+Control('html', {
+  params: [
+    {id: 'html', as: 'text', dynamic: true},
+    {id: 'title', as: 'ref', dynamic: true},
+    {id: 'style', type: 'html-style', dynamic: true},
+    {id: 'features', type: 'feature[]', dynamic: true}
+  ]
+})
+
 Test('uiTest', {
   params: [
     {id: 'control', type: 'control<ui>', dynamic: true, mandatory: true},

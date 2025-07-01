@@ -198,7 +198,7 @@ Test('snippetTest', {
   impl: dataTest({
     calculate: async ({},{},args) => {
       const filePath = await args.filePath()
-      const res = await runSnippetCli({...args, filePath})
+      const res = await runSnippetCli({...args, filePath, direct: true})
       return res?.result
     },
     expectedResult: '%$expectedResult()%',

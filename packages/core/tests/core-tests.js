@@ -13,12 +13,6 @@ const {
   },
   test: { Test,
     test: { dataTest }
-  },
-  doclet: { Doclet,
-    doclet: { exercise },
-    guidance: { solution, doNot, bestPractice }, 
-    explanation: { explanation }, 
-    explanationPoint: { whenToUse, performance, comparison } 
   }
 } = dsls
 
@@ -169,6 +163,13 @@ Test('coreTest.asIsArray', {
   impl: dataTest(pipeline(asIs([{a: 1}, {a: 2}]), '%a%', join()), equals('1,2'))
 })
 
+Test('coreTest.and', {
+  impl: dataTest({
+    calculate: pipeline('%$people%', filter(and('%age% < 30', contains('Bart', { allText: '%name%' }))), '%name%', join()),
+    expectedResult: equals('Bart Simpson')
+  })
+})
+
 Test('expTest.select', {
   impl: dataTest({
     calculate: pipeline('%$peopleWithChildren%', pipeline(Var('parent'), '%children%', '%name% is child of %$parent/name%'), join()),
@@ -226,20 +227,5 @@ Test('expTest.expWithArrayVar', {
     ],
     calculate: '%$children[0]/name%',
     expectedResult: equals('Bart')
-  })
-})
-
-Doclet('countUnder30', {
-  impl: exercise('count people under 30', {
-    guidance: [
-      solution(pipeline(''), explanation(
-        'count() uses %% parameter by default',
-        whenToUse('in pipelines when chaining operations'),
-        performance('good for small datasets, slower on 10k+ items')
-      )),
-      doNot('%$people[age<30]%', { reason: 'XPath syntax not supported' }),
-      doNot('SELECT COUNT(*) FROM people WHERE age < 30', { reason: 'SQL queries not supported' }),
-      doNot('$.people[?(@.age<30)].length', { reason: 'JSONPath not supported' })
-    ]
   })
 })

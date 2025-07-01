@@ -43,9 +43,7 @@ function compHeader(compId) {
 }
 
 function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros,singleLine, depth, tgpModel, type, resolvedParams} = {}) {
-  if (val[asJbComp]) {
-    debugger
-  }
+  val = (val && val[asJbComp]) || val
   const props = {}
   const startOffset = val.$comp ? compHeader(fullPTId(val)).length : 0
 
@@ -234,7 +232,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       ;(cleaned.params||[]).forEach(p => delete p.$dslType)
       return asIsProps(cleaned,path)
     }
-    const fullptId = profile.$$ && compIdOfProfile(profile)
+    const fullptId = (profile.$$ || profile.$)  && compIdOfProfile(profile)
     if (!fullptId) {
       return asIsProps(profile,path)
     }
@@ -276,8 +274,8 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     //const varsByName = hasParamAsArray ? [] : ['vars']
     const systemProps = sysProps.filter(p=>p != 'vars' || !varsByValue.length).flatMap(p=>profile[p] ? [{innerPath: p, val: profile[p]}] : [])
 
-    const propsByName = systemProps.concat(paramsByName.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode }))).filter(({val})=>val !== undefined)
-    const propsByValue = paramsByValue.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode})).filter(({val})=>val !== undefined)
+    const propsByName = systemProps.concat(paramsByName.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode || param.as == 'text'}))).filter(({val})=>val !== undefined)
+    const propsByValue = paramsByValue.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode || param.as == 'text'})).filter(({val})=>val !== undefined)
     const firstParamVal = profile[param0.id]
     const secondParamVal = asArray(profile[param1.id])
     const singleFirstParamAsArray = firstParamAsArray && !Array.isArray(firstParamVal) && firstParamVal != null

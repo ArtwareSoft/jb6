@@ -43,17 +43,28 @@ const Prompt = TgpType('prompt', 'mcp')
 
 // Export for use in other files
 export { Tool, Prompt, typeAdapter }
-    
+
+function injectConsoleSuppressionAfterImports(script) {
+  const lines = script.split('\n')
+  const lastImportIndex = lines.findLastIndex(line => line.trim().startsWith('import '))
+  const insertIndex = lastImportIndex >= 0 ? lastImportIndex + 1 : 0
+  return lastImportIndex >= 0 ? [...lines.slice(0, insertIndex), 'console.log = () => {};', ...lines.slice(insertIndex)].join('\n') 
+    : `console.log = () => {};\n${script}`
+}
+
 export const runNodeScript = Data('runNodeScript', {
     params: [
-      { id: 'script', as: 'string', mandatory: true, description: 'JavaScript code to execute' },
+      { id: 'script', as: 'string', dynamic: true, mandatory: true, description: 'JavaScript code to execute' },
       { id: 'repoRoot', as: 'string', description: 'Working directory for execution' }
     ],
     impl: (ctx, { script, repoRoot }) => {
       
       return new Promise((resolve) => {
-        const scriptToRun = `console.log = () => {};\n${script}`
-        const proc = spawn('node', ['--input-type=module', '-e', scriptToRun], { 
+        const _script = typeof script.profile == 'string' ? script.profile : script()
+        const scriptToRun = injectConsoleSuppressionAfterImports(_script)
+        debugger
+        const cmd = `node --inspect-brk --input-type=module -e "${scriptToRun.replace(/"/g, '\\"')}"`
+        const proc = spawn('/bin/node', ['--input-type=module', '-e', scriptToRun], { 
           cwd: repoRoot || process.cwd(), 
           stdio: ['ignore', 'pipe', 'pipe'] 
         })
@@ -71,15 +82,15 @@ export const runNodeScript = Data('runNodeScript', {
               parsed = null 
             }
             
-            const text = parsed?.result != null ? String(parsed.result) : out.trim()
+            const text = parsed?.result != null ? JSON.stringify(parsed.result) : out.trim()
             resolve({ 
-              content: [{ type: 'text', text }], 
+              content: [{ type: 'text', text }, {type: 'text', text: scriptToRun}], 
               isError: false 
             })
           } else {
             const msg = err.trim() || `Process exited with code ${exit}`
             resolve({ 
-              content: [{ type: 'text', text: msg }], 
+              content: [{ type: 'text', text: msg  + '\nSCRIPT\n\n' + scriptToRun}], 
               isError: true 
             })
           }

@@ -10,13 +10,7 @@ const {
     data: { pipeline, filter, join, property, obj, delay }, 
     Boolean: { contains, equals },
     Prop: { prop }
-  },
-  doclet: { Doclet,
-    doclet: { exercise },
-    guidance: { solution, doNot, bestPractice }, 
-    explanation: { explanation }, 
-    explanationPoint: { whenToUse, performance, comparison } 
-  } 
+  }
 } = dsls
 
 Test('reactTest.HelloWorld', {

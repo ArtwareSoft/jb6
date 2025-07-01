@@ -12,7 +12,7 @@ const {
 Tool('evalJs', {
     description: 'Execute JavaScript code and return the result',
     params: [
-      { id: 'code', newLinesInCode: true, as: 'string', mandatory: true, description: 'JavaScript code to execute' }
+      { id: 'code', newLinesInCode: true, as: 'string', mandatory: true, description: 'JavaScript code to execute. please use process.stdout.write(result)' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({ script: '%$code%' }))
 })
@@ -41,7 +41,7 @@ Tool('tgpModel', {
 Tool('runSnippet', {
     description: 'run comp snippest. usefull for Test and Data, in dataTest use includeTestRes to see the calculated result',
     params: [
-      { id: 'compText', as: 'string', mandatory: true, description: 'Component text to execute' },
+      { id: 'compText', as: 'string', dynamic: true, mandatory: true, description: 'Component text to execute' },
       { id: 'setupCode', as: 'string', description: 'Helper comps or any js code before the comp' },
       { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of javascript file in the repo' },
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' }
@@ -52,7 +52,7 @@ Tool('runSnippet', {
   import '@jb6/core/misc/calc-import-map.js'
   import '@jb6/lang-service'
   
-  const snippetArgs = ${JSON.stringify({ ...args, filePath: join(args.repoRoot, args.filePath) })}
+  const snippetArgs = ${JSON.stringify({ ...args, compText: args.compText.profile, filePath: join(args.repoRoot, args.filePath) })}
   const res = await coreUtils.runSnippetCli(snippetArgs)
   process.stdout.write(JSON.stringify(res))
       `,
@@ -63,17 +63,18 @@ Tool('runSnippet', {
 Tool('runSnippets', {
     description: 'run multiple comp snippets in parallel. Useful for running a batch of Test or Data snippets.',
     params: [
-      { id: 'compTexts', type: 'data<common>[]', mandatory: true, description: 'Array of compText strings, each a snippet to run' },
+      { id: 'compTexts', type: 'data<common>[]', dynamic: true, mandatory: true, description: 'Array of compText strings, each a snippet to run' },
       { id: 'setupCode', as: 'string', description: 'Helper comps or any js code before the comp' },
       { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of javascript file in the repo' },
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' }
     ],
     impl: (ctx, { compTexts, setupCode, filePath, repoRoot }) => {
       const snippetArgsBase = { setupCode, filePath: join(repoRoot, filePath) }
+      const compTextsProfiles = typeof compTexts.profile == 'string' ? JSON.parse(compTexts.profile) : compTexts.profile
       const results = Promise.all(
-        compTexts.map(async (compText, index) => {
+        compTextsProfiles.map(async (compText, index) => {
           try {
-            const result = await runNodeScript({
+            const result = await runNodeScript.$run({
               script: `
   import { coreUtils } from '@jb6/core'
   import '@jb6/core/misc/calc-import-map.js'
@@ -85,9 +86,9 @@ Tool('runSnippets', {
               `,
               repoRoot
             })
-            return `=== Snippet ${index + 1} ===\n${result.content?.[0]?.text || 'No output'}`
+            return `Snippet ${compText} ===\n${result.content?.[0]?.text || 'No output'}`
           } catch (error) {
-            return `Snippet ${index + 1} error: ${error.message}`
+            return `Snippet ${compText} ===\nerror: ${error.message}`
           }
         })
       )

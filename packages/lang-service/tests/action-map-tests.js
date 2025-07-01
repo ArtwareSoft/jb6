@@ -1,14 +1,14 @@
 import '@jb6/lang-service'
 import './lang-service-testers.js'
 import { dsls, coreUtils } from '@jb6/core'
-const { prettyPrint} = coreUtils
+const { prettyPrint } = coreUtils
 
 const { 
   tgp: { Const, TgpType, 
     var : { Var } 
   },
   ui: { Control,
-    control: { group, text, controlWithCondition }
+    control: { group, text, html }
 
   },
   common: { Data, Action, Boolean,
@@ -101,6 +101,16 @@ Test('actionMapTest.multiLine.implEnd', {
   impl: actionMapTest(multiLineExample, 'comp<tgp>', 'end!control<ui>multiLineExample~impl', '203,203')
 })
 
+Test('actionMapTest.newLinesInCode', {
+  impl: dataTest({
+    calculate: () => {
+      const profile = html(`<div>\n</div>`)
+      return prettyPrint(profile, {tgpModel : {dsls: jb.dsls}, type: 'control<ui>'})
+    },
+    expectedResult: equals('html(`<div>\n</div>`)')
+  })
+})
+
 /*
 Data('actionMapTest.dslNameOverideExample', {
   type: 'settlement<location>',
@@ -122,12 +132,6 @@ Test('actionMapTest.remark.pipeline', {
   })
 })
 
-Test('actionMapTest.newLinesInCode', {
-  impl: dataTest({
-    calculate: () => prettyPrint(html(`<div>\n</div>`),{type: 'control<ui>'}),
-    expectedResult: equals('html(`<div>\n</div>`)')
-  })
-})
 
 Test('actionMapTest.Positions.closeArray', {
   impl: actionMapTest({
