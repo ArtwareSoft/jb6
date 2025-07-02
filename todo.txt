@@ -1,0 +1,11 @@
+add probe MCP
+add profile source code MCP
+add doc MCP
+
+exercise -> example
+add excereice and testYourself
+add tgpSyntax doclets
+
+make Const just a type
+
+check /bin/node issues

@@ -96,8 +96,8 @@ function deltaFileContent(compText, newCompText, compPos) {
 function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
     resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp})
-    let compId = ''
-    if (tgpType == 'comp<tgp>' && topComp.id) { // set compId and add to comps registry
+    let compId = '', dslTypeId
+    if (tgpType == 'comp<tgp>' && topComp?.id) { // set compId and add to comps registry
 //        log('calcProfileActionMap', compText, topComp)
         const typeId = topComp.$
         if (!tgpModel.dsls.tgp.comp[typeId]) {
@@ -107,11 +107,8 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
         const dslType = tgpModel.dsls.tgp.comp[topComp.$].dslType
         compId = `${dslType}${topComp.id}`
         const [ type, dsl ] = splitDslType(dslType)
+        dslTypeId = [ dsl, type, topComp.id]
         tgpModel.dsls[dsl][type][topComp.id] = topComp
-
-        // Object.assign(topComp, {type,dsl})
-        // resolveProfileTop(topComp)
-        // delete topComp.type; delete topComp.dsl; // for pretty print
     }
     const actionMap = []
 
@@ -120,7 +117,7 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
         .map(x => x.action.split('!').pop())
         .reduce((longest, current) => current.length > longest.length ? current : longest, '');
 
-    return { text: compText, compId, comp: topComp, actionMap, path }
+    return { text: compText, compId, comp: topComp, actionMap, path, dslTypeId }
 
     function calcActionMap(prof,path,ast) {
         const pathMatch = expectedPath.startsWith(path) || path.startsWith(expectedPath)
@@ -156,7 +153,7 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
             actionMap.push({ action: `appendPT!${path}`, from: ast.end-1, to: ast.end })
             delimiters.forEach((dl,i) => actionMap.push({ action: `insertPT!${path}~${i}`, from: dl.start, to: dl.end }))
             actionMap.push({ action: `end!${path}`, from: ast.end-1, to: ast.end-1 })
-            prof.forEach((val,i) => calcActionMap(val,`${path}~${i}`, prof[primitivesAst][i] || val[astNode]))
+            prof[primitivesAst] && prof.forEach((val,i) => calcActionMap(val,`${path}~${i}`, prof[primitivesAst][i] || val[astNode]))
 
         } else { // profile
             const expressionAst = ast.type == 'CallExpression' ? ast : ast.expression

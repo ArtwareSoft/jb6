@@ -69,7 +69,7 @@ jb.ext.tgpTextEditor = { host:  {
     },
     gotoCompCommand(comp) {
         const loc = comp.$location
-        return { command: 'vscode.open', arguments: [
+        return loc && { command: 'vscode.open', arguments: [
                   vscodeNS.Uri.file(loc.path),
                   { selection: new (vscodeNS.Range)(loc.line - 1, 0, loc.line - 1, 0) }
               ] 

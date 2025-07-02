@@ -18,6 +18,16 @@ Test('snippet.Data', {
   impl: snippetTest(`pipeline('hello')`, equals('hello', '%result%'))
 })
 
+Test('snippet.exp', {
+  impl: snippetTest(`'hello'`, equals('hello', '%result%'))
+})
+
+Test('snippet.probe', {
+  impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/in/data/a%'), {
+    probe: true
+  })
+})
+
 Test('snippet.filePath', {
   doNotRunInTests: true,
   impl: snippetTest(`Data({ impl: pipeline('hello')}) `, equals('hello', '%result%'), {

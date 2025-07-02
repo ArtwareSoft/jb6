@@ -172,9 +172,24 @@ async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTest
   }
 }
 
+let _repoRoot
 async function calcRepoRoot() {
+  if (_repoRoot) return _repoRoot
+  if (!isNode) {
+    const script = `
+    import { coreUtils } from '@jb6/core'
+    import '@jb6/core/misc/calc-import-map.js'
+    try {
+      const result = await coreUtils.calcRepoRoot()
+      process.stdout.write(JSON.stringify(result,null,2))
+    } catch (e) {
+      process.stdout.write(JSON.stringify(e,null,2))
+    }`
+    const res = await coreUtils.runNodeCliViaJbWebServer(script)
+    return _repoRoot = res.result
+  }
   const { execSync } = await import('child_process')
-  return execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
+  return _repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
 }
 
 async function isJB6Dev() {

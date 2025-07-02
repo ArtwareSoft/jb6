@@ -2,6 +2,7 @@ import '@jb6/testing'
 import { langServiceUtils } from '@jb6/lang-service'
 import { ns, dsls, coreUtils } from '@jb6/core'
 import './mock-workspace.js'
+import '@jb6/core/misc/calc-import-map.js'
 
 const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, runSnippetCli } = coreUtils
 const { langService } = ns
@@ -18,11 +19,9 @@ jb.langServiceTestRegistry = {
   uniqueNameCounter: 0,
 }
 
-let _repoRoot = ''
 async function filePathForLangServiceTest() {
-  if (!_repoRoot)
-    _repoRoot = await fetch('/repoRoot').then(r => r.text())
-  return `${_repoRoot}/hosts/test-project/a-tests.js`
+  const repoRoot = await coreUtils.calcRepoRoot()
+  return `${repoRoot}/hosts/test-project/a-tests.js`
 }
 
 async function calcCompTextAndCursorsForTest({ctx,compText}) {
@@ -190,15 +189,16 @@ Test('actionMapTest', {
 
 Test('snippetTest', {
   params: [
-    {id: 'compText'},
+    {id: 'compText', dynamic: true},
     {id: 'expectedResult', type: 'boolean', as: 'boolean', dynamic: true},
+    {id: 'probe', type: 'boolean', as: 'boolean' },
     {id: 'filePath', dynamic: true, defaultValue: () => filePathForLangServiceTest() },
     {id: 'packages', as: 'array'}
   ],
   impl: dataTest({
     calculate: async ({},{},args) => {
       const filePath = await args.filePath()
-      const res = await runSnippetCli({...args, filePath, direct: true})
+      const res = await runSnippetCli({...args, filePath, compText: args.compText.profile })
       return res?.result
     },
     expectedResult: '%$expectedResult()%',

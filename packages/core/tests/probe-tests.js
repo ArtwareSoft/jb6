@@ -62,7 +62,7 @@ Test('probeTest.calcCircuit', {
 Test('probeCliTest.helloWorld', {
   impl: dataTest({
     calculate: async () => {
-      const repoRoot = await fetch('/repoRoot').then(r => r.text())
+      const repoRoot = await coreUtils.calcRepoRoot()
       const filePath = `${repoRoot}/hosts/test-project/a-tests.js`
       const { studioImportMap, projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
       return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',filePath,{importMap: projectImportMap})
@@ -75,7 +75,7 @@ Test('probeCliTest.helloWorld', {
 Test('probeCliTest.requireNode', {
   impl: dataTest({
     calculate: async () => {
-      const repoRoot = await fetch('/repoRoot').then(r => r.text())
+      const repoRoot = await coreUtils.calcRepoRoot()
       const filePath = `${repoRoot}/hosts/test-project/a-tests.js`
       const { studioImportMap, projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
       const res = await runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',filePath,{importMap: projectImportMap, requireNode: true})
@@ -89,7 +89,7 @@ Test('probeCliTest.requireNode', {
 Test('probeCliTest.findTestFiles', {
   impl: dataTest({
     calculate: async () => {
-      const repoRoot = await fetch('/repoRoot').then(r => r.text())
+      const repoRoot = await coreUtils.calcRepoRoot()
       const filePath = `${repoRoot}/hosts/test-project/a-tests.js`
       const { studioImportMap, projectImportMap, testFiles } = await coreUtils.studioAndProjectImportMaps(filePath)
       const probeResArr = await Promise.all(['cmpA','cmpB','cmpC'].map(cmp => 

@@ -165,7 +165,7 @@ Test('coreTest.asIsArray', {
 
 Test('coreTest.and', {
   impl: dataTest({
-    calculate: pipeline('%$people%', filter(and('%age% < 30', contains('Bart', { allText: '%name%' }))), '%name%', join()),
+    calculate: pipeline('%$people%', filter(and('%age% < 30', '%name% == Bart Simpson')), '%name%', join()),
     expectedResult: equals('Bart Simpson')
   })
 })
