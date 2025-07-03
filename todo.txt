@@ -1,4 +1,3 @@
-add probe MCP
 add profile source code MCP
 add doc MCP
 
@@ -9,3 +8,24 @@ add tgpSyntax doclets
 make Const just a type
 
 check /bin/node issues
+
+please look at tgpModel for packages/common/llm-guide/common-llm-guide.js 
+my repo is  /home/shaiby/projects/jb6 // 
+
+load and explore the files:
+packages/llm-guide/tgp-primer.js'
+packages/llm-guide/llm-guide.js'
+packages/llm-guide/llm-guide-principles.js'
+packages/llm-guide/how_to_use_snippet_and_probe.js'
+
+I would like to create tests in order to compare llms. 
+I think we should prepare some level of tests.
+please suggest doclets for the test and for userAnswers (maybe other name) and for result evaluation for smart llm
+please discuss
+
+my repo is at /home/shaiby/projects/jb6
+use the dslDocs service to get info about 'common' dsl
+use the tgpModel to get info about the files and the components in the system.
+use getFilesContent to load the llm-guide files and understand them
+
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "dslDocs", "arguments": {"dsl": "commone", "repoRoot": "/home/shaiby/projects/jb6"}}}' | node --inspect-brk packages/mcp/index.js

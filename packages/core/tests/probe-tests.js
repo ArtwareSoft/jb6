@@ -2,7 +2,7 @@ import { dsls, coreUtils } from '@jb6/core'
 import '../misc/probe.js'
 import '@jb6/testing'
 
-const { runProbe, runProbeCli } = coreUtils
+const { runProbe, runProbeCli, calcTgpModelData } = coreUtils
 
 const { 
   tgp: { Const, TgpType, 
@@ -91,6 +91,8 @@ Test('probeCliTest.findTestFiles', {
     calculate: async () => {
       const repoRoot = await coreUtils.calcRepoRoot()
       const filePath = `${repoRoot}/hosts/test-project/a-tests.js`
+      const tgpModelAll = await coreUtils.dslDocs({dsl: 'common', repoRoot})
+      debugger
       const { studioImportMap, projectImportMap, testFiles } = await coreUtils.studioAndProjectImportMaps(filePath)
       const probeResArr = await Promise.all(['cmpA','cmpB','cmpC'].map(cmp => 
         runProbeCli(`data<common>${cmp}~impl`,filePath,{testFiles, importMap: projectImportMap, requireNode: true})))

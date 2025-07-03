@@ -12,41 +12,16 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
 
-export async function calcTgpModelData({ filePath }) {
-  logByEnv('calcTgpModelData', filePath)
-  if (!filePath) return {}
-  const { projectImportMap } = await studioAndProjectImportMaps(filePath)
+export async function calcTgpModelData({ filePath } = {}) {
+  const filePathToUse = filePath || await coreUtils.calcRepoRoot()
+  const { projectImportMap, testFiles } = await studioAndProjectImportMaps(filePathToUse)
+  const rootFilePaths = filePath ? [filePath] : testFiles
   const codeMap = {}
   const visited = {}  // urls seen
 
-  // 1) Crawl + collect all modules via import/dynamic import
-  await (async function crawl(url) {
-    if (visited[url]) return
-    visited[url] = true
-    let rUrl = ''
-    try {
-      rUrl = resolveWithImportMap(url, projectImportMap) || url
-      const src = await fetchByEnv(rUrl, projectImportMap.serveEntries)
-      codeMap[url] = src
+  await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
 
-      const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
-
-      const imports = [
-      ...ast.body.filter(n => n.type === 'ImportDeclaration').map(n => n.source.value)
-          .filter(spec => ['/','.','@','#'].some(p=>spec.startsWith(p))).map(rel => resolvePath(rUrl, rel)),
-      ...ast.body.filter(n => n.type === 'ExpressionStatement').map(n => n.expression)
-          .filter(ex => ex.type === 'CallExpression' && ex.callee.type === 'Import')
-          .map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(rUrl, rel))
-      ].filter(x=>!x.match(/^\/libs\//))
-
-      await Promise.all(imports.map(url => crawl(url)))
-    } catch (e) {
-      logByEnv('calcTgpModelData imports error', {rUrl, url, projectImportMap, e})
-      console.error(`Error crawling ${url}:`, e)
-    }
-  })(filePath)
-  
-  const tgpModel = {dsls: {}, ns: {}, typeRules: [], imports: Object.keys(codeMap), files: Object.keys(visited), projectImportMap}
+  const tgpModel = {dsls: {}, ns: {}, typeRules: [], imports: Object.keys(codeMap), projectImportMap}
   const {dsls, typeRules} = tgpModel
 
 //  logByEnv('codeMap', Object.keys(codeMap))
@@ -130,6 +105,32 @@ export async function calcTgpModelData({ filePath }) {
     const _comp = compDefs[tgpType](shortId, {...comp, $location})
     const jbComp = _comp[asJbComp] // remove the proxy
     dsls[jbComp.dsl][jbComp.type][shortId] = jbComp 
+  }
+
+  async function crawl(url) {
+    if (visited[url]) return
+    visited[url] = true
+    let rUrl = ''
+    try {
+      rUrl = resolveWithImportMap(url, projectImportMap) || url
+      const src = await fetchByEnv(rUrl, projectImportMap.serveEntries)
+      codeMap[url] = src
+
+      const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+
+      const imports = [
+      ...ast.body.filter(n => n.type === 'ImportDeclaration').map(n => n.source.value)
+          .filter(spec => ['/','.','@','#'].some(p=>spec.startsWith(p))).map(rel => resolvePath(rUrl, rel)),
+      ...ast.body.filter(n => n.type === 'ExpressionStatement').map(n => n.expression)
+          .filter(ex => ex.type === 'CallExpression' && ex.callee.type === 'Import')
+          .map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(rUrl, rel))
+      ].filter(x=>!x.match(/^\/libs\//))
+
+      await Promise.all(imports.map(url => crawl(url)))
+    } catch (e) {
+      logByEnv('calcTgpModelData imports error', {rUrl, url, projectImportMap, e})
+      console.error(`Error crawling ${url}:`, e)
+    }
   }
 }
 

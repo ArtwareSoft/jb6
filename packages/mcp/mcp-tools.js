@@ -12,16 +12,16 @@ const {
 Tool('evalJs', {
     description: 'Execute JavaScript code and return the result',
     params: [
-      { id: 'code', newLinesInCode: true, as: 'string', mandatory: true, description: 'JavaScript code to execute. please use process.stdout.write(result)' }
+      { id: 'code', newLinesInCode: true, dynamic: true, as: 'string', mandatory: true, description: 'JavaScript code to execute. please use process.stdout.write(result)' }
     ],
-    impl: typeAdapter('data<common>', runNodeScript({ script: '%$code%' }))
+    impl: typeAdapter('data<common>', runNodeScript({ script: ({},{},{code}) => code.profile }))
 })
   
 Tool('tgpModel', {
     description: 'get TGP (Type-generic component-profile) model relevant for imports and exports of path',
     params: [
-      { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of javascript file in the repo' },
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo' }
+      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo' },
+      { id: 'filePath', as: 'string', description: 'relative starting point to filter the model. when not exist, return the model of the repo' },
     ],
     impl: typeAdapter('data<common>', runNodeScript({ 
       script: ({},{},{repoRoot,filePath}) => `
@@ -44,7 +44,10 @@ Tool('runSnippet', {
       { id: 'compText', as: 'string', dynamic: true, mandatory: true, description: 'Component text to execute' },
       { id: 'setupCode', as: 'string', description: 'Helper comps or any js code before the comp' },
       { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of javascript file in the repo' },
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' }
+      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' },
+      { id: 'probe', as: 'boolean', type: 'boolean', description: `set the result to be the input and output at specific point. 
+        the point is set by __ in compText.  The __ acts as a cursor position that shows the data flow at that exact point in the code. do not add extra commas 
+        E.g.: compText: pipeline('%$people/name%', __ join() ), compText: '%$people/__%'` }
     ],
     impl: typeAdapter('data<common>', runNodeScript({
       script: ({},{},args) => `
@@ -54,7 +57,7 @@ Tool('runSnippet', {
   
   const snippetArgs = ${JSON.stringify({ ...args, compText: args.compText.profile, filePath: join(args.repoRoot, args.filePath) })}
   const res = await coreUtils.runSnippetCli(snippetArgs)
-  process.stdout.write(JSON.stringify(res))
+  process.stdout.write(JSON.stringify({...res, tokens: coreUtils.estimateTokens(snippetArgs.compText)}))
       `,
       repoRoot: '%$repoRoot%'
     }))
@@ -82,7 +85,7 @@ Tool('runSnippets', {
   
   const snippetArgs = ${JSON.stringify({ ...snippetArgsBase, compText })}
   const res = await coreUtils.runSnippetCli(snippetArgs)
-  process.stdout.write(JSON.stringify(res))
+  process.stdout.write(JSON.{...res, tokens: coreUtils.estimateTokens(snippetArgs.compText)}))
               `,
               repoRoot
             })
@@ -100,20 +103,24 @@ Tool('runSnippets', {
     }
 })
   
-Tool('getFileContent', {
+Tool('getFilesContent', {
     description: 'Get the content of a file in the repository',
     params: [
-      { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of the file in the repo' },
+      { id: 'filesPaths', as: 'string', mandatory: true, description: 'comma separated, relative filePath of the file in the repo' },
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({
       script: ({},{},args) =>`
   import { readFileSync } from 'fs'
   import { join } from 'path'
+  import { coreUtils } from '@jb6/core'
   
   try {
-    const {repoRoot,filePath} = ${JSON.stringify(args)}
-    const content = readFileSync(join(repoRoot, filePath), 'utf8')
+    const {repoRoot,filesPaths} = ${JSON.stringify(args)}
+    const content = filesPaths.split(',').map(filePath => {
+        const content = readFileSync(join(repoRoot, filePath), 'utf8')
+        return {filePath, content, tokens: coreUtils.estimateTokens(content)}
+      })
     process.stdout.write(JSON.stringify({ result: content }))
   } catch (error) {
     process.stdout.write(JSON.stringify({ error: error.message }))
@@ -128,8 +135,8 @@ Tool('replaceComponent', {
     params: [
       { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of the file in the repo' },
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' },
-      { id: 'newCompText', as: 'string', mandatory: true, description: 'new component text to replace with' },
-      { id: 'oldCompText', as: 'string', mandatory: true, description: 'old component text to find and replace' }
+      { id: 'newCompText', as: 'string', dynamic: true, mandatory: true, description: 'new component text to replace with' },
+      { id: 'oldCompText', as: 'string', dynamic: true, mandatory: true, description: 'old component text to find and replace' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({
       script: ({},{},args) => `
@@ -137,7 +144,7 @@ Tool('replaceComponent', {
   import { join } from 'path'
   
   try {
-    const {repoRoot, filePath, oldCompText, newCompText} = ${JSON.stringify(args)}
+    const {repoRoot, filePath, oldCompText, newCompText} = ${JSON.stringify({...args, newCompText: args.newCompText.profile, oldCompText: args.oldCompText.profile})}
     const fullPath = join(repoRoot, filePath)
     const content = readFileSync(fullPath, 'utf8')
     
@@ -161,7 +168,7 @@ Tool('addComponent', {
     params: [
       { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of the file in the repo' },
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' },
-      { id: 'newCompText', as: 'string', mandatory: true, description: 'new component text to add to the file' }
+      { id: 'newCompText', as: 'string', dynamic: true, mandatory: true, description: 'new component text to add to the file' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({
       script: ({},{},args) => `
@@ -169,7 +176,7 @@ Tool('addComponent', {
   import { join } from 'path'
   
   try {
-    const {repoRoot, filePath, newCompText} = ${JSON.stringify(args)}
+    const {repoRoot, filePath, newCompText} = ${JSON.stringify(JSON.stringify({...args, newCompText: args.newCompText.profile}))}
     const fullPath = join(repoRoot, filePath)
     const content = readFileSync(fullPath, 'utf8')
     
@@ -191,7 +198,7 @@ Tool('overrideFileContent', {
     params: [
       { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of the file in the repo' },
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' },
-      { id: 'newContent', as: 'string', mandatory: true, description: 'new content to replace entire file' }
+      { id: 'newContent', as: 'string', dynamic: true, mandatory: true, description: 'new content to replace entire file' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({
       script: ({},{},args) => `
@@ -199,7 +206,7 @@ Tool('overrideFileContent', {
   import { join } from 'path'
   
   try {
-    const {repoRoot, filePath, newContent} = ${JSON.stringify(args)}
+    const {repoRoot, filePath, newContent} = ${JSON.stringify({...args, newContent: args.newContent.profile})}
     const fullPath = join(repoRoot, filePath)
     
     writeFileSync(fullPath, newContent, 'utf8')
@@ -210,4 +217,23 @@ Tool('overrideFileContent', {
       `,
       repoRoot: '%$repoRoot%'
     }))
+})
+
+Tool('dslDocs', {
+  description: 'Get comprehensive DSL documentation including TGP model, LLM guides, and component definitions',
+  params: [
+    { id: 'dsl', as: 'string', mandatory: true, description: 'DSL name (e.g., "common", "ui", "testing")' },
+    { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' }
+  ],
+  impl: typeAdapter('data<common>', runNodeScript({
+    script: ({},{},args) => `
+  import { coreUtils } from '@jb6/core'
+  import '@jb6/core/misc/calc-import-map.js'
+  import '@jb6/lang-service'
+  
+  const res = await coreUtils.dslDocs(${JSON.stringify(args)})
+  process.stdout.write(JSON.stringify(res))
+      `,
+    repoRoot: '%$repoRoot%'
+  }))
 })

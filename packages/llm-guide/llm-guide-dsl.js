@@ -74,7 +74,7 @@ Guidance('doNot', {
 
 Guidance('bestPractice', {
   params: [
-    { id: 'suboptimalCode', as: 'string', mandatory: true },
+    { id: 'suboptimalCode', as: 'string', mandatory: true, byName: true },
     { id: 'better', as: 'string', mandatory: true, byName: true },
     { id: 'reason', as: 'string', mandatory: true, byName: true }
   ]

@@ -297,7 +297,10 @@ async function fetchByEnv(url, serveEntries = []) {
   if (globalThis.window) {
     const rUrl = absPathToUrl(url, serveEntries)
     const res = await fetch(rUrl)
-    if (!res.ok) throw new Error(`fetch ${url} → ${res.status}`)
+    if (!res.ok) {
+      logError(`fetch ${url} → ${res.status}`)
+      return ''
+    } 
     return await res.text()
   }
   const { readFile } = await import('fs/promises')
@@ -344,10 +347,12 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000 } = {}
   }
 }
 
+const estimateTokens = t => Math.ceil(((t.match(/\b\w+\b/g)||[]).length)*1.3)
+
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logCli, isNode, logByEnv, fetchByEnv, absPathToUrl,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData
+  calcValue, stripData, estimateTokens
 })
