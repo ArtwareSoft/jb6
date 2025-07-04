@@ -205,7 +205,7 @@ class tgpModelForLangService {
         const dslType = `${type}<${dsl}>`
         if (this.ptsOfTypeCache[dslType])
             return this.ptsOfTypeCache[dslType]
-        const res = Object.values(this.dsls[dsl][type])
+        const res = Object.values(this.dsls[dsl][type]).filter(x=>x.id)
         res.sort((c1,c2) => this.markOfComp(c2) - this.markOfComp(c1))
         return this.ptsOfTypeCache[dslType] = res
     }
@@ -261,7 +261,7 @@ ${compText}
     const { testFiles } = await studioAndProjectImportMaps(filePath)
     const {probeRes, error, cmd} = await runProbeCli(path, filePath, { testFiles, extraCode, importMap: compProps.tgpModel.projectImportMap })
     if (error) {
-        globalThis.showUserMessage && showUserMessage('error', `probe cli failed: ${cmd}`)
+        globalThis.showUserMessage && showUserMessage('error', `probe cli failed: ${JSON.stringify(error)} ${cmd}`)
         return []
     }
 

@@ -214,8 +214,14 @@ export const commands = {
 
         const probeRes = await runProbeCliToUse(path, filePath, {importMap: {projectRoot}, testFiles})
         if (probeRes.error) {
-            showUserMessage('error', `probe cli failed: ${probeRes.error}`)
-            showUserMessage('error', probeRes.cmd)
+            const errorStr = JSON.stringify(probeRes.error)
+            const refError = (errorStr.match(/ReferenceError: ([^\s]+ is not defined)/) || [])[1]
+            if (refError) {
+                showUserMessage('error', `${refError}, maybe add it the dsls section at the top`)
+            } else {
+                showUserMessage('error', `probe cli failed: ${JSON.stringify(probeRes.error)}`)
+                showUserMessage('error', probeRes.cmd)
+            }
             vscodeNS.commands.executeCommand('workbench.action.editorLayoutSingle')
             return
         }

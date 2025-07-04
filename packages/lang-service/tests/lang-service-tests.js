@@ -144,6 +144,14 @@ Test('completionTest.prettyPrintFunctionAsIs', {
   })
 })
 
+Test('completionTest.ns', {
+  impl: completionActionTest('dataTest(enrichGroupProps(__))', {
+    completionToActivate: 'group.count',
+    expectedEdit: {range: {start: {line: 1, col: 34}, end: {line: 1, col: 34}}, newText: 'group.count()'},
+    expectedCursorPos: '1,34'
+  })
+})
+
 Test('completionTest.prettyPrintFunction', {
   impl: completionActionTest('dataTest({runBefore: () => {} __})', {
     completionToActivate: 'calculate',

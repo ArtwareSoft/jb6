@@ -18,7 +18,7 @@ function calcDslType(fullId) {
     return (fullId || '').split('>')[0] + '>'
 }
 
-export function resolveProfileTypes(prof, { astFromParent, expectedType, parent, parentParam, tgpModel, topComp, parentType, remoteCode} = {}) {
+export function resolveProfileTypes(prof, { astFromParent, expectedType, parent, parentParam, tgpModel, topComp, parentType, tgpPath = ''} = {}) {
     if (!prof || !prof.constructor || ['Object','Array'].indexOf(prof.constructor.name) == -1) return prof
     const typeFromParent = expectedType == '$asParent<>' ? (parentType || calcDslType(parent?.$$)) : expectedType
     const dynamicTypeFromParent = parentParam?.dynamicTypeFromParent?.(parent,tgpModel.dsls,topComp)
@@ -28,7 +28,7 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
     const ast = prof[astNode] || astFromParent
 
     const comp = prof.$ instanceof jbComp ? prof.$
-        : resolveCompTypeWithId(prof.$$ || prof.$, tgpModel, { dslType, parent, parentParam, topComp, parentType, remoteCode })
+        : resolveCompTypeWithId(prof.$$ || prof.$, tgpModel, { dslType, parent, parentParam, topComp, parentType, tgpPath })     
     if (comp)
       prof.$$ = prof.$ instanceof jbComp ? prof.$ : `${comp.$dslType}${comp.id}`
     if (prof.$$ == 'pipeline') debugger
@@ -40,12 +40,15 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
 
     if (Array.isArray(prof)) {
       prof[primitivesAst] = Object.fromEntries(prof.map( (val,i) => isPrimitiveValue(val) && [i,ast?.elements[i]]).filter(Boolean))
-      prof.forEach((v,i) =>resolveProfileTypes(v, { astFromParent: prof[primitivesAst][i], expectedType: dslType, parent, parentParam, topComp, tgpModel, parentType, remoteCode}))
+      prof.forEach((v,i) =>resolveProfileTypes(v, { 
+        astFromParent: prof[primitivesAst][i], expectedType: dslType, parent, parentParam, topComp, tgpModel, parentType, tgpPath: [tgpPath,i].join('~')}))
     } else if (comp && prof.$ != 'asIs') {
       ;[...(comp.params || []), ...systemParams].forEach(p=> 
-          resolveProfileTypes(prof[p.id], { astFromParent: prof[primitivesAst]?.[p.id], expectedType: p.$dslType, parentType: dslType, parent: prof, parentParam: p, topComp, tgpModel, remoteCode}))
+          resolveProfileTypes(prof[p.id], { 
+            astFromParent: prof[primitivesAst]?.[p.id], expectedType: p.$dslType, parentType: dslType, parent: prof, 
+            parentParam: p, topComp, tgpModel, tgpPath: [tgpPath,p.id].join('~')}))
     } else if (!comp && prof.$) {
-        logError(`resolveProfile - can not resolve ${prof.$} at ${topComp && topComp.$$} expected type ${dslType || 'unknown'}`, 
+        logError(`resolveProfile - can not resolve ${prof.$} at ${topComp && topComp.$$} ${tgpPath} expected type ${dslType || 'unknown'}`, 
             {tgpModel, compId: prof.$, prof, expectedType, dslType, topComp, parentType})
     }
     return prof
@@ -149,7 +152,7 @@ function argsToProfile(prof, comp) {
   }
 }
 
-function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, parent, topComp, parentType, remoteCode, dsl} = {}) {
+function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, parent, topComp, parentType, tgpPath, dsl} = {}) {
   if (!id) return
   const dsls = tgpModel.dsls
   if (dslType == 'comp<tgp>')
@@ -157,7 +160,8 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, pare
   if (dslType) {
     const [type, dsl] = splitDslType(dslType)
     const res = dsls[dsl||'common']?.[type]?.[id]
-    if (res) return res
+    if (res) 
+      return res[asJbComp] || res
   }
 
   if (dsls.tgp.any[id])
@@ -182,9 +186,11 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, pare
   if (fromAllTypes)
     return fromAllTypes
 
-  if (id && !silent && !remoteCode) {
-    globalThis.showUserMessage && globalThis.showUserMessage('error', `no comp for id ${id}`)
-    logError(`utils getComp - can not find comp for id ${id}`,{id, tgpModel, topComp, parent, parentType, allTypes, dslType})
+  if (id && !silent) {
+    const error = `can not find comp ${id} of type ${dslType} in path ${tgpPath} read core/llm-guide/tgp-primer to understand tgp types`
+    globalThis.showUserMessage && globalThis.showUserMessage('error', error)
+    logError(error,{id, tgpModel, topComp, parent, parentType, allTypes, dslType})
+    throw { syntaxError: error }
   }
 
   function moreTypesByTypeRules(type) {

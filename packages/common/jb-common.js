@@ -350,21 +350,6 @@ Boolean('between', {
   impl: (ctx, { from, to, val }) => val >= from && val <= to
 })
 
-// Data('object', {
-//   impl: ctx => {
-//     const obj = ctx.jbCtx.profile.$object || ctx.jbCtx.profile
-//     if (Array.isArray(obj)) return obj
-
-//     const result = {}
-//     for(let prop in obj) {
-//       if ((prop == '$' && obj[prop] == 'object') || obj[prop] == null)
-//         continue
-//       result[prop] = ctx.runInnerArg(prop)
-//     }
-//     return result
-//   }
-// })
-
 Boolean('isNull', {
   description: 'is null or undefined',
   params: [

@@ -85,7 +85,7 @@ Tool('runSnippets', {
   
   const snippetArgs = ${JSON.stringify({ ...snippetArgsBase, compText })}
   const res = await coreUtils.runSnippetCli(snippetArgs)
-  process.stdout.write(JSON.{...res, tokens: coreUtils.estimateTokens(snippetArgs.compText)}))
+  process.stdout.write(JSON.stringify({...res, tokens: coreUtils.estimateTokens(snippetArgs.compText)})) 
               `,
               repoRoot
             })

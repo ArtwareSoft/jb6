@@ -17,7 +17,7 @@ const {
     prop: { prop },
   },
   test: { Test,
-    test: { dataTest, actionMapTest }
+    test: { dataTest, actionMapTest, prettyPrintTest }
   }
 } = dsls
 
@@ -99,6 +99,10 @@ Test('actionMapTest.multiLine.implBegin', {
 
 Test('actionMapTest.multiLine.implEnd', {
   impl: actionMapTest(multiLineExample, 'comp<tgp>', 'end!control<ui>multiLineExample~impl', '203,203')
+})
+
+Test('prettyPrintTest.ns', {
+  impl: prettyPrintTest('group.count()', 'group-prop<common>', equals('group.count()'))
 })
 
 Test('actionMapTest.newLinesInCode', {

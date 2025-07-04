@@ -95,7 +95,11 @@ function deltaFileContent(compText, newCompText, compPos) {
 
 function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
-    resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp})
+    try {
+        resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp, tgpPath: topComp?.id})
+    } catch (error) {
+        return { text: compText, comp: topComp, actionMap: [], error }
+    }
     let compId = '', dslTypeId
     if (tgpType == 'comp<tgp>' && topComp?.id) { // set compId and add to comps registry
 //        log('calcProfileActionMap', compText, topComp)

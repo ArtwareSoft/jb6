@@ -26,7 +26,7 @@ export async function calcTgpModelData({ filePath } = {}) {
 
 //  logByEnv('codeMap', Object.keys(codeMap))
   // 2) Phase 1: find all `... = TgpType(...)`
-  logByEnv('codeMap', Object.entries(codeMap).map(([url, src]) => ({url, src: src.slice(0, 100)})))
+  //logByEnv('codeMap', Object.entries(codeMap).map(([url, src]) => ({url, src: src.slice(0, 100)})))
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
@@ -80,7 +80,7 @@ export async function calcTgpModelData({ filePath } = {}) {
 
   })
 
-  logByEnv('tgp model data', tgpModel)
+  //logByEnv('tgp model data', tgpModel)
 
   return tgpModel
 
@@ -128,7 +128,7 @@ export async function calcTgpModelData({ filePath } = {}) {
 
       await Promise.all(imports.map(url => crawl(url)))
     } catch (e) {
-      logByEnv('calcTgpModelData imports error', {rUrl, url, projectImportMap, e})
+      //logByEnv('calcTgpModelData imports error', {rUrl, url, projectImportMap, e})
       console.error(`Error crawling ${url}:`, e)
     }
   }
@@ -149,7 +149,8 @@ function astToTgpObj(node, code) {
       case 'ExpressionStatement': return attachNode(toObj(node.expression))
       case 'CallExpression': {
         const $unresolvedArgs = node.arguments.map(x=> toObj(x))
-        return attachNode({$: node.callee.name, $unresolvedArgs})
+        const callee = node.callee
+        return attachNode({$: callee.name || [callee.object?.name,callee.property?.name].join('.'), $unresolvedArgs})
       }
       case 'ArrowFunctionExpression': {
         let func 

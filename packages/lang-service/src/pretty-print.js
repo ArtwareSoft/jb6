@@ -1,6 +1,6 @@
 import { dsls, coreUtils } from '@jb6/core'
 
-const { resolveCompArgs, resolveProfileArgs, resolveProfileTypes, titleToId, sysProps, resolveProfileTop, OrigArgs,
+const { resolveCompArgs, resolveProfileArgs, resolveProfileTypes, sysProps, resolveProfileTop, OrigArgs,
   jbComp, asJbComp, isPrimitiveValue, asArray, calcValue, compIdOfProfile, compByFullId } = coreUtils
 const {
   common: { Data }
@@ -143,7 +143,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     }
 
     function calcMixedTokens() {
-      const { lenOfValues, macro, argsByValue, propsByName, nameValueFold, singleArgAsArray, singleInArray, singleVal, hasParamAsArray } = props[path]
+      const { lenOfValues, id, argsByValue, propsByName, nameValueFold, singleArgAsArray, singleInArray, singleVal, hasParamAsArray } = props[path]
       const mixedFold = nameValueFold || singleVal || !singleLine && lenOfValues && lenOfValues < colWidth
       const valueSeparatorWS = (singleLine || mixedFold) ? primitiveArray ? '' : ' ' : newLine()
 
@@ -189,7 +189,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       return [
           {token: '', action: `begin!${path}`},
           {token: '', action: `beginToken!${path}`},
-          {token: macro + '(', action: singleInArray ? `prependPT!${path}` : firstInArray ? `prependPT!${parentPath}` : `setPT!${path}`},
+          {token: id + '(', action: singleInArray ? `prependPT!${path}` : firstInArray ? `prependPT!${parentPath}` : `setPT!${path}`},
           {token: '', action: `endToken!${path}`},
           {token: '', action: `edit!${path}`},
           //{token: '', action: `addProp!${path}`},
@@ -240,7 +240,6 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     const comp = profile.$ instanceof jbComp ? profile.$ : compByFullId(fullptId, tgpModel)
     const id = fullptId == 'comp<tgp>tgpComp' ? profile.$ : fullptId.split('>').pop()
     if (typeof id != 'string') debugger
-    const macro = titleToId(id)
 
     const params = (comp.params || []).slice(0)
     const param0 = params[0] || {}
@@ -310,13 +309,13 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     if (lenOfValues >= colWidth && !argsAsArrayOnly && !nameValuePattern &&!nameValueFold && !singleProp)
       return calcProfileProps(profile, path, {...settings, forceByName: true})
 
-    const len = macro.length + 2 + lenOfValues + propsByNameLength + (lenOfValues && propsByNameLength ? 2 : 0)
+    const len = id.length + 2 + lenOfValues + propsByNameLength + (lenOfValues && propsByNameLength ? 2 : 0)
     const singleFunc =  propsByName.length == 0 && !varArgs.length && !systemProps.length && argsByValue.length == 1 && typeof argsByValue[0].val == 'function'
     const singleVal =  propsByName.length == 0 && !varArgs.length && !systemProps.length && argsByValue.length == 1
     const primitiveArray =  propsByName.length == 0 && !varArgs.length && firstParamAsArray && 
       argsByValue.reduce((acc,item)=> acc && isPrimitiveValue(item.val), true)
     const singleInArray = (parentParam?.type || '').indexOf('[]') != -1 && !path.match(/[0-9]$/)
-    return props[path] = { len, macro, posInArray, argsByValue, propsByName, nameValuePattern, nameValueFold, singleVal, singleFunc, primitiveArray, singleInArray, singleArgAsArray, hasParamAsArray, lenOfValues, mixed: true}
+    return props[path] = { len, id, posInArray, argsByValue, propsByName, nameValuePattern, nameValueFold, singleVal, singleFunc, primitiveArray, singleInArray, singleArgAsArray, hasParamAsArray, lenOfValues, mixed: true}
   }
 
   function calcArrayPos(index,array) {

@@ -32,7 +32,7 @@ function TgpTypeModifier(id, extraCompProps, tgpModel = jb) {
 
 function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
   const {ns, dsls} = tgpModel
-  const capitalLetterId = extraCompProps?.modifierId || type.replace(/-|\./g,'_').replace(/^[a-z]/, c => c.toUpperCase())
+  const capitalLetterId = extraCompProps?.modifierId || type.replace(/-(.)/g, (_, letter) => letter.toUpperCase()).replace(/^./, c => c.toUpperCase())
   const dslType = `${type}<${dsl}>`
   const tgpType = (arg0,arg1) => {
     let [id,comp] = ['',null]

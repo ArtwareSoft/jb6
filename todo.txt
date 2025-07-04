@@ -25,6 +25,10 @@ please discuss
 
 my repo is at /home/shaiby/projects/jb6
 use the dslDocs service to get info about 'common' dsl
+
+then read carefully packages/core/llm-guide/how-to-use-snippet-and-probe.js
+then use runSnippet to fix test groupBy.basic in packages/common/common-tests.js
+
 use the tgpModel to get info about the files and the components in the system.
 use getFilesContent to load the llm-guide files and understand them
 

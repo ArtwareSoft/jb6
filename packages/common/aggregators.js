@@ -1,5 +1,5 @@
 import { coreUtils, dsls } from '@jb6/core'
-const { asArray, unique } = coreUtils
+const { RT_types, unique } = coreUtils
 const { 
   common: { Data, Aggregator },
 } = dsls
@@ -110,7 +110,7 @@ Aggregator('sample', {
   impl: ({},size,{items}) =>	items.filter((x,i)=>i % (Math.floor(items.length/size) ||1) == 0)
 })
 
-Data('prop', {
+Data('addProp', {
   description: 'assign, extend obj with a single prop',
   params: [
     {id: 'name', as: 'string', mandatory: true},
@@ -118,7 +118,7 @@ Data('prop', {
     {id: 'type', as: 'string', options: 'string,number,boolean,object,array,asIs', defaultValue: 'asIs'},
     {id: 'obj', byName: true, defaultValue: '%%'}
   ],
-  impl: (ctx,{name,val,type,obj}) => ({...obj, [name]: jb.core.tojstype(val(),type)})
+  impl: (ctx,{name,val,type,obj}) => ({...obj, [name]: RT_types[type](val())})
 })
 
 Data('removeProps', {

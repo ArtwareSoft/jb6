@@ -10,8 +10,6 @@ const astNode = Symbol.for('astNode')
 const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
 const systemParams = [ {id: 'data', $dslType: 'data<common>'}, {id: 'vars', $dslType: 'var<tgp>'}] 
 
-const titleToId = id => id.split('.')[0].replace(/-([a-zA-Z])/g, (_, letter) => letter.toUpperCase())
-
 function asComp(pt) {
     const jbComp = pt[asJbComp] || pt
     if (!jbComp?.$resolvedInner)
@@ -163,4 +161,4 @@ function resolveProfileArgs(prof) {
 }
 
 Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, asJbComp, OrigArgs, sysProps, systemParams, 
-  titleToId, asComp, jbCompProxy, compByFullId})
+  asComp, jbCompProxy, compByFullId})

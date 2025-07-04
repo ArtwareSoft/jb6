@@ -20,7 +20,7 @@ async function runSnippetCli({compText: _compText, filePath, setupCode = '', pac
     }
     const {dslTypeId, path: probePath, comp, error} = parseProfile({compText, tgpModel, inCompOffset : parts?.[0].length})
     if (error)
-      return { error, compText, probe, origCompText, inCompOffset }
+      return { error, compText, probe, origCompText }
     if (!comp.id)
       return { error : 'runSnippet: compText must be wrapped with compDef of its type. e.g. Test("my comp", {impl: dataTest(...)}) ' }
     const dslsSection = calcDslsSection([comp])

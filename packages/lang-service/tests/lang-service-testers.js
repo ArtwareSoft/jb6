@@ -4,7 +4,7 @@ import { ns, dsls, coreUtils } from '@jb6/core'
 import './mock-workspace.js'
 import '@jb6/core/misc/calc-import-map.js'
 
-const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, runSnippetCli } = coreUtils
+const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, runSnippetCli, prettyPrint } = coreUtils
 const { langService } = ns
 const { tgpEditorHost, tgpModelForLangService, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
 
@@ -20,7 +20,7 @@ jb.langServiceTestRegistry = {
 }
 
 async function filePathForLangServiceTest() {
-  const repoRoot = await coreUtils.calcRepoRoot()
+  const repoRoot = '/home/shaiby/projects/jb6' // await coreUtils.calcRepoRoot()
   return `${repoRoot}/hosts/test-project/a-tests.js`
 }
 
@@ -187,22 +187,43 @@ Test('actionMapTest', {
   })
 })
 
+Test('prettyPrintTest', {
+  macroByValue: true,
+  params: [
+    {id: 'profile'},
+    {id: 'tgpType', as: 'string'},
+    {id: 'expectedResult', type: 'boolean', dynamic: true}
+  ],
+  impl: dataTest({
+    calculate: ({},{},{profile, tgpType}) => {
+      const tgpModel = {dsls: jb.dsls, ns: jb.ns}
+      const {comp } = calcProfileActionMap(profile, {tgpType, tgpModel})
+      debugger
+      return prettyPrint(comp, {tgpModel})
+    },
+    expectedResult: '%$expectedResult()%',
+    timeout: 1000,
+    includeTestRes: true
+  })
+})
+
 Test('snippetTest', {
   params: [
     {id: 'compText', dynamic: true},
     {id: 'expectedResult', type: 'boolean', as: 'boolean', dynamic: true},
-    {id: 'probe', type: 'boolean', as: 'boolean' },
-    {id: 'filePath', dynamic: true, defaultValue: () => filePathForLangServiceTest() },
+    {id: 'probe', type: 'boolean', as: 'boolean'},
+    {id: 'filePath', dynamic: true, defaultValue: () => filePathForLangServiceTest()},
     {id: 'packages', as: 'array'}
   ],
   impl: dataTest({
     calculate: async ({},{},args) => {
       const filePath = await args.filePath()
       const res = await runSnippetCli({...args, filePath, compText: args.compText.profile })
-      return res?.result
+      return res?.result || res.error
     },
     expectedResult: '%$expectedResult()%',
     timeout: 1000,
+    allowError: true,
     includeTestRes: true
   })
 })

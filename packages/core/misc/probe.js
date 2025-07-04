@@ -99,7 +99,7 @@ function stripProbeResult(raw) {
       params: input.cmpCtx?.params ?? null,
       vars:   input.vars   ?? null
     };
-    return stripData({ from, out, in: safeIn });
+    return stripData({ from, out, in: safeIn }, {reshowVisited: true});
   });
 }
 

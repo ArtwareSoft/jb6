@@ -5,7 +5,7 @@ const {
   tgp: { Const
   },
   test: { Test,
-    test: { snippetTest }
+    test: { snippetTest, dataTest }
   },
   common: { Data, Action, Boolean,
     data: { calcCompTextAndCursor, pipeline, list, filter, join, property, obj, delay, pipe, first, slice, asIs }, 
@@ -20,6 +20,10 @@ Test('snippet.Data', {
 
 Test('snippet.exp', {
   impl: snippetTest(`'hello'`, equals('hello', '%result%'))
+})
+
+Test('snippet.typeError', {
+  impl: snippetTest(`Test({impl: dataTest('hey', pipeline())})`, contains('boolean', { allText: '%syntaxError%' }))
 })
 
 Test('snippet.probe', {

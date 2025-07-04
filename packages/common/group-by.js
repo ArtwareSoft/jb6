@@ -1,15 +1,16 @@
-import { coreUtils, dsls } from '@jb6/core'
-const { asArray, unique } = coreUtils
+import { coreUtils, dsls, ns } from '@jb6/core'
+
+const { asArray, unique, RT_types } = coreUtils
 const { 
   tgp: { TgpType },
   common: { Data, Aggregator,
-    data: { prop, pipeline,  removeProps, join, max, min, count },
+    data: { addProp, pipeline,  removeProps, join, max, min, count },
   },
 } = dsls
 
-const GroupProp = TgpType('group-prop','common')
+TgpType('group-prop','common')
 
-const splitByPivot = Aggregator('splitByPivot', {
+Aggregator('splitByPivot', {
   params: [
     {id: 'pivot', as: 'string', description: 'prop name', mandatory: true},
     {id: 'items', as: 'array', defaultValue: '%%'}
@@ -22,31 +23,35 @@ const splitByPivot = Aggregator('splitByPivot', {
   }
 })
 
-const groupProps = Data('groupProps', {
+Data('enrichGroupProps', {
   description: 'aggregate, extend group obj with a group props',
   params: [
     {id: 'props', type: 'group-prop[]', mandatory: true},
   ],
-  impl: ({data}, {props}) => props.flatMap(x=>asArray(x)).reduce((item,prop) => ({...item, ...prop.enrichGroupItem(item)}), data )
+  impl: (ctx, {props}) => props.flatMap(x=>asArray(x)).reduce((item,prop) => ({...item, ...prop.enrichGroupItem(item)}), ctx.data )
 })
 
-Aggregator('groupBy', {
-  params: [
-    {id: 'pivot', as: 'string', description: 'new prop name', mandatory: true},
-    {id: 'calcPivot', dynamic: true, mandatory: true, byName: true},
-    {id: 'aggregate', type: 'group-prop[]', mandatory: true},
-    {id: 'inputItems', defaultValue: '%%'},
-  ],
-  impl: pipeline(
-    '%$inputItems%',
-    prop('%$pivot%', '%$calcPivot()%'),
-    splitByPivot('%$pivot%'),
-    groupProps('%$aggregate%'),
-    removeProps('items'),
-  )
-})
+const { GroupProp,
+  data : {splitByPivot, groupProps}
+} = dsls.common
 
-GroupProp('prop', {
+// Aggregator('groupBy', {
+//   params: [
+//     {id: 'pivot', as: 'string', description: 'new prop name', mandatory: true},
+//     {id: 'calcPivot', dynamic: true, mandatory: true, byName: true},
+//     {id: 'aggregate', type: 'group-prop[]', mandatory: true},
+//     {id: 'inputItems', defaultValue: '%%'},
+//   ],
+//   impl: pipeline(
+//     '%$inputItems%',
+//     addProp('%$pivot%', '%$calcPivot()%'),
+//     splitByPivot('%$pivot%'),
+//     enrichGroupProps('%$aggregate%'),
+//     removeProps('items'),
+//   )
+// })
+
+GroupProp('group.prop', {
   description: 'assign, extend group obj with a single prop, input is items',
   params: [
     {id: 'name', as: 'string', mandatory: true},
@@ -54,53 +59,63 @@ GroupProp('prop', {
     {id: 'type', as: 'string', options: 'string,number,boolean,object,array,asIs', defaultValue: 'asIs'},
   ],
   impl: (ctx, {name, val, type}) => ({ 
-    enrichGroupItem: item => ({...item, [name]: jb.core.tojstype(val(ctx.setData(item.items)), type)}) 
+    enrichGroupItem: item => ({...item, [name]: RT_types[type](val(ctx.setData(item.items)))})
   })
 })
 
-GroupProp('count', {
+const { group } = ns
+
+GroupProp('group.count', {
   params: [
     {id: 'as', as: 'string', defaultValue: 'count'},
   ],
-  impl: prop('%$as%', count())
+  impl: group.prop('%$as%', count())
 })
 
-GroupProp('join', {
+GroupProp('group.join', {
   params: [
     {id: 'prop', as: 'string', mandatory: true},
     {id: 'as', as: 'string', mandatory: true, byName: true},
     {id: 'separator', as: 'string', defaultValue: ','},
   ],
-  impl: prop('%$as%', join({data: '%{%$prop%}%', separator: '%$separator%'}))
+  impl: group.prop('%$as%', join({data: '%{%$prop%}%', separator: '%$separator%'}))
 })
 
-GroupProp('max', {
+GroupProp('group.max', {
   params: [
     {id: 'prop', as: 'string', mandatory: true},
-    {id: 'as', as: 'string', defaultValue: 'max', byName: true}
+    {id: 'as', as: 'string', dynamic: true, defaultValue: defaultGroupPropName, byName: true}
   ],
-  impl: prop('%$as%', max({data: '%{%$prop%}%'}))
+  impl: group.prop('%$as()%', max({data: '%{%$prop%}%'}))
 })
 
-GroupProp('min', {
+GroupProp('group.min', {
   params: [
     {id: 'prop', as: 'string', mandatory: true},
-    {id: 'as', as: 'string', defaultValue: 'min', byName: true}
+    {id: 'as', as: 'string', defaultValue: defaultGroupPropName, byName: true}
   ],
-  impl: prop('%$as%', min({data: '%{%$prop%}%'}))
+  impl: group.prop('%$as%', min({data: '%{%$prop%}%'}))
 })
 
+function defaultGroupPropName(ctx) {
+  const aggregatedProp = coreUtils.calcPath(ctx.jbCtx.callerStack.slice(-1)[0],'jbCtx.args.prop') || ''
+  const opId = (ctx.jbCtx.path.match(/([^~.]+)~/) || [])[1]
+  return [opId,aggregatedProp.replace(/^./, c => c.toUpperCase())].join('')
+}
 /*
 example usage:
 
-The rule in TGP parameter handling is that once you have a parameter marked with byName: true, that parameter and all parameters after it must be specified by name in the function call, not positionally.
-
-pipeline('%$products%',
-  groupBy('category', {
-    calcPivot: '%category%',
-    aggregate: [count('itemCount'), min('price', {as: 'minPrice'}), max('price', {as: 'maxPrice'})]
-  }),
-  filter('%itemCount% > 1')
-)
+Test('groupBy.stepByStep', {
+  impl: dataTest({
+    calculate: pipeline(
+      '%$employees%',
+      splitByPivot('dept'),
+      enrichGroupProps(group.count('numEmployees')),
+      enrichGroupProps(group.max('salary', { as: 'maxSalary' })),
+      '%numEmployees% employees max %maxSalary%'
+    ),
+    expectedResult: equals(asIs(['2 employees max 60000','2 employees max 80000','1 employees max 55000']))
+  })
+})
 */
 

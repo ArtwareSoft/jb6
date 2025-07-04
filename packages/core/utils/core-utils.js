@@ -314,7 +314,7 @@ function absPathToUrl(path, serveEntries = []) {
 
 const isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string'
 
-function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000 } = {}) {
+function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, reshowVisited } = {}) {
   const visited = new WeakSet()
   return _strip(value, 0, '')
 
@@ -323,10 +323,10 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000 } = {}
     if (isPrimitiveValue(data))
       return data
     if (typeof data === 'function')
-      return `[Function] ${data.toString()}`
+      return `[Function] ${data.toString && data.toString()}`
     if (depth > MAX_OBJ_DEPTH)
       return `[Max depth reached at ${path}]`
-    if (typeof data === 'object') {
+    if (!reshowVisited && typeof data === 'object') {
       if (visited.has(data))
         return `[Already visited at ${path}]`
       visited.add(data)
