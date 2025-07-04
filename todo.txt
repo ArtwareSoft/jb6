@@ -1,33 +1,27 @@
 add profile source code MCP
-add doc MCP
-
-exercise -> example
-add excereice and testYourself
+testYourself
 add tgpSyntax doclets
-
 make Const just a type
-
-check /bin/node issues
-
-please look at tgpModel for packages/common/llm-guide/common-llm-guide.js 
-my repo is  /home/shaiby/projects/jb6 // 
-
-load and explore the files:
-packages/llm-guide/tgp-primer.js'
-packages/llm-guide/llm-guide.js'
-packages/llm-guide/llm-guide-principles.js'
-packages/llm-guide/how_to_use_snippet_and_probe.js'
-
-I would like to create tests in order to compare llms. 
-I think we should prepare some level of tests.
-please suggest doclets for the test and for userAnswers (maybe other name) and for result evaluation for smart llm
-please discuss
 
 my repo is at /home/shaiby/projects/jb6
 use the dslDocs service to get info about 'common' dsl
+please play with run snippets and make sure you understand how to build groupBy scripts
 
+you may want to read these files to help you writing to doc:
+packages/llm-guide/llm-guide-dsl.js
+packages/llm-guide/principles-llm-guide.js
+
+then read carefully packages/common/group-by.js
 then read carefully packages/core/llm-guide/how-to-use-snippet-and-probe.js
-then use runSnippet to fix test groupBy.basic in packages/common/common-tests.js
+please play with all mcp tools around the group-by ensure that you undestand it and can write snippets and tests. 
+then build a guide for using the mcp tools
+you may want to read these files to help you writing to doc:
+packages/llm-guide/llm-guide-dsl.js
+packages/llm-guide/principles-llm-guide.js
+and maybe example llm-guide
+packages/core/llm-guide/tgp-primer.js
+
+
 
 use the tgpModel to get info about the files and the components in the system.
 use getFilesContent to load the llm-guide files and understand them

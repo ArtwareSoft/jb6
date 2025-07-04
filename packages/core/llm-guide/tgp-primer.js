@@ -1,7 +1,7 @@
 import { dsls } from '@jb6/core'
 import '@jb6/common'
 import '@jb6/testing'
-import '../../llm-guide/llm-guide-dsl.js'
+import '@jb6/llm-guide'
 
 const { 
   tgp: { Const, var: { Var } }, 

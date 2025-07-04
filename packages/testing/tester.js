@@ -154,7 +154,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,repo,s
 
     let tests = globalsOfType(Test)
         .filter(id =>!specificTest || id == specificTest)
-        .filter(id => !Test[id][asJbComp]?.doNotRunInTests)
+        .filter(id => specificTest || !Test[id][asJbComp]?.doNotRunInTests)
         .filter(id => isNode || !Test[id][asJbComp]?.nodeOnly)
         .filter(id =>!pattern || id.match(pattern))
         .filter(id =>!notPattern || !id.match(notPattern))

@@ -28,7 +28,7 @@ Doclet('exercise', {
   params: [
     {id: 'problem', type: 'problemStatement', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
-    {id: 'outro', as: 'string', newLinesInCode: true, description: 'Concluding explanation'}
+    {id: 'outro', as: 'text', newLinesInCode: true, description: 'Concluding explanation'}
   ]
 })
 
@@ -38,19 +38,19 @@ Doclet('exercise', {
 
 ProblemStatement('problem', {
   params: [
-    {id: 'statement', as: 'string', newLinesInCode: true, mandatory: true, description: 'The core problem statement'},
-    {id: 'intro', as: 'string', newLinesInCode: true, description: 'Introductory explanation for the problem'}
+    {id: 'statement', as: 'text', mandatory: true, description: 'The core problem statement'},
+    {id: 'intro', as: 'text', description: 'Introductory explanation for the problem'}
   ]
 })
 
 Doclet('principle', {
   description: 'Fundamental principle for effective LLM documentation',
   params: [
-    { id: 'importance', as: 'string', mandatory: true, description: '1-5' },
-    { id: 'rule', as: 'string', mandatory: true, description: 'The principle statement' },
-    { id: 'rationale', as: 'string', mandatory: true, description: 'Why this principle matters' },
-    { id: 'dslCompIds', type: 'data[]', description: "Full component IDs to use. E.g., 'guidance<doclet>doNot'" },
-    { id: 'evidence', type: 'explanation<doclet>', description: 'Supporting evidence and examples' }
+    { id: 'importance', as: 'text', mandatory: true, options: 'critical,high,medium,low' },
+    { id: 'rule', as: 'text', mandatory: true, description: 'The principle statement' },
+    { id: 'rationale', as: 'text', mandatory: true, description: 'Why this principle matters' },
+    { id: 'dslCompIds', as: 'text', description: "Full component IDs to use. E.g., 'guidance<doclet>doNot,data<common>pipeline'" },
+    { id: 'guidance', type: 'guidance[]' }
   ]
 })
 
@@ -60,101 +60,101 @@ Doclet('principle', {
 
 Guidance('solution', {
   params: [
-    {id: 'code', newLinesInCode: true, mandatory: true, byName: true},
+    {id: 'code', as: 'text', mandatory: true, byName: true},
     {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true}
   ]
 })
 
 Guidance('doNot', {
   params: [
-    {id: 'badCode', as: 'string', mandatory: true},
-    {id: 'reason', as: 'string', mandatory: true, byName: true}
+    {id: 'badCode', as: 'text', mandatory: true},
+    {id: 'reason', as: 'text', mandatory: true, byName: true}
   ]
 })
 
 Guidance('bestPractice', {
   params: [
-    { id: 'suboptimalCode', as: 'string', mandatory: true, byName: true },
-    { id: 'better', as: 'string', mandatory: true, byName: true },
-    { id: 'reason', as: 'string', mandatory: true, byName: true }
+    { id: 'suboptimalCode', as: 'text', mandatory: true, byName: true },
+    { id: 'better', as: 'text', mandatory: true, byName: true },
+    { id: 'reason', as: 'text', mandatory: true, byName: true }
   ]
 })
 
 Guidance('illegalSyntax', {
   description: 'Documents a piece of code that is syntactically invalid.',
   params: [
-    { id: 'badCode', as: 'string', mandatory: true },
-    { id: 'reason', as: 'string', mandatory: true, byName: true }
+    { id: 'badCode', as: 'text', mandatory: true },
+    { id: 'reason', as: 'text', mandatory: true, byName: true }
   ]
 })
 
 Guidance('mechanismUnderTheHood', {
   description: 'code snippets that explain the dsl implementation',
   params: [
-    {id: 'snippet', newLinesInCode: true, as: 'text', mandatory: true},
-    {id: 'explain', as: 'string'}
+    {id: 'snippet', as: 'text', mandatory: true},
+    {id: 'explain', as: 'text'}
   ]
 })
 
 
 ExplanationPoint('explanation', {
   params: [
-    {id: 'text', as: 'string', newLinesInCode: true, mandatory: true},
+    {id: 'text', as: 'text', mandatory: true},
   ]
 })
 
 ExplanationPoint('syntax', {
   params: [
-    {id: 'expression', as: 'string', mandatory: true},
-    {id: 'explain', as: 'string', mandatory: true}
+    {id: 'expression', as: 'text', mandatory: true},
+    {id: 'explain', as: 'text', mandatory: true}
   ]
 })
 
 ExplanationPoint('whenToUse', {
   params: [
-    { id: 'context', as: 'string', mandatory: true }
+    { id: 'context', as: 'text', mandatory: true }
   ]
 })
 
 ExplanationPoint('performance', {
   params: [
-    { id: 'characteristic', as: 'string', mandatory: true },
-    { id: 'details', as: 'string', byName: true }
+    { id: 'characteristic', as: 'text', mandatory: true },
+    { id: 'details', as: 'text', byName: true }
   ]
 })
 
 ExplanationPoint('comparison', {
   params: [
-    { id: 'comparedTo', as: 'string', mandatory: true },
-    { id: 'advantage', as: 'string', mandatory: true, byName: true }
+    { id: 'comparedTo', as: 'text', mandatory: true },
+    { id: 'advantage', as: 'text', mandatory: true, byName: true }
   ]
 })
 
 ExplanationPoint('tradeoff', {
   params: [
-    { id: 'benefit', as: 'string', mandatory: true },
-    { id: 'cost', as: 'string', mandatory: true, byName: true }
+    { id: 'benefit', as: 'text', mandatory: true },
+    { id: 'cost', as: 'text', mandatory: true, byName: true }
   ]
 })
 
-// ExplanationPoint('evidence', {
-//   params: [
-//     { id: 'evidence', as: 'string', mandatory: true }
-//   ]
-// })
+ExplanationPoint('evidence', {
+  params: [
+    { id: 'evidence', as: 'text', mandatory: true }
+  ]
+})
 
-// ExplanationPoint('impact', {
-//   params: [
-//     { id: 'impact', as: 'string', mandatory: true }
-//   ]
-// })
+ExplanationPoint('impact', {
+  params: [
+    { id: 'impact', as: 'text', mandatory: true }
+  ]
+})
 
-// ExplanationPoint('methodology', {
-//   params: [
-//     {id: 'steps', as: 'string', mandatory: true},
-//     {id: 'tools', as: 'string'}
-//   ]
-// })
+ExplanationPoint('methodology', {
+  params: [
+    {id: 'steps', as: 'text', mandatory: true},
+    {id: 'tools', as: 'text'}
+  ]
+})
 
 Evidence('research', {
   description: 'Research findings and evidence base',
@@ -182,22 +182,3 @@ Evidence('benchmark', {
     { id: 'context', as: 'text', description: 'Testing context and conditions' }
   ]
 })
-
-// =============================================================================
-// DOCLET DSL STRUCTURE CREATED:
-// =============================================================================
-
-// dsls.doclet.doclet.exercise                 - Problem + solution container
-// dsls.doclet.doclet.principle                - LLM guide principle
-// dsls.doclet.guidance.solution               - Solution component  
-// dsls.doclet.guidance.doNot                  - Anti-pattern component
-// dsls.doclet.guidance.bestPractice           - Best practice component
-// dsls.doclet.guidance.research               - Research findings
-// dsls.doclet.explanation.explanation         - Structured explanation container
-// dsls.doclet.explanationPoint.whenToUse     - When to use this approach
-// dsls.doclet.explanationPoint.performance   - Performance characteristics
-// dsls.doclet.explanationPoint.comparison    - Comparison with alternatives
-// dsls.doclet.explanationPoint.tradeoff      - Benefits and costs
-// dsls.doclet.explanationPoint.evidence      - Research evidence
-// dsls.doclet.explanationPoint.impact        - Real-world impact
-// dsls.doclet.explanationPoint.methodology   - Application steps

@@ -209,7 +209,7 @@ Test('prettyPrintTest', {
 
 Test('snippetTest', {
   params: [
-    {id: 'compText', dynamic: true},
+    {id: 'compText', as: 'text', dynamic: true},
     {id: 'expectedResult', type: 'boolean', as: 'boolean', dynamic: true},
     {id: 'probe', type: 'boolean', as: 'boolean'},
     {id: 'filePath', dynamic: true, defaultValue: () => filePathForLangServiceTest()},

@@ -10,9 +10,9 @@ const {
 } = dsls
 
 Tool('evalJs', {
-    description: 'Execute JavaScript code and return the result',
+    description: 'Execute JavaScript code and return the result. Useful for quick calculations, file operations, and testing code snippets.',
     params: [
-      { id: 'code', newLinesInCode: true, dynamic: true, as: 'string', mandatory: true, description: 'JavaScript code to execute. please use process.stdout.write(result)' }
+      { id: 'code', newLinesInCode: true, dynamic: true, as: 'string', mandatory: true, description: 'JavaScript code to execute. Use process.stdout.write(result) to return output' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({ script: ({},{},{code}) => code.profile }))
 })
@@ -39,15 +39,13 @@ Tool('tgpModel', {
 })
   
 Tool('runSnippet', {
-    description: 'run comp snippest. usefull for Test and Data, in dataTest use includeTestRes to see the calculated result',
+    description: 'Execute TGP component snippets in context. Essential for testing component behavior, debugging data flow, and validating logic before implementation.',
     params: [
-      { id: 'compText', as: 'string', dynamic: true, mandatory: true, description: 'Component text to execute' },
-      { id: 'setupCode', as: 'string', description: 'Helper comps or any js code before the comp' },
-      { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of javascript file in the repo' },
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' },
-      { id: 'probe', as: 'boolean', type: 'boolean', description: `set the result to be the input and output at specific point. 
-        the point is set by __ in compText.  The __ acts as a cursor position that shows the data flow at that exact point in the code. do not add extra commas 
-        E.g.: compText: pipeline('%$people/name%', __ join() ), compText: '%$people/__%'` }
+      { id: 'compText', as: 'string', dynamic: true, mandatory: true, description: 'Component text to execute (e.g., "pipeline(\'%$data%\', filter(\'%active%\'), count())")' },
+      { id: 'setupCode', as: 'string', description: 'Helper components or JavaScript code to set up context (e.g., "Const(\'data\', [{active: true}])")' },
+      { id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path for import context (e.g., "packages/common/test.js")' },
+      { id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root' },
+      { id: 'probe', as: 'string', description: 'Set to "true" to enable probe mode. Use __ in compText to see data flow at that point. Example: "pipeline(data, filter(condition), __)"' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({
       script: ({},{},args) => `
@@ -89,25 +87,25 @@ Tool('runSnippets', {
               `,
               repoRoot
             })
-            return `Snippet ${compText} ===\n${result.content?.[0]?.text || 'No output'}`
+            return `Snippet ${compText} ===\\n${result.content?.[0]?.text || 'No output'}`
           } catch (error) {
-            return `Snippet ${compText} ===\nerror: ${error.message}`
+            return `Snippet ${compText} ===\\nerror: ${error.message}`
           }
         })
       )
       
       return results.then(allResults => ({
-        content: [{ type: 'text', text: allResults.join('\n\n') }],
+        content: [{ type: 'text', text: allResults.join('\\n\\n') }],
         isError: false
       }))
     }
 })
   
 Tool('getFilesContent', {
-    description: 'Get the content of a file in the repository',
+    description: 'Read the content of one or more files from the repository. Essential for understanding existing code before making changes.',
     params: [
-      { id: 'filesPaths', as: 'string', mandatory: true, description: 'comma separated, relative filePath of the file in the repo' },
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' }
+      { id: 'filesPaths', as: 'string', mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")' },
+      { id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({
       script: ({},{},args) =>`
@@ -163,12 +161,12 @@ Tool('replaceComponent', {
     }))
 })
 
-Tool('addComponent', {
-    description: 'Add a new component to a file',
+Tool('appendToFile', {
+    description: 'Append content to the end of an existing file. Useful for adding new components or content without overwriting existing code.',
     params: [
-      { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of the file in the repo' },
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' },
-      { id: 'newCompText', as: 'string', dynamic: true, mandatory: true, description: 'new component text to add to the file' }
+      { id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where content will be appended' },
+      { id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root' },
+      { id: 'content', as: 'string', dynamic: true, mandatory: true, description: 'Content to append to the file (will add newline before content automatically)' }
     ],
     impl: typeAdapter('data<common>', runNodeScript({
       script: ({},{},args) => `
@@ -176,13 +174,19 @@ Tool('addComponent', {
   import { join } from 'path'
   
   try {
-    const {repoRoot, filePath, newCompText} = ${JSON.stringify(JSON.stringify({...args, newCompText: args.newCompText.profile}))}
+    const {repoRoot, filePath, content} = ${JSON.stringify({...args, content: args.content.profile})}
     const fullPath = join(repoRoot, filePath)
-    const content = readFileSync(fullPath, 'utf8')
     
-    const newContent = content + '\\n' + newCompText
+    let existingContent = ''
+    try {
+      existingContent = readFileSync(fullPath, 'utf8')
+    } catch (error) {
+      // File doesn't exist, will create new file
+    }
+    
+    const newContent = existingContent + (existingContent ? '\\n' : '') + content
     writeFileSync(fullPath, newContent, 'utf8')
-    process.stdout.write(JSON.stringify({ result: 'Component added successfully' }))
+    process.stdout.write(JSON.stringify({ result: 'Content appended successfully' }))
   } catch (error) {
     process.stdout.write(JSON.stringify({ error: error.message }))
   }
@@ -190,8 +194,6 @@ Tool('addComponent', {
       repoRoot: '%$repoRoot%'
     }))
 })
-
-// Add this to mcp-tools.js
 
 Tool('overrideFileContent', {
     description: 'Override entire file content with new content',

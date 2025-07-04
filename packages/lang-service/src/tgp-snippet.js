@@ -28,7 +28,7 @@ async function runSnippetCli({compText: _compText, filePath, setupCode = '', pac
 
     const imports = unique([filePath, ...packages]).map(f=>`\timport '${f}'`).join('\n')
     const script = `
-import { jb, dsls, coreUtils } from '@jb6/core'
+import { jb, dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/core/misc/probe.js'
 
 ${imports}
@@ -74,18 +74,21 @@ function calcDslsSection(comps) {
     const compDefs = [...defaultCompDefs, ...comps.filter(comp=>comp.impl?.$$).map(comp=>({ dsl: comp.impl?.$$?.match(/([^<]+)<([^>]+)>(.+)/)[2], id: comp.$ }))]
     comps.forEach(calcItems)
     const items = unique(_items.filter(x=>x))
+    const ns = unique(items.filter(item=>item[2].indexOf('.') != -1).map(item =>item[2].split('.')[0]))
+    const ns_str = ns.length ? `const { ${ns.join(', ')} } = ns` : ''
 
     const dsls = unique(items.map(x=>x[1])).sort().map(dsl=>{
         const types = unique(items.filter(x=>x[1] == dsl).map(x=>x[0])).sort().map(type=> {
-            const comps = unique(items.filter(x=>x[1] == dsl && x[0] == type).map(x=>x[2])).sort().join(', ')
-            return `${type}: { ${comps} }`
+            const comps = unique(items.filter(x=>x[1] == dsl && x[0] == type).map(x=>x[2])).filter(x=>x.indexOf('.') == -1).sort().join(', ')
+            const typeStr = type.indexOf('-') == -1 ? type : `'${type}'`
+            return `${typeStr}: { ${comps} }`
         }).join(',\n\t\t')
 
         const compDefsIds = unique(compDefs.map(compDef => compDef.dsl == dsl && compDef.id).filter(Boolean))
         const compDefsStr = compDefsIds.length ? compDefsIds.map(compDef=>`${compDef} ,`).join() : ''
         return `\t${dsl}:{ ${compDefsStr}\n\t\t${types}\n\t}`
     }).join(',\n')
-    return `const {\n${dsls}\n} = dsls`
+    return [`const {\n${dsls}\n} = dsls`, ns_str].filter(Boolean).join('\n')
 
 
     function calcItems(node) {

@@ -18,7 +18,7 @@ Doclet('goalOrientedStructure', {
   impl: exercise(
     problem({
       statement: 'How should LLM guides be structured for maximum effectiveness?',
-      importance: '5 of 5',
+      importance: 'critical',
       intro: 'LLMs perform significantly better with purpose-driven context that focuses on goals and tasks rather than feature enumeration.'
     }),
     solution({
@@ -42,7 +42,7 @@ Doclet('contextFirstOrdering', {
   impl: exercise(
     problem({
       statement: 'What order should information be presented in LLM guides?',
-      importance: '5 of 5',
+      importance: 'critical',
       intro: 'LLMs generate better code when they understand the why before the how.'
     }),
     solution({
@@ -66,7 +66,7 @@ Doclet('grammarByExample', {
   impl: exercise(
     problem({
       statement: 'How should DSL syntax be taught to LLMs?',
-      importance: '4 of 5',
+      importance: 'high',
       intro: 'LLMs need concrete syntax patterns embedded within task examples to generate valid code.'
     }),
     solution({
@@ -99,7 +99,7 @@ Doclet('explicitAntiPatterns', {
   impl: exercise(
     problem({
       statement: 'How should common mistakes be documented?',
-      importance: '4 of 5',
+      importance: 'high',
       intro: 'Explicit anti-patterns help LLMs avoid common pitfalls and clarify ambiguous syntax.'
     }),
     solution({
@@ -134,7 +134,7 @@ Doclet('progressiveComplexity', {
   impl: exercise(
     problem({
       statement: 'How should example complexity be ordered?',
-      importance: '4 of 5',
+      importance: 'high',
       intro: 'Building understanding incrementally prevents overwhelming LLMs with complex examples before fundamentals are clear.'
     }),
     solution({
@@ -174,7 +174,7 @@ Doclet('qualityOverQuantity', {
   impl: exercise(
     problem({
       statement: 'How many examples should be provided for each concept?',
-      importance: '3 of 5',
+      importance: 'high',
       intro: 'LLMs learn better from deep, well-explained examples than from shallow coverage of many scenarios.'
     }),
     solution({

@@ -9,7 +9,7 @@ const {
   common: { Data, Action, Boolean,
     data: { splitByPivot, enrichGroupProps, pipeline, filter, property, obj, prefix, suffix, removePrefix, removeSuffix, 
            toUpperCase, toLowerCase, capitalize, replace, extractPrefix, extractSuffix,
-           formatNumber, formatDate, split, groupBy, asIs, 
+           formatNumber, formatDate, split, groupBy, asIs, list, sum
             }, 
     Boolean: { contains, equals, and, startsWith, endsWith },
     Prop: { prop },
@@ -33,18 +33,73 @@ Const('employees', [
 Const('testDate', new Date('2023-01-15T10:30:00'))
 Const('testObject', {name: 'test', value: 42, items: [1, 2, 3]})
 
-// ===== GROUP BY TESTS =====
+// ===== GROUPBY TESTS =====
 
-Test('groupBy.stepByStep', {
+Test('splitByPivot.basic', {
+  impl: dataTest({
+    calculate: pipeline('%$employees%', splitByPivot('dept'), '%dept%'),
+    expectedResult: equals(asIs(['sales', 'tech', 'hr']))
+  })
+})
+
+Test('splitByPivot.edgeCases', {
+  impl: dataTest({
+    calculate: pipeline(list(), splitByPivot('dept')),
+    expectedResult: equals(asIs([]))
+  })
+})
+
+Test('groupBy.count', {
+  impl: dataTest({
+    calculate: pipeline('%$employees%', splitByPivot('dept'), enrichGroupProps(group.count()), '%count%'),
+    expectedResult: equals(asIs([2, 2, 1]))
+  })
+})
+
+Test('groupBy.aggregations', {
+  impl: dataTest({
+    calculate: pipeline('%$employees%', splitByPivot('dept'), enrichGroupProps(group.max('salary')), '%maxSalary%'),
+    expectedResult: equals(asIs([60000, 80000, 55000]))
+  })
+})
+
+Test('groupBy.join', {
+  impl: dataTest({
+    calculate: pipeline('%$employees%', splitByPivot('dept'), enrichGroupProps(group.join('name', {as: 'names'})), '%names%'),
+    expectedResult: equals(asIs(['John,Jane', 'Bob,Alice', 'Mike']))
+  })
+})
+
+Test('groupBy.customProp', {
+  impl: dataTest({
+    calculate: pipeline('%$employees%', splitByPivot('dept'), enrichGroupProps(group.prop('total', pipeline('%salary%', sum()))), '%total%'),
+    expectedResult: equals(asIs([110000, 155000, 55000]))
+  })
+})
+
+Test('groupBy.multipleProps', {
+  impl: dataTest({
+    calculate: pipeline(
+      '%$employees%', 
+      splitByPivot('dept'), 
+      enrichGroupProps(group.count('size')), 
+      enrichGroupProps(group.max('salary')), 
+      '%size%:%maxSalary%'
+    ),
+    expectedResult: equals(asIs(['2:60000', '2:80000', '1:55000']))
+  })
+})
+
+Test('groupBy.workflow', {
   impl: dataTest({
     calculate: pipeline(
       '%$employees%',
       splitByPivot('dept'),
-      enrichGroupProps(group.count('numEmployees')),
-      enrichGroupProps(group.max('salary')),
-      '%numEmployees% employees max %maxSalary%'
+      enrichGroupProps(group.count()),
+      enrichGroupProps(group.join('name', {as: 'members'})),
+      '%dept%(%count%): %members%'
     ),
-    expectedResult: equals(asIs(['2 employees max 60000','2 employees max 80000','1 employees max 55000']))
+    expectedResult: equals(asIs(['sales(2): John,Jane', 'tech(2): Bob,Alice', 'hr(1): Mike']))
   })
 })
   
