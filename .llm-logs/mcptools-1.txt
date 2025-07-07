@@ -1,0 +1,35 @@
+MCP Tools Source Code Analysis - Issues Found
+=====================================================
+
+CRITICAL ISSUES IDENTIFIED:
+
+1. VARIABLE SCOPE PROBLEMS in replaceFileSection:
+   - `repoRoot` and `filePath` are destructured AFTER being used in `pathJoin(repoRoot, filePath)`
+   - Line: `const fullPath = pathJoin(repoRoot, filePath)` comes BEFORE the destructuring
+   - This causes "Cannot access 'repoRoot' before initialization" error
+
+2. SAME ISSUE in appendToFile:
+   - `const fullPath = pathJoin(repoRoot, filePath)` comes before destructuring
+   - Variables used before they're declared
+
+3. DYNAMIC PARAMETER HANDLING:
+   - .profile access for dynamic parameters (newSectionText.profile, content.profile)
+   - This might be causing issues if the framework doesn't properly handle dynamic params
+
+4. INCONSISTENT PATH JOINING:
+   - getFilesContent uses: `pathJoin(repoRoot, filePath.trim())`
+   - saveToFile uses: `join(repoRoot, filePath)` (imports path.join)
+   - Others use: `pathJoin(repoRoot, filePath)` 
+   - Should be consistent
+
+5. MISSING DESCRIPTION in saveToFile:
+   - Other tools have descriptions, saveToFile doesn't
+
+FIXES NEEDED:
+1. Move variable destructuring BEFORE usage in replaceFileSection and appendToFile
+2. Ensure consistent path joining across all tools
+3. Add proper error handling for dynamic parameter access
+4. Add description to saveToFile tool
+5. Consider if .profile access is the correct way to handle dynamic params
+
+The git-related tools (tgpModel, runSnippet, dslDocs) likely have working directory issues in their implementation files.
