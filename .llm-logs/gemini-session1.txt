@@ -1,0 +1,51 @@
+
+--- Quiz 1 (Step 3): Predict result of: pipeline([{name: 'Alice', dept: 'Engineering'}, {name: 'Bob', dept: 'Sales'}], '%dept%') ---
+My answer: ['Engineering', 'Sales']
+
+Unscrambled answer: ['Engineering', 'Sales']. My answer was correct.
+
+
+--- Quiz 1 (Step 4): Predict result of: pipeline('%$employees%', filter('%salary% > 50000'), count()) ---
+My answer: 2
+
+Result of runSnippet: ["Homer","Bart","Lisa"]
+
+Step 4: Learn filtering and conditional operations
+Purpose: Filtering is essential for data selection and conditional processing
+Details: Practice filter operations with expressions and boolean components
+
+Unscrambled answer: 2. My answer was correct.
+
+
+--- Quiz 2 (Step 4): How do you combine multiple filter conditions? ---
+My answer: Both B and C are correct
+
+Unscrambled answer: Both B and C are correct. My answer was correct.
+
+Result of runSnippet: ["Bart","Lisa"]
+
+Step 5: Master aggregation operations (count, join, groupBy)
+Purpose: Aggregations transform collections into summary data - essential for analytics
+Details: Practice counting, joining, and basic grouping operations
+
+Result of runSnippet: "Bart,Lisa"
+
+Step 6: Learn advanced groupBy operations for data analytics
+Purpose: GroupBy is the most powerful common DSL feature for analytical data processing
+Details: Master splitByPivot and enrichGroupProps for complex data analysis
+
+
+--- Quiz 1 (Step 6): Predict result of: pipeline('%$orders%', splitByPivot('status'), enrichGroupProps(group.count())) ---
+My answer: [{"status":"pending","count":2},{"status":"complete","count":1}]
+
+Unscrambled answer: [{status: "pending", count: 2}, {status: "complete", count: 1}]. My answer was correct.
+
+Result of runSnippet: [{"region":"North","items":[{"region":"North","amount":100},{"region":"North","amount":150}],"count":2,"sum":250},{"region":"South","items":[{"region":"South","amount":200}],"count":1,"sum":200}]
+
+Step 7: Master debugging with probe (__) for understanding data flow
+Purpose: Debugging skills are essential for developing and troubleshooting complex pipelines
+Details: Learn to use probe cursor to inspect data at any point in pipeline execution
+
+Result of runSnippet (probe): {"circuitCmpId":"data<common>noName","probePath":"data<common>noName~impl~operators~1","visits":{"data<common>noName~impl~source":1,"data<common>noName~impl~operators~0~filter":3,"data<common>noName~impl~operators~0":1,"data<common>noName~impl~operators~1":2,"data<common>noName~impl~operators~2":1,"data<common>noName~impl":1},"totalTime":3,"result":[{"from":null,"out":"Bart","in":{"data":{"name":"Bart","age":12},"params":null,"vars":{}}},{"from":null,"out":"Lisa","in":{"data":{"name":"Lisa","age":10},"params":null,"vars":{}}}],"circuitRes":"Bart,Lisa","errors":[],"logs":[]}
+
+--- learnCommonDsl exercise completed ---

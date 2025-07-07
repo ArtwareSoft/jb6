@@ -37,8 +37,7 @@ Test('groupBy.summary', {
           explanation('Extract only the values users care about, ignore internal structure')
         ]
       }),
-      doNot({
-        badCode: `// ❌ BAD - test internal data structures\nTest('groupBy.internals', {\n  impl: dataTest({\n    calculate: pipeline('%$employees%', splitByPivot('dept')),\n    expectedResult: equals(asIs([{dept: 'sales', items: [...], internalProp: 'value'}]))\n  })\n})`,
+      doNot('// ❌ BAD - test internal data structures', {
         reason: 'internal structures change during refactoring, breaking tests unnecessarily'
       })
     ]
@@ -93,7 +92,11 @@ Const('employees', [
         ]
       }),
       doNot({
-        badCode: `// ❌ Overly complex data\nConst('employees', [\n  {name: 'John Smith Jr.', age: 25, dept: 'sales', salary: 50000, address: {...}, projects: [...]},\n  // ... 20 more complex objects\n])`,
+        badCode: `// ❌ Overly complex data
+        // Const('employees', [
+        //   {name: 'John Smith Jr.', age: 25, dept: 'sales', salary: 50000, address: {...}, projects: [...]},
+        //   // ... 20 more complex objects
+        // ])`,
         reason: 'complex data makes it hard to understand what the test is actually verifying'
       })
     ]
@@ -131,29 +134,6 @@ Test('groupBy.verbose', {
   })
 })
 
-solution({
-  code: `// ✅ Extract key values
-Test('groupBy.counts', {
-  impl: dataTest({
-    calculate: pipeline('%$employees%', splitByPivot('dept'), enrichGroupProps(group.count()), '%dept%:%count%'),
-    expectedResult: equals(asIs(['sales:2', 'tech:1']))
-  })
-})`,
-  points: [explanation('Template %dept%:%count% extracts exactly what needs verification')]
-})
-
-doNot(`// ❌ Verbose full objects
-Test('groupBy.verbose', {
-  impl: dataTest({
-    calculate: pipeline('%$employees%', splitByPivot('dept'), enrichGroupProps(group.count())),
-    expectedResult: equals(asIs([
-      {dept: 'sales', items: [full objects...], count: 2, otherProps: ...}
-    ]))
-  })
-})`, {
-  reason: 'verbose assertions are brittle and obscure the actual behavior being tested'
-})
-
 Doclet('testDevelopmentWorkflow', {
   impl: principle({
     importance: 'high',
@@ -162,22 +142,6 @@ Doclet('testDevelopmentWorkflow', {
     evidence: explanation('Using __ probes helps understand component behavior before committing to expectations'),
     dslCompIds: ['guidance<doclet>solution']
   })
-})
-
-solution({
-  code: `// ✅ Verify step by step before writing test
-// 1. Check data: '%$employees%'
-// 2. Test grouping: pipeline('%$employees%', splitByPivot('dept'), __)
-// 3. Test extraction: pipeline('%$employees%', splitByPivot('dept'), '%dept%')
-// 4. Write test with verified expectation
-
-Test('splitByPivot.basic', {
-  impl: dataTest({
-    calculate: pipeline('%$employees%', splitByPivot('dept'), '%dept%'),
-    expectedResult: equals(asIs(['sales', 'tech']))  // ← verified result
-  })
-})`,
-  points: [explanation('Systematic verification ensures test correctness before committing')]
 })
 
 Doclet('testNamingClarity', {
@@ -190,21 +154,6 @@ Doclet('testNamingClarity', {
   })
 })
 
-solution({
-  code: `// ✅ Descriptive names
-Test('splitByPivot.basic', {...})        // Component + core behavior
-Test('splitByPivot.edgeCases', {...})    // Component + edge conditions  
-Test('groupBy.workflow', {...})          // Feature + usage pattern`,
-  points: [explanation('Names immediately communicate what is being tested')]
-})
-
-doNot(`// ❌ Vague names
-Test('test1', {...})
-Test('basicTest', {...})
-Test('checkSomething', {...})`, {
-  reason: 'unclear names provide no documentation value and make debugging difficult'
-})
-
 Doclet('testCoveragePyramid', {
   impl: principle({
     importance: 'high',
@@ -215,16 +164,3 @@ Doclet('testCoveragePyramid', {
   })
 })
 
-solution({
-  code: `// ✅ Balanced test pyramid
-// Component tests (many) - individual behaviors
-Test('splitByPivot.basic', {...})
-Test('enrichGroupProps.count', {...})
-
-// Integration tests (some) - component combinations  
-Test('groupBy.multipleAggregations', {...})
-
-// Workflow tests (few) - end-to-end scenarios
-Test('groupBy.departmentReport', {...})`,
-  points: [explanation('Pyramid structure: many focused tests, fewer integration tests, minimal workflow tests')]
-})

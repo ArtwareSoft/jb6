@@ -102,7 +102,7 @@ dsls.ui.feature.id               // Component features`,
       ]
     })
   )
-})
+})  
 
 Doclet('understandingDSLs', {
   impl: exercise(
@@ -125,7 +125,9 @@ ui DSL:
         explanation('DSLs organize components by domain - common for data, ui for interfaces'),
         syntax('type<dsl>', 'components have a type within a specific DSL'),
         whenToUse('when you need to understand what components are available for different tasks'),
-        comparison('single global namespace', { advantage: 'prevents naming conflicts and enables domain-specific features' })
+        comparison('single global namespace', {
+          advantage: 'prevents naming conflicts and enables domain-specific features'
+        })
       ]
     }),
     solution({

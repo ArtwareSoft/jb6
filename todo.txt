@@ -1,11 +1,51 @@
+connect to cursor rules
+conncet llm cli with pipe
+write mcp clients
+write fixProfile mcpService
+
 add profile source code MCP
-testYourself
 add tgpSyntax doclets
 make Const just a type
 
+
+i am shaiby the author is the jb6 repo.
 my repo is at /home/shaiby/projects/jb6
-use the dslDocs service to get info about 'common' dsl
+please consult me if you want to change fw code, docs and test files. feel more free the add to tests and docs.
+this session id is "whatup-2"
+please log all the interesting success and problems you face. it will be used to discuss with me how to improve the docs and the framework!!!
+use appendToFile /.llm-logs/${sessionId}.txt with TIMESTAMP for logging
+
+get the common dsl using tgpModel(packages/common/common-tests.js) mcp service
+please read carefully packages/core/llm-guide/tgp-primer.js and read packages/common/common-llm-guide.js 
+implement carefully learnCommonDsl from packages/common/common-llm-guide.js, 
+do not change the packages/common/common-llm-guide.js code
+**follow up the methodology and do all the quizes**
+**use TURN BATCHING**
+
+please log each step to "gemini-sessionX" use newlines and make it readable!!
+
+let's talk about dslDoc service. maybe the result is too large for llm and not well organized
+
+please read carefully
+packages/core/llm-guide/tgp-primer.js
+packages/llm-guide/llm-guide-dsl.js
+packages/llm-guide/principles-llm-guide.js
+packages/common/common-llm-guide.js
+
+please describe the doclet dsl
+
+this session id is "llm-session5"
+please log all the interesting success and problems you face. it will be used to discuss with me how to improve the docs and the framework!!!
+use appendToFile /llm-logs/${sessionId}.txt for logging
+
+the syntax errors or uncertenties you have into a file by name of youe session , and suggest doc improvements. please suggesut misleading docs, or missing docs.
+
+
 please play with run snippets and make sure you understand how to build groupBy scripts
+then read carefully these files before: 
+  packages/common/common-tests.js
+  packages/common/group-by.js
+  packages/core/llm-guide/how-to-use-snippet-and-probe.js
 
 you may want to read these files to help you writing to doc:
 packages/llm-guide/llm-guide-dsl.js

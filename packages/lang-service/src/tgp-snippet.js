@@ -3,21 +3,33 @@ import { langServiceUtils } from './lang-service-parsing-utils.js'
 import '@jb6/core/misc/calc-import-map.js'
 const { calcProfileActionMap } = langServiceUtils
 
-const { unique, calcTgpModelData, studioAndProjectImportMaps, runCliInContext } = coreUtils
+const { unique, calcTgpModelData, studioAndProjectImportMaps, runCliInContext,pathJoin,pathParent,absPathToUrl } = coreUtils
 Object.assign(coreUtils,{runSnippetCli})
 
 async function runSnippetCli({compText: _compText, filePath, setupCode = '', packages = [], probe } = {}) {
     const { projectImportMap } = await studioAndProjectImportMaps(filePath)
 
     const tgpModel = await calcTgpModelData({filePath}) // todo: support packages
-    const origCompText = (_compText[0]||'').match(/[A-Z]/) ? _compText : `Data('noName',{impl: ${_compText}})`
+    if (tgpModel.error) return { error: tgpModel.error }
+    const origCompText = (_compText[0]||'').match(/[A-Z]/) ? _compText : `Data('noName',{impl: ${_compText}})`    
+    const isProbeMode = probe === true || probe === 'true'
+    const hasProbeMarkers = origCompText.split('__').length > 1
+    
+    if (isProbeMode && !hasProbeMarkers) {
+      return { 
+        error: 'probe: true requires __ marker in expression. Example: pipeline(data, filter(condition)__)', 
+        compText: origCompText, probe, origCompText 
+      }
+    }
+    
     let compText = origCompText, parts
-    if (probe && origCompText.split('__').length) {
+    if (isProbeMode && hasProbeMarkers) {
       parts = origCompText.split('__')
       if (parts.length === 2)
         parts[0] = parts[0].replace(/,\s*$/, '')
       compText = parts.join('')
     }
+    
     const {dslTypeId, path: probePath, comp, error} = parseProfile({compText, tgpModel, inCompOffset : parts?.[0].length})
     if (error)
       return { error, compText, probe, origCompText }
@@ -26,7 +38,10 @@ async function runSnippetCli({compText: _compText, filePath, setupCode = '', pac
     const dslsSection = calcDslsSection([comp])
     const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
 
-    const imports = unique([filePath, ...packages]).map(f=>`\timport '${f}'`).join('\n')
+    const indexFileName = absPathToUrl(pathJoin(pathParent(filePath),'index.js'), projectImportMap.serveEntries)
+    const importModule = Object.entries(projectImportMap.imports).find(x=> x[1]==indexFileName)?.[0]
+  
+    const imports = unique([importModule, filePath, ...packages]).filter(Boolean).map(f=>`\timport '${f}'`).join('\n')
     const script = `
 import { jb, dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/core/misc/probe.js'
@@ -37,8 +52,8 @@ ${dslsSection}
         try {
           ${setupCode}
           ${compText}
-          if (${probe}) {
-              const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath)})
+          if (${isProbeMode}) {
+              const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath || '')})
               process.stdout.write(JSON.stringify(result, null, 2))
           } else {
               const result = await ${compPath}.$run()

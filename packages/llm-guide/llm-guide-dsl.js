@@ -1,12 +1,16 @@
 // === COMPLETE DOCLET DSL DEFINITION ===
 
 import { dsls } from '@jb6/core'
+import '@jb6/mcp'
 
 const { 
   common: { Data },
-  tgp: { TgpType }
+  tgp: { TgpType },
+  mcp: { 
+    Tool,
+    tool: { tgpModel, runSnippet, runSnippets, getFilesContent, replaceComponent, appendToFile, overrideFileContent, dslDocs, scrambleText }
+  }
 } = dsls
-
 // ============================================================================= 
 // DOCLET DSL - 
 // Guidance LLM doclets codify expert task-solving patterns into structured, reusable templates 
@@ -19,6 +23,15 @@ const Guidance = TgpType('guidance', 'doclet')       // Solution/anti-pattern co
 const Evidence = TgpType('evidence', 'doclet') 
 const ExplanationPoint = TgpType('explanationPoint', 'doclet') // Individual explanation components
 const ProblemStatement = TgpType('problemStatement', 'doclet') // New: Problem statement container
+const Validation = TgpType('validation', 'doclet')
+const Spec = TgpType('spec', 'doclet')
+const UseCase = TgpType('use-case', 'doclet')
+const Actor = TgpType('actor', 'doclet')
+const ActorFeature = TgpType('actor-feature', 'doclet')
+const Scenario = TgpType('scenario', 'doclet')
+
+
+const McpTool = TgpType('tool', 'mcp')               // MCP tool components
 
 // =============================================================================
 // TYPE: doclet - Main documentation container
@@ -28,9 +41,89 @@ Doclet('exercise', {
   params: [
     {id: 'problem', type: 'problemStatement', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
-    {id: 'outro', as: 'text', newLinesInCode: true, description: 'Concluding explanation'}
+    {id: 'validation', type: 'validation[]', description: 'verify exercise knowledge achieved'},
+    {id: 'outro', as: 'text', description: 'Concluding explanation'}
   ]
 })
+
+Spec('specification', {
+  params: [
+    {id: 'introduction', as: 'text' },    
+    {id: 'useCases', type: 'use-case[]', mandatory: true},
+    {id: 'dataSamples', type: 'dataSample[]' },
+    {id: 'expectedOutputs', type: 'dataSample[]' },
+  ]
+})
+
+Actor('endUser', {
+  params: [
+    {id: 'description', as: 'text' },
+    {id: 'features', type: 'actor-feature' },
+  ]
+})
+
+Actor('admin', {
+  params: [
+    {id: 'description', as: 'string' },
+    {id: 'adminFlow', as: 'text' },
+    {id: 'features', type: 'actor-feature' },
+  ]
+})
+
+ActorFeature('motivation', {
+  params: [
+    {id: 'motivation', as: 'text' },
+  ]  
+})
+
+ActorFeature('goal', {
+  params: [
+    {id: 'goal', as: 'text' },
+  ]  
+})
+
+ActorFeature('backgroundKnowledge', {
+  params: [
+    {id: 'knowledge', as: 'text' },
+  ]
+})
+
+UseCase('useCase', {
+  description: 'abstraction of user scenarios. looking at the system from the outside',
+  params: [
+    {id: 'goal', as: 'text', description: 'the essence of user scenarios'},
+    {id: 'importance', as: 'text', mandatory: true, options: 'critical,high,medium,low'},
+    {id: 'relevantActors', type: 'actor[]'},
+    {id: 'flow', as: 'text', description: 'abstract flow. the essence of user scenarios'},
+    {id: 'exampleScenarios', type: 'scenario[]', description: 'can refer to data samples'}
+  ]
+})
+
+Scenario('inventedUserStory', {
+  description: 'very concrete story for the use case',
+  params: [
+    {id: 'context', as: 'text', description: 'detailed context of the example including names'},
+    {id: 'actors', as: 'text', description: 'detailed including name & position'},
+    {id: 'motivation', as: 'text', description: 'client and end user motivation'},
+    {id: 'interactionDescription', as: 'text', description: 'detailed interaction with system from the user point of view'},
+    {id: 'dataSamples'}
+  ]
+})
+
+Scenario('realClientStory', {
+  description: 'very concrete story for the use case',
+  params: [
+    {id: 'context', as: 'text', description: 'detailed context of the example including names'},
+    {id: 'actors', as: 'text', description: 'detailed including name & position'},
+    {id: 'motivation', as: 'text', description: 'client and end user motivation'},
+    {id: 'interactionDescription', as: 'text', description: 'detailed interaction with system from the user point of view'},
+    {id: 'dataSamples'},
+    {id: 'webSiteUrl', as: 'string'},
+    {id: 'crmId'}
+  ]
+})
+
+
 
 // =============================================================================
 // TYPE: problemStatement - Problem statement components
@@ -50,7 +143,8 @@ Doclet('principle', {
     { id: 'rule', as: 'text', mandatory: true, description: 'The principle statement' },
     { id: 'rationale', as: 'text', mandatory: true, description: 'Why this principle matters' },
     { id: 'dslCompIds', as: 'text', description: "Full component IDs to use. E.g., 'guidance<doclet>doNot,data<common>pipeline'" },
-    { id: 'guidance', type: 'guidance[]' }
+    { id: 'guidance', type: 'guidance[]' },
+    { id: 'validation', type: 'validation[]', description: 'verify principle is understood'},
   ]
 })
 
@@ -62,6 +156,16 @@ Guidance('solution', {
   params: [
     {id: 'code', as: 'text', mandatory: true, byName: true},
     {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true}
+  ]
+})
+
+Guidance('proceduralSolution', {
+  description: 'Solution using step-by-step procedures and workflows',
+  params: [
+    {id: 'procedure', as: 'text', description: 'Name/description of the procedure'},
+    {id: 'usefulPoints', type: 'explanationPoint[]', byName: true},
+    {id: 'steps', type: 'step[]', mandatory: true, description: 'Ordered sequence of steps'},
+    {id: 'summaryPoints', type: 'explanationPoint[]'}
   ]
 })
 
@@ -151,8 +255,7 @@ ExplanationPoint('impact', {
 
 ExplanationPoint('methodology', {
   params: [
-    {id: 'steps', as: 'text', mandatory: true},
-    {id: 'tools', as: 'text'}
+    {id: 'methodology', as: 'text', mandatory: true},
   ]
 })
 
@@ -180,5 +283,47 @@ Evidence('benchmark', {
     { id: 'baseline', as: 'text', mandatory: true, description: 'What was compared against' },
     { id: 'improvement', as: 'text', mandatory: true, description: 'How much better/worse' },
     { id: 'context', as: 'text', description: 'Testing context and conditions' }
+  ]
+})
+
+// New step type for procedural solutions
+const Step = TgpType('step', 'doclet')
+
+Step('step', {
+  params: [
+    {id: 'action', as: 'text', mandatory: true, description: 'What to do'},
+    {id: 'purpose', as: 'text', description: 'Why this step matters'},
+    {id: 'details', as: 'text', description: 'How to implement this step'},
+    {id: 'validation', type: 'validation[]', description: 'How to verify step completion - can be text or validation object'},
+    {id: 'mcpTool', type: 'tool<mcp>', description: 'Optional MCP tool to execute as part of this step'},
+    {id: 'points', type: 'explanationPoint[]', description: 'Detailed explanations for this step'}
+  ]
+})
+
+
+Validation('multipleChoiceQuiz', {
+  description: 'Multiple choice question with external answer key',
+  params: [
+    {id: 'question', as: 'text', mandatory: true, description: 'The question to answer'},
+    {id: 'options', as: 'array', mandatory: true, description: 'Array of possible answers'},
+    {id: 'scrambledAnswer', as: 'string', mandatory: true, description: 'use scrambleText with unscramble to check your result'},
+  ]
+})
+
+Validation('predictResultQuiz', {
+  description: 'Predict the outcome of a code snippet or operation',
+  params: [
+    {id: 'scenario', as: 'text', mandatory: true, description: 'Code or scenario to analyze'},
+    {id: 'context', as: 'text', description: 'Additional context needed'},
+    {id: 'scrambledAnswer', as: 'string', mandatory: true, description: 'use scrambleText with unscramble to check your result'}
+  ]
+})
+
+Validation('explainConceptQuiz', {
+  description: 'Explain a concept in your own words',
+  params: [
+    {id: 'prompt', as: 'text', mandatory: true, description: 'What to explain'},
+    {id: 'scrambledKeyPoints', as: 'text', mandatory: true, description: 'Required concepts that must be mentioned'},
+    {id: 'scrambledScoringCriteria', as: 'string', mandatory: true, description: 'use scrambleText with unscramble to check your result'}
   ]
 })

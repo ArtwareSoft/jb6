@@ -298,6 +298,7 @@ async function fetchByEnv(url, serveEntries = []) {
     const rUrl = absPathToUrl(url, serveEntries)
     const res = await fetch(rUrl)
     if (!res.ok) {
+      absPathToUrl(url, serveEntries) // for debug
       logError(`fetch ${url} → ${res.status}`)
       return ''
     } 
@@ -308,7 +309,7 @@ async function fetchByEnv(url, serveEntries = []) {
 }
 
 function absPathToUrl(path, serveEntries = []) {
-    const servedEntry = serveEntries.find(x => path.indexOf(x.pkgDir) == 0)
+    const servedEntry = serveEntries.find(x => x.pkgDir != x.dir && path.indexOf(x.pkgDir) == 0)
     return servedEntry ? path.replace(servedEntry.pkgDir, servedEntry.dir) : path
 }
 
@@ -348,11 +349,29 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, resho
 }
 
 const estimateTokens = t => Math.ceil(((t.match(/\b\w+\b/g)||[]).length)*1.3)
+function pathJoin(...segments) {
+  const path = segments.filter(s => s).join('/').replace(/\/+/g, '/')
+  const parts = path.split('/').filter(p => p !== '.')
+  const result = []
+  
+  for (const part of parts) {
+    if (part === '..') result.pop()
+    else if (part) result.push(part)
+  }
+  
+  const joined = result.join('/')
+  return path.startsWith('/') ? '/' + joined : joined || '.'
+}
+
+function pathParent(path) {
+  const i = path.replace(/\/+$/, '').lastIndexOf('/')
+  return i <= 0 ? (i === 0 ? '/' : '.') : path.substring(0, i)
+ }
 
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logCli, isNode, logByEnv, fetchByEnv, absPathToUrl,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, estimateTokens
+  calcValue, stripData, estimateTokens, pathJoin, pathParent
 })

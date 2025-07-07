@@ -1,0 +1,15 @@
+Starting the task: get the common dsl using tgpModel(packages/common/common-tests.js) mcp service
+Reading packages/core/llm-guide/tgp-primer.js and packages/common/common-llm-guide.js
+Starting learnCommonDsl implementation.
+Step 1: Master runSnippet and probe debugging. Reading packages/core/llm-guide/how-to-use-snippet-and-probe.js
+Answering quizzes for Step 1: Master runSnippet and probe debugging.
+Step 2: Understand the DSL landscape and component organization. Loading common DSL documentation.
+Answering quizzes for Step 2: Understand the DSL landscape and component organization.
+Step 3: Master pipeline fundamentals through hands-on practice. Running snippet.
+Answering quizzes for Step 3: Master pipeline fundamentals through hands-on practice.
+Step 4: Learn filtering and conditional operations. Running snippet.
+Answering quizzes for Step 4: Learn filtering and conditional operations.
+Step 5: Master aggregation operations (count, join, groupBy). Running snippet.
+Step 6: Learn advanced groupBy operations for data analytics. Running snippet.
+Answering quizzes for Step 6: Learn advanced groupBy operations for data analytics.
+Completed learnCommonDsl implementation and all quizzes.

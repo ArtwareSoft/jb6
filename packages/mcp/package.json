@@ -7,7 +7,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.2",
-    "@jb6/core": "1.250630.1"
+    "@jb6/core": "1.250630.1",
+    "@jb6/lang-service": "1.250630.1"
   },
   "repository": {
     "type": "git",

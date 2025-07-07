@@ -1,0 +1,263 @@
+---
+description: Trigger.dev task development patterns with proven productivity gains
+globs: ["**/trigger/**/*.ts", "**/jobs/**/*.ts", "**/tasks/**/*.ts"]
+alwaysApply: false
+---
+
+# Trigger.dev Task Development Rules
+# Based on Trigger.dev team's documented "dramatic productivity improvements"
+
+You are an expert in Trigger.dev v3, TypeScript, and background job processing.
+
+## Core Framework Understanding
+- Trigger.dev v3 uses React-like patterns for job definition
+- Jobs are defined using the `job` function with proper typing
+- Use `io` object for all external interactions (API calls, database operations)
+- Implement proper error handling and retries for robust job execution
+
+## Trigger.dev v3 SDK Guidelines
+- Always use the latest Trigger.dev v3 SDK: `@trigger.dev/sdk@^3.0.0`
+- Import jobs from `@trigger.dev/sdk/v3`
+- Use proper TypeScript interfaces for job payloads and responses
+- Leverage Trigger.dev's built-in logging and monitoring
+
+## Job Definition Patterns
+
+### Basic Job Structure
+```typescript
+import { job } from "@trigger.dev/sdk/v3";
+import { z } from "zod";
+
+// Define payload schema with Zod for runtime validation
+const payloadSchema = z.object({
+  userId: z.string(),
+  email: z.string().email(),
+  data: z.record(z.unknown()).optional(),
+});
+
+export const processUserDataJob = job({
+  id: "process-user-data",
+  version: "1.0.0",
+  trigger: eventTrigger({
+    name: "user.data.process",
+    schema: payloadSchema,
+  }),
+  run: async (payload, { io, ctx }) => {
+    // Use io for all external operations
+    const user = await io.supabase.from("users").select().eq("id", payload.userId).single();
+    
+    if (!user.data) {
+      throw new Error(`User not found: ${payload.userId}`);
+    }
+
+    // Process data with proper error handling
+    try {
+      const result = await io.runTask("process-data", async () => {
+        return processUserData(user.data, payload.data);
+      });
+
+      await io.logger.info("User data processed successfully", {
+        userId: payload.userId,
+        resultId: result.id,
+      });
+
+      return result;
+    } catch (error) {
+      await io.logger.error("Failed to process user data", {
+        userId: payload.userId,
+        error: error.message,
+      });
+      throw error;
+    }
+  },
+});
+```
+
+## Error Handling Best Practices
+- Always wrap external operations in try-catch blocks
+- Use Trigger.dev's built-in retry mechanisms
+- Implement exponential backoff for API calls
+- Log errors with contextual information
+- Use proper error types for different failure scenarios
+
+### Error Handling Example
+```typescript
+export const resilientApiJob = job({
+  id: "resilient-api-call",
+  version: "1.0.0",
+  trigger: eventTrigger({
+    name: "api.call.needed",
+  }),
+  run: async (payload, { io }) => {
+    return await io.runTask(
+      "api-call",
+      async () => {
+        const response = await fetch(payload.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload.data),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+        }
+
+        return response.json();
+      },
+      {
+        retry: {
+          maxAttempts: 3,
+          factor: 2,
+          minTimeoutInMs: 1000,
+          maxTimeoutInMs: 10000,
+        },
+      }
+    );
+  },
+});
+```
+
+## Idempotency Patterns
+- Use unique job IDs for idempotent operations
+- Implement proper deduplication logic
+- Use database transactions for atomic operations
+- Handle duplicate job executions gracefully
+
+### Idempotent Job Example
+```typescript
+export const idempotentProcessingJob = job({
+  id: "idempotent-processing",
+  version: "1.0.0",
+  trigger: eventTrigger({
+    name: "data.process.request",
+  }),
+  run: async (payload, { io }) => {
+    const idempotencyKey = `process-${payload.entityId}-${payload.operationType}`;
+    
+    // Check if operation already completed
+    const existingResult = await io.runTask("check-existing", async () => {
+      return await db.operationResults.findUnique({
+        where: { idempotencyKey },
+      });
+    });
+
+    if (existingResult) {
+      await io.logger.info("Operation already completed", {
+        idempotencyKey,
+        resultId: existingResult.id,
+      });
+      return existingResult;
+    }
+
+    // Perform the operation
+    const result = await io.runTask("process-operation", async () => {
+      return await performOperation(payload);
+    });
+
+    // Store result with idempotency key
+    await io.runTask("store-result", async () => {
+      return await db.operationResults.create({
+        data: {
+          idempotencyKey,
+          result: result,
+          completedAt: new Date(),
+        },
+      });
+    });
+
+    return result;
+  },
+});
+```
+
+## Real-time Integration Patterns
+- Use webhooks for real-time job triggering
+- Implement proper webhook signature verification
+- Handle high-volume events with batching
+- Use Trigger.dev's concurrency controls
+
+## Testing Guidelines
+- Write tests for job logic separately from Trigger.dev runtime
+- Mock external dependencies in tests
+- Test error scenarios and edge cases
+- Use Trigger.dev's testing utilities
+
+### Job Testing Example
+```typescript
+import { describe, it, expect, vi } from "vitest";
+import { processUserDataJob } from "./process-user-data";
+console.log = () => {};
+
+describe("processUserDataJob", () => {
+  it("should process user data successfully", async () => {
+    const mockIo = {
+      supabase: {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { id: "user-1", name: "John Doe" },
+              }),
+            }),
+          }),
+        }),
+      },
+      runTask: vi.fn().mockImplementation((name, fn) => fn()),
+      logger: {
+        info: vi.fn(),
+        error: vi.fn(),
+      },
+    };
+
+    const payload = {
+      userId: "user-1",
+      email: "john@example.com",
+    };
+
+    const result = await processUserDataJob.run(payload, { io: mockIo as any, ctx: {} as any });
+    
+    expect(result).toBeDefined();
+    expect(mockIo.logger.info).toHaveBeenCalled();
+  });
+});
+```
+
+## Performance Optimization
+- Use `io.runTask` for granular operation tracking
+- Implement proper batching for bulk operations
+- Use parallel execution where appropriate
+- Monitor job performance and optimize bottlenecks
+
+## Security Best Practices
+- Validate all input payloads with Zod schemas
+- Use environment variables for sensitive configuration
+- Implement proper authentication for webhook endpoints
+- Sanitize data before external API calls
+
+## Deployment and Monitoring
+- Use Trigger.dev's built-in monitoring and alerting
+- Implement proper logging for debugging
+- Set up health checks for critical jobs
+- Use staging environments for testing job changes
+
+## Context-Aware Job Patterns
+
+### When processing user actions:
+- Validate user permissions before processing
+- Log user actions for audit trails
+- Handle user state changes atomically
+- Implement proper user notification patterns
+
+### When integrating with external APIs:
+- Use proper authentication and rate limiting
+- Implement circuit breaker patterns for reliability
+- Cache responses when appropriate
+- Handle API versioning and deprecation
+
+### When processing files or media:
+- Use streaming for large files
+- Implement progress tracking
+- Handle different file formats gracefully
+- Clean up temporary files after processing
+
+Always prioritize reliability, observability, and maintainability in job implementations.

@@ -103,3 +103,16 @@ Test('groupBy.workflow', {
   })
 })
   
+
+
+Test('groupBy.maxSalary', {
+  impl: dataTest({
+    calculate: pipeline(
+      '%$employees%',
+      splitByPivot('dept'),
+      enrichGroupProps(group.max('salary')),
+      '%dept%:%maxSalary%'
+    ),
+    expectedResult: equals(asIs(['sales:60000', 'tech:80000', 'hr:55000']))
+  })
+})

@@ -19,33 +19,32 @@ Test('snippet.Data', {
 })
 
 Test('snippet.exp', {
-  doNotRunInTests: true,
+  //doNotRunInTests: true,
   impl: snippetTest(`'hello'`, equals('hello', '%result%'))
 })
 
 Test('snippet.typeError', {
-  doNotRunInTests: true,
+  //doNotRunInTests: true,
   impl: snippetTest(`Test({impl: dataTest('hey', pipeline())})`, contains('boolean', { allText: '%syntaxError%' }))
 })
 
 Test('snippet.ns', {
-  doNotRunInTests: true,
   impl: snippetTest({
     compText: `pipeline(asIs([{a: 1},{a: 1}, {a:2}]), splitByPivot('a'), enrichGroupProps(group.count('aCounter')))`,
-    expectedResult: equals('%result/0/aCounter%', 2)
+    expectedResult: equals('%result/0/aCounter%', 2),
+    filePath: '/home/shaiby/projects/jb6/packages/common/common-tests.js'
   })
 })
 
 Test('snippet.probe', {
-  doNotRunInTests: true,
+  //doNotRunInTests: true,
   impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/in/data/a%'), {
     probe: true
   })
 })
 
 Test('snippet.filePath', {
-  doNotRunInTests: true,
-  impl: snippetTest(`Data({ impl: pipeline('hello')}) `, equals('hello', '%result%'), {
-    filePath: '/home/shaiby/projects/jb6/packages/common/llm-guide/common-llm-guide.js'
+  impl: snippetTest(`pipeline('hello')`, equals('hello', '%result%'), {
+    filePath: '/home/shaiby/projects/jb6/packages/common/aggregators.js'
   })
 })

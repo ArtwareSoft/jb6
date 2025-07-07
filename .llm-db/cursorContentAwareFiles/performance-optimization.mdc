@@ -1,0 +1,667 @@
+---
+description: Advanced performance optimization techniques for modern applications
+globs: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.py"]
+alwaysApply: false
+---
+
+# Performance Optimization Rules
+# Based on high-performance application implementations
+
+You are an expert in application performance optimization across frontend, backend, and full-stack applications.
+
+## Core Performance Principles
+
+### Performance-First Mindset
+- Measure before optimizing - use profiling tools
+- Focus on the critical path and user-perceived performance
+- Optimize for the most common use cases first
+- Consider both time and space complexity
+- Implement progressive enhancement patterns
+
+### Context-Aware Optimization
+Detect the application context and apply appropriate optimizations:
+
+#### Frontend Performance (React/Vue/Angular)
+- Implement code splitting and lazy loading
+- Optimize bundle size and reduce unused code
+- Use efficient rendering patterns
+- Implement proper caching strategies
+- Monitor Core Web Vitals
+
+#### Backend Performance (APIs/Servers)
+- Optimize database queries and indexing
+- Implement connection pooling and caching
+- Use async/await patterns for I/O operations
+- Implement rate limiting and throttling
+- Monitor server metrics and response times
+
+#### Full-Stack Performance
+- Optimize data fetching patterns
+- Implement efficient state management
+- Use CDNs for static assets
+- Optimize API design for minimal round trips
+- Implement proper error handling to avoid retries
+
+## Frontend Performance Patterns
+
+### React Performance Optimization
+```typescript
+// Efficient component memoization
+interface ExpensiveComponentProps {
+  data: ComplexData[]
+  filters: FilterOptions
+  onItemClick: (id: string) => void
+}
+
+const ExpensiveComponent = memo<ExpensiveComponentProps>(({
+  data,
+  filters,
+  onItemClick
+}) => {
+  // Memoize expensive calculations
+  const filteredData = useMemo(() => {
+    return data.filter(item => 
+      filters.categories.includes(item.category) &&
+      item.score >= filters.minScore
+    ).sort((a, b) => b.priority - a.priority)
+  }, [data, filters])
+
+  // Memoize callbacks to prevent unnecessary re-renders
+  const handleItemClick = useCallback((id: string) => {
+    onItemClick(id)
+  }, [onItemClick])
+
+  // Use virtualization for large lists
+  const renderItem = useCallback(({ index, style }: ListChildComponentProps) => {
+    const item = filteredData[index]
+    return (
+      <div style={style}>
+        <ItemComponent 
+          key={item.id}
+          item={item}
+          onClick={handleItemClick}
+        />
+      </div>
+    )
+  }, [filteredData, handleItemClick])
+
+  return (
+    <FixedSizeList
+      height={600}
+      itemCount={filteredData.length}
+      itemSize={80}
+      width="100%"
+    >
+      {renderItem}
+    </FixedSizeList>
+  )
+})
+```
+
+### Advanced Bundle Optimization
+```typescript
+// Code splitting with React.lazy and Suspense
+const Dashboard = lazy(() => 
+  import('./Dashboard').then(module => ({
+    default: module.Dashboard
+  }))
+)
+
+// Dynamic imports for heavy libraries
+const loadChartLibrary = async () => {
+  const { Chart } = await import('chart.js')
+  return Chart
+}
+
+// Preload critical routes
+const preloadRoute = (routeComponent: () => Promise<any>) => {
+  const componentImport = routeComponent()
+  return componentImport
+}
+
+// Preload on hover for better UX
+const NavigationLink = ({ to, children }: { to: string, children: React.ReactNode }) => {
+  const handleMouseEnter = () => {
+    if (to === '/dashboard') {
+      preloadRoute(() => import('./Dashboard'))
+    }
+  }
+
+  return (
+    <Link to={to} onMouseEnter={handleMouseEnter}>
+      {children}
+    </Link>
+  )
+}
+```
+
+### Image and Asset Optimization
+```typescript
+// Optimized image component with lazy loading
+interface OptimizedImageProps {
+  src: string
+  alt: string
+  width?: number
+  height?: number
+  priority?: boolean
+}
+
+function OptimizedImage({ 
+  src, 
+  alt, 
+  width, 
+  height, 
+  priority = false 
+}: OptimizedImageProps) {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isInView, setIsInView] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    if (imgRef.current) {
+      observer.observe(imgRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  const shouldLoad = priority || isInView
+
+  return (
+    <div
+      ref={imgRef}
+      style={{
+        width,
+        height,
+        backgroundColor: '#f0f0f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      {shouldLoad && (
+        <img
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          loading={priority ? 'eager' : 'lazy'}
+          onLoad={() => setIsLoaded(true)}
+          style={{
+            opacity: isLoaded ? 1 : 0,
+            transition: 'opacity 0.3s ease'
+          }}
+        />
+      )}
+    </div>
+  )
+}
+```
+
+## Backend Performance Patterns
+
+### Database Optimization
+```python
+# Efficient database patterns
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload, joinedload
+from typing import List, Optional
+
+class UserRepository:
+    def __init__(self, db_session):
+        self.db = db_session
+
+    async def get_users_with_posts(
+        self, 
+        limit: int = 100, 
+        offset: int = 0
+    ) -> List[User]:
+        # Use selectinload to avoid N+1 queries
+        query = (
+            select(User)
+            .options(selectinload(User.posts))
+            .limit(limit)
+            .offset(offset)
+            .order_by(User.created_at.desc())
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def get_user_with_profile(self, user_id: int) -> Optional[User]:
+        # Use joinedload for one-to-one relationships
+        query = (
+            select(User)
+            .options(joinedload(User.profile))
+            .where(User.id == user_id)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_popular_posts(self, days: int = 7) -> List[Post]:
+        # Optimized query with aggregations
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        query = (
+            select(Post)
+            .where(Post.created_at >= cutoff_date)
+            .where(Post.view_count > 100)
+            .order_by(Post.view_count.desc())
+            .limit(50)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+# Connection pooling configuration
+from sqlalchemy.pool import QueuePool
+
+engine = create_async_engine(
+    DATABASE_URL,
+    poolclass=QueuePool,
+    pool_size=20,
+    max_overflow=30,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    echo=False
+)
+```
+
+### Caching Strategies
+```python
+# Redis caching patterns
+import asyncio
+import json
+from functools import wraps
+from typing import Any, Callable, Optional
+import redis.asyncio as redis
+
+class CacheManager:
+    def __init__(self, redis_url: str):
+        self.redis = redis.from_url(redis_url)
+
+    async def get(self, key: str) -> Optional[Any]:
+        try:
+            value = await self.redis.get(key)
+            return json.loads(value) if value else None
+        except Exception:
+            return None
+
+    async def set(
+        self, 
+        key: str, 
+        value: Any, 
+        expire: int = 3600
+    ) -> bool:
+        try:
+            await self.redis.setex(
+                key, 
+                expire, 
+                json.dumps(value, default=str)
+            )
+            return True
+        except Exception:
+            return False
+
+    async def delete(self, key: str) -> bool:
+        try:
+            await self.redis.delete(key)
+            return True
+        except Exception:
+            return False
+
+# Cache decorator
+def cache_result(expire: int = 3600, key_prefix: str = ""):
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Generate cache key
+            cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(kwargs))}"
+            
+            # Try to get from cache
+            cached_result = await cache_manager.get(cache_key)
+            if cached_result is not None:
+                return cached_result
+
+            # Execute function and cache result
+            result = await func(*args, **kwargs)
+            await cache_manager.set(cache_key, result, expire)
+            return result
+        return wrapper
+    return decorator
+
+# Usage example
+@cache_result(expire=1800, key_prefix="user_posts")
+async def get_user_posts(user_id: int, limit: int = 10):
+    return await post_repository.get_by_user_id(user_id, limit)
+```
+
+### API Performance Optimization
+```python
+# Optimized FastAPI patterns
+from fastapi import FastAPI, BackgroundTasks, Depends
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
+import logging
+
+# Performance middleware
+class PerformanceMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        response.headers["X-Process-Time"] = str(process_time)
+        
+        # Log slow requests
+        if process_time > 1.0:
+            logging.warning(
+                f"Slow request: {request.method} {request.url} took {process_time:.2f}s"
+            )
+        
+        return response
+
+# Optimized app configuration
+app = FastAPI(
+    title="High Performance API",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None
+)
+
+# Add performance middleware
+app.add_middleware(PerformanceMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
+
+# Background tasks for heavy operations
+@app.post("/users/{user_id}/send-email")
+async def send_user_email(
+    user_id: int,
+    email_data: EmailRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    # Validate user exists (fast operation)
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Queue email sending in background
+    background_tasks.add_task(
+        send_email_task,
+        user.email,
+        email_data.subject,
+        email_data.content
+    )
+    
+    return {"message": "Email queued for sending"}
+
+# Batch operations for efficiency
+@app.post("/users/batch")
+async def create_users_batch(
+    users_data: List[UserCreate],
+    db: AsyncSession = Depends(get_db)
+):
+    # Validate all users first
+    for user_data in users_data:
+        user_data.validate()
+    
+    # Create users in batch
+    users = []
+    for user_data in users_data:
+        user = User(**user_data.dict())
+        users.append(user)
+    
+    db.add_all(users)
+    await db.commit()
+    
+    return {"created_count": len(users)}
+```
+
+## Full-Stack Performance Patterns
+
+### Optimized Data Fetching
+```typescript
+// React Query with optimized patterns
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
+
+// Prefetch data on route entry
+const prefetchUserData = (queryClient: QueryClient, userId: string) => {
+  queryClient.prefetchQuery({
+    queryKey: ['user', userId],
+    queryFn: () => fetchUser(userId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+// Optimized infinite scroll
+function useInfiniteUsers() {
+  return useInfiniteQuery({
+    queryKey: ['users'],
+    queryFn: ({ pageParam = 0 }) => 
+      fetchUsers({ offset: pageParam, limit: 20 }),
+    getNextPageParam: (lastPage, pages) => {
+      if (lastPage.users.length === 20) {
+        return pages.length * 20
+      }
+      return undefined
+    },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  })
+}
+
+// Optimistic updates
+function useUpdateUser() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: updateUser,
+    onMutate: async (newUserData) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['user', newUserData.id] })
+      
+      // Snapshot previous value
+      const previousUser = queryClient.getQueryData(['user', newUserData.id])
+      
+      // Optimistically update
+      queryClient.setQueryData(
+        ['user', newUserData.id], 
+        { ...previousUser, ...newUserData }
+      )
+      
+      return { previousUser }
+    },
+    onError: (err, newUserData, context) => {
+      // Rollback on error
+      queryClient.setQueryData(
+        ['user', newUserData.id],
+        context?.previousUser
+      )
+    },
+    onSettled: (data, error, variables) => {
+      // Refetch after mutation
+      queryClient.invalidateQueries({ 
+        queryKey: ['user', variables.id] 
+      })
+    },
+  })
+}
+```
+
+### Web Vitals Monitoring
+```typescript
+// Performance monitoring
+import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals'
+
+// Send metrics to analytics
+function sendToAnalytics(metric: any) {
+  // Replace with your analytics service
+  console.log('Performance metric:', metric)
+  
+  // Example: send to Google Analytics
+  if (window.gtag) {
+    window.gtag('event', metric.name, {
+      event_category: 'Web Vitals',
+      event_label: metric.id,
+      value: Math.round(
+        metric.name === 'CLS' ? metric.value * 1000 : metric.value
+      ),
+      non_interaction: true,
+    })
+  }
+}
+
+// Monitor all Core Web Vitals
+export function monitorWebVitals() {
+  getCLS(sendToAnalytics)
+  getFID(sendToAnalytics)
+  getFCP(sendToAnalytics)
+  getLCP(sendToAnalytics)
+  getTTFB(sendToAnalytics)
+}
+
+// Performance observer for custom metrics
+const performanceObserver = new PerformanceObserver((list) => {
+  for (const entry of list.getEntries()) {
+    if (entry.entryType === 'measure') {
+      console.log(entry.name, entry.duration)
+    }
+  }
+})
+
+performanceObserver.observe({ 
+  entryTypes: ['measure', 'navigation', 'resource'] 
+})
+
+// Custom performance marks
+export function measureAsyncOperation<T>(
+  name: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  performance.mark(`${name}-start`)
+  
+  return operation().finally(() => {
+    performance.mark(`${name}-end`)
+    performance.measure(name, `${name}-start`, `${name}-end`)
+  })
+}
+```
+
+## Performance Testing and Monitoring
+
+### Load Testing with Artillery
+```yaml
+# artillery-config.yml
+config:
+  target: 'http://localhost:8000'
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: Warm up
+    - duration: 300
+      arrivalRate: 10
+      name: Sustained load
+    - duration: 120
+      arrivalRate: 20
+      name: Spike test
+
+scenarios:
+  - name: "User journey"
+    weight: 70
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test@example.com"
+            password: "password123"
+          capture:
+            - json: "$.access_token"
+              as: "token"
+      - get:
+          url: "/api/users/profile"
+          headers:
+            Authorization: "Bearer {{ token }}"
+      - get:
+          url: "/api/posts"
+          qs:
+            limit: 20
+            offset: 0
+```
+
+### Performance Monitoring Dashboard
+```python
+# Performance metrics collection
+import time
+import psutil
+console.log = () => {};
+from prometheus_client import Counter, Histogram, Gauge
+from fastapi import Request
+
+# Metrics
+REQUEST_COUNT = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+
+REQUEST_DURATION = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration',
+    ['method', 'endpoint']
+)
+
+ACTIVE_CONNECTIONS = Gauge(
+    'active_connections',
+    'Active database connections'
+)
+
+CPU_USAGE = Gauge('cpu_usage_percent', 'CPU usage percentage')
+MEMORY_USAGE = Gauge('memory_usage_percent', 'Memory usage percentage')
+
+# Middleware to collect metrics
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start_time = time.time()
+    
+    response = await call_next(request)
+    
+    duration = time.time() - start_time
+    
+    REQUEST_COUNT.labels(
+        method=request.method,
+        endpoint=request.url.path,
+        status=response.status_code
+    ).inc()
+    
+    REQUEST_DURATION.labels(
+        method=request.method,
+        endpoint=request.url.path
+    ).observe(duration)
+    
+    return response
+
+# Background task to collect system metrics
+async def collect_system_metrics():
+    while True:
+        CPU_USAGE.set(psutil.cpu_percent())
+        MEMORY_USAGE.set(psutil.virtual_memory().percent)
+        await asyncio.sleep(30)
+```
+
+Always measure performance impact before and after optimizations, and focus on optimizations that provide the most significant improvement for your specific use case.

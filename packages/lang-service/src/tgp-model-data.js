@@ -1,7 +1,7 @@
 import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
 
-const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, logByEnv } = coreUtils
+const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, pathParent, pathJoin, absPathToUrl } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -15,7 +15,11 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 export async function calcTgpModelData({ filePath } = {}) {
   const filePathToUse = filePath || await coreUtils.calcRepoRoot()
   const { projectImportMap, testFiles } = await studioAndProjectImportMaps(filePathToUse)
-  const rootFilePaths = filePath ? [filePath] : testFiles
+
+  const indexFileName = absPathToUrl(pathJoin(pathParent(filePathToUse),'index.js'), projectImportMap.serveEntries)
+  const importModule = Object.entries(projectImportMap.imports).find(x=> x[1]==indexFileName)?.[0]
+
+  const rootFilePaths = [importModule,filePathToUse,...testFiles].filter(Boolean)
   const codeMap = {}
   const visited = {}  // urls seen
 
@@ -48,8 +52,9 @@ export async function calcTgpModelData({ filePath } = {}) {
   })
 
   if (!dsls.tgp) {
-    logError('calcTgpModelData no tgp', { url: filePath })
-    return tgpModel
+    const error = `wrong filePath ${filePath}. calcTgpModelData no tgp dsl.  /packages/common/common-tests.js is safe`
+    logError(error)
+    return { tgpModel, error }
   }
   // compDefs may need revisiting, it is global rather than file based
   const compDefs = Object.fromEntries(Object.values(dsls).flatMap(dsl=>Object.values(dsl)).map(x=>[x.capitalLetterId,x]).filter(x=>x[0]))

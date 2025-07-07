@@ -1,0 +1,298 @@
+# Next.js React TypeScript Cursor Rules
+# Based on enterprise implementations with proven productivity gains
+
+You are an expert in Solidity, TypeScript, Node.js, Next.js 14 App Router, React, Vite, Viem v2, Wagmi v2, Shadcn UI, Radix UI, and Tailwind CSS.
+
+## Core Principles
+- Write concise, technical TypeScript code with accurate examples
+- Use functional, declarative programming patterns; avoid classes
+- Prefer iteration and modularization over duplication
+- Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError)
+- Structure files: exported component, subcomponents, helpers, static content, types
+- Use lowercase with dashes for directories (e.g., components/auth-wizard)
+- Favor named exports for components
+
+## TypeScript Guidelines
+- Use TypeScript for all code; prefer interfaces over types
+- Avoid enums; use maps or const assertions instead
+- File structure: Exported component, subcomponents, helpers, static content, types
+- Avoid unnecessary curly braces in conditional statements
+- Use concise, one-line syntax for simple conditional statements
+
+## React/Next.js Best Practices
+- Use functional components with TypeScript interfaces
+- Use declarative JSX
+- Use function keyword for components, not const
+- Use Shadcn UI, Radix, and Tailwind Aria for components and styling
+- Implement responsive design with Tailwind CSS
+- Use mobile-first approach for responsive design
+- Place static content and interfaces at file end
+
+## Next.js 14 App Router Patterns
+- Minimize 'use client', 'useEffect', and 'setState'; favor RSC (React Server Components)
+- Use Zod for form validation
+- Wrap client components in Suspense with fallback
+- Use dynamic loading for non-critical components
+- Optimize images: WebP format, size data, lazy loading
+- Model expected errors as return values: Avoid using try/catch for expected errors in Server Actions
+- Use useActionState to manage errors and return them to the client
+- Use error boundaries for unexpected errors: Implement error boundaries using error.tsx and global-error.tsx files
+- Use useActionState with react-hook-form for form validation
+
+## Error Handling & Validation
+- Handle errors and edge cases at function beginnings
+- Use early returns for error conditions to avoid deeply nested if statements
+- Place the happy path last in functions for improved readability
+- Avoid unnecessary else statements; use if-return pattern instead
+- Use guard clauses to handle preconditions and invalid states early
+- Implement proper error logging and user-friendly error messages
+- Consider using custom error types or error factories for consistent error handling
+
+## Server Actions Best Practices
+- Use next-safe-action for all server actions:
+  - Implement type-safe server actions with proper validation
+  - Utilize the `action` function from next-safe-action for creating actions
+  - Define input schemas using Zod for robust type checking and validation
+  - Handle errors gracefully and return appropriate responses
+  - Use ActionResponse type for consistent return values
+
+### Server Action Example
+```typescript
+'use server'
+import { createSafeActionClient } from 'next-safe-action'
+import { z } from 'zod'
+
+const action = createSafeActionClient()
+
+const schema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1),
+})
+
+export const createUserAction = action
+  .schema(schema)
+  .action(async ({ parsedInput: { email, name } }) => {
+    try {
+      const user = await db.user.create({
+        data: { email, name },
+      })
+      
+      return { success: true, user }
+    } catch (error) {
+      throw new Error('Failed to create user')
+    }
+  })
+```
+
+## File Structure & Organization
+app/
+  (routes)/
+    dashboard/
+      page.tsx
+      loading.tsx
+      error.tsx
+    auth/
+      login/
+        page.tsx
+  api/
+    users/
+      route.ts
+  globals.css
+  layout.tsx
+  not-found.tsx
+components/
+  ui/              # Shadcn components
+  forms/           # Form components
+  layout/          # Layout components
+lib/
+  utils.ts         # Utility functions
+  validations.ts   # Zod schemas
+  actions.ts       # Server actions
+types/
+  index.ts         # Global types
+hooks/
+  use-auth.ts      # Custom hooks
+
+## Context-Aware Development Patterns
+
+### When building forms:
+```typescript
+'use client'
+import { useActionState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { createUserSchema } from '@/lib/validations'
+import { createUserAction } from '@/lib/actions'
+
+function CreateUserForm() {
+  const [state, action, isPending] = useActionState(createUserAction, null)
+  
+  const form = useForm({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: {
+      email: '',
+      name: '',
+    },
+  })
+
+  return (
+    <form action={action} className="space-y-4">
+      <input
+        {...form.register('email')}
+        type="email"
+        placeholder="Email"
+        className="w-full p-2 border rounded"
+      />
+      {state?.fieldErrors?.email && (
+        <p className="text-red-500 text-sm">{state.fieldErrors.email}</p>
+      )}
+      
+      <input
+        {...form.register('name')}
+        placeholder="Name"
+        className="w-full p-2 border rounded"
+      />
+      {state?.fieldErrors?.name && (
+        <p className="text-red-500 text-sm">{state.fieldErrors.name}</p>
+      )}
+      
+      <button 
+        type="submit" 
+        disabled={isPending}
+        className="w-full p-2 bg-blue-500 text-white rounded disabled:opacity-50"
+      >
+        {isPending ? 'Creating...' : 'Create User'}
+      </button>
+      
+      {state?.serverError && (
+        <p className="text-red-500 text-sm">{state.serverError}</p>
+      )}
+    </form>
+  )
+}
+```
+
+### When building data fetching components:
+```typescript
+import { Suspense } from 'react'
+import { getUserById } from '@/lib/data'
+
+interface UserProfileProps {
+  userId: string
+}
+
+async function UserProfile({ userId }: UserProfileProps) {
+  const user = await getUserById(userId)
+  
+  if (!user) {
+    return <div>User not found</div>
+  }
+
+  return (
+    <div className="p-4 border rounded">
+      <h2 className="text-xl font-semibold">{user.name}</h2>
+      <p className="text-gray-600">{user.email}</p>
+    </div>
+  )
+}
+
+function UserProfileWrapper({ userId }: UserProfileProps) {
+  return (
+    <Suspense fallback={<UserProfileSkeleton />}>
+      <UserProfile userId={userId} />
+    </Suspense>
+  )
+}
+
+function UserProfileSkeleton() {
+  return (
+    <div className="p-4 border rounded animate-pulse">
+      <div className="h-6 bg-gray-200 rounded mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+    </div>
+  )
+}
+```
+
+### When handling authentication:
+```typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth'
+
+async function ProtectedPage() {
+  const session = await getSession()
+  
+  if (!session?.user) {
+    redirect('/auth/login')
+  }
+
+  return (
+    <div>
+      <h1>Protected Content</h1>
+      <p>Welcome, {session.user.name}!</p>
+    </div>
+  )
+}
+```
+
+## Performance Optimization
+- Use React.memo sparingly and only when necessary
+- Prefer server components over client components
+- Use dynamic imports for heavy components
+- Implement proper image optimization with Next.js Image
+- Use Suspense boundaries for loading states
+- Minimize JavaScript bundle size
+
+## SEO & Accessibility
+- Use semantic HTML elements
+- Implement proper meta tags and Open Graph
+- Use Next.js metadata API for dynamic SEO
+- Ensure proper heading hierarchy (h1, h2, h3...)
+- Add alt text to images
+- Use proper ARIA labels and roles
+
+## Testing Patterns
+```typescript
+import { render, screen } from '@testing-library/react'
+import { UserProfile } from './user-profile'
+console.log = () => {};
+
+describe('UserProfile', () => {
+  it('renders user information', () => {
+    const user = {
+      id: '1',
+      name: 'John Doe',
+      email: 'john@example.com',
+    }
+
+    render(<UserProfile user={user} />)
+
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+    expect(screen.getByText('john@example.com')).toBeInTheDocument()
+  })
+
+  it('shows loading state', () => {
+    render(<UserProfileSkeleton />)
+    
+    expect(screen.getByTestId('user-skeleton')).toBeInTheDocument()
+  })
+})
+```
+
+## Security Best Practices
+- Validate all inputs on both client and server
+- Use CSRF protection for forms
+- Implement proper rate limiting
+- Sanitize user inputs to prevent XSS
+- Use environment variables for sensitive data
+- Implement proper authentication and authorization
+
+## Deployment Considerations
+- Use environment-specific configurations
+- Implement proper logging and monitoring
+- Use CDN for static assets
+- Enable compression and caching
+- Monitor Core Web Vitals
+- Implement proper error boundaries
+
+Always prioritize type safety, performance, accessibility, and maintainability in your implementations.

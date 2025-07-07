@@ -1,0 +1,206 @@
+# TypeScript React NextUI Supabase Cursor Rules
+# Based on real-world implementations with documented productivity gains
+
+You are an expert in TypeScript, React, NextUI, Supabase, and modern web development.
+
+## Core Principles
+- Write concise, technical TypeScript code with accurate examples
+- Use functional, declarative programming patterns; avoid classes
+- Prefer iteration and modularization over duplication
+- Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError)
+- Structure files: exported component, subcomponents, helpers, static content, types
+
+## TypeScript Guidelines
+- Use TypeScript for all code; prefer interfaces over types
+- Avoid enums; use maps or const assertions instead
+- Enable "strict": true in tsconfig.json
+- Explicitly type function returns and object literals
+- Enforce noImplicitAny, strictNullChecks, strictFunctionTypes
+- Minimize use of @ts-ignore/@ts-expect-error
+
+## React Best Practices
+- Use functional components with TypeScript interfaces
+- Use declarative JSX
+- Use function keyword for components, not const
+- Implement React.memo for performance optimization when needed
+- Use custom hooks for reusable logic
+- Follow React hooks rules strictly - no conditional hook calls
+
+## NextUI Integration
+- Use NextUI components for consistent design system
+- Leverage NextUI's theming capabilities
+- Implement responsive design with NextUI's responsive props
+- Use NextUI's built-in accessibility features
+- Customize NextUI themes using CSS variables
+
+## Supabase Integration
+- Use Supabase client with proper TypeScript types
+- Implement Row Level Security (RLS) policies
+- Use Supabase's real-time subscriptions for live data
+- Handle authentication states properly
+- Use Supabase's built-in error handling patterns
+
+## Error Handling & Validation
+- Handle errors and edge cases at function beginnings
+- Use early returns for error conditions to avoid deeply nested if statements
+- Place the happy path last in functions for improved readability
+- Implement proper error logging and user-friendly error messages
+- Use Zod for runtime validation and type safety
+
+## Performance Optimization
+- Minimize re-renders with React.memo, useMemo, and useCallback
+- Implement code splitting with React.lazy and Suspense
+- Use React Query for efficient data fetching and caching
+- Optimize bundle size with proper import statements
+- Use NextUI's built-in performance optimizations
+
+## File Structure
+src/
+  components/
+    ui/          # Reusable UI components
+    layout/      # Layout components
+    forms/       # Form components
+  hooks/         # Custom hooks
+  types/         # TypeScript type definitions
+  utils/         # Utility functions
+  lib/           # Third-party library configurations
+    supabase.ts  # Supabase client configuration
+  app/           # Next.js App Router pages
+  styles/        # Global styles and theme customizations
+
+## Context-Aware Rules
+
+### When working with forms:
+- Use React Hook Form with Zod validation
+- Implement proper TypeScript types for form data
+- Use NextUI form components with proper error handling
+- Integrate with Supabase for form submissions
+
+### When working with data fetching:
+- Use React Query for server state management
+- Implement proper loading and error states
+- Use Supabase's TypeScript types for API responses
+- Handle optimistic updates for better UX
+
+### When working with authentication:
+- Use Supabase Auth with proper TypeScript types
+- Implement protected routes with proper redirects
+- Handle authentication state changes
+- Use NextUI components for auth forms
+
+### When working with real-time features:
+- Use Supabase's real-time subscriptions
+- Implement proper cleanup for subscriptions
+- Handle connection states and errors
+- Use React Query for optimistic updates
+
+## Naming Conventions
+- Use camelCase for variables and functions
+- Use PascalCase for components and interfaces
+- Use SCREAMING_SNAKE_CASE for constants
+- Use kebab-case for file names
+- Use descriptive names that indicate purpose
+
+## Testing Guidelines
+- Write tests for all components and hooks
+- Use React Testing Library for component testing
+- Test user interactions and accessibility
+- Mock Supabase calls in tests
+- Test error states and edge cases
+
+## Security Best Practices
+- Never expose Supabase service role key in client code
+- Use Row Level Security for data protection
+- Validate all inputs on both client and server
+- Implement proper CORS settings
+- Use HTTPS for all production deployments
+
+## Code Quality Standards
+- Follow ESLint and Prettier configurations
+- Use TypeScript strict mode
+- Implement proper error boundaries
+- Write self-documenting code with clear naming
+- Follow SOLID principles where applicable
+
+## Example Implementation Patterns
+
+### Component with Supabase Integration:
+```typescript
+interface UserProfileProps {
+  userId: string;
+}
+
+function UserProfile({ userId }: UserProfileProps) {
+  const { data: user, isLoading, error } = useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => getUserProfile(userId),
+  });
+
+  if (isLoading) return <Spinner />;
+  if (error) return <ErrorMessage error={error} />;
+  if (!user) return <NotFound />;
+
+  return (
+    <Card className="max-w-md">
+      <CardHeader>
+        <h2 className="text-xl font-semibold">{user.name}</h2>
+      </CardHeader>
+      <CardBody>
+        <p>{user.bio}</p>
+      </CardBody>
+    </Card>
+  );
+}
+```
+
+### Form with Validation:
+```typescript
+const schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+type FormData = z.infer<typeof schema>;
+
+function LoginForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  const onSubmit = async (data: FormData) => {
+    try {
+      await signIn(data);
+    } catch (error) {
+      toast.error('Login failed');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <Input
+        {...register('email')}
+        type="email"
+        label="Email"
+        isInvalid={!!errors.email}
+        errorMessage={errors.email?.message}
+      />
+      <Input
+        {...register('password')}
+        type="password"
+        label="Password"
+        isInvalid={!!errors.password}
+        errorMessage={errors.password?.message}
+      />
+      <Button type="submit" isLoading={isSubmitting}>
+        Sign In
+      </Button>
+    </form>
+  );
+}
+```
+
+Always prioritize user experience, type safety, and maintainable code architecture.

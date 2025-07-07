@@ -4,7 +4,7 @@ const { asArray, unique, RT_types } = coreUtils
 const { 
   tgp: { TgpType },
   common: { Data, Aggregator,
-    data: { addProp, pipeline,  removeProps, join, max, min, count },
+    data: { addProp, pipeline,  removeProps, join, max, min, sum, count },
   },
 } = dsls
 
@@ -97,6 +97,14 @@ GroupProp('group.min', {
   impl: group.prop('%$as%', min({data: '%{%$prop%}%'}))
 })
 
+GroupProp('group.sum', {
+  params: [
+    {id: 'prop', as: 'string', mandatory: true},
+    {id: 'as', as: 'string', defaultValue: defaultGroupPropName, byName: true}
+  ],
+  impl: group.prop('%$as%', sum({data: '%{%$prop%}%'}))
+})
+
 function defaultGroupPropName(ctx) {
   const aggregatedProp = coreUtils.calcPath(ctx.jbCtx.callerStack.slice(-1)[0],'jbCtx.args.prop') || ''
   const opId = (ctx.jbCtx.path.match(/([^~.]+)~/) || [])[1]
@@ -118,4 +126,3 @@ Test('groupBy.stepByStep', {
   })
 })
 */
-

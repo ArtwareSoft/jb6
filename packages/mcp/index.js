@@ -1,8 +1,17 @@
+import { coreUtils } from '@jb6/core'
 import { startMcpServer } from './mcp-utils.js'
 import './mcp-tools.js'
 import './mcp-prompts.js'
 
-startMcpServer().catch((error) => {
-    console.error("Server error:", error)
-    process.exit(1)
-})
+
+console.error('Starting jb6 MCP server script...')
+if (coreUtils.isNode) {
+    const args = process.argv.slice(2)
+    if (args == '--start') {
+        console.error('Starting jb6 MCP server...')
+        startMcpServer().catch((error) => {
+            console.error("jb6 Server error:", error)
+            process.exit(1)
+        })
+    }
+}

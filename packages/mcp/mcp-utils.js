@@ -1,35 +1,4 @@
 import { dsls, coreUtils } from '@jb6/core'
-import { Server } from "@modelcontextprotocol/sdk/server/index.js"
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
-import { z } from 'zod'
-
-import { spawn } from 'child_process'
-
-import { 
-  ListToolsRequestSchema, 
-  CallToolRequestSchema,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema 
-} from "@modelcontextprotocol/sdk/types.js"
-
-const GenericToolCallSchema = z.object({
-  jsonrpc: z.literal("2.0"),
-  id: z.union([z.string(), z.number(), z.null()]),
-  method: z.literal("callTool"),
-  params: z.object({
-    name: z.enum([
-      "runSnippet",
-      "runSnippets", 
-      "getFileContent",
-      "replaceComponent",
-      "addComponent",
-      "overrideFileContent",
-      "tgpModel",
-      "evalJs"
-    ]),
-    arguments: z.record(z.unknown())
-  })
-})
 
 const { ptsOfType, asJbComp } = coreUtils
 const { 
@@ -57,7 +26,8 @@ export const runNodeScript = Data('runNodeScript', {
       { id: 'script', as: 'string', dynamic: true, mandatory: true, description: 'JavaScript code to execute' },
       { id: 'repoRoot', as: 'string', description: 'Working directory for execution' }
     ],
-    impl: (ctx, { script, repoRoot }) => {
+    impl: async (ctx, { script, repoRoot }) => {
+      const { spawn } = await import('child_process')
       
       return new Promise((resolve) => {
         const _script = typeof script.profile == 'string' ? script.profile : script()
@@ -100,6 +70,37 @@ export const runNodeScript = Data('runNodeScript', {
 })
   
 export async function startMcpServer() {
+  const { Server } = await import("@modelcontextprotocol/sdk/server/index.js");
+  const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js");
+  const { z } = await import('zod');
+
+  const { 
+    ListToolsRequestSchema, 
+    CallToolRequestSchema,
+    ListPromptsRequestSchema,
+    GetPromptRequestSchema 
+  } = await import("@modelcontextprotocol/sdk/types.js");
+
+  const GenericToolCallSchema = z.object({
+    jsonrpc: z.literal("2.0"),
+    id: z.union([z.string(), z.number(), z.null()]),
+    method: z.literal("callTool"),
+    params: z.object({
+      name: z.enum([
+        "runSnippet",
+        "runSnippets", 
+        "getFileContent",
+        "replaceComponent",
+        "addComponent",
+        "overrideFileContent",
+        "tgpModel",
+        "evalJs"
+      ]),
+      arguments: z.record(z.unknown())
+    })
+  })
+
+
     // Get all tools from the repository
     const allTools = ptsOfType(Tool)
     const toolConfigs = allTools.map(toolId => {

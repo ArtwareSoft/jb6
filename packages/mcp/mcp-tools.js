@@ -1,9 +1,12 @@
-import { dsls } from '@jb6/core'
-import { join } from 'path'
+import { dsls, coreUtils } from '@jb6/core'
+import '@jb6/common'
+import '@jb6/core/misc/calc-import-map.js'
+import '@jb6/lang-service'
+const { pathJoin } = coreUtils
   
 const {
-    common: { 
-       data: { runNodeScript }
+    common: { Data,
+       data: { runNodeScript, pipeline, split, join, first }
     },
     tgp: { any: { typeAdapter }},
     mcp: { Tool }
@@ -28,9 +31,8 @@ Tool('tgpModel', {
   import { coreUtils } from '@jb6/core'
   import '@jb6/core/misc/calc-import-map.js'
   import '@jb6/lang-service'
-  import { join } from 'path'
 
-  const filePath = '${join(repoRoot,filePath)}'
+  const filePath = '${pathJoin(repoRoot,filePath)}'
   const res = await coreUtils.calcTgpModelData({ filePath })
   process.stdout.write(JSON.stringify(res))
       `,
@@ -53,7 +55,7 @@ Tool('runSnippet', {
   import '@jb6/core/misc/calc-import-map.js'
   import '@jb6/lang-service'
   
-  const snippetArgs = ${JSON.stringify({ ...args, compText: args.compText.profile, filePath: join(args.repoRoot, args.filePath) })}
+  const snippetArgs = ${JSON.stringify({ ...args, compText: args.compText.profile, filePath: pathJoin(args.repoRoot, args.filePath) })}
   const res = await coreUtils.runSnippetCli(snippetArgs)
   process.stdout.write(JSON.stringify({...res, tokens: coreUtils.estimateTokens(snippetArgs.compText)}))
       `,
@@ -70,7 +72,7 @@ Tool('runSnippets', {
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' }
     ],
     impl: (ctx, { compTexts, setupCode, filePath, repoRoot }) => {
-      const snippetArgsBase = { setupCode, filePath: join(repoRoot, filePath) }
+      const snippetArgsBase = { setupCode, filePath: pathJoin(repoRoot, filePath) }
       const compTextsProfiles = typeof compTexts.profile == 'string' ? JSON.parse(compTexts.profile) : compTexts.profile
       const results = Promise.all(
         compTextsProfiles.map(async (compText, index) => {
@@ -107,25 +109,37 @@ Tool('getFilesContent', {
       { id: 'filesPaths', as: 'string', mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")' },
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root' }
     ],
-    impl: typeAdapter('data<common>', runNodeScript({
-      script: ({},{},args) =>`
-  import { readFileSync } from 'fs'
-  import { join } from 'path'
-  import { coreUtils } from '@jb6/core'
-  
-  try {
-    const {repoRoot,filesPaths} = ${JSON.stringify(args)}
-    const content = filesPaths.split(',').map(filePath => {
-        const content = readFileSync(join(repoRoot, filePath), 'utf8')
-        return {filePath, content, tokens: coreUtils.estimateTokens(content)}
-      })
-    process.stdout.write(JSON.stringify({ result: content }))
-  } catch (error) {
-    process.stdout.write(JSON.stringify({ error: error.message }))
-  }
-      `,
-      repoRoot: '%$repoRoot%'
-    }))
+    impl: async (ctx, { filesPaths, repoRoot }) => {
+      try {
+        const { readFileSync } = await import('fs')
+        const { pathJoin, estimateTokens } = coreUtils
+        
+        const files = filesPaths.split(',').map(filePath => {
+          const fullPath = pathJoin(repoRoot, filePath.trim())
+          const fileContent = readFileSync(fullPath, 'utf8')
+          return {
+            filePath: filePath.trim(),
+            content: fileContent,
+            tokens: estimateTokens(fileContent)
+          }
+        })
+        
+        // Format for MCP server - readable content with file separators
+        const formattedContent = files.map(file => 
+          `=== File: ${file.filePath} (${file.tokens} tokens) ===\n${file.content}`
+        ).join('\n\n')
+        
+        return {
+          content: [{ type: 'text', text: formattedContent }],
+          isError: false
+        }
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error reading files: ${error.message}` }],
+          isError: true
+        }
+      }
+    }
 })
   
 Tool('replaceComponent', {
@@ -162,63 +176,52 @@ Tool('replaceComponent', {
 })
 
 Tool('appendToFile', {
-    description: 'Append content to the end of an existing file. Useful for adding new components or content without overwriting existing code.',
-    params: [
-      { id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where content will be appended' },
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root' },
-      { id: 'content', as: 'string', dynamic: true, mandatory: true, description: 'Content to append to the file (will add newline before content automatically)' }
-    ],
-    impl: typeAdapter('data<common>', runNodeScript({
-      script: ({},{},args) => `
+  description: 'Add a timestamp to a file, useful for logging or tracking changes.',
+  params: [
+    {id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where timestamp will be added'},
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
+    {id: 'content', as: 'string', dynamic: true, mandatory: true, description: 'Content to add to the file'},
+    {id: 'override', as: 'boolean', description: 'overrides existing content'},
+    {id: 'timeStamp', as: 'boolean', description: 'If true, prepend a timestamp to the content'}
+  ],
+  impl: typeAdapter('data<common>', runNodeScript({
+    script: (ctx,{},args) => `
   import { readFileSync, writeFileSync } from 'fs'
   import { join } from 'path'
-  
+
   try {
-    const {repoRoot, filePath, content} = ${JSON.stringify({...args, content: args.content.profile})}
+    const {repoRoot, filePath, content, timeStamp, override} = ${JSON.stringify({...args, content: args.content.profile })}
     const fullPath = join(repoRoot, filePath)
     
     let existingContent = ''
     try {
-      existingContent = readFileSync(fullPath, 'utf8')
+      if (!override)
+        existingContent = readFileSync(fullPath, 'utf8')
     } catch (error) {
       // File doesn't exist, will create new file
     }
     
-    const newContent = existingContent + (existingContent ? '\\n' : '') + content
+    const dateTime = new Date().toISOString()
+    const contentToAdd = timeStamp ? '[' + dateTime + '] ' + content : content
+    const newContent = existingContent + (existingContent ? '\\n' : '') + contentToAdd
     writeFileSync(fullPath, newContent, 'utf8')
-    process.stdout.write(JSON.stringify({ result: 'Content appended successfully' }))
+    process.stdout.write(JSON.stringify({ result: 'Content added successfully' }))
   } catch (error) {
     process.stdout.write(JSON.stringify({ error: error.message }))
   }
       `,
-      repoRoot: '%$repoRoot%'
-    }))
+    repoRoot: '%$repoRoot%'
+  }))
 })
 
-Tool('overrideFileContent', {
-    description: 'Override entire file content with new content',
-    params: [
-      { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of the file in the repo' },
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' },
-      { id: 'newContent', as: 'string', dynamic: true, mandatory: true, description: 'new content to replace entire file' }
-    ],
-    impl: typeAdapter('data<common>', runNodeScript({
-      script: ({},{},args) => `
-  import { writeFileSync } from 'fs'
-  import { join } from 'path'
-  
-  try {
-    const {repoRoot, filePath, newContent} = ${JSON.stringify({...args, newContent: args.newContent.profile})}
-    const fullPath = join(repoRoot, filePath)
-    
-    writeFileSync(fullPath, newContent, 'utf8')
-    process.stdout.write(JSON.stringify({ result: 'File content overridden successfully' }))
-  } catch (error) {
-    process.stdout.write(JSON.stringify({ error: error.message }))
-  }
-      `,
-      repoRoot: '%$repoRoot%'
-    }))
+Tool('saveToFile', {
+  description: 'save text into a new file. if file exists, it appends to it',
+  params: [
+    {id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where timestamp will be added'},
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
+    {id: 'content', as: 'string', dynamic: true, mandatory: true, description: 'Content to add to the file'}
+  ],
+  impl: appendToFile('%$filePath%', '%$repoRoot%', { content: '%$content%', override: true })
 })
 
 Tool('dslDocs', {
@@ -239,3 +242,32 @@ Tool('dslDocs', {
     repoRoot: '%$repoRoot%'
   }))
 })
+
+Data('scrambleText', {
+  description: 'Scramble/unscramble text for hiding answers in learning materials.',
+  params: [
+    {id: 'text', as: 'string', mandatory: true},
+    {id: 'unscramble', as: 'boolean'}
+  ],
+  impl: (ctx, { text, unscramble }) => unscramble ? atob(text.split('').reverse().join('')) : btoa(text).split('').reverse().join('')
+})
+const { scrambleText } = dsls.common.data
+
+Tool('scrambleTextTool', {
+  description: 'Scramble/unscramble texts for hiding answers in learning materials',
+  params: [
+    {id: 'texts', as: 'string', mandatory: true, description: 'separated by ##'},
+    {id: 'unscramble', as: 'boolean'}
+  ],
+  impl: typeAdapter('data<common>', pipeline(
+    '%$texts%',
+    split('##'),
+    scrambleText('%%', '%$unscramble%'),
+    join('##\n'),
+    ({data}) => ({ 
+      content: [{ type: 'text', text: data }], 
+      isError: false 
+    }), first()
+  ))
+})
+

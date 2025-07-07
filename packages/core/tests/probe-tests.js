@@ -2,7 +2,7 @@ import { dsls, coreUtils } from '@jb6/core'
 import '../misc/probe.js'
 import '@jb6/testing'
 
-const { runProbe, runProbeCli, calcTgpModelData } = coreUtils
+const { runProbe, runProbeCli } = coreUtils
 
 const { 
   tgp: { Const, TgpType, 

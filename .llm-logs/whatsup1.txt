@@ -1,0 +1,65 @@
+[2025-07-06T10:24:17.032Z] Session started: whatsup1
+Author: Shaiby
+Task: Create whatsappToKnowledge specification using TGP framework
+Goal: Extract knowledge from WhatsApp groups
+Permission: Can modify fw code, docs, and test files (with consultation)
+Free to add tests and docs
+[2025-07-06T10:24:29.411Z] SUCCESS: Read key TGP framework files
+- tgp-primer.js (2634 tokens): Comprehensive examples of TGP patterns with concrete code samples
+- llm-guide-dsl.js (1495 tokens): Complete doclet DSL definition with Spec, UseCase, Actor components
+- principles-llm-guide.js (1299 tokens): LLM guide building principles and best practices
+
+Key insights learned:
+1. TGP uses type<dsl> pattern (e.g., data<common>, control<ui>, action<common>)
+2. Spec component for specifications with use-cases, actors, scenarios
+3. Components instantiate into profiles with $$ identifier
+4. Progressive complexity and quality over quantity principles
+5. Goal-oriented structure beats feature enumeration
+[2025-07-06T10:25:18.052Z] PROBLEM: Syntax error in runSnippet - unexpected import token
+Error: "SyntaxError: Unexpected token '{'"
+
+Issue appears to be with the inline import statement inside setupCode. Let me try a different approach by creating a proper file first.
+[2025-07-06T10:26:10.383Z] PROBLEM: useCase is not a function
+Error indicates that useCase component is not properly loaded. Let me check the correct DSL namespace structure.
+[2025-07-06T10:26:40.411Z] SUCCESS: Found doclet DSL components
+From the docs I can see:
+- specification (type:spec) 
+- useCase (type:use-case)
+- endUser, admin (type:actor)
+- inventedUserStory, realClientStory (type:scenario)
+- motivation, goal, backgroundKnowledge (type:actor-feature)
+
+The issue was with the import structure and component naming. Let me fix the file.
+[2025-07-06T10:39:25.097Z] PROBLEM: useCase component not found in doclet.spec namespace
+Need to investigate the correct DSL structure. Let me try different approach.
+[2025-07-06T10:41:19.583Z] SUCCESS: Created WhatsApp to Knowledge specification profile artifact
+- Shows complete TGP profile structure with $$ identifiers
+- Includes type<dsl> pattern (e.g., spec<doclet>, actor<doclet>, use-case<doclet>)
+- Demonstrates nested component composition
+- Contains realistic use cases, actors, and scenarios
+- Profile ready for execution in jb6 framework
+
+Key TGP concepts demonstrated:
+1. Component instantiation creates profiles with $$ identifiers
+2. Nested composition (specifications contain use cases, use cases contain actors, etc.)
+3. Type safety with doclet DSL components
+4. Data samples show practical knowledge extraction scenarios
+5. Follows goal-oriented structure principles from llm-guide
+[2025-07-06T10:47:05.368Z] FOCUS: Narrowing scope to semantic search use case
+- Goal: Provide intelligent search and retrieval of extracted knowledge
+- Context: Conversation groups with 3-5 or maybe 30 messages
+- Technology: Semantic search over these conversations
+- Simpler scope than full knowledge extraction system
+[2025-07-06T10:54:10.113Z] SUCCESS: Added real WhatsApp conversation data to semantic search specification
+- Real Israeli indie hackers group conversation from September 2024
+- Authentic multilingual content (Hebrew/English mix)
+- 3 concrete search scenarios extracted from actual conversations:
+  1. Product validation techniques discussion
+  2. Chrome extension development framework recommendation
+  3. Creativity and idea generation debate
+- Shows realistic semantic search challenges:
+  - Mixed languages (Hebrew/English)
+  - Long conversation threads spanning hours
+  - Multiple participants with complex usernames
+  - Technical topics, business insights, tool recommendations
+- Demonstrates practical value: finding buried knowledge in active chat groups
