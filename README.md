@@ -5,7 +5,7 @@ jBart is a JavaScript implementation of the TGP methodology for building DSLs (D
 TGP stands for:
 
 - **Type**: abstraction  
-- **Template** (or **Component**)  
+- **Generic Components** (or **Templates**)  
 - **Profile**: structured script code (serializable to JSON)  
 
 TGP promotes a declarative syntax. It limits the language surface to ensure homogeneity and enable a powerful IDE experience for script development.

@@ -10,12 +10,11 @@ make Const just a type
 
 i am shaiby the author is the jb6 repo.
 my repo is at /home/shaiby/projects/jb6
-<<<<<<< HEAD
 please consult me if you want to change fw code, docs and test files. feel more free the add to tests and docs.
 this session id is "whatup-2"
 please log all the interesting success and problems you face. it will be used to discuss with me how to improve the docs and the framework!!!
 use appendToFile /.llm-logs/${sessionId}.txt with TIMESTAMP for logging
-=======
+
 **please do not change fw code, docs and test files***. feel free to suggest changes
 **please update the relevant llm-guide files after changing the code, accroding to packages/llm-guide/principles-llm-guide.js**
 this session id is "social-db-5"
