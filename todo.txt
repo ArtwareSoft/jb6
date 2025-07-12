@@ -10,8 +10,8 @@ make Const just a type
 
 i am shaiby the author is the jb6 repo.
 my repo is at /home/shaiby/projects/jb6
-please consult me if you want to change fw code, docs and test files. feel more free the add to tests and docs.
-this session id is "tgp-primer-1"
+***please consult me if you want to change fw code, docs and test files***
+this session id is "tgp-primer-2"
 please log all the interesting success and problems you face. it will be used to discuss with me how to improve the docs and the framework!!!
 use the llm-guide-dsl for documentation suggestions
 use appendToFile /.llm-logs/${sessionId}.txt with TIMESTAMP for logging

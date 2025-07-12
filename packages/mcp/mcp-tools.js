@@ -76,7 +76,7 @@ Tool('runSnippets', {
     ],
     impl: async (ctx, { compTexts, setupCode, filePath, repoRoot }) => {
       try {
-        jb.coreRegistry.repoRoot = args.repoRoot
+        jb.coreRegistry.repoRoot = repoRoot
         const snippetArgsBase = { setupCode, filePath: pathJoin(repoRoot, filePath) }
         const compTextsProfiles = typeof compTexts.profile == 'string' ? JSON.parse(compTexts.profile) : compTexts.profile
         
