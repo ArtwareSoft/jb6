@@ -18,6 +18,58 @@ const {
 // Sample data for examples
 Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])
 
+// =============================================================================
+// PASS 1: BASIC MENTAL MODELS (Get Started Fast)
+// =============================================================================
+
+Doclet('tgpBasics', {
+  impl: exercise(
+    problem('Understanding Type-Generic Profiles (TGP) - the component system in jb6'),
+    solution({
+      code: `// TGP components are profiles (JSON-like structures) not function calls
+{
+  "$$": "data<common>pipeline",
+  "source": "%$people%",
+  "operators": [
+    {"$$": "data<common>filter", "filter": "%age% < 30"},
+    {"$$": "data<common>count"}
+  ]
+}`,
+      points: [
+        explanation('TGP components are profiles (data structures) with $$ indicating component type'),
+        syntax('$$', 'component identifier in format "type<dsl>componentName"'),
+        whenToUse('when building reusable data processing components'),
+        performance('profiles are serializable and can be stored/transmitted')
+      ]
+    }),
+    solution({
+      code: `// Shorthand syntax using function-like calls
+pipeline('%$people%', filter('%age% < 30'), count())`,
+      points: [
+        explanation('Function-like syntax is syntactic sugar that creates profiles'),
+        syntax('function call syntax', 'transpiled to profile structure with $$ property'),
+        whenToUse('when writing components inline for readability'),
+        comparison('profile syntax', { advantage: 'more readable and familiar to developers' })
+      ]
+    }),
+    mechanismUnderTheHood({
+      snippet: `// Function call transpilation:
+pipeline('%$people%', filter('%age% < 30'), count())
+
+// Becomes this profile:
+{
+  "$$": "data<common>pipeline",
+  "source": "%$people%",
+  "operators": [
+    {"$$": "data<common>filter", "filter": "%age% < 30"},
+    {"$$": "data<common>count"}
+  ]
+}`,
+      explain: 'TGP function syntax is compiled to profile structures for execution'
+    })
+  )
+})
+
 Doclet('workingWithCommonDSL', {
   impl: exercise(
     problem('Working with the common DSL - data processing components you can run right now'),
@@ -54,99 +106,6 @@ dsls.common.boolean.and          // Logical operations component`,
         syntax('dsls.common.boolean.*', 'boolean/condition components'),
         whenToUse('understanding how components are organized in DSL namespaces'),
         performance('components are globally registered and reusable across projects')
-      ]
-    })
-  )
-})
-
-Doclet('workingWithUIDSL', {
-  impl: exercise(
-    problem('Working with the ui DSL - user interface components you can compose'),
-    solution({
-      code: `// UI DSL provides user interface components
-// Let's see real UI building blocks:
-
-// 1. Simple button:
-button('Click me', log('button clicked'))
-
-// 2. Text display:
-text('Hello World')
-
-// 3. Group of controls:
-group([
-  text('Name: Homer Simpson'),
-  button('Edit', log('edit clicked')),
-  button('Delete', log('delete clicked'))
-])`,
-      points: [
-        explanation('UI DSL contains ready-to-use components for building interfaces'),
-        syntax('button(title, action)', 'interactive button component'),
-        syntax('text(content)', 'text display component'),
-        syntax('group([controls...])', 'container component for organizing other controls'),
-        whenToUse('when building user interfaces and interactive applications')
-      ]
-    }),
-    solution({
-      code: `// UI components live in the ui DSL namespace:
-dsls.ui.control.button           // Interactive button component
-dsls.ui.control.text             // Text display component
-dsls.ui.control.group            // Container component
-dsls.ui.control.html             // HTML content component
-dsls.ui.feature.id               // Component features`,
-      points: [
-        explanation('UI components are organized by type within the ui DSL'),
-        syntax('dsls.ui.control.*', 'visual control components'),
-        syntax('dsls.ui.feature.*', 'component enhancement features'),
-        whenToUse('understanding how UI components are organized in DSL namespaces'),
-        comparison('common DSL', { advantage: 'specialized for UI vs general data processing' })
-      ]
-    })
-  )
-})  
-
-Doclet('understandingDSLs', {
-  impl: exercise(
-    problem('What are DSLs? Domain-Specific Languages that organize components by purpose'),
-    solution({
-      code: `// DSLs are namespaces that group related component types by domain
-
-// COMMON DSL - General data processing
-common DSL:
-├── data<common>     → toUpperCase(), pipeline(), filter(), count() 
-├── boolean<common>  → and(), or(), not(), startsWith()
-└── action<common>   → log(), runActions()
-
-// UI DSL - User interface building  
-ui DSL:
-├── control<ui>      → button(), text(), group(), html()
-├── feature<ui>      → id(), method()
-└── layout<ui>       → (layout components)`,
-      points: [
-        explanation('DSLs organize components by domain - common for data, ui for interfaces'),
-        syntax('type<dsl>', 'components have a type within a specific DSL'),
-        whenToUse('when you need to understand what components are available for different tasks'),
-        comparison('single global namespace', {
-          advantage: 'prevents naming conflicts and enables domain-specific features'
-        })
-      ]
-    }),
-    solution({
-      code: `// Real component identifiers show the DSL structure:
-{
-  "$$": "data<common>toUpperCase",     // data type in common DSL
-  "text": "hello"
-}
-
-{  
-  "$$": "control<ui>button",           // control type in ui DSL
-  "title": "Click me",
-  "action": {"$$": "action<common>log", "logName": "clicked"}
-}`,
-      points: [
-        explanation('Every component instance shows its type<dsl> in the $$ property'),
-        syntax('"$$": "type<dsl>componentName"', 'component identifier format'),
-        whenToUse('understanding the internal structure of component instances'),
-        performance('type<dsl> format enables the system to route components correctly')
       ]
     })
   )
@@ -196,6 +155,263 @@ button('Save', log('saved'))
     })
   )
 })
+
+Doclet('innerProfiles', {
+  impl: exercise(
+    problem('Understanding inner profiles - nested component structures within other components'),
+    solution({
+      code: `// Inner profiles as direct component nesting
+pipeline(
+  '%$people%',
+  filter('%age% < 30'),    // Inner profile
+  count()                  // Inner profile
+)`,
+      points: [
+        explanation('Inner profiles are nested components within other components'),
+        syntax('direct nesting', 'components can contain other components as parameters'),
+        whenToUse('when building complex operations from simpler components'),
+        performance('inner profiles are compiled inline, no global lookup needed')
+      ]
+    }),
+    mechanismUnderTheHood({
+      snippet: `// Inner profile compilation:
+filter(and('%age% < 30', '%name% == "Bart"'))
+
+// Becomes nested profile structure:
+{
+  "$$": "data<common>filter",
+  "filter": {
+    "$$": "boolean<common>and", 
+    "items": ["%age% < 30", "%name% == \\"Bart\\""]
+  }
+}`,
+      explain: 'inner profiles create nested component hierarchies in the profile structure'
+    })
+  )
+})
+
+// =============================================================================
+// PASS 2: SYSTEM UNDERSTANDING (How It Works)
+// =============================================================================
+
+Doclet('compDefExplanation', {
+  impl: exercise(
+    problem('Understanding CompDef - component definitions that create reusable factories'),
+    solution({
+      code: `// TgpType creates type factories:
+const Data = TgpType('data', 'common')           // Type factory for data components
+
+// CompDef uses type factories to define components:
+Data('pipeline', {                               // CompDef - defines pipeline component
+  params: [
+    {id: 'source', type: 'data', mandatory: true},
+    {id: 'operators', type: 'data[]', mandatory: true, secondParamAsArray: true}
+  ],
+  impl: (ctx, {source, operators}) => {
+    return operators.reduce((data, op) => op(ctx.setData(data)), source())
+  }
+})
+
+// Now pipeline component is available globally:
+dsls.common.data.pipeline                        // Component factory created by CompDef`,
+      points: [
+        explanation('CompDef creates reusable component factories from TgpTypes'),
+        syntax('Data("componentName", { params, impl })', 'CompDef registration pattern'),
+        syntax('TgpType creates type factories, CompDef creates component factories'),
+        performance('CompDef enables component reuse across the entire system'),
+        whenToUse('when creating new components that others can use')
+      ]
+    }),
+    solution({
+      code: `// Component instantiation uses CompDef:
+pipeline('%$people%', filter('%age% < 30'), count())     
+// ^^^^^^^^ Uses the CompDef we just defined
+
+// The progression is:
+// 1. TgpType('data', 'common') creates type factory
+// 2. Data('pipeline', {...}) creates component factory  
+// 3. pipeline(...args) creates component instance`,
+      points: [
+        explanation('Three-level structure: TgpType → CompDef → Instance'),
+        syntax('pipeline(...)', 'uses CompDef to create profile instances'),
+        performance('CompDef factories are cached and reused for efficiency'),
+        comparison('traditional functions', { advantage: 'profiles can be serialized and modified' })
+      ]
+    })
+  )
+})
+
+Doclet('understandingDSLs', {
+  impl: exercise(
+    problem('What are DSLs? Domain-Specific Languages that organize components by purpose'),
+    solution({
+      code: `// DSLs are namespaces that group related component types by domain
+
+// COMMON DSL - General data processing
+common DSL:
+├── data<common>     → toUpperCase(), pipeline(), filter(), count() 
+├── boolean<common>  → and(), or(), not(), startsWith()
+└── action<common>   → log(), runActions()
+
+// UI DSL - User interface building  
+ui DSL:
+├── control<ui>      → button(), text(), group(), html()
+├── feature<ui>      → id(), method()
+└── layout<ui>       → (layout components)`,
+      points: [
+        explanation('DSLs organize components by domain - common for data, ui for interfaces'),
+        syntax('type<dsl>', 'components have a type within a specific DSL'),
+        whenToUse('when you need to understand what components are available for different tasks'),
+        comparison('single global namespace', {
+          advantage: 'prevents naming conflicts and enables domain-specific features'
+        })
+      ]
+    }),
+    solution({
+      code: `// Real component identifiers show the DSL structure:
+{
+  "$$": "data<common>toUpperCase",     // data type in common DSL
+  "text": "hello"
+}
+
+{  
+  "$$": "control<ui>button",           // control type in ui DSL
+  "title": "Click me",
+  "action": {"$$": "action<common>log", "logName": "clicked"}
+}`,
+      points: [
+        explanation('Every component instance shows its type<dsl> in the $$ property'),
+        syntax('"$$": "type<dsl>componentName"', 'component identifier format'),
+        whenToUse('understanding the internal structure of component instances'),
+        performance('type<dsl> format enables the system to route components correctly')
+      ]
+    })
+  )
+})
+
+Doclet('workingWithUIDSL', {
+  impl: exercise(
+    problem('Working with the ui DSL - user interface components you can compose'),
+    solution({
+      code: `// UI DSL provides user interface components
+// Let's see real UI building blocks:
+
+// 1. Simple button:
+button('Click me', log('button clicked'))
+
+// 2. Text display:
+text('Hello World')
+
+// 3. Group of controls:
+group([
+  text('Name: Homer Simpson'),
+  button('Edit', log('edit clicked')),
+  button('Delete', log('delete clicked'))
+])`,
+      points: [
+        explanation('UI DSL contains ready-to-use components for building interfaces'),
+        syntax('button(title, action)', 'interactive button component'),
+        syntax('text(content)', 'text display component'),
+        syntax('group([controls...])', 'container component for organizing other controls'),
+        whenToUse('when building user interfaces and interactive applications')
+      ]
+    }),
+    solution({
+      code: `// UI components live in the ui DSL namespace:
+dsls.ui.control.button           // Interactive button component
+dsls.ui.control.text             // Text display component
+dsls.ui.control.group            // Container component
+dsls.ui.control.html             // HTML content component
+dsls.ui.feature.id               // Component features`,
+      points: [
+        explanation('UI components are organized by type within the ui DSL'),
+        syntax('dsls.ui.control.*', 'visual control components'),
+        syntax('dsls.ui.feature.*', 'component enhancement features'),
+        whenToUse('understanding how UI components are organized in DSL namespaces'),
+        comparison('common DSL', { advantage: 'specialized for UI vs general data processing' })
+      ]
+    })
+  )
+})
+
+Doclet('argsPosition', {
+  impl: exercise(
+    problem('Understanding positional arguments - how component parameters are mapped by position'),
+    solution({
+      code: `// Positional arguments in order
+pipeline('%$people%', filter('%age% < 30'), count())
+//       ^source      ^operator1          ^operator2`,
+      points: [
+        explanation('Arguments map to component parameters by position'),
+        syntax('positional mapping', 'first arg to first param, second to second, etc.'),
+        whenToUse('when component has clear parameter order'),
+        performance('most efficient argument mapping method')
+      ]
+    }),
+    doNot('pipeline(filter("%age% < 30"), "%$people%", count())', {
+      reason: 'wrong parameter order - source must be first, operators follow'
+    }),
+    mechanismUnderTheHood({
+      snippet: `// Parameter mapping by position:
+pipeline('%$people%', filter('%age% < 30'), count())
+
+// Maps to parameter definitions:
+{
+  "$$": "data<common>pipeline",
+  "source": "%$people%",           // position 0 -> 'source' param
+  "operators": [                   // position 1+ -> 'operators' param array
+    {"$$": "data<common>filter", "filter": "%age% < 30"},
+    {"$$": "data<common>count"}
+  ]
+}`,
+      explain: 'positional arguments are mapped to named parameters according to component definition'
+    })
+  )
+})
+
+Doclet('argsByValue', {
+  impl: exercise(
+    problem('Understanding named arguments - explicit parameter specification using object syntax'),
+    solution({
+      code: `// Named arguments using object notation
+pipeline({
+  source: '%$people%',
+  operators: [
+    filter('%age% < 30'),
+    count()
+  ]
+})`,
+      points: [
+        explanation('Named arguments use object syntax with explicit parameter names'),
+        syntax('object notation', 'parameter names as object keys'),
+        whenToUse('when parameter order is unclear or for complex components'),
+        comparison('positional args', { advantage: 'self-documenting and order-independent' })
+      ]
+    }),
+    mechanismUnderTheHood({
+      snippet: `// Named argument compilation:
+pipeline({
+  source: '%$people%',
+  operators: [filter('%age% < 30'), count()]
+})
+
+// Creates same profile as positional version:
+{
+  "$$": "data<common>pipeline", 
+  "source": "%$people%",
+  "operators": [
+    {"$$": "data<common>filter", "filter": "%age% < 30"},
+    {"$$": "data<common>count"}
+  ]
+}`,
+      explain: 'named arguments provide alternative syntax but create identical profile structures'
+    })
+  )
+})
+
+// =============================================================================
+// PASS 3: ADVANCED COMPOSITION (Build Complex Things)
+// =============================================================================
 
 Doclet('componentsWithinComponents', {
   impl: exercise(
@@ -327,6 +543,151 @@ pipeline(
     })
   )
 })
+
+Doclet('globalProfiles', {
+  impl: exercise(
+    problem('Understanding global profiles - reusable component definitions stored in the system'),
+    solution({
+      code: `// Global profile definition using DSL functions
+Data('peopleUnder30', {
+  impl: pipeline('%$people%', filter('%age% < 30'), count())
+})
+
+// Usage in other components via variable reference
+'%$peopleUnder30%'  // resolves to the stored component result`,
+      points: [
+        explanation('Global profiles are reusable components stored in the global registry'),
+        syntax('Data(), Test()', 'DSL functions that register global profiles'),
+        whenToUse('when creating reusable components that can be referenced by name'),
+        performance('global profiles enable component reuse and modular architecture')
+      ]
+    }),
+    mechanismUnderTheHood({
+      snippet: `// Global profile registration:
+Data('peopleUnder30', {
+  impl: pipeline('%$people%', filter('%age% < 30'), count())
+})
+
+// Creates jbCompProxy in global registry:
+dsls.common.data.peopleUnder30 = jbCompProxy(jbComp)
+
+// Proxy behavior:
+// - Function call: peopleUnder30(...args) -> calcArgs(jbComp, args) 
+// - $run method: peopleUnder30.$run() -> jbComp.runProfile(...)
+// - asJbComp access: peopleUnder30[asJbComp] -> returns the actual jbComp JSON
+
+// Variable reference execution:
+'%$peopleUnder30%' // calls proxy.$run() -> executes component -> returns result`,
+      explain: 'global profiles create jbCompProxy objects that handle function calls and provide $run execution'
+    })
+  )
+})
+
+// =============================================================================
+// PASS 4: PRODUCTION PATTERNS (Real-World Usage)
+// =============================================================================
+
+Doclet('templating', {
+  impl: exercise(
+    problem('Understanding templating - creating profiles with parameters instead of function calls'),
+    solution({
+      code: `// Templating: Component call creates profile template
+pipeline('%$people%', filter('%age% < 30'), count())
+
+// Creates profile template with parameters:
+{
+  "$$": "data<common>pipeline",
+  "source": "%$people%",
+  "operators": [
+    {"$$": "data<common>filter", "filter": "%age% < 30"},
+    {"$$": "data<common>count"}
+  ]
+}`,
+      points: [
+        explanation('Templating creates profile structures with parameter slots'),
+        syntax('component calls', 'function-like syntax generates templates, not executes functions'),
+        whenToUse('when building component structures for later execution'),
+        performance('templates are data structures that can be stored, modified, and executed')
+      ]
+    }),
+    solution({
+      code: `// Template with parameters vs execution
+const template = pipeline('%$people%', count())  // Creates template
+const result = template.$run()                   // Executes template
+
+// NOT function execution:
+// pipeline() does NOT immediately run - it creates a template!`,
+      points: [
+        explanation('Component calls create templates, $run() executes them'),
+        syntax('template vs execution', 'clear separation between template creation and execution'),
+        whenToUse('when you need to create reusable templates'),
+        comparison('traditional functions', { advantage: 'templates can be inspected, modified, and reused' })
+      ]
+    }),
+    solution({
+      code: `// Parameter templating with placeholders
+filter('%age% < 30')  // Template with parameter placeholder
+
+// Becomes:
+{
+  "$$": "data<common>filter", 
+  "filter": "%age% < 30"      // Parameter slot for runtime resolution
+}`,
+      points: [
+        explanation('Parameters become template slots filled at execution time'),
+        syntax('parameter placeholders', '%age% becomes slot in template structure'),
+        whenToUse('when creating templates that work with different data contexts'),
+        performance('parameter resolution happens at execution, not template creation')
+      ]
+    }),
+    mechanismUnderTheHood({
+      snippet: `// Templating vs Function Call paradigm:
+
+// Traditional Function Call:
+function pipeline(source, ...operators) {
+  // Immediate execution
+  return operators.reduce((data, op) => op(data), source)
+}
+
+// TGP Templating:
+function pipeline(source, ...operators) {
+  // Template creation
+  return {
+    $$: "data<common>pipeline",
+    source: source,
+    operators: operators
+  }
+}
+
+// Execution happens separately:
+template.$run(ctx) // → actual execution with context`,
+      explain: 'templating separates template creation from execution, enabling inspection and modification'
+    })
+  )
+})
+
+Doclet('forwardReferences', {
+  impl: exercise(
+    problem('Using components before they are defined in default values'),
+    solution({
+      code: `// Forward reference for default value:
+ const fileBased = ActivityDetection.forward('fileBased')
+ 
+ {id: 'activityDetection', defaultValue: fileBased()}
+ 
+ // Later: ActivityDetection('fileBased', {...})`,
+      points: [
+        explanation('Forward references solve component ordering in default values'),
+        syntax('TgpType.forward(\'id\')', 'creates lazy proxy for later resolution'),
+        whenToUse('when component used as default before definition')
+      ]
+    }),
+    mechanismUnderTheHood({
+      snippet: `apply: () => () => dsls[dsl][type][componentId]()`,
+      explain: 'returns function that resolves component when actually needed'
+    })
+  )
+ })
 
 Doclet('executionPatterns', {
   impl: exercise(
@@ -471,281 +832,6 @@ button(toUpperCase('save'), runActions([...]))  // data<common> can fill ui titl
         whenToUse('when building maintainable, reusable component-based systems'),
         comparison('traditional programming', { advantage: 'declarative composition with type safety across domains' })
       ]
-    })
-  )
-})
-
-Doclet('templating', {
-  impl: exercise(
-    problem('Understanding templating - creating profiles with parameters instead of function calls'),
-    solution({
-      code: `// Templating: Component call creates profile template
-pipeline('%$people%', filter('%age% < 30'), count())
-
-// Creates profile template with parameters:
-{
-  "$$": "data<common>pipeline",
-  "source": "%$people%",
-  "operators": [
-    {"$$": "data<common>filter", "filter": "%age% < 30"},
-    {"$$": "data<common>count"}
-  ]
-}`,
-      points: [
-        explanation('Templating creates profile structures with parameter slots'),
-        syntax('component calls', 'function-like syntax generates templates, not executes functions'),
-        whenToUse('when building component structures for later execution'),
-        performance('templates are data structures that can be stored, modified, and executed')
-      ]
-    }),
-    solution({
-      code: `// Template with parameters vs execution
-const template = pipeline('%$people%', count())  // Creates template
-const result = template.$run()                   // Executes template
-
-// NOT function execution:
-// pipeline() does NOT immediately run - it creates a template!`,
-      points: [
-        explanation('Component calls create templates, $run() executes them'),
-        syntax('template vs execution', 'clear separation between template creation and execution'),
-        whenToUse('when you need to create reusable templates'),
-        comparison('traditional functions', { advantage: 'templates can be inspected, modified, and reused' })
-      ]
-    }),
-    solution({
-      code: `// Parameter templating with placeholders
-filter('%age% < 30')  // Template with parameter placeholder
-
-// Becomes:
-{
-  "$$": "data<common>filter", 
-  "filter": "%age% < 30"      // Parameter slot for runtime resolution
-}`,
-      points: [
-        explanation('Parameters become template slots filled at execution time'),
-        syntax('parameter placeholders', '%age% becomes slot in template structure'),
-        whenToUse('when creating templates that work with different data contexts'),
-        performance('parameter resolution happens at execution, not template creation')
-      ]
-    }),
-    mechanismUnderTheHood({
-      snippet: `// Templating vs Function Call paradigm:
-
-// Traditional Function Call:
-function pipeline(source, ...operators) {
-  // Immediate execution
-  return operators.reduce((data, op) => op(data), source)
-}
-
-// TGP Templating:
-function pipeline(source, ...operators) {
-  // Template creation
-  return {
-    $$: "data<common>pipeline",
-    source: source,
-    operators: operators
-  }
-}
-
-// Execution happens separately:
-template.$run(ctx) // → actual execution with context`,
-      explain: 'templating separates template creation from execution, enabling inspection and modification'
-    })
-  )
-})
-
-Doclet('tgpBasics', {
-  impl: exercise(
-    problem('Understanding Type-Generic Profiles (TGP) - the component system in jb6'),
-    solution({
-      code: `// TGP components are profiles (JSON-like structures) not function calls
-{
-  "$$": "data<common>pipeline",
-  "source": "%$people%",
-  "operators": [
-    {"$$": "data<common>filter", "filter": "%age% < 30"},
-    {"$$": "data<common>count"}
-  ]
-}`,
-      points: [
-        explanation('TGP components are profiles (data structures) with $$ indicating component type'),
-        syntax('$$', 'component identifier in format "type<dsl>componentName"'),
-        whenToUse('when building reusable data processing components'),
-        performance('profiles are serializable and can be stored/transmitted')
-      ]
-    }),
-    solution({
-      code: `// Shorthand syntax using function-like calls
-pipeline('%$people%', filter('%age% < 30'), count())`,
-      points: [
-        explanation('Function-like syntax is syntactic sugar that creates profiles'),
-        syntax('function call syntax', 'transpiled to profile structure with $$ property'),
-        whenToUse('when writing components inline for readability'),
-        comparison('profile syntax', { advantage: 'more readable and familiar to developers' })
-      ]
-    }),
-    mechanismUnderTheHood({
-      snippet: `// Function call transpilation:
-pipeline('%$people%', filter('%age% < 30'), count())
-
-// Becomes this profile:
-{
-  "$$": "data<common>pipeline",
-  "source": "%$people%",
-  "operators": [
-    {"$$": "data<common>filter", "filter": "%age% < 30"},
-    {"$$": "data<common>count"}
-  ]
-}`,
-      explain: 'TGP function syntax is compiled to profile structures for execution'
-    })
-  )
-})
-
-Doclet('globalProfiles', {
-  impl: exercise(
-    problem('Understanding global profiles - reusable component definitions stored in the system'),
-    solution({
-      code: `// Global profile definition using DSL functions
-Data('peopleUnder30', {
-  impl: pipeline('%$people%', filter('%age% < 30'), count())
-})
-
-// Usage in other components via variable reference
-'%$peopleUnder30%'  // resolves to the stored component result`,
-      points: [
-        explanation('Global profiles are reusable components stored in the global registry'),
-        syntax('Data(), Test()', 'DSL functions that register global profiles'),
-        whenToUse('when creating reusable components that can be referenced by name'),
-        performance('global profiles enable component reuse and modular architecture')
-      ]
-    }),
-    mechanismUnderTheHood({
-      snippet: `// Global profile registration:
-Data('peopleUnder30', {
-  impl: pipeline('%$people%', filter('%age% < 30'), count())
-})
-
-// Creates jbCompProxy in global registry:
-dsls.common.data.peopleUnder30 = jbCompProxy(jbComp)
-
-// Proxy behavior:
-// - Function call: peopleUnder30(...args) -> calcArgs(jbComp, args) 
-// - $run method: peopleUnder30.$run() -> jbComp.runProfile(...)
-// - asJbComp access: peopleUnder30[asJbComp] -> returns the actual jbComp JSON
-
-// Variable reference execution:
-'%$peopleUnder30%' // calls proxy.$run() -> executes component -> returns result`,
-      explain: 'global profiles create jbCompProxy objects that handle function calls and provide $run execution'
-    })
-  )
-})
-
-Doclet('innerProfiles', {
-  impl: exercise(
-    problem('Understanding inner profiles - nested component structures within other components'),
-    solution({
-      code: `// Inner profiles as direct component nesting
-pipeline(
-  '%$people%',
-  filter('%age% < 30'),    // Inner profile
-  count()                  // Inner profile
-)`,
-      points: [
-        explanation('Inner profiles are nested components within other components'),
-        syntax('direct nesting', 'components can contain other components as parameters'),
-        whenToUse('when building complex operations from simpler components'),
-        performance('inner profiles are compiled inline, no global lookup needed')
-      ]
-    }),
-    mechanismUnderTheHood({
-      snippet: `// Inner profile compilation:
-filter(and('%age% < 30', '%name% == "Bart"'))
-
-// Becomes nested profile structure:
-{
-  "$$": "data<common>filter",
-  "filter": {
-    "$$": "boolean<common>and", 
-    "items": ["%age% < 30", "%name% == \\"Bart\\""]
-  }
-}`,
-      explain: 'inner profiles create nested component hierarchies in the profile structure'
-    })
-  )
-})
-
-Doclet('argsPosition', {
-  impl: exercise(
-    problem('Understanding positional arguments - how component parameters are mapped by position'),
-    solution({
-      code: `// Positional arguments in order
-pipeline('%$people%', filter('%age% < 30'), count())
-//       ^source      ^operator1          ^operator2`,
-      points: [
-        explanation('Arguments map to component parameters by position'),
-        syntax('positional mapping', 'first arg to first param, second to second, etc.'),
-        whenToUse('when component has clear parameter order'),
-        performance('most efficient argument mapping method')
-      ]
-    }),
-    doNot('pipeline(filter("%age% < 30"), "%$people%", count())', {
-      reason: 'wrong parameter order - source must be first, operators follow'
-    }),
-    mechanismUnderTheHood({
-      snippet: `// Parameter mapping by position:
-pipeline('%$people%', filter('%age% < 30'), count())
-
-// Maps to parameter definitions:
-{
-  "$$": "data<common>pipeline",
-  "source": "%$people%",           // position 0 -> 'source' param
-  "operators": [                   // position 1+ -> 'operators' param array
-    {"$$": "data<common>filter", "filter": "%age% < 30"},
-    {"$$": "data<common>count"}
-  ]
-}`,
-      explain: 'positional arguments are mapped to named parameters according to component definition'
-    })
-  )
-})
-
-Doclet('argsByValue', {
-  impl: exercise(
-    problem('Understanding named arguments - explicit parameter specification using object syntax'),
-    solution({
-      code: `// Named arguments using object notation
-pipeline({
-  source: '%$people%',
-  operators: [
-    filter('%age% < 30'),
-    count()
-  ]
-})`,
-      points: [
-        explanation('Named arguments use object syntax with explicit parameter names'),
-        syntax('object notation', 'parameter names as object keys'),
-        whenToUse('when parameter order is unclear or for complex components'),
-        comparison('positional args', { advantage: 'self-documenting and order-independent' })
-      ]
-    }),
-    mechanismUnderTheHood({
-      snippet: `// Named argument compilation:
-pipeline({
-  source: '%$people%',
-  operators: [filter('%age% < 30'), count()]
-})
-
-// Creates same profile as positional version:
-{
-  "$$": "data<common>pipeline", 
-  "source": "%$people%",
-  "operators": [
-    {"$$": "data<common>filter", "filter": "%age% < 30"},
-    {"$$": "data<common>count"}
-  ]
-}`,
-      explain: 'named arguments provide alternative syntax but create identical profile structures'
     })
   )
 })

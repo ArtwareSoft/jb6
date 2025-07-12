@@ -7,8 +7,8 @@ const {
   test: { Test, 
     test: { dataTest }
   },
-  'social-db': { DbImpl},
-  common: { Data }
+  'social-db': { DbImpl },
+  common: { Data, Action }
 } = dsls
 
 
@@ -125,34 +125,38 @@ DbImpl('inMemoryTesting', {
 
 Test('socialDbSingleUser', {
   params: [
-    {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'initialData', as: 'object', defaultValue: {}},
-    {id: 'operations', type: 'action<common>', mandatory: true},
-    {id: 'expectedResult', dynamic: true, mandatory: true},
+    {id: 'operations', type: 'action<common>', dynamic: true, mandatory: true},
+    {id: 'query', type: 'data<common>', dynamic: true, mandatory: true},
+    {id: 'expectedResult', dynamic: true, mandatory: true}
   ],
   impl: dataTest({
-    calculate: async (ctx, {}, {dataStore, operations, initialData}) => {
-      // put result and cache
-    },
+    vars: [
+      Var('userId', 'alice'),
+      Var('userId', 'alicePrivateRoom')
+    ],
+    calculate: '%$query()%',
     expectedResult: '%$expectedResult()%',
+    runBefore: '%$operations()',
     timeout: 5000,
     includeTestRes: true
   })
 })
 
+Action('runInParallel', {
+  params: [
+    {id: 'actions', type: 'action<common>[]', dynamic: true, mandatory: true}
+  ]
+})
+const { runInParallel } = dsls.common.action
+
 Test('socialDb2Users', {
   params: [
-    {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'initialData', as: 'object', defaultValue: {}},
-    {id: 'userA', type: 'action<common>', mandatory: true},
-    {id: 'userB', type: 'action<common>', mandatory: true},
-    {id: 'expectedResult', dynamic: true, mandatory: true},
+    {id: 'userAOperations', type: 'action<common>', dynamic: true, mandatory: true},
+    {id: 'userBOperations', type: 'action<common>', dynamic: true, mandatory: true},
+    {id: 'expectedResult', dynamic: true, mandatory: true}
   ],
-  impl: dataTest({
-    calculate: async (ctx, {}, {...}) => {
-      // put result and cache
-    },
-    expectedResult: '%$expectedResult()%',
+  impl: dataTest('%$query()%', '%$expectedResult()%', {
+    runBefore: runInParallel('%$userAOperations()','%$userBOperations()'),
     timeout: 3000,
     includeTestRes: true
   })
@@ -164,23 +168,20 @@ UserType('userType', {
   params: [
     {id: 'title', as: 'string', mandatory: true},
     {id: 'noOfUsers', as: 'number', mandatory: true},
-    {id: 'actions', type: 'action<common>', mandatory: true},
+    {id: 'actions', type: 'action<common>', dynamic: true, mandatory: true},
     {id: 'dbDelayAvgMsec', as: 'number', mandatory: true},
-    {id: 'dbDelayVariance', as: 'number', mandatory: true},
+    {id: 'dbDelayVariance', as: 'number', mandatory: true}
   ]
 })
 
 Test('socialDbManyUsers', {
   params: [
-    {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'initialData', as: 'object', defaultValue: {}},
     {id: 'users', type: 'user-type[]', mandatory: true},
-    {id: 'expectedResult', dynamic: true, mandatory: true},
+    {id: 'query', type: 'data<common>', dynamic: true, mandatory: true},
+    {id: 'expectedResult', dynamic: true, mandatory: true}
   ],
-  impl: dataTest({
-    calculate: async (ctx, {}, {...}) => {
-    },
-    expectedResult: '%$expectedResult()%',
+  impl: dataTest('%$query()%', '%$expectedResult()%', {
+    runBefore: runInParallel('%$users/runActions()'),
     timeout: 3000,
     includeTestRes: true
   })

@@ -12,7 +12,7 @@ const {
   } 
 } = dsls
 
-Doclet('latestActivityDetectionEssentials', {
+Doclet('activityDetectionEssentials', {
   impl: exercise(
     problem('What does activity detection actually do and when should you use it?'),
     solution({
@@ -39,7 +39,7 @@ chatRoom.subscribeToUpdates(userId, roomId, (event) => {
     solution({
       code: `// WHEN TO USE: Multi-user real-time coordination
 const chatRoom = dataStore('room', {
-  latestActivityDetection: fileBased(),     // ✅ Multiple users, real-time needed
+  activityDetection: fileBased(),     // ✅ Multiple users, real-time needed
   writeAccess: 'multiUser',
   dataStructure: 'appendOnly'
 })

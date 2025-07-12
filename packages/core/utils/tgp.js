@@ -55,7 +55,11 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
     }
     return tgpType[id]
   }
-  Object.assign(tgpType, {capitalLetterId, type, dsl, dslType})
+
+  const forward = (componentId) => new Proxy(() => 0, {
+    apply: () => () => dsls[dsl][type][componentId]()
+  })
+  Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward})
   dsls[dsl] = dsls[dsl] || {}
   dsls[dsl][type] = dsls[dsl][type] || {}
   dsls[dsl][capitalLetterId] = tgpType

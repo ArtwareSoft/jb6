@@ -2,8 +2,6 @@ import { coreUtils } from '@jb6/core'
 import { startMcpServer } from './mcp-utils.js'
 import './mcp-tools.js'
 import './mcp-fs-tools.js'
-import './mcp-prompts.js'
-
 
 console.error('Starting jb6 MCP server script...')
 if (coreUtils.isNode) {

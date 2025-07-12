@@ -2,43 +2,60 @@ import { dsls,jb, coreUtils } from '@jb6/core'
 
 const { 
   tgp: { TgpType },
-  'social-db': { DbImpl, CollaborativeWrite }
 } = dsls
 
-// Operation logging for precise recovery - tracks what each stamp was trying to accomplish
-const operationLog = new Map()  // stamp -> operation details
+const Sharing = TgpType('sharing', 'social-db')
+const ActivityDetection = TgpType('activity-detection', 'social-db')
+const NotificationMechanism = TgpType('notification-mechanism', 'social-db')
+const PollingStrategy = TgpType('polling-strategy', 'social-db')
 
-function logOperation(stamp, operation) {
-  operationLog.set(stamp, {
-    stamp,
-    type: operation.type,        // 'ADD_ITEM', 'UPDATE_ITEM', 'DELETE_ITEM', 'SEND_MESSAGE'
-    item: operation.item,        // The item being modified
-    targetId: operation.targetId, // For deletes
-    timestamp: Date.now(),
-    userId: stamp.split(':')[0]
-  })
-  
-  // Clean old operations (keep last 1000 for recovery)
-  if (operationLog.size > 1000) {
-    const oldestStamps = Array.from(operationLog.keys()).slice(0, 100)
-    oldestStamps.forEach(stamp => operationLog.delete(stamp))
-  }
-}
+const fileBased = ActivityDetection.forward('fileBased')
+const adaptive = PollingStrategy.forward('adaptive')
+const none = NotificationMechanism.forward('none')
 
-function getOperationByStamp(stamp) {
-  return operationLog.get(stamp)
-}
+Sharing('userOnly', {
+  description: 'no one but the user can see the content, including the system. single global file',
+  impl: () => ({ singleWriter: true, readVisibility: 'userOnly'})
+})
 
-CollaborativeWrite('multiUserDistributed', {
+Sharing('roomUserOnly', {
+  description: 'no one but the user can see the content, including the system. instance per room',
+  impl: () => ({ singleWriter: true, readVisibility: 'roomUserOnly'})
+})
+
+Sharing('friends', {
+  description: 'anyone who knows the user id can see the content, including all participants in user`s rooms',
+  impl: () => ({ singleWriter: true, readVisibility: 'friends'})
+})
+
+Sharing('roomReadOnly', {
+  impl: () => ({ singleWriter: true, readVisibility: 'roomReadOnly'})
+})
+
+Sharing('systemAccessible', {
+  description: 'only the user and the system can see the content. E.g, user notification keys',
+  impl: () => ({ singleWriter: true, readVisibility: 'systemAccessible'})
+})
+
+Sharing('publicGlobal', {
+  description: 'single global file, accessible to anyone who knows its name',
+  impl: () => ({ singleWriter: true, readVisibility: 'publicGlobal'})
+})
+
+Sharing('collaborative', {
+  description: 'only room members can see the content, and write to it',
   params: [
-    {id: 'latestActivityDetection', type: 'latest-activity-detection', defaultValue: fileBased()}
+    {id: 'dataWriteMethod', as: 'string', options: 'appendOnly,reWriteWithRefine', mandatory: true, defaultValue: 'reWriteWithRefine'},
+    {id: 'activityDetection', type: 'activity-detection', defaultValue: fileBased()}
   ],
-  impl: (ctx, {latestActivityDetection}) => {
-    
+  impl: (ctx, {activityDetection, dataWriteMethod}) => {
     return {
-      isAlone: latestActivityDetection.isAlone,
-      subscribeToUpdates: latestActivityDetection.subscribeToActivity,
-      notifyInternalActivity: latestActivityDetection.notifyMyActivity,
+      singleWriter: false, 
+      readVisibility: 'collaborative',
+      isAlone: activityDetection.isAlone,
+      subscribeToUpdates: activityDetection.subscribeToActivity,
+      notifyInternalActivity: activityDetection.notifyMyActivity,
+      dataWriteMethod,
       
       // Race condition recovery: merge fresh server data with local cache to detect lost items
       // Follows patterns from refine-race-problem-llm-guide.js
@@ -64,9 +81,7 @@ CollaborativeWrite('multiUserDistributed', {
 // ACTIVITY DETECTION - Orchestrates polling + notifications
 // =============================================================================
 
-const LatestActivityDetection = TgpType('latest-activity-detection', 'social-db')
-
-LatestActivityDetection('fileBased', {
+ActivityDetection('fileBased', {
   params: [
     {id: 'pollingStrategy', type: 'polling-strategy<social-db>', defaultValue: adaptive()},
     {id: 'notificationMechanism', type: 'notification-mechanism<social-db>', defaultValue: none()},
@@ -218,7 +233,7 @@ LatestActivityDetection('fileBased', {
       }
     }
     
-    // Core LatestActivityDetection interface
+    // Core ActivityDetection interface
     return {
       // Core interface - what consumers actually need:
       getLatestExternalActivity: async (userId, roomId) => lastExternalActivity,
@@ -279,7 +294,7 @@ LatestActivityDetection('fileBased', {
   }
 })
 
-LatestActivityDetection('pushNotifications', {
+ActivityDetection('pushNotifications', {
   params: [
     {id: 'pushServerUrl', as: 'string', mandatory: true},
     {id: 'fallbackToPolling', as: 'boolean', defaultValue: true},
@@ -342,186 +357,8 @@ LatestActivityDetection('pushNotifications', {
 })
 
 // =============================================================================
-// SINGLE-FILE IMPLEMENTATIONS - For comparison and specific use cases
-// =============================================================================
-
-LatestActivityDetection('singleSharedFile', {
-  params: [
-    {id: 'pollingStrategy', type: 'polling-strategy<social-db>', defaultValue: fixed({interval: 3000})},
-    {id: 'notificationMechanism', type: 'notification-mechanism<social-db>', defaultValue: none()},
-    {id: 'maxRetries', as: 'number', defaultValue: 3, description: 'Retries for conflict resolution'}
-  ],
-  impl: (ctx, {pollingStrategy, notificationMechanism, maxRetries}) => {
-    
-    let lastExternalActivity = -1
-    let myLastActivity = Date.now()
-    let conflictCount = 0
-    const handlers = {}
-    
-    // Activity notification system
-    function notifyExternalActivity(userId, roomId, event) {
-      lastExternalActivity = Date.now()
-      pollingStrategy.recordExternalActivity()
-      
-      ;(handlers[roomId] || []).forEach(h => h({
-        externalActivity: true, 
-        latestTimestamp: lastExternalActivity,
-        pollingStats: pollingStrategy.getStats(),
-        notificationStats: notificationMechanism.getStats(),
-        conflictCount,
-        ...event
-      }))
-    }
-    
-    // Smart polling function
-    async function pollForActivity(userId, roomId) {
-      try {
-        const {computeUrl, readFile} = jb.socialDbUtils
-        const activityUrl = computeUrl(userId, roomId, {
-          bucketName: '', storagePrefix: 'files', fileName: 'shared-activity',
-          writeAccess: 'multiUser', readVisibility: 'roomMembers'
-        })
-        
-        const sharedActivity = await readFile(activityUrl, {}, {})
-        
-        // Find latest external activity
-        const otherUsers = Object.keys(sharedActivity).filter(k => k !== userId && k !== 'lastUpdate' && k !== 'updateCount')
-        const latestExternal = otherUsers
-          .map(id => sharedActivity[id]?.timestamp || 0)
-          .reduce((max, ts) => Math.max(max, ts), 0)
-        
-        const activityDetected = latestExternal > lastExternalActivity
-        
-        if (activityDetected) {
-          const activeUser = otherUsers.find(id => 
-            sharedActivity[id]?.timestamp === latestExternal
-          )
-          
-          notifyExternalActivity(userId, roomId, {
-            fromUser: activeUser,
-            userCount: otherUsers.length + 1
-          })
-        }
-        
-        return activityDetected
-        
-      } catch (err) {
-        console.warn('Failed to poll shared activity:', err)
-        return false
-      }
-    }
-    
-    // Optimistic update without excessive retries
-    async function updateSharedActivityFile(userId, roomId, action) {
-      const {computeUrl, readFile, writeFile} = jb.socialDbUtils
-      const activityUrl = computeUrl(userId, roomId, {
-        bucketName: '', storagePrefix: 'files', fileName: 'shared-activity',
-        writeAccess: 'multiUser', readVisibility: 'roomMembers'
-      })
-      
-      try {
-        const currentActivity = await readFile(activityUrl, {}, {})
-        const updatedActivity = {
-          ...currentActivity,
-          [userId]: {
-            timestamp: myLastActivity,
-            action: action?.action || 'activity'
-          },
-          lastUpdate: Date.now(),
-          updateCount: (currentActivity.updateCount || 0) + 1
-        }
-        
-        await writeFile(activityUrl, updatedActivity, {})
-        return updatedActivity
-        
-      } catch (err) {
-        conflictCount++
-        console.warn(`Conflict updating shared file for ${userId}:`, err.message)
-        throw err
-      }
-    }
-    
-    return {
-      getLatestExternalActivity: async (userId, roomId) => lastExternalActivity,
-      
-      subscribeToActivity: (userId, roomId, callback, {triggerNow} = {}) => {
-        if (!handlers[roomId]) {
-          handlers[roomId] = [callback]
-          
-          // Start intelligent polling
-          pollingStrategy.startPolling(() => pollForActivity(userId, roomId))
-        } else {
-          handlers[roomId].push(callback)
-        }
-        
-        if (triggerNow) callback({
-          internalActivity: true, 
-          latestTimestamp: myLastActivity,
-          pollingStats: pollingStrategy.getStats(),
-          notificationStats: notificationMechanism.getStats()
-        })
-        
-        return function unSubscribe() {
-          const index = handlers[roomId]?.findIndex(h => h === callback)
-          if (index !== -1) {
-            handlers[roomId].splice(index, 1)
-            
-            // Stop polling if no more subscribers
-            if (handlers[roomId].length === 0) {
-              pollingStrategy.stopPolling()
-            }
-          }
-        }
-      },
-      
-      notifyMyActivity: async (userId, roomId, action) => {
-        myLastActivity = Date.now()
-        
-        // Immediate local notification (optimistic)
-        if (!action?.scroll) {
-          (handlers[roomId] || []).forEach(h => h({
-            internalActivity: true, 
-            latestTimestamp: myLastActivity,
-            pollingStats: pollingStrategy.getStats(),
-            notificationStats: notificationMechanism.getStats(),
-            ...action
-          }))
-        }
-        
-        // Notify others via notification mechanism
-        if (action?.action === 'sendMessage') {
-          await notificationMechanism.notifyOthers(userId, roomId, action)
-        }
-        
-        // Best-effort update to shared file
-        try {
-          await updateSharedActivityFile(userId, roomId, action)
-        } catch (err) {
-          // Silent failure - polling will detect eventual consistency
-        }
-      },
-      
-      // Utilities
-      isAlone: () => lastExternalActivity === -1 || (Date.now() - lastExternalActivity) > 300000,
-      timeSinceExternalActivity: () => lastExternalActivity === -1 ? 10000000 : Date.now() - lastExternalActivity,
-      timeSinceMyLastActivity: () => Date.now() - myLastActivity,
-      
-      // Stats
-      getPollingStats: () => pollingStrategy.getStats(),
-      getNotificationStats: () => notificationMechanism.getStats(),
-      getConflictStats: () => ({
-        conflictCount,
-        recommendation: conflictCount > 20 ? 'SWITCH_TO_FILE_BASED' : conflictCount > 10 ? 'REDUCE_USERS' : 'OK'
-      })
-    }
-  }
-})
-
-// =============================================================================
 // NOTIFICATION MECHANISMS - How to alert other users about activity
 // =============================================================================
-
-const NotificationMechanism = TgpType('notification-mechanism', 'social-db')
 
 NotificationMechanism('none', {
   impl: () => ({
@@ -643,8 +480,6 @@ NotificationMechanism('webhook', {
 // =============================================================================
 // POLLING STRATEGIES - When and how often to check for activity
 // =============================================================================
-
-const PollingStrategy = TgpType('polling-strategy', 'social-db')
 
 PollingStrategy('adaptive', {
   params: [

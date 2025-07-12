@@ -287,7 +287,7 @@ const userSettings = dataStore('preferences', {
 // 2. MULTI-USER DISTRIBUTED - Advanced collaboration
 const chatMessages = dataStore('messages', {
   collaborativeWrite: multiUserDistributed({
-    latestActivityDetection: fileBased()  // Activity tracking system
+    activityDetection: fileBased()  // Activity tracking system
   }),
   readVisibility: 'roomMembers'
 })
@@ -297,7 +297,7 @@ const chatMessages = dataStore('messages', {
         explanation('Collaborative write strategy determines how conflicts and collaboration are handled'),
         syntax('singleUser()', 'simple strategy for user-only data with no collaboration'),
         syntax('multiUserDistributed()', 'advanced strategy with race condition recovery'),
-        syntax('latestActivityDetection', 'configures how user activity is tracked'),
+        syntax('activityDetection', 'configures how user activity is tracked'),
         whenToUse('singleUser for private data, multiUserDistributed for shared collaborative data'),
         performance('singleUser is faster, multiUserDistributed provides safety for collaboration')
       ]
@@ -506,7 +506,7 @@ Doclet('realTimeCollaboration', {
 const { subscribeToUpdates } = dsls['social-db']['action']
 const chatMessages = dataStore('messages', {
   collaborativeWrite: multiUserDistributed({
-    latestActivityDetection: fileBased()  // File-based activity tracking
+    activityDetection: fileBased()  // File-based activity tracking
   })
 })
 
@@ -534,7 +534,7 @@ await subscribeToUpdates(chatMessages, userId, roomId, (event) => {
         explanation('Real-time collaboration built on activity detection and event subscription'),
         syntax('subscribeToUpdates()', 'register callbacks for room changes'),
         syntax('isAlone()', 'detect solo vs collaborative work modes for optimization'),
-        syntax('latestActivityDetection', 'configures how user activity is tracked and communicated'),
+        syntax('activityDetection', 'configures how user activity is tracked and communicated'),
         performance('presence detection enables performance optimizations when working alone'),
         whenToUse('for live collaborative features like cursor tracking, live updates, presence indicators')
       ]
@@ -545,7 +545,7 @@ await subscribeToUpdates(chatMessages, userId, roomId, (event) => {
 // File-based activity detection (default):
 const fileBasedChat = dataStore('messages', {
   collaborativeWrite: multiUserDistributed({
-    latestActivityDetection: fileBased({
+    activityDetection: fileBased({
       pollingStrategy: adaptive(),           // Smart polling that adapts to activity
       notificationMechanism: none(),        // No push notifications
       aloneTimeThreshold: 300000            // 5 minutes to be considered alone
@@ -556,7 +556,7 @@ const fileBasedChat = dataStore('messages', {
 // Push notification-based (for real-time apps):
 const realTimeChat = dataStore('messages', {
   collaborativeWrite: multiUserDistributed({
-    latestActivityDetection: pushNotifications({
+    activityDetection: pushNotifications({
       serverUrl: 'https://notifications.example.com',
       fallbackToPolling: true              // Graceful degradation
     })
