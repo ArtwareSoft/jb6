@@ -53,7 +53,7 @@ const todoList = DataStore('todoList', {
 Test('testSimpleNotesGet', {
   impl: socialDbSingleUser({
     operations: runActions(
-      put(simpleNotes(), asIs({ myNote: { title: 'Test Note', content: 'Hello World' } }))
+      dataStore.put(simpleNotes(), asIs({ myNote: { title: 'Test Note', content: 'Hello World' } }))
     ),
     query: pipeline(
       get(simpleNotes(), 'user1', 'room1'),

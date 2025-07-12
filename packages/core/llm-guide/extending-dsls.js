@@ -23,6 +23,99 @@ Const('sessionLogs', [
   {sessionId: 'llm-session1', topic: 'documentation', issues: ['learning methodology', 'spiral approach']}
 ])
 
+Doclet('dslOwnerVsClient', {
+  description: 'Understanding the fundamental distinction between DSL owners and DSL clients',
+  impl: exercise(
+    problem({
+      statement: 'How to extend DSLs appropriately based on whether you own the DSL or are a client of it',
+      intro: 'Different extension strategies apply based on your relationship to the DSL: owners can modify directly, clients must extend via namespaces.'
+    }),
+    solution({
+      code: `// DSL OWNER: You control the DSL and can modify it directly
+
+// Example: packages/common/ owns the common DSL
+// Can add new components directly to the DSL:
+Data('newDataOperation', {           // ✅ Direct DSL extension
+  params: [{id: 'input', mandatory: true}],
+  impl: (ctx, {input}) => processData(input)
+})
+
+Action('newAction', {                // ✅ Direct DSL extension  
+  params: [{id: 'target', mandatory: true}],
+  impl: (ctx, {target}) => performAction(target)
+})
+
+// Owner privileges:
+// - Modify existing components safely (with compatibility)
+// - Add new TgpTypes to the DSL
+// - Change DSL structure and organization
+// - Set DSL conventions and standards`,
+      points: [
+        explanation('DSL owners have direct modification rights and responsibility for compatibility'),
+        syntax('Direct component addition', 'new components become part of the official DSL'),
+        whenToUse('when you maintain and control the DSL package'),
+        performance('direct extension is most efficient but carries compatibility responsibility'),
+        comparison('client extension', { advantage: 'full control but must consider all users' })
+      ]
+    }),
+    solution({
+      code: `// DSL CLIENT: You use a foreign DSL and must extend via namespaces
+
+// Example: packages/social-db/ extends common DSL (doesn't own it)
+// CANNOT modify common DSL directly - must use namespace extension:
+
+// 1. Define components in the foreign DSL:
+DataStore('dataStore', {             // ✅ Adds component to common DSL
+  params: [
+    {id: 'fileName', as: 'string', mandatory: true},
+    {id: 'sharing', type: 'sharing', mandatory: true}
+  ]
+})
+
+// 2. Add operations via your package namespace:
+Action('socialDb.get', { ... })     // ✅ Your namespace: ns.socialDb.get
+Action('socialDb.put', { ... })     // ✅ Your namespace: ns.socialDb.put
+Action('socialDb.refine', { ... })  // ✅ Your namespace: ns.socialDb.refine
+
+// Client constraints:
+// - Cannot modify foreign DSL structure
+// - Must use namespace for operations
+// - Cannot change foreign DSL conventions
+// - Must respect foreign DSL compatibility`,
+      points: [
+        explanation('DSL clients extend via namespaces without modifying the foreign DSL'),
+        syntax('Namespace operations', 'Action("packageName.operation") creates package-scoped operations'),
+        whenToUse('when extending DSLs owned by other packages'),
+        performance('namespace extension prevents conflicts and maintains DSL integrity'),
+        comparison('direct modification', { advantage: 'no ownership conflicts, clean separation' })
+      ]
+    }),
+    solution({
+      code: `// USAGE PATTERNS: Owner vs Client differences
+
+// DSL OWNER usage (packages/common/):
+const result = pipeline(data, newDataOperation(), otherOperation())
+// ↑ Direct DSL usage - operations are part of the DSL
+
+// DSL CLIENT usage (packages/social-db/):
+const store = dataStore('messages', {...})           // ← DSL component
+await socialDb.get(store, userId, roomId)            // ← Package operation
+await socialDb.put(store, userId, roomId, data)      // ← Package operation
+
+// Clear separation:
+// - DSL provides the components (dataStore)
+// - Package provides the operations (socialDb.*)`,
+      points: [
+        explanation('Owner and client usage patterns reflect different extension mechanisms'),
+        syntax('DSL vs namespace', 'dsls.common.data vs ns.socialDb operations'),
+        whenToUse('understanding your role determines your extension strategy'),
+        evidence('social-db, testing, llm-guide all follow client pattern with common DSL'),
+        performance('separation enables multiple clients to extend same DSL independently')
+      ]
+    })
+  )
+})
+
 Doclet('extendingDslsGuide', {
   description: 'Comprehensive guide for extending DSLs safely and effectively',
   impl: exercise(

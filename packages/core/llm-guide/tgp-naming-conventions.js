@@ -6,151 +6,74 @@ import '@jb6/llm-guide'
 const { 
   doclet: { Doclet,
     doclet: { exercise },
-    guidance: { doNot, bestPractice },
-    'naming-system': { namingSystem },
-    'naming-category': { namingCategory },
-    'naming-collision': { namingCollision },
-    explanationPoint: { explanation, evidence, syntax, performance },
+    guidance: { doNot, solution  },
+    explanationPoint: { bestPractice, namingCategory,namingCollision },
     problemStatement: { problem }
   } 
 } = dsls
 
+
+Doclet('tgpNamingConventions', {
 Doclet('tgpNamingConventions', {
   impl: exercise(
     problem({
-      statement: 'TGP naming conventions prevent namespace collisions and improve code clarity',
-      intro: 'Consistent naming patterns across DSLs, types, components, and parameters eliminate conflicts and make TGP systems more maintainable.'
+      statement: 'How to use package namespaces when extending foreign DSLs with new operations',
+      intro: 'When your package needs to add operations to DSLs you don\'t own (like adding social-db operations to common DSL components), namespaces provide clean extension without modifying the original DSL.'
     }),
-    
-    namingSystem({
-      problem: 'Generic component names can conflict with namespaces created by dotted component IDs, causing import collisions and confusion',
-      
-      categories: [
-        namingCategory({
-          name: 'DSL Names',
-          pattern: 'kebab-case, domain-specific',
-          examples: `'social-db'        // ✅ descriptive domain
-'ui'               // ✅ clear purpose
-'activity-detection'  // ✅ specific functionality  
-'myStuff'          // ❌ too generic
-'DB'               // ❌ too abbreviated`,
-          reasoning: 'DSL names define domain boundaries and should clearly indicate their purpose',
-          buildsToward: 'TgpType names that organize components within these domains'
-        }),
-        
-        namingCategory({
-          name: 'TgpType Names', 
-          pattern: 'singular nouns, kebab-case',
-          examples: `TgpType('data-store', 'social-db')     // ✅ singular noun
-TgpType('activity-detection', 'social-db')  // ✅ descriptive
-TgpType('polling-strategy', 'social-db')    // ✅ specific purpose
-TgpType('dataStores', 'social-db')         // ❌ plural form
-TgpType('doActivity', 'social-db')         // ❌ verb phrase`,
-          reasoning: 'Types represent categories of components, not instances, so singular nouns are grammatically correct',
-          buildsToward: 'Variable names for type factories that create these component types'
-        }),
-        
-        namingCategory({
-          name: 'TgpType Variables',
-          pattern: 'camelCase, match type purpose',
-          examples: `const dataStore = TgpType('data-store', 'social-db')        // ✅ camelCase factory name
-const activityDetection = TgpType('activity-detection', 'social-db')  // ✅ descriptive
-const notificationMechanism = TgpType('notification-mechanism', 'social-db')
-const DataStore = TgpType('data-store', 'social-db')        // ❌ PascalCase - not consistent
-const ds = TgpType('data-store', 'social-db')              // ❌ too abbreviated`,
-          reasoning: 'camelCase follows JavaScript variable naming conventions and distinguishes type factories from constants',
-          buildsToward: 'Generic component names that will be registered in the DSL system'
-        }),
-        
-        namingCategory({
-          name: 'Generic Component Names',
-          pattern: 'camelCase, domain-specific',
-          examples: `DataStore('socialDbStore', {           // ✅ domain-specific, descriptive
-  params: [
-    {id: 'fileName', as: 'string'},
-    {id: 'sharing', type: 'sharing'}
-  ]
-})
+    solution({
+      code: `// THE CHALLENGE: Extending foreign DSLs
 
-DbImpl('fileBasedImpl', { ... })       // ✅ implementation-specific
-DbImpl('contextualImpl', { ... })      // ✅ purpose-specific
+// Your social-db package wants to add operations to common DSL components:
+// packages/common/ owns the common DSL
+// packages/social-db/ wants to add get/put/refine operations
 
-// Common DSL examples:
-Data('pipeline', { ... })              // ✅ specific operation name
-Action('runActions', { ... })          // ✅ specific action name
+// ❌ CANNOT modify common DSL directly (you don't own it)
+// ✅ SOLUTION: Use package namespace for your operations
 
-// PROBLEMATIC PATTERNS:
-DataStore('dataStore', { ... })        // ❌ same as type name - collision risk!
-DbImpl('dbImpl', { ... })              // ❌ generic type name`,
-          reasoning: 'Generic components are reusable building blocks that need distinctive names describing their specific purpose',
-          buildsToward: 'Potential namespace conflicts when components use dotted IDs for organization'
-        }),
-        
-        namingCategory({
-          name: 'Parameter IDs',
-          pattern: 'camelCase, descriptive purpose',
-          examples: `{id: 'fileName', as: 'string', mandatory: true}       // ✅ clear purpose
-{id: 'activityDetection', type: 'activity-detection'} // ✅ descriptive
-{id: 'pollingStrategy', type: 'polling-strategy'}     // ✅ specific
-{id: 'sharingMode', as: 'string', options: 'public,private'}  // ✅ descriptive
-
-{id: 'data', as: 'string'}             // ❌ too generic
-{id: 'fn', as: 'string'}               // ❌ abbreviated  
-{id: 'stuff', as: 'array'}             // ❌ meaningless`,
-          reasoning: 'Parameter names should clearly indicate what they contain or control, following JavaScript variable naming conventions'
-        })
-      ],
-      
-      collision: namingCollision({
-        scenario: `// THE COLLISION SCENARIO:
-DataStore('dataStore', {               // Creates dsls['social-db']['data-store']['dataStore']
+// 1. Define components in the foreign DSL (common):
+DataStore('dataStore', {               // ← Extends common DSL
   params: [
     {id: 'fileName', as: 'string', mandatory: true},
     {id: 'sharing', type: 'sharing', mandatory: true}
   ]
 })
 
-Action('dataStore.put', { ... })       // Creates ns.dataStore namespace 
-Action('dataStore.refine', { ... })    // Adds to ns.dataStore
-Action('dataStore.append', { ... })    // Adds to ns.dataStore
+// 2. Add your package operations via namespace:
+Action('socialDb.get', { ... })       // ← Your operations in your namespace
+Action('socialDb.put', { ... })       // ← Clean extension without DSL modification
+Action('socialDb.refine', { ... })    // ← Package-owned operations`,
+      points: [
+        explanation('Namespaces enable packages to extend foreign DSLs without modifying the original DSL'),
+        syntax('Action("packageName.operation")', 'adds operations to your package namespace, not the foreign DSL'),
+        whenToUse('when your package needs to add operations to DSLs owned by other packages'),
+        performance('avoids DSL pollution while providing clean extension mechanism'),
+        comparison('modifying foreign DSL', { advantage: 'no dependency conflicts, clear ownership boundaries' })
+      ]
+    }),
+    solution({
+      code: `// PRACTICAL USAGE: Foreign DSL extension in action
 
-// IMPORT COLLISION:
-const { 'data-store': { dataStore } } = dsls   // Import generic component
-const { dataStore } = ns                       // ❌ COLLISION! Namespace object`,
-        explanation: 'TGP creates namespaces when component IDs contain dots. "dataStore.put" creates ns.dataStore, which conflicts with importing the dataStore generic component',
-        fix: `// SOLUTION: Domain-specific naming eliminates collision
-DataStore('socialDbStore', {           // ✅ specific component name
-  params: [
-    {id: 'fileName', as: 'string', mandatory: true},
-    {id: 'sharing', type: 'sharing', mandatory: true}
-  ]
+// 3. Clean usage separates DSL components from package operations:
+const { dataStore } = dsls.common['data-store']  // ← Component from common DSL
+const { socialDb } = ns                          // ← Operations from social-db package
+
+// Use the common DSL component:
+const store = dataStore('messages', {            // ← Native common DSL usage
+  sharing: userOnly(),
+  dataStructure: 'appendOnly'
 })
 
-Action('socialDbStore.put', { ... })   // ✅ creates ns.socialDbStore namespace
-Action('socialDbStore.refine', { ... })
-Action('socialDbStore.append', { ... })
-
-// NO COLLISION:
-const { 'data-store': { socialDbStore } } = dsls  // Import generic component
-const { socialDbStore } = ns                      // ✅ refers to namespace - no conflict`,
-        evidence: 'Real collision discovered in packages/social-db: dataStore component vs ns.dataStore namespace created by Action("dataStore.put") pattern'
-      }),
-      
-      solution: 'Use domain-specific names that describe purpose rather than generic type names. This prevents namespace collisions and improves code clarity.'
-    }),
-
-    doNot('using type names as generic component names', {
-      reason: 'creates namespace collisions when used with dotted component IDs'
-    }),
-
-    bestPractice({
-      suboptimalCode: `DataStore('dataStore', { ... })
-Action('dataStore.put', { ... })
-const { dataStore } = ns  // collision!`,
-      better: `DataStore('socialDbStore', { ... })
-Action('socialDbStore.put', { ... })  
-const { socialDbStore } = ns  // clear reference`,
-      reason: 'domain-specific names eliminate namespace collision risk and improve clarity'
+// Use your package operations:
+await socialDb.get(store, userId, roomId)        // ← Your package's implementation
+await socialDb.put(store, userId, roomId, data)  // ← Clear package attribution
+await socialDb.refine(store, userId, roomId, fn) // ← Package-owned functionality`,
+      points: [
+        explanation('Clean separation: DSL components vs package operations'),
+        syntax('dsls.common vs ns.socialDb', 'different sources for different purposes'),
+        whenToUse('when you need both the foreign DSL component and your package operations'),
+        performance('enables multiple packages to extend same DSL without conflicts'),
+        evidence('social-db, testing, llm-guide all extend common DSL via their own namespaces')
+      ]
     })
   )
 })

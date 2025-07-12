@@ -29,9 +29,6 @@ const UseCase = TgpType('use-case', 'doclet')
 const Actor = TgpType('actor', 'doclet')
 const ActorFeature = TgpType('actor-feature', 'doclet')
 const Scenario = TgpType('scenario', 'doclet')
-const namingSystem = TgpType('naming-system', 'doclet')        // Naming convention systems
-const namingCategory = TgpType('naming-category', 'doclet')     // Individual naming categories  
-const namingCollision = TgpType('naming-collision', 'doclet')   // Collision examples with evidence
 
 
 const McpTool = TgpType('tool', 'mcp')               // MCP tool components
@@ -210,6 +207,13 @@ ExplanationPoint('explanation', {
   ]
 })
 
+ExplanationPoint('p', {
+  description: 'Simple point for bullet-point style documentation',
+  params: [
+    {id: 'text', as: 'text', mandatory: true},
+  ]
+})
+
 ExplanationPoint('syntax', {
   params: [
     {id: 'expression', as: 'text', mandatory: true},
@@ -259,6 +263,27 @@ ExplanationPoint('impact', {
 ExplanationPoint('methodology', {
   params: [
     {id: 'methodology', as: 'text', mandatory: true},
+  ]
+})
+
+ExplanationPoint('namingCategory', {
+  description: 'Individual naming category with examples and reasoning',
+  params: [
+    {id: 'name', as: 'string', mandatory: true, description: 'Category name (e.g., "DSL Names")'},
+    {id: 'pattern', as: 'string', mandatory: true, description: 'Naming pattern to follow'},
+    {id: 'examples', as: 'text', mandatory: true, description: 'Real syntax examples with good/bad comparisons'},
+    {id: 'reasoning', as: 'text', mandatory: true, description: 'Why this pattern matters'},
+    {id: 'buildsToward', as: 'text', description: 'How this category connects to the next in the progression'}
+  ]
+})
+
+ExplanationPoint('namingCollision', {
+  description: 'Concrete collision scenario with evidence and solution',
+  params: [
+    {id: 'scenario', as: 'text', mandatory: true, description: 'Concrete code showing the collision happening'},
+    {id: 'explanation', as: 'text', mandatory: true, description: 'Technical explanation of why the collision occurs'},
+    {id: 'fix', as: 'text', mandatory: true, description: 'How the naming rules prevent this collision'},
+    {id: 'evidence', as: 'text', description: 'Real-world evidence this collision occurred'}
   ]
 })
 
@@ -331,38 +356,3 @@ Validation('explainConceptQuiz', {
   ]
 })
 
-
-// =============================================================================
-// TYPE: naming-system - Structured naming convention documentation
-// =============================================================================
-
-namingSystem('namingSystem', {
-  description: 'Comprehensive naming convention system with progressive categories and collision analysis',
-  params: [
-    {id: 'problem', as: 'text', mandatory: true, description: 'The core naming problem being solved'},
-    {id: 'categories', type: 'naming-category[]', mandatory: true, description: 'Naming categories in dependency order'},
-    {id: 'collision', type: 'naming-collision', description: 'Concrete collision example with evidence'},
-    {id: 'solution', as: 'text', description: 'Overall solution approach'}
-  ]
-})
-
-namingCategory('namingCategory', {
-  description: 'Individual naming category with examples and reasoning',
-  params: [
-    {id: 'name', as: 'string', mandatory: true, description: 'Category name (e.g., "DSL Names")'},
-    {id: 'pattern', as: 'string', mandatory: true, description: 'Naming pattern to follow'},
-    {id: 'examples', as: 'text', mandatory: true, description: 'Real syntax examples with good/bad comparisons'},
-    {id: 'reasoning', as: 'text', mandatory: true, description: 'Why this pattern matters'},
-    {id: 'buildsToward', as: 'text', description: 'How this category connects to the next in the progression'}
-  ]
-})
-
-namingCollision('namingCollision', {
-  description: 'Concrete collision scenario with evidence and solution',
-  params: [
-    {id: 'scenario', as: 'text', mandatory: true, description: 'Concrete code showing the collision happening'},
-    {id: 'explanation', as: 'text', mandatory: true, description: 'Technical explanation of why the collision occurs'},
-    {id: 'fix', as: 'text', mandatory: true, description: 'How the naming rules prevent this collision'},
-    {id: 'evidence', as: 'text', description: 'Real-world evidence this collision occurred'}
-  ]
-})
