@@ -67,42 +67,65 @@ Tool('runSnippet', {
 })
   
 Tool('runSnippets', {
-    description: 'run multiple comp snippets in parallel. Useful for running a batch of Test or Data snippets.',
-    params: [
-      { id: 'compTexts', type: 'data<common>[]', dynamic: true, mandatory: true, description: 'Array of compText strings, each a snippet to run' },
-      { id: 'setupCode', as: 'string', description: 'Helper comps or any js code before the comp' },
-      { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of javascript file in the repo' },
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' }
-    ],
-    impl: async (ctx, { compTexts, setupCode, filePath, repoRoot }) => {
-      try {
-        jb.coreRegistry.repoRoot = repoRoot
-        const snippetArgsBase = { setupCode, filePath: pathJoin(repoRoot, filePath) }
-        const compTextsProfiles = typeof compTexts.profile == 'string' ? JSON.parse(compTexts.profile) : compTexts.profile
+  description: 'run multiple comp snippets in parallel. Useful for running a batch of Test or Data snippets.',
+  params: [
+    {id: 'compTexts', type: 'data<common>[]', dynamic: true, mandatory: true, description: `JSON array of component text strings to execute. Example: ["'%$data%'", "pipeline('%$data%', count())", "filter('%active%')"]`},
+    {id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path for import context (e.g., "packages/common/test.js"). it may contain all the setup code you need'},
+    {id: 'setupCode', as: 'string', description: `Shared setup code executed before all snippets. Use for Const() definitions, imports, or helper functions. Example: "Const('data', [{active: true, id: 1}])"`},
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'}
+  ],
+  impl: async (ctx, { compTexts, setupCode, filePath, repoRoot }) => {
+    try {
+      jb.coreRegistry.repoRoot = repoRoot
+      const snippetArgsBase = { setupCode, filePath: pathJoin(repoRoot, filePath) }
+      
+      // Enhanced parameter validation and error handling
+      let compTextsProfiles
+      if (!compTexts || !compTexts.profile) throw new Error('compTexts parameter is required and must contain a profile')
+      
+      compTextsProfiles = typeof compTexts.profile === 'string' ? JSON.parse(compTexts.profile) : compTexts.profile
         
-        const results = await Promise.all(
-          compTextsProfiles.map(async (compText, index) => {
-            try {
-              const snippetArgs = { ...snippetArgsBase, compText }
-              const result = await coreUtils.runSnippetCli(snippetArgs)
-              return `Snippet ${compText} ===\n${JSON.stringify({...result, tokens: coreUtils.estimateTokens(snippetArgs.compText)})}`
-            } catch (error) {
-              return `Snippet ${compText} ===\nerror: ${error.message}`
-            }
-          })
-        )
-        
-        return {
-          content: [{ type: 'text', text: results.join('\n\n') }],
-          isError: false
-        }
-      } catch (error) {
-        return {
-          content: [{ type: 'text', text: `Error running snippets: ${error.message}` }],
-          isError: true
-        }
+      if (!Array.isArray(compTextsProfiles)) throw new Error(`compTexts must be an array. Received: ${typeof compTextsProfiles}. Expected format: ["snippet1", "snippet2", ...]`)              
+      if (compTextsProfiles.length === 0) throw new Error('compTexts array cannot be empty. Provide at least one snippet to execute.')
+      
+      compTextsProfiles.forEach((snippet, index) => {
+        if (typeof snippet !== 'string') throw new Error(`Snippet at index ${index} must be a string. Received: ${typeof snippet} - "${snippet}"`)
+        if (snippet.trim() === '') throw new Error(`Snippet at index ${index} cannot be empty`)        
+      })
+      // Enhanced execution with better error context
+      const results = await Promise.all(
+        compTextsProfiles.map(async (compText, index) => {
+          try {
+            const snippetArgs = { ...snippetArgsBase, compText }
+            const result = await coreUtils.runSnippetCli(snippetArgs)
+            return `Snippet ${index + 1}: ${compText} ===\n${JSON.stringify({...result, tokens: coreUtils.estimateTokens(compText)}, null, 2)}`
+          } catch (error) {
+            return `Snippet ${index + 1}: ${compText} ===\nERROR: ${error.message}\n\nDebugging tips:\n- Check syntax: ${compText}\n- Verify variables exist in setupCode\n- Ensure component is properly imported`
+          }
+        })
+      )
+      
+      const successCount = results.filter(r => !r.includes('ERROR:')).length
+      const errorCount = compTextsProfiles.length - successCount
+      
+      return {
+        content: [{ 
+          type: 'text', 
+          text: `Batch Execution Summary: ${successCount} succeeded, ${errorCount} failed\n\n${results.join('\n\n')}` 
+        }],
+        isError: errorCount === compTextsProfiles.length // Only error if ALL failed
+      }
+      
+    } catch (error) {
+      return {
+        content: [{ 
+          type: 'text', 
+          text: `runSnippets Error: ${error.message}\n\nCommon causes:\n- Invalid compTexts format (must be JSON array)\n- Missing or invalid filePath/repoRoot\n- Setup code syntax errors\n\nExample usage:\nrunSnippets({\n  compTexts: ["'%$data%'", "count('%$data%')"],\n  setupCode: "Const('data', [1,2,3])",\n  filePath: "packages/common/test.js",\n  repoRoot: "/path/to/repo"\n})` 
+        }],
+        isError: true
       }
     }
+  }
 })
   
 Tool('evalJs', {

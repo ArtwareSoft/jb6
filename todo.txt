@@ -10,8 +10,8 @@ make Const just a type
 
 i am shaiby the author is the jb6 repo.
 my repo is at /home/shaiby/projects/jb6
-***please consult me if you want to change fw code, docs and test files***
-this session id is "tgp-primer-2"
+***please DO NOT change my fw code, docs and test files, consult me first ***
+this session id is "tgp-primer-3"
 please log all the interesting success and problems you face. it will be used to discuss with me how to improve the docs and the framework!!!
 use the llm-guide-dsl for documentation suggestions
 use appendToFile /.llm-logs/${sessionId}.txt with TIMESTAMP for logging
@@ -46,6 +46,18 @@ please open it and see what we have built so far
 **please do not change fw code, docs and test files***. 
 the only exception is the file we are working on packages/llm-guide/llm-rules-dsl.js
 
+now please prepare some summaries 
+primer-summary-1 tokens/2
+primer-summary-2 tokens/4
+primer-summary-3 tokens/16
+primer-summary-4 tokens/32
+primer-summary-5 tokens/64
+
+please discuss before what are the key points, rate them, and discuss what to preserve and what to leave at each summary level.
+after discussing 
+try two methods from small to big and big to small.
+always read a keep packages/llm-guide/principles-llm-guide.js when minimizing the tokens
+
 
 get the common dsl using tgpModel(packages/common/common-tests.js) mcp service
 please read carefully packages/core/llm-guide/tgp-primer.js and read packages/common/common-llm-guide.js 
@@ -53,6 +65,8 @@ implement carefully learnCommonDsl from packages/common/common-llm-guide.js,
 do not change the packages/common/common-llm-guide.js code
 **follow up the methodology and do all the quizes**
 **use TURN BATCHING**
+***please DO NOT change my fw code, docs and test files, consult me first ***
+
 
 please log each step to "gemini-sessionX" use newlines and make it readable!!
 

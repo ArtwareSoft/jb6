@@ -136,7 +136,7 @@ button('Save', log('saved'))
         explanation('Component instantiation creates profile structures, not immediate execution'),
         syntax('component(args...)', 'function-like syntax creates profiles'),
         whenToUse('when building reusable component structures'),
-        performance('profiles are data structures that can be stored, modified, and instantiated later')
+        performance('profiles are data structures that can be stored, modified, and executed later')
       ]
     }),
     solution({
@@ -159,25 +159,25 @@ button('Save', log('saved'))
   )
 })
 
-Doclet('profiles', {
+Doclet('innerProfiles', {
   impl: exercise(
-    problem('Understanding profiles - nested component structures within other components'),
+    problem('Understanding inner profiles - nested component structures within other components'),
     solution({
-      code: `// Profiles as direct component nesting
+      code: `// Inner profiles as direct component nesting
 pipeline(
   '%$people%',
-  filter('%age% < 30'),    // Profile
-  count()                  // Profile
+  filter('%age% < 30'),    // Inner profile
+  count()                  // Inner profile
 )`,
       points: [
-        explanation('Profiles are nested within other components'),
+        explanation('Inner profiles are nested components within other components'),
         syntax('direct nesting', 'components can contain other components as parameters'),
         whenToUse('when building complex operations from simpler components'),
-        performance('profiles are compiled inline, no global lookup needed')
+        performance('inner profiles are compiled inline, no global lookup needed')
       ]
     }),
     mechanismUnderTheHood({
-      snippet: `// Profile compilation:
+      snippet: `// Inner profile compilation:
 filter(and('%age% < 30', '%name% == "Bart"'))
 
 // Becomes nested profile structure:
@@ -188,7 +188,7 @@ filter(and('%age% < 30', '%name% == "Bart"'))
     "items": ["%age% < 30", "%name% == \\"Bart\\""]
   }
 }`,
-      explain: 'profiles create nested component hierarchies in the profile structure'
+      explain: 'inner profiles create nested component hierarchies in the profile structure'
     })
   )
 })
@@ -430,10 +430,10 @@ group([
   button('Delete', log('delete')) // another button() instance
 ])`,
       points: [
-        explanation('Components can contain other components as profiles'),
-        syntax('component nesting', 'profiles fill outer component params'),
+        explanation('Components can contain other components as inner instances'),
+        syntax('component nesting', 'inner components fill outer component params'),
         whenToUse('when building complex functionality from simple building blocks'),
-        performance('nested structure is built at instantiation, instantiated as single unit')
+        performance('nested structure is built at instantiation, executed as single unit')
       ]
     }),
     solution({
@@ -557,7 +557,7 @@ Data('peopleUnder30', {
 })
 
 // Use the component
-peopleUnder30()  // instantiates the defined component`,
+peopleUnder30()  // executes the defined component`,
       points: [
         explanation('Data(), Control(), Test() etc. define reusable components'),
         syntax('Data(), Control()', 'DSL functions that register components'),
@@ -574,9 +574,9 @@ peopleUnder30()  // instantiates the defined component`,
 
 Doclet('templating', {
   impl: exercise(
-    problem('Understanding templating - creating profiles with parameters instead of immediate execution'),
+    problem('Understanding templating - creating profiles with parameters instead of function calls'),
     solution({
-      code: `// Templating: Component instantiation creates profile template
+      code: `// Templating: Component call creates profile template
 pipeline('%$people%', filter('%age% < 30'), count())
 
 // Creates profile template with parameters:
@@ -590,21 +590,21 @@ pipeline('%$people%', filter('%age% < 30'), count())
 }`,
       points: [
         explanation('Templating creates profile structures with parameter slots'),
-        syntax('component instantiation', 'function-like syntax generates templates, not immediate execution'),
-        whenToUse('when building component structures for later instantiation'),
-        performance('templates are data structures that can be stored, modified, and instantiated')
+        syntax('component calls', 'function-like syntax generates templates, not executes functions'),
+        whenToUse('when building component structures for later execution'),
+        performance('templates are data structures that can be stored, modified, and executed')
       ]
     }),
     solution({
-      code: `// Template with parameters vs instantiation
+      code: `// Template with parameters vs execution
 const template = pipeline('%$people%', count())  // Creates template
-const result = template.$run()                   // Instantiates template according to DSL type
+const result = template.$run()                   // Executes template
 
-// NOT immediate execution:
+// NOT function execution:
 // pipeline() does NOT immediately run - it creates a template!`,
       points: [
-        explanation('Component instantiation creates templates, $run() further instantiates them according to DSL type'),
-        syntax('template vs instantiation', 'clear separation between template creation and DSL-specific instantiation'),
+        explanation('Component calls create templates, $run() executes them'),
+        syntax('template vs execution', 'clear separation between template creation and execution'),
         whenToUse('when you need to create reusable templates'),
         comparison('traditional functions', { advantage: 'templates can be inspected, modified, and reused' })
       ]
@@ -619,10 +619,10 @@ filter('%age% < 30')  // Template with parameter placeholder
   "filter": "%age% < 30"      // Parameter slot for runtime resolution
 }`,
       points: [
-        explanation('Parameters become template slots filled at instantiation time'),
+        explanation('Parameters become template slots filled at execution time'),
         syntax('parameter placeholders', '%age% becomes slot in template structure'),
         whenToUse('when creating templates that work with different data contexts'),
-        performance('parameter resolution happens at instantiation, not template creation')
+        performance('parameter resolution happens at execution, not template creation')
       ]
     }),
     mechanismUnderTheHood({
@@ -644,9 +644,9 @@ function pipeline(source, ...operators) {
   }
 }
 
-// Instantiation happens separately:
-template.$run(ctx) // → further instantiation according to DSL type`,
-      explain: 'templating separates template creation from DSL-specific instantiation, enabling inspection and modification'
+// Execution happens separately:
+template.$run(ctx) // → actual execution with context`,
+      explain: 'templating separates template creation from execution, enabling inspection and modification'
     })
   )
 })
@@ -674,15 +674,15 @@ Doclet('forwardReferences', {
   )
  })
 
-Doclet('instantiationPatterns', {
+Doclet('executionPatterns', {
   impl: exercise(
-    problem('How component instances get instantiated - from template creation to results'),
+    problem('How component instances get executed - from instantiation to results'),
     solution({
-      code: `// Method 1: Direct instantiation with empty context
+      code: `// Method 1: Direct execution with empty context
 const buttonInstance = button('Save', log('clicked'))
 const result = buttonInstance.$run({})
 
-// Method 2: Context-based instantiation  
+// Method 2: Context-based execution  
 const result2 = new Ctx()
   .setVars({docId: 'doc123', currentUser: {name: 'Homer'}})
   .run(buttonInstance)
@@ -698,11 +698,11 @@ const result3 = new Ctx()
     ])
   ))`,
       points: [
-        explanation('Component instances can be instantiated in multiple ways'),
-        syntax('template.$run({})', 'instantiate with empty context'),
-        syntax('new Ctx().setVars({}).run(template)', 'instantiate with specific variables'),
-        whenToUse('different instantiation patterns for different use cases'),
-        performance('same instance can be instantiated multiple times with different contexts')
+        explanation('Component instances can be executed in multiple ways'),
+        syntax('template.$run({})', 'execute with empty context'),
+        syntax('new Ctx().setVars({}).run(template)', 'execute with specific variables'),
+        whenToUse('different execution patterns for different use cases'),
+        performance('same instance can be executed multiple times with different contexts')
       ]
     })
   )
@@ -740,7 +740,7 @@ group([
         syntax('nested composition', 'groups contain buttons, buttons contain actions'),
         syntax('cross-DSL integration', 'ui + action + data components working together'),
         whenToUse('building complete interactive applications'),
-        performance('entire interface defined declaratively, instantiated reactively')
+        performance('entire interface defined declaratively, executed reactively')
       ]
     }),
     mechanismUnderTheHood({
@@ -770,7 +770,7 @@ group([
     }
   ]
 }`,
-      explain: 'Complex UIs become nested profile structures that can be serialized, sent to other processes if needed, and instantiated'
+      explain: 'Complex UIs become nested profile structures that can be serialized, sent to other processes if needed, and executed'
     })
   )
 })
