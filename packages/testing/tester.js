@@ -149,12 +149,12 @@ const printFail = line => {
   lastLineLength = 0
 }
 
-export async function runTests({specificTest,show,pattern,notPattern,take,repo,showOnly}={}) {
+export async function runTests({specificTest,show,pattern,notPattern,take,repo,showOnly,includeHeavy}={}) {
     specificTest = specificTest && decodeURIComponent(specificTest).split('>').pop()
 
     let tests = globalsOfType(Test)
         .filter(id =>!specificTest || id == specificTest)
-        .filter(id => specificTest || !Test[id][asJbComp]?.doNotRunInTests)
+        .filter(id => specificTest || includeHeavy || !Test[id][asJbComp]?.HeavyTest)
         .filter(id => isNode || !Test[id][asJbComp]?.nodeOnly)
         .filter(id =>!pattern || id.match(pattern))
         .filter(id =>!notPattern || !id.match(notPattern))

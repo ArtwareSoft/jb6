@@ -48,7 +48,7 @@ const cmpAA = Data('cmpAA', {
 })
 
 Test('circuitForAA', {
-  doNotRunInTests: true,
+  HeavyTest: true,
   impl: dataTest(cmpAA(), true)
 })
 
@@ -87,6 +87,7 @@ Test('probeCliTest.requireNode', {
 })
 
 Test('probeCliTest.findTestFiles', {
+  HeavyTest: true,
   impl: dataTest({
     calculate: async () => {
       const repoRoot = await coreUtils.calcRepoRoot()

@@ -291,6 +291,7 @@ Const('peopleArray', {
 })
 
 Test('completionTest.people', {
+  HeavyTest: true,
   impl: completionOptionsTest(`dataTest('%$peopleArray/__')`, {
     expectedSelections: ['people (3 items)']
   })
@@ -298,12 +299,14 @@ Test('completionTest.people', {
 
 
 Test('completionTest.person', {
+  HeavyTest: true,
   impl: completionOptionsTest(`dataTest('%$__')`, {
     expectedSelections: ['$person (4 props)']
   })
 })
 
 Test('completionTest.writePerson', {
+  HeavyTest: true,
   impl: completionActionTest(`dataTest('%$__')`, {
     completionToActivate: '$person (4 props)',
     expectedEdit: asIs({range: {start: {line: 1, col: 20}, end: {line: 1, col: 20}}, newText: 'person/'}),
@@ -320,6 +323,7 @@ Test('completionTest.writePersonInner', {
 })
 
 Test('completionTest.writePersonInner2', {
+  HeavyTest: true,
   impl: completionActionTest(`dataTest('%$per__')`, {
     completionToActivate: '$person (4 props)',
     expectedEdit: asIs({range: {start: {line: 1, col: 23}, end: {line: 1, col: 23}}, newText: 'son/'}),
@@ -328,6 +332,7 @@ Test('completionTest.writePersonInner2', {
 })
 
 Test('completionTest.writePersonName', {
+  HeavyTest: true,
   impl: completionActionTest(`dataTest('%$person/__')`, {
     completionToActivate: 'name (Homer Simpson)',
     expectedEdit: asIs({range: {start: {line: 1, col: 27}, end: {line: 1, col: 27}}, newText: 'name%'}),
@@ -336,6 +341,7 @@ Test('completionTest.writePersonName', {
 })
 
 Test('completionTest.writePreviewValue', {
+  HeavyTest: true,
   impl: completionActionTest(`dataTest('%$peopleArray/__')`, {
     completionToActivate: 'people (3 items)',
     expectedEdit: asIs({range: {start: {line: 1, col: 32}, end: {line: 1, col: 32}}, newText: 'people/'}),

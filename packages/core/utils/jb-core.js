@@ -45,7 +45,6 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
     let res = profile
     if (profile?.$delayed) {
         Object.assign(profile, profile.$delayed())
-        //profile.$unresolvedArgs = profile.$unresolvedArgs || profile[OrigArgs]
         delete profile.$delayed
         resolveProfileArgs(profile)
     }
