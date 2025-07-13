@@ -31,7 +31,7 @@ function TgpTypeModifier(id, extraCompProps, tgpModel = jb) {
 }
 
 const nsProxy = (ns) => new Proxy(() => 0, {
-  get: (o,id) => (...args) => ({ $delayed: true, ...jb.nsRepo[ns][id](...args) })
+  get: (o,id) => (...args) => ({ $: '__', $delayed: () => jb.nsRepo[ns][id](...args) } )
 })
 
 function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
@@ -65,7 +65,7 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
   }
 
   const forward = (id) => new Proxy(() => 0, {
-    apply: () => (...args) => ({ $delayed: true, ...dsls[dsl][type][id](...args) })
+    apply: () => (...args) => ({ $delayed: () => dsls[dsl][type][id](...args) })
   })
   Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward})
   dsls[dsl] = dsls[dsl] || {}
