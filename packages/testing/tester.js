@@ -190,6 +190,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,repo,s
             !isNode && (document.getElementById('progress').innerHTML = runningMsg)
             printLive(runningMsg)
             res = await runTest(testID, { fullTestId, singleTest })
+            printLive(`${counter}: ${testID} ended`)
             res = { ...res, fullTestId, testID}
             res.success ? success_counter++ : fail_counter++
 

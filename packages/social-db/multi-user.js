@@ -13,9 +13,9 @@ const fileBased = ActivityDetection.forward('fileBased')
 const adaptive = PollingStrategy.forward('adaptive')
 const none = NotificationMechanism.forward('none')
 
-Sharing('userOnly', {
+Sharing('globalUserOnly', {
   description: 'no one but the user can see the content, including the system. single global file',
-  impl: () => ({ singleWriter: true, readVisibility: 'userOnly'})
+  impl: () => ({ singleWriter: true, readVisibility: 'globalUserOnly'})
 })
 
 Sharing('roomUserOnly', {

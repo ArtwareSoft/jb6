@@ -28,7 +28,7 @@ dynamic function 'hold' and keeps the args until called by client with ctx. it h
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 
-const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray } = jb.coreUtils
+const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray, asJbComp, OrigArgs } = jb.coreUtils
 
 function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArray: false, openObj: false, openComp: true}) {
     // changing context with data and vars
@@ -43,6 +43,12 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
 
     const {openExpression, openArray, openObj, openComp} = settings
     let res = profile
+    if (profile?.$delayed) {
+        profile.$unresolvedArgs = profile.$unresolvedArgs || profile[OrigArgs]
+        delete profile.$delayed
+        resolveProfileArgs(profile)
+    }
+
     if (typeof profile == 'string' && openExpression)
         res = toRTType(jbCtx.parentParam, calcExpression(profile, ctx))
     else if (Array.isArray(profile) && openArray)

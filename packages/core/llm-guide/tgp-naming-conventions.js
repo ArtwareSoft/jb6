@@ -59,7 +59,7 @@ const { socialDb } = ns                          // ← Operations from social-d
 
 // Use the common DSL component:
 const store = dataStore('messages', {            // ← Native common DSL usage
-  sharing: userOnly(),
+  sharing: globalUserOnly(),
   dataStructure: 'appendOnly'
 })
 

@@ -6,86 +6,41 @@ const {
    },
    'social-db': { DataStore,
     'data-store': { dataStore },
-    sharing: { userOnly, roomUserOnly, friends, roomReadOnly, systemAccessible, publicGlobal, collaborative }
+    sharing: { globalUserOnly, roomUserOnly, friends, roomReadOnly, systemAccessible, publicGlobal, collaborative }
    },
   tgp: { TgpType }
 } = dsls
 
 
+const myRooms = DataStore('myRooms', {
+  impl: dataStore('myRooms', globalUserOnly())
+})
+
 DataStore('chatRoom', {
-  impl: dataStore({
-    fileName: 'room',
-    sharing: collaborative(),
-    dataStructure: 'array'
-  })
+  impl: dataStore('room', collaborative(), { dataStructure: 'array' })
 })
 
 DataStore('privateChat', {
-  impl: dataStore({
-    fileName: 'privateChat',
-    sharing: userOnly(),
-    dataStructure: 'array'
-  })
-})
-
-DataStore('roomItems', {
-  impl: dataStore({
-    fileName: 'items',
-    sharing: collaborative(),
-    dataStructure: 'keyValue'
-  })
+  impl: dataStore('privateChat', globalUserOnly(), { dataStructure: 'array' })
 })
 
 DataStore('usersActivity', {
-  impl: dataStore({
-    fileName: 'users-activity',
-    sharing: collaborative(),
-    dataStructure: 'keyValue'
-  })
-})
-
-DataStore('vectorsPublicDB', {
-  impl: dataStore({
-    fileName: 'vectors',
-    sharing: publicGlobal(),
-    dataStructure: 'keyValue'
-  })
-})
-
-DataStore('moviesDB', {
-  impl: dataStore({
-    fileName: 'movies-256',
-    sharing: publicGlobal(),
-    dataStructure: 'keyValue'
-  })
+  impl: dataStore('users-activity', collaborative())
 })
 
 DataStore('roomSettings', {
-  impl: dataStore({
-    fileName: 'settings',
-    sharing: collaborative(),
-    dataStructure: 'keyValue'
-  })
+  impl: dataStore('settings', collaborative())
 })
 
 DataStore('userSettings', {
-  impl: dataStore({
-    fileName: 'userSettings',
-    sharing: userOnly(),
-    dataStructure: 'keyValue'
-  })
+  impl: dataStore('userSettings', globalUserOnly())
 })
 
 DataStore('userProfile', {
-  impl: dataStore({
-    fileName: 'profile',
-    sharing: friends(),
-    dataStructure: 'keyValue'
-  })
+  impl: dataStore('profile', friends())
 })
 
-
-const joinRoomAction = Action('joinRoom', {
+Action('socialDB.joinRoom', {
   params: [
     {id: 'userId', as: 'string', defaultValue: '%$userId%'},
     {id: 'roomId', as: 'string', defaultValue: '%$roomId%'}
@@ -124,7 +79,7 @@ const joinRoomAction = Action('joinRoom', {
   }
 })
 
-Action('createRoom', {
+Action('socialDB.createRoom', {
   params: [
     {id: 'userId', as: 'string', defaultValue: '%$userId%'},
     {id: 'displayName', as: 'string', mandatory: true},

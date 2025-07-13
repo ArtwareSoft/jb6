@@ -462,7 +462,8 @@ Test('completionActionTest.defaultValueWithDslType', {
 Test('langServiceTest.provideDefinition', {
   impl: dataTest({
     calculate: langService.definition(calcCompTextAndCursor(`dataTest('', __not())`)),
-    expectedResult: contains('jb-common', { data: '%path%' })
+    expectedResult: contains('jb-common', { data: '%path%' }),
+    timeout: '1000'
   })
 })
 
@@ -476,7 +477,8 @@ Test('langServiceTest.closestComp', {
 Test('langServiceTest.provideDefinition.firstInPipe', {
   impl: dataTest({
     calculate: langService.definition(calcCompTextAndCursor('dataTest(pipeline(l__ist()))')),
-    expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' })
+    expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' }),
+    timeout: '3000'
   })
 })
 

@@ -1,36 +1,40 @@
-import { dsls, jb } from '@jb6/core'
+import { dsls, jb, coreUtils, ns } from '@jb6/core'
 import './multi-user.js'
 
 const { 
-  common: { Data, Action },
+  common: { Data, Action, 
+    data: { fetch }
+   },
   tgp: { TgpType },
+  'social-db': { 
+   },
+
 } = dsls
+
+const { logError, log, delay } = coreUtils
 
 const DataStore = TgpType('data-store', 'social-db')
 const DbImpl = TgpType('db-impl', 'social-db')
 const DataStoreFeature = TgpType('data-store-feature', 'social-db')
+const MyRoomsSecrets = TgpType('my-rooms-secrets', 'social-db')
 
 const byContext = DbImpl.forward('byContext')
 const inMemoryTesting = DbImpl.forward('inMemoryTesting')
-const fileBased = DbImpl.forward('fileBased')
 
-jb.socialDbCache = {
-  myRoomsCache: {}
-}
+const dev = DbImpl.forward('dev')
+const prod = DbImpl.forward('prod')
+
+jb.socialDbCache = {}
 
 jb.socialDbUtils = {
-  computeUrl(userId, roomId, {bucketName, storagePrefix, fileName, readVisibility}) {
-    // Handle both cloud and local storage
-    const isLocal = !bucketName || bucketName === ''
-    if (['userOnly','roomUserOnly'].includes(readVisibility) && !jb.socialDbCache.myRoomsCache.private) {
-      const error = `myRoomsCache not set ${fileName} ${readVisibility}`
-      logger.error({t:'computeUrl', error })
-      throw new Error(error)
-    }  
-    
-    const privateUserId = jb.socialDbCache.myRoomsCache.private // only the user knows it
+  async computeUrl({ctx, bucketName, storagePrefix, fileName, readVisibility, myRoomsSecrets}) {
+    const { userId, roomId } = ctx.vars
+    const isLocal = !bucketName
+
+    const userSecretsCache = jb.socialDbCache.userSecretsCache || await getUserSecretsCache(ctx)
+    const privateUserId = userSecretsCache.private // only the user knows it
     const userIdToShareWithFriends = userId // people that share room with the users can get this id
-    const userIdToShareOnlyWithWonder = jb.socialDbCache.myRoomsCache.privateWithSystem || userId // Only the system can get this id
+    const userIdToShareOnlyWithWonder = userSecretsCache.privateWithSystem || userId // Only the system can get this id
 
     const roomPath = isLocal ? `${storagePrefix}/rooms/${roomId}` : `${storagePrefix}/${bucketName}/${roomId}`
     const privateUserPath = isLocal ? `${storagePrefix}/users/${userId}` : `${storagePrefix}/${bucketName}/${privateUserId}`
@@ -39,7 +43,7 @@ jb.socialDbUtils = {
     const userPublishToFriendsPath = isLocal ? `${storagePrefix}/usersPub/${userIdToShareWithFriends}` : `${storagePrefix}/${bucketName}/usersPub/${userIdToShareWithFriends}`
     
     const path = 
-      readVisibility == 'userOnly' ? `${privateUserPath}/${fileName}` : 
+      readVisibility == 'globalUserOnly' ? `${privateUserPath}/${fileName}` : 
       readVisibility == 'roomUserOnly' ? `${privateUserPath}/${roomId}-${fileName}` : 
       readVisibility == 'roomReadOnly' ? `${roomPath}/${userId}-${fileName}` : 
       readVisibility == 'collaborative' ? `${roomPath}/${fileName}` :
@@ -49,15 +53,20 @@ jb.socialDbUtils = {
       ''
     if (!path) {
       const error = `computeUrl. no path for readVisibility: ${readVisibility}, fileName: ${fileName}`
-      logger.error({t:'computeUrl', error })
+      logError({t:'computeUrl', error })
       throw new Error(error)
     }
 
     return `${path}.json?${Math.floor(Math.random() * 1000000000000)}` // cache killer
+
+    function getUserSecretsCache(ctx) {
+      return jb.socialDbCache.userSecretsPromise ??= myRoomsSecrets.getMyRooms(ctx)
+          .then(v => (jb.socialDbCache.userSecretsCache = v))
+    }
   }
 }
 
-DataStore('dataStore', {
+const dataStore = DataStore('dataStore', {
   params: [
     {id: 'fileName', as: 'string', mandatory: true},
     {id: 'sharing', type: 'sharing', mandatory: true },
@@ -66,9 +75,9 @@ DataStore('dataStore', {
     {id: 'features', type: 'data-store-feature[]' },
   ],
   impl: (ctx, dataStoreArgs) => {
-    const dbImplInstance = dataStoreArgs.dbImpl.init(dataStoreArgs)
     const sharing = dataStoreArgs.sharing
     const props = (dataStoreArgs.features || []).reduce((acc,feature) => ({...acc, ...feature}) , {})
+    const dbImplInstance = dataStoreArgs.dbImpl.init({...dataStoreArgs, ...dataStoreArgs.sharing, ...props})
     
     return {
       get(...args) { return dbImplInstance.get(...args) },
@@ -84,71 +93,74 @@ DataStore('dataStore', {
   }
 })
 
-// File-based Implementation (works for both local and cloud storage)
-DbImpl('fileBased', {
+const myRoomsSecrets = MyRoomsSecrets('myRoomsSecrets', {
   params: [
-    {id: 'bucketName', as: 'string', defaultValue: ''},
-    {id: 'storagePrefix', as: 'string', mandatory: true}
+    {id: 'getMyRooms', dynamic: true, byName: true},
+    {id: 'joinRoom', dynamic: true}
+  ]
+})
+
+const fileBased = DbImpl('fileBased', {
+  params: [
+    {id: 'bucketName', as: 'string', defaultValue: '', byName: true},
+    {id: 'storagePrefix', as: 'string', mandatory: true},
+    {id: 'CRUDFunctions', defaultValue: () => jb.socialDbUtils},
+    {id: 'myRoomsSecrets', type: 'my-rooms-secrets' }
   ],
-  impl: (ctx, {bucketName, storagePrefix}) => {
-    return {
+  impl: (ctx, args) => ({
       init(dataStoreArgs) {
-        this.dataStoreArgs = dataStoreArgs
-        const {fileName, sharing, readVisibility, mediaType, dataStructure} = dataStoreArgs
-        const { computeUrl, readFile, writeFile, refineFile } = jb.socialDbUtils        
-        this.cache = {}
+        const {fileName, sharing, mediaType, dataStructure} = dataStoreArgs
+        const { computeUrl, readFile, writeFile, refineFile } = args.CRUDFunctions
                
         return {
-          get: async (userId, roomId, options = {}) => {
-            const cacheKey = `${userId}-${roomId}`
-            const cached = this.cache[cacheKey]            
+          async get({ctx, ...options}) {
+            const url = await computeUrl({ctx, ...args, ...dataStoreArgs})
+            const cached = jb.socialDbCache[url]            
             if (cached && (options.useCache || sharing.singleWriter || sharing.isAlone()))
               return cached
             
-            const url = computeUrl(userId, roomId, {bucketName, storagePrefix, fileName, sharing, readVisibility})
             const defaultValue = dataStructure === 'array' ? [] : {}
-            const freshData = await readFile(url, defaultValue, {...options, sharing, cache: cached, mediaType})
+            const freshData = await readFile(url, defaultValue, {...options, sharing, cache: cached, mediaType, ctx})
             
-            return this.cache[cacheKey] = sharing.mergeReadWithCache ? sharing.mergeReadWithCache(freshData, cached) : freshData
+            return jb.socialDbCache[url] = sharing.mergeReadWithCache ? sharing.mergeReadWithCache(freshData, cached) : freshData
           },
           
-          put: async (userId, roomId, content, options = {}) => {
-            const url = computeUrl(userId, roomId, {bucketName, storagePrefix, fileName, sharing, readVisibility})
+          async put(content, {ctx, ...options}) {
+            const url = await computeUrl({ctx,  ...args, ...dataStoreArgs})
             const initialValue = content || (dataStructure === 'array' ? [] : {})
-            const result = await writeFile(url, initialValue, {...options, userId, roomId, sharing, mediaType})            
-            return this.cache[`${userId}-${roomId}`] = result
+            const result = await writeFile(url, initialValue, {...options, ctx, sharing, mediaType})            
+            return jb.socialDbCache[url] = result
           },
           
-          refine: async (userId, roomId, updateAction, options = {}) => {
-            const url = computeUrl(userId, roomId, {bucketName, storagePrefix, fileName, sharing, readVisibility})
+          async refine(updateAction, {ctx, ...options}) {
+            const url = await computeUrl({ctx,  ...args, ...dataStoreArgs})
             const initialValue = dataStructure === 'array' ? [] : {}
-            const result = await refineFile(url, updateAction, initialValue, { ...options,  userId,  roomId, fileName, sharing, dataStoreArgs })
-            return this.cache[`${userId}-${roomId}`] = result
+            const result = await refineFile(url, updateAction, initialValue, { ...options,  ctx, fileName, sharing, dataStoreArgs })
+            return jb.socialDbCache[url] = result
           },
           
-          appendItem: async (userId, roomId, item, options = {}) => {
-            const url = computeUrl(userId, roomId, {bucketName, storagePrefix, fileName, sharing, readVisibility})
+          async appendItem(item, {ctx, ...options}) {
+            const { userId } = ctx.vars
+            const url = await computeUrl({ctx, ...args, ...dataStoreArgs})
             const newItem = typeof item === 'string' ? { time: Date.now(), sender: userId, type: 'text', content: item } : item
             newItem.id = newItem.id || `${Date.now()}_${userId}_${Math.random().toString(36).slice(2, 8)}`
                         
-            const result = await refineFile(url, (items) => [...items, newItem], [], { ...options,  userId, roomId, fileName, sharing, dataStoreArgs })
+            const result = await refineFile(url, (items) => [...items, newItem], [], { ...options,  ctx, fileName, sharing, dataStoreArgs })
                         
-            return this.cache[`${userId}-${roomId}`] = result
+            return jb.socialDbCache[url] = result
           }
         }
       }
-    }
-  }
+    })
 })
 
 DbImpl('byContext', {
   params: [
     {id: 'testImpl', type: 'db-impl', defaultValue: inMemoryTesting()},
-    {id: 'dev', type: 'db-impl', defaultValue: fileBased('', 'files')},
-    {id: 'prod', type: 'db-impl', defaultValue: fileBased('indiviai-wonder', 'https://storage.googleapis.com')}
+    {id: 'dev', type: 'db-impl', defaultValue: dev()},
+    {id: 'prod', type: 'db-impl', defaultValue: prod() }
   ],
-  impl: (ctx, {testImpl, dev, prod}) => {
-    return {
+  impl: (ctx, {testImpl, dev, prod}) => ({
       init(dataStoreArgs) {
         this.dataStoreArgs = dataStoreArgs        
         const isLocalHost = typeof location !== 'undefined' && location.hostname === 'localhost'
@@ -158,12 +170,12 @@ DbImpl('byContext', {
         const selectedImpl = inTest ? testImpl : isLocalHost && db == 'local' ? dev : prod
         return selectedImpl.init(dataStoreArgs)
       }
-    }
-  }
+  })
 })
 
 Object.assign(jb.socialDbUtils, { 
-  async readFile(fullUrl, defaultValue, {userId, roomId, doNotUpdateRoomActivity, doNotLog, mediaType = 'json',sharing, event = {}}) {
+  async readFile(fullUrl, defaultValue, {doNotUpdateRoomActivity, doNotLog, mediaType = 'json',sharing, event = {}, ctx}) {
+    const { userId, roomId } = ctx.vars
     const start = Date.now()
     if (mediaType != 'json')
       throw new Error(`readFile supports only json ${fullUrl}, in case of image use geturl`)
@@ -176,15 +188,16 @@ Object.assign(jb.socialDbUtils, {
       if (mediaType == 'binary')
         return res.blob()
       const res = await response.json()
-      !doNotLog && logger.info({t:'readFile', duration: Date.now() - start, userId, fileName: event?.fileName, mediaType })
+      !doNotLog && log({t:'readFile', duration: Date.now() - start, userId, fileName: event?.fileName, mediaType })
       return res.content || defaultValue
     } catch (err) {
-      !doNotLog && logger.error({t:'readFile', duration: Date.now() - start, userId, fileName: event?.fileName, mediaType, error: err.message })
+      !doNotLog && logError({t:'readFile', duration: Date.now() - start, userId, fileName: event?.fileName, mediaType, error: err.message })
       return defaultValue
     }
   },
   
-  async writeFile(fullUrl, content, {userId, roomId, doNotUpdateRoomActivity, doNotLog, event, mediaType = 'json', sharing }) {
+  async writeFile(fullUrl, content, {doNotUpdateRoomActivity, doNotLog, event, mediaType = 'json', sharing, ctx }) {
+    const { userId, roomId } = ctx.vars
     const start = Date.now()
     let putResponse
     if (mediaType == 'binary') {
@@ -196,7 +209,7 @@ Object.assign(jb.socialDbUtils, {
         body: content,
         credentials: 'omit'
       })
-      !doNotLog && logger.info({t:'putFile', duration: Date.now() - start, userId, fileName: event?.fileName, mediaType })
+      !doNotLog && log({t:'putFile', duration: Date.now() - start, userId, fileName: event?.fileName, mediaType })
       return binaryPath
     } else {
       putResponse = await fetch(fullUrl, {
@@ -207,11 +220,12 @@ Object.assign(jb.socialDbUtils, {
     }
     if (!putResponse.ok) throw new Error(`Failed to save: ${fullUrl} ${putResponse.status}`)
     !doNotUpdateRoomActivity && sharing.notifyInternalActivity(userId, roomId, {fullUrl, op: 'put', ...event})
-    !doNotLog && logger.info({t:'putFile', duration: Date.now() - start, userId, fileName: event?.fileName, mediaType })
+    !doNotLog && log({t:'putFile', duration: Date.now() - start, userId, fileName: event?.fileName, mediaType })
     return content
   },
   
-  async refineFile(fullUrl, updateAction, {userId, roomId, initialValue, event, mediaType = 'json', sharing }) {
+  async refineFile(fullUrl, updateAction, {initialValue, event, mediaType = 'json', sharing, ctx }) {
+    const { userId, roomId } = ctx.vars
     const start = Date.now()
     if (mediaType != 'json')
       throw new Error(`refineFile supports only json ${fullUrl}`)
@@ -230,7 +244,7 @@ Object.assign(jb.socialDbUtils, {
     if (!saveResponse.ok) throw new Error(`Failed to save: ${saveResponse.status}`)
       sharing.notifyInternalActivity(userId, roomId, {fullUrl, op: 'refine', ...event})
     
-    logger.info({t:'refineFile', duration: Date.now() - start,fetchTime, putTime: Date.now() - fetchTime, userId, fileName: event?.fileName, isInitialValue: !response.ok })
+    log({t:'refineFile', duration: Date.now() - start,fetchTime, putTime: Date.now() - fetchTime, userId, fileName: event?.fileName, isInitialValue: !response.ok })
     return content
   }
 })
@@ -239,91 +253,127 @@ Object.assign(jb.socialDbUtils, {
 // DATA OPERATIONS - Read operations using common DSL Data type
 // =============================================================================
 
-Data('get', {
+Data('socialDB.get', {
   params: [
     {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'userId', as: 'string', defaultValue: '%$userId%'},
-    {id: 'roomId', as: 'string', defaultValue: '%$roomId%'},
     {id: 'doNotUpdateRoomActivity', as: 'boolean'},
     {id: 'useCache', as: 'boolean', defaultValue: false},
     {id: 'eventAction'},
     {id: 'eventData'}
   ],
-  impl: (ctx, {dataStore, userId, roomId, doNotUpdateRoomActivity, useCache, eventAction: action, eventData: data}) => 
-        dataStore.get(userId, roomId, {doNotUpdateRoomActivity, useCache, action, data})
+  impl: (ctx, {dataStore, doNotUpdateRoomActivity, useCache, eventAction: action, eventData: data}) => 
+    dataStore.get({doNotUpdateRoomActivity, useCache, action, data, ctx})
 })
 
-// =============================================================================
-// ACTION OPERATIONS - Write/update operations using common DSL Action type
-// =============================================================================
-Action('dataStore.put', {
+Data('socialDB.getMyRoomsWithLambda', {
+  impl: (ctx) => ({ })
+})
+
+Action('socialDB.put', {
   params: [
     {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'userId', as: 'string', defaultValue: '%$userId%'},
-    {id: 'roomId', as: 'string', defaultValue: '%$roomId%'},
     {id: 'content', mandatory: true},
     {id: 'doNotUpdateRoomActivity', as: 'boolean'},
     {id: 'eventAction'},
     {id: 'eventData'}
   ],
-  impl: (ctx, {dataStore, userId, roomId, content, doNotUpdateRoomActivity, eventAction: action, eventData: data}) => 
-        dataStore.put(userId, roomId, content, {doNotUpdateRoomActivity, action, data})
+  impl: (ctx, {dataStore, content, doNotUpdateRoomActivity, eventAction: action, eventData: data}) => 
+    dataStore.put(content, {doNotUpdateRoomActivity, action, data, ctx})
 })
 
-Action('dataStore.refine', {
+Action('socialDB.refine', {
   params: [
     {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'userId', as: 'string', defaultValue: '%$userId%'},
-    {id: 'roomId', as: 'string', defaultValue: '%$roomId%'},
     {id: 'updateAction', mandatory: true, description: 'Function with existing value in %%'},
     {id: 'eventAction'},
     {id: 'eventData'}
   ],
-  impl: (ctx, {dataStore, userId, roomId, updateAction, eventAction: action, eventData: data}) => 
-        dataStore.refine(userId, roomId, updateAction, {action, data})
+  impl: (ctx, {dataStore, updateAction, eventAction: action, eventData: data}) =>
+    dataStore.refine(userId, roomId, updateAction, {action, data, ctx})
 })
 
-Action('dataStore.append', {
+Action('socialDB.append', {
   params: [
     {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'userId', as: 'string', defaultValue: '%$userId%'},
-    {id: 'roomId', as: 'string', defaultValue: '%$roomId%'},
     {id: 'toAppend', mandatory: true}
   ],
-  impl: (ctx, {dataStore, userId, roomId, toAppend: item}) => dataStore.appendItem(userId, roomId, item)
+  impl: (ctx, {dataStore, toAppend: item}) => dataStore.appendItem(userId, roomId, item, {ctx})
 })
 
-Action('dataStore.sendMessage', {
+Action('socialDB.subscribeToUpdates', {
   params: [
     {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'userId', as: 'string', defaultValue: '%$userId%'},
-    {id: 'roomId', as: 'string', defaultValue: '%$roomId%'},
-    {id: 'message', mandatory: true}
+    {id: 'callback', type: 'function', mandatory: true}
   ],
-  impl: (ctx, {dataStore, userId, roomId, message}) => dataStore.appendItem(userId, roomId, message)
+  impl: (ctx, {dataStore, callback}) => dataStore.subscribeToUpdates(callback, {ctx})
 })
 
-Action('dataStore.subscribeToUpdates', {
+Action('socialDB.notifyActivity', {
   params: [
     {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'callback', type: 'function', mandatory: true},
-    {id: 'userId', as: 'string', defaultValue: '%$userId%'},
-    {id: 'roomId', as: 'string', defaultValue: '%$roomId%'},
+    {id: 'event', as: 'object', defaultValue: {}, mandatory: true}
   ],
-  impl: (ctx, {dataStore, userId, roomId, callback}) => 
-        dataStore.subscribeToUpdates(userId, roomId, callback)
+  impl: (ctx, {dataStore, event}) => dataStore.notifyInternalActivity(event, {ctx})
 })
 
-Action('dataStore.notifyActivity', {
+const {socialDB} = ns
+
+DbImpl('inMemoryTesting', {
   params: [
-    {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
-    {id: 'event', as: 'object', defaultValue: {}, mandatory: true},
-    {id: 'userId', as: 'string', defaultValue: '%$userId%'},
-    {id: 'roomId', as: 'string', defaultValue: '%$roomId%'},
+    {id: 'simulateLatency', as: 'number', defaultValue: 0},
   ],
-  impl: (ctx, {dataStore, userId, roomId, event}) => {
-    if (dataStore.notifyInternalActivity)
-      return dataStore.notifyInternalActivity(userId, roomId, event)
-  }
+  impl: fileBased({
+    bucketName: '',
+    storagePrefix: 'memory://',
+    CRUDFunctions: (ctx,{},{simulateLatency,simulateErrors}) => ({
+      ...jb.socialDbUtils,
+      async readFile(url, defaultValue, options = {}) {
+        if (simulateLatency) await delay(simulateLatency)
+        const data = urlStore[url]
+        return data?.content || defaultValue
+      },
+      
+      async writeFile(url, content, options = {}) {
+        if (simulateLatency) await delay(simulateLatency)
+        urlStore[url] = {content, stamps: []}
+        return content
+      },
+      
+      async refineFile(url, updateAction, initialValue, options = {}) {
+        if (simulateLatency) await delay(simulateLatency)
+        
+        const data = urlStore[url] || {content: initialValue, stamps: []}
+        const newContent = updateAction(Array.isArray(data.content) ? data.content.filter(Boolean) : data.content)
+        const stamp = `${options.userId || 'system'}:${Date.now()}`
+        const someTimeAgo = Date.now() - 10000
+        urlStore[url] = {
+          content: newContent,
+          stamps: [...data.stamps, stamp].filter(s => +s.split(':').pop() > someTimeAgo)
+        }
+        return newContent
+      }
+    })
+  })
 })
 
+DbImpl('dev', {
+  impl: fileBased({
+    bucketName: '',
+    storagePrefix: 'files',
+    myRoomsSecrets: myRoomsSecrets({
+      getMyRooms: ({},{userId}) => fetch(`/files/users/${userId}/myRooms.json`),
+      joinRoom: ''
+    })
+  })
+})
+
+DbImpl('prod', {
+  impl: fileBased({
+    bucketName: 'indiviai-wonder',
+    storagePrefix: 'https://storage.googleapis.com',
+    myRoomsSecrets: myRoomsSecrets({
+      getMyRooms: socialDB.getMyRoomsWithLambda(),
+      joinRoom: socialDB.joinRoom()
+    })
+  })
+})

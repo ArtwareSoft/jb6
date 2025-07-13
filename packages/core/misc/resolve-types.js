@@ -34,6 +34,7 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
     if (prof.$$ == 'pipeline') debugger
     if (prof.$unresolvedArgs && comp) {
       Object.assign(prof, argsToProfile(prof, comp), {[astNode]: prof[astNode]})
+      if (prof.$delayed) debugger
       prof[OrigArgs] = prof.$unresolvedArgs
       delete prof.$unresolvedArgs
     }

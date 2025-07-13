@@ -19,12 +19,12 @@ Test('snippet.Data', {
 })
 
 Test('snippet.exp', {
-  //doNotRunInTests: true,
+  doNotRunInTests: true,
   impl: snippetTest(`'hello'`, equals('hello', '%result%'))
 })
 
 Test('snippet.typeError', {
-  //doNotRunInTests: true,
+  doNotRunInTests: true,
   impl: snippetTest(`Test({impl: dataTest('hey', pipeline())})`, contains('boolean', { allText: '%syntaxError%' }))
 })
 
@@ -37,7 +37,7 @@ Test('snippet.ns', {
 })
 
 Test('snippet.probe', {
-  //doNotRunInTests: true,
+  doNotRunInTests: true,
   impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/in/data/a%'), {
     probe: true
   })

@@ -3,10 +3,16 @@ import '../utils/core-utils.js'
 import './jb-cli.js'
 const { coreUtils } = jb
 const { isNode, logException } = coreUtils
-Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, 
-  studioAndProjectImportMaps, calcRepoRoot, calcImportMapOfRepoRoot, dslDocs })
+Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, studioAndProjectImportMaps, calcRepoRoot, calcImportMapOfRepoRoot, dslDocs })
+
+jb.importMapCache = {
+  studioAndProjectImportMaps: {}
+
+}
 
 async function studioAndProjectImportMaps(filePath) {
+  if (jb.importMapCache.studioAndProjectImportMaps[filePath])
+    return jb.importMapCache.studioAndProjectImportMaps[filePath]
   if (!isNode) {
         const script = `
   import { coreUtils } from '@jb6/core'
@@ -30,7 +36,7 @@ async function studioAndProjectImportMaps(filePath) {
   const testFiles = projectRootImportMap.serveEntries.flatMap(({tests}) => tests).filter(Boolean)
   const llmGuideFiles = projectRootImportMap.serveEntries.flatMap(({llmGuides}) => llmGuides).filter(Boolean)
 
-  return { 
+  return jb.importMapCache.studioAndProjectImportMaps[filePath] = { 
       studioImportMap: await calcImportMapOfRepoRoot(studioRoot, { servingRoot: repoRoot }), 
       projectImportMap: {projectRoot, ...await calcImportMapOfRepoRoot(projectRoot, { servingRoot: repoRoot, includeTesting: true }) },
       testFiles,

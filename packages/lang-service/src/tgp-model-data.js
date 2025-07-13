@@ -25,7 +25,7 @@ export async function calcTgpModelData({ filePath } = {}) {
 
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
 
-  const tgpModel = {dsls: {}, ns: {}, typeRules: [], imports: Object.keys(codeMap), projectImportMap}
+  const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, typeRules: [], imports: Object.keys(codeMap), projectImportMap}
   const {dsls, typeRules} = tgpModel
 
 //  logByEnv('codeMap', Object.keys(codeMap))

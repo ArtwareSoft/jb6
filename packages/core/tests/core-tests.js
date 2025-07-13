@@ -1,4 +1,4 @@
-import { dsls, coreUtils } from '@jb6/core'
+import { dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/testing'
 import '@jb6/llm-guide'
 
@@ -15,7 +15,7 @@ const {
     test: { dataTest }
   }
 } = dsls
-
+const { math } = ns
 
 Const('person', {
     name: 'Homer Simpson',
@@ -49,6 +49,10 @@ Const('people', [
 
 Test('coreTest.datum2', {
   impl: dataTest(pipeline('%%', { data: 'hello' }), equals('hello'))
+})
+
+Test('coreTest.ns', {
+  impl: dataTest(pipeline(-2, math.abs()), equals(2))
 })
 
 Test('coreTest.propertyPassive', {

@@ -30,8 +30,12 @@ function TgpTypeModifier(id, extraCompProps, tgpModel = jb) {
   return TgpType(extraCompProps.type, extraCompProps.dsl, {modifierId: id, ...extraCompProps}, tgpModel)
 }
 
+const nsProxy = (ns) => new Proxy(() => 0, {
+  get: (o,id) => (...args) => ({ $delayed: true, ...jb.nsRepo[ns][id](...args) })
+})
+
 function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
-  const {ns, dsls} = tgpModel
+  const {ns, dsls, nsRepo} = tgpModel
   const capitalLetterId = extraCompProps?.modifierId || type.replace(/-(.)/g, (_, letter) => letter.toUpperCase()).replace(/^./, c => c.toUpperCase())
   const dslType = `${type}<${dsl}>`
   const tgpType = (arg0,arg1) => {
@@ -50,14 +54,18 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
     })
     if (id.split('.').length > 1) {
       const [_ns, innerName] = id.split('.')
-      ns[_ns] = ns[_ns] || {}
-      ns[_ns][innerName] = tgpType[id]
+      // ns[_ns] = ns[_ns] || {}
+      // ns[_ns][innerName] = tgpType[id]
+
+      ns[_ns] = ns[_ns] || nsProxy(_ns)
+      nsRepo[_ns] = nsRepo[_ns] || {}
+      nsRepo[_ns][innerName] = tgpType[id]
     }
     return tgpType[id]
   }
 
-  const forward = (componentId) => new Proxy(() => 0, {
-    apply: () => () => dsls[dsl][type][componentId]()
+  const forward = (id) => new Proxy(() => 0, {
+    apply: () => (...args) => ({ $delayed: true, ...dsls[dsl][type][id](...args) })
   })
   Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward})
   dsls[dsl] = dsls[dsl] || {}

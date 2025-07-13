@@ -10,7 +10,8 @@ Object.assign(jb, {
   dsls: {
     tgp: { Const }
   },
-  ns: {}
+  ns: {}, // proxies
+  nsRepo: {} // actual comps
 })
 
 const isPrimitiveValue = val => ['string','boolean','number'].indexOf(typeof val) != -1

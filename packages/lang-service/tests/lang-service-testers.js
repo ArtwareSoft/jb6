@@ -64,7 +64,7 @@ Test('completionOptionsTest', {
   params: [
     {id: 'compText', as: 'string', description: 'use __ for completion points'},
     {id: 'expectedSelections', as: 'array', description: 'label a selection that should exist in the menu. one for each point'},
-    {id: 'filePath', as: 'string' },
+    {id: 'filePath', as: 'string'},
     {id: 'dsl', as: 'string'}
   ],
   impl: dataTest({
@@ -75,7 +75,8 @@ Test('completionOptionsTest', {
         await pr
         host.selectRange(inCompPos)
         const compTextAndCursor = host.compTextAndCursor()
-        const options = (await ctx.run(langService.completionItems({compTextAndCursor}))).items.map(x=>x.label)
+        const res1 = await ctx.run(langService.completionItems({compTextAndCursor}))
+        const options = res1.items.map(x=>x.label)
         acc.push({options})
       }, Promise.resolve())
       return acc
@@ -91,6 +92,7 @@ Test('completionOptionsTest', {
       }, []).filter(x=>x).join(', ')
       return errors.match(/^-*$/) ? true : { testFailure: errors }
     },
+    timeout: 1000,
     includeTestRes: true
   })
 })
@@ -143,6 +145,7 @@ Test('completionActionTest', {
 
       return { testFailure }
     },
+    timeout: 1000,
     includeTestRes: true
   })
 })

@@ -7,15 +7,22 @@ const { jb, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, p
     unique, compByFullId, splitDslType, runProbeCli, studioAndProjectImportMaps, toArray, calcVar, Ctx } = coreUtils
 
 jb.langServiceRegistry = { 
-    tgpModels : {}
+    tgpModels : {},
+    tgpModelsPromise: {}
 }
 
 async function calcCompProps(_compTextAndCursor) {
     const compTextAndCursor = _compTextAndCursor ? await _compTextAndCursor : tgpEditorHost().compTextAndCursor()
     const { filePath, compText, inCompOffset } = compTextAndCursor
-    jb.langServiceRegistry.tgpModels[filePath] = jb.langServiceRegistry.tgpModels[filePath] || new tgpModelForLangService(await calcTgpModelData({filePath}))
+
+    jb.langServiceRegistry.tgpModels[filePath] = jb.langServiceRegistry.tgpModels[filePath] || await getTgpModel()
     const tgpModel = jb.langServiceRegistry.tgpModels[filePath]
     return {...compTextAndCursor, tgpModel, ...calcProfileActionMap(compText, {inCompOffset, tgpModel}) }
+
+    function getTgpModel() {
+        return jb.langServiceRegistry.tgpModelsPromise[filePath] = calcTgpModelData({filePath})
+            .then(v => (jb.langServiceRegistry.tgpModels[filePath] = new tgpModelForLangService(v)))
+    }
 }
 
 async function provideCompletionItems(compProps, ctx) {
