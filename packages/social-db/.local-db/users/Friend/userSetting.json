@@ -1,0 +1,13 @@
+{
+  "content": {
+    "companion": {
+      "current_personality": "regular",
+      "custom_personalities": {}
+    },
+    "avatars": {
+      "current_avatar": "",
+      "custom_avatars": {}
+    }
+  },
+  "stamps": []
+}

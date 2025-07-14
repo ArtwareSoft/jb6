@@ -310,8 +310,8 @@ async function fetchByEnv(url, serveEntries = []) {
 }
 
 function absPathToUrl(path, serveEntries = []) {
-    const servedEntry = serveEntries.find(x => x.pkgDir != x.dir && path.indexOf(x.pkgDir) == 0)
-    return servedEntry ? path.replace(servedEntry.pkgDir, servedEntry.dir) : path
+    const servedEntry = serveEntries.find(x => x.pkgDir != x.urlPath && path.indexOf(x.pkgDir) == 0)
+    return servedEntry ? path.replace(servedEntry.pkgDir, servedEntry.urlPath) : path
 }
 
 const isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string'

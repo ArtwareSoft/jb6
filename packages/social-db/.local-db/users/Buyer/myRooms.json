@@ -1,0 +1,9 @@
+{
+  "content": {
+    "private": "BuyerSecret",
+    "rooms": ["buyPhone","buyPhoneEmpty"]
+  },
+  "stamps": [
+    "Buyer:1746435351171"
+  ]
+}

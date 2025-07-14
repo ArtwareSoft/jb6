@@ -3,7 +3,7 @@ import './multi-user.js'
 
 const { 
   common: { Data, Action, 
-    data: { fetch }
+    data: { }
    },
   tgp: { TgpType },
   'social-db': { 
@@ -24,7 +24,9 @@ const inMemoryTesting = DbImpl.forward('inMemoryTesting')
 const dev = DbImpl.forward('dev')
 const prod = DbImpl.forward('prod')
 
-jb.socialDbCache = {}
+jb.socialDbCache = {
+  testingStore: {}
+}
 
 jb.socialDbUtils = {
   async computeUrl({ctx, bucketName, storagePrefix, fileName, readVisibility, myRoomsSecrets}) {
@@ -63,6 +65,13 @@ jb.socialDbUtils = {
       return jb.socialDbCache.userSecretsPromise ??= myRoomsSecrets.getMyRooms(ctx)
           .then(v => (jb.socialDbCache.userSecretsCache = v))
     }
+  },
+  testingStore(ctx,url,val) {
+    const { testID } = ctx.vars
+    const store = jb.socialDbCache.testingStore[testID] = jb.socialDbCache.testingStore[testID] || {}
+    if (val === undefined)
+      return store[url]
+    return store[url] = val
   }
 }
 
@@ -110,7 +119,8 @@ const fileBased = DbImpl('fileBased', {
   impl: (ctx, args) => ({
       init(dataStoreArgs) {
         const {fileName, sharing, mediaType, dataStructure} = dataStoreArgs
-        const { computeUrl, readFile, writeFile, refineFile } = args.CRUDFunctions
+        const { readFile, writeFile, refineFile } = args.CRUDFunctions
+        const { computeUrl } = jb.socialDbUtils 
                
         return {
           async get({ctx, ...options}) {
@@ -320,7 +330,7 @@ const {socialDB} = ns
 
 DbImpl('inMemoryTesting', {
   params: [
-    {id: 'simulateLatency', as: 'number', defaultValue: 0},
+    {id: 'simulateLatency', as: 'number', defaultValue: 0}
   ],
   impl: fileBased({
     bucketName: '',
@@ -329,29 +339,33 @@ DbImpl('inMemoryTesting', {
       ...jb.socialDbUtils,
       async readFile(url, defaultValue, options = {}) {
         if (simulateLatency) await delay(simulateLatency)
-        const data = urlStore[url]
+        const data = jb.socialDbUtils.testingStore(ctx,url)
         return data?.content || defaultValue
       },
       
       async writeFile(url, content, options = {}) {
         if (simulateLatency) await delay(simulateLatency)
-        urlStore[url] = {content, stamps: []}
+        jb.socialDbUtils.testingStore(ctx,url,{content, stamps: []})
         return content
       },
       
       async refineFile(url, updateAction, initialValue, options = {}) {
         if (simulateLatency) await delay(simulateLatency)
         
-        const data = urlStore[url] || {content: initialValue, stamps: []}
+        const data = jb.socialDbUtils.testingStore(ctx,url) || {content: initialValue, stamps: []}
         const newContent = updateAction(Array.isArray(data.content) ? data.content.filter(Boolean) : data.content)
         const stamp = `${options.userId || 'system'}:${Date.now()}`
         const someTimeAgo = Date.now() - 10000
-        urlStore[url] = {
+        jb.socialDbUtils.testingStore(ctx,url, {
           content: newContent,
           stamps: [...data.stamps, stamp].filter(s => +s.split(':').pop() > someTimeAgo)
-        }
+        })
         return newContent
       }
+    }),
+    myRoomsSecrets: myRoomsSecrets({
+      getMyRooms: ({},{userId}) => fetch(`/packages/social-db/.local-db/users/${userId}/myRooms.json`),
+      joinRoom: ''
     })
   })
 })
@@ -359,9 +373,9 @@ DbImpl('inMemoryTesting', {
 DbImpl('dev', {
   impl: fileBased({
     bucketName: '',
-    storagePrefix: 'files',
+    storagePrefix: '/packages/social-db/.local-db',
     myRoomsSecrets: myRoomsSecrets({
-      getMyRooms: ({},{userId}) => fetch(`/files/users/${userId}/myRooms.json`),
+      getMyRooms: ({},{userId}) => fetch(`/packages/social-db/.local-db/users/${userId}/myRooms.json`),
       joinRoom: ''
     })
   })

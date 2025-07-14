@@ -1,15 +1,14 @@
 // === COMPLETE DOCLET DSL DEFINITION ===
 
 import { dsls } from '@jb6/core'
-import '@jb6/mcp'
 
 const { 
   common: { Data },
   tgp: { TgpType },
-  mcp: { 
-    Tool,
-    tool: { tgpModel, runSnippet, runSnippets, getFilesContent, replaceComponent, appendToFile, overrideFileContent, dslDocs, scrambleText }
-  }
+  // mcp: { 
+  //   Tool,
+  //   tool: { tgpModel, runSnippet, runSnippets, getFilesContent, replaceComponent, appendToFile, overrideFileContent, dslDocs, scrambleText }
+  // }
 } = dsls
 // ============================================================================= 
 // DOCLET DSL - 

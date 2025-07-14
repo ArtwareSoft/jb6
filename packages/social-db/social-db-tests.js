@@ -28,6 +28,8 @@ const { socialDB } = ns
 // SIMPLE DATA STORES FOR TESTING  
 // =============================================================================
 
+DataStore('a', { impl: dataStore() })
+
 const simpleNotes = DataStore('simpleNotes', {
   impl: dataStore('notes', {  
     sharing: globalUserOnly(),

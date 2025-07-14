@@ -37,8 +37,10 @@ Test('completionTest.text', {
   impl: completionOptionsTest(`uiTest(text(__'__hello'__, __'__'__))`, ['style','pipeline','style','style','pipeline','style'])
 })
 
-Test('completionTest.doclet', {
-  impl: completionOptionsTest(`ALL:Doclet('countUnder30', { impl: exercise('count people', { guidance: __solution(pipeline()) })`, ['solution'])
+Test('completionTest.dataStore', {
+  impl: completionOptionsTest(`ALL:DataStore('a', { impl: dataStore(__) })`, ['fileName'], {
+    filePath: 'packages/social-db/social-db-tests.js'
+  })
 })
 
 Test('completionTest.typeAdapter', {
@@ -463,7 +465,6 @@ Test('completionActionTest.defaultValueWithDslType', {
     expectedCursorPos: '0,17'
   })
 })
-
 
 Test('langServiceTest.provideDefinition', {
   impl: dataTest({

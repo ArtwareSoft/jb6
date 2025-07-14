@@ -32,13 +32,13 @@ async function studioAndProjectImportMaps(filePath) {
   const repoRoot = globalThis.VSCodeWorkspaceProjectRoot || await calcRepoRoot()
   const studioRoot = globalThis.VSCodeStudioExtensionRoot || `${repoRoot}/hosts/vscode-tgp-lang`
   const projectRoot = await findProjectRoot(filePath, repoRoot)
-  const projectRootImportMap = await calcImportMapOfRepoRoot(projectRoot, { servingRoot: projectRoot, includeTesting: true })
+  const projectRootImportMap = await calcImportMapOfRepoRoot(projectRoot, { repoRoot, includeTesting: true })
   const testFiles = projectRootImportMap.serveEntries.flatMap(({tests}) => tests).filter(Boolean)
   const llmGuideFiles = projectRootImportMap.serveEntries.flatMap(({llmGuides}) => llmGuides).filter(Boolean)
 
   return jb.importMapCache.studioAndProjectImportMaps[filePath] = { 
-      studioImportMap: await calcImportMapOfRepoRoot(studioRoot, { servingRoot: repoRoot }), 
-      projectImportMap: {projectRoot, ...await calcImportMapOfRepoRoot(projectRoot, { servingRoot: repoRoot, includeTesting: true }) },
+      studioImportMap: await calcImportMapOfRepoRoot(studioRoot, { repoRoot }), 
+      projectImportMap: {projectRoot, ...await calcImportMapOfRepoRoot(projectRoot, { repoRoot, includeTesting: true }) },
       testFiles,
       llmGuideFiles
     }
@@ -75,9 +75,9 @@ function resolveWithImportMap(specifier, { imports, serveEntries }) {
   const target = imports[winner]
   const rest   = specifier.slice(winner.length) // part after the prefix
   const urlToBeServed = target.endsWith('/') ? target + rest : target
-  const dirEntry = (serveEntries || []).find(({dir}) => urlToBeServed.startsWith(dir))
+  const dirEntry = (serveEntries || []).find(({urlPath}) => urlToBeServed.startsWith(urlPath))
   if (dirEntry) {
-    const restPath = urlToBeServed.slice(dirEntry.dir.length)
+    const restPath = urlToBeServed.slice(dirEntry.urlPath.length)
     return pathJoin(dirEntry.pkgDir, restPath)
   }
   return urlToBeServed
@@ -103,7 +103,7 @@ async function calcImportMap() {
         [`@jb6/${f}/`, `/packages/${f}/`]          // enables sub-path imports
       ])
     )    
-    const serveEntries = [{dir: '', pkgId: '@jb6/packages', pkgDir: pkgsDir}]    
+    const serveEntries = [{urlPath: '/packages', pkgId: '@jb6/packages', pkgDir: pkgsDir}, {urlPath: '/hosts', pkgDir: path.resolve(repoRoot, 'hosts')}]    
     const res = { imports: { ...runtime, '#jb6/': '/packages/' }, serveEntries }
     //logCli('JB6 dev mode: calcImportMap', res)
     return res
@@ -112,27 +112,27 @@ async function calcImportMap() {
   }
 }
 
-async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTesting } = {}) {
+async function calcImportMapOfRepoRoot(projectRoot, { repoRoot = '', includeTesting } = {}) {
   const { readFile, realpath, readdir } = await import('fs/promises')
   const path = await import('path')
   const { createRequire } = await import('module')
 
-  const monorepo  = await isMonorepo(repoRoot)
+  const monorepo  = await isMonorepo(projectRoot)
   if (monorepo) {
     const monoRepoShortcut = '@jb6'
-    const pkgsDir = path.resolve(repoRoot, 'packages')
+    const pkgsDir = path.resolve(projectRoot, 'packages')
     const entries = await readdir(pkgsDir, { withFileTypes: true })
     const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
-    const res = await Promise.all(folders.map(f => calcImportMapOfRepoRoot(path.join(pkgsDir, f), { servingRoot, includeTesting })))
+    const res = await Promise.all(folders.map(f => calcImportMapOfRepoRoot(path.join(pkgsDir, f), { repoRoot, includeTesting })))
     const selfImports = Object.fromEntries(folders.flatMap(f => [[`${monoRepoShortcut}/${f}`,  `${pkgsDir}/${f}/index.js`], 
       [`${monoRepoShortcut}/${f}/`, `${pkgsDir}/${f}/`] ]))
     const serveEntries = {}
     for (const f of folders) {
       const supportingFiles = await calcSupportingFiles(path.join(pkgsDir, f),`${monoRepoShortcut}/${f}`)
-      serveEntries[`/${f}`] = { dir: `/packages/${f}`, pkgDir: path.join(pkgsDir, f), pkgId: `${monoRepoShortcut}/${f}`, ...supportingFiles }
+      serveEntries[`/${f}`] = { urlPath: `/packages/${f}`, pkgDir: path.join(pkgsDir, f), pkgId: `${monoRepoShortcut}/${f}`, ...supportingFiles }
     }
-    res.forEach(r => r.serveEntries.forEach(x=> serveEntries[x.dir] = {
-      ...serveEntries[x.dir], ...x
+    res.forEach(r => r.serveEntries.forEach(x=> serveEntries[x.urlPath] = {
+      ...serveEntries[x.urlPath], ...x
     }))
     return {
       imports: { ...selfImports, ...Object.fromEntries(res.flatMap(r => Object.entries(r.imports))) },
@@ -140,44 +140,53 @@ async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTest
     }
   }
 
-  const serveEntries = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8')).serveEntries || []
-  const supportingFiles = await calcSupportingFiles(repoRoot, '@currentProject')
-  serveEntries.push({dir: repoRoot, pkgDir: repoRoot, pkgId: '@currentProject', ...supportingFiles})
-  const packages = {}
+  const pkg = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf8'))
+  const serveEntries = []
+  const [pkgDir,pkgId,indexPath] = [projectRoot,pkg.name,`${projectRoot}/index.js`]
+  const supportingFiles = await calcSupportingFiles(pkgDir,pkgId)
+  const packages = { [pkgId] : {pkgDir, indexPath, ...supportingFiles}}
   const visited = new Set()
-  await crawl(repoRoot)
+  await crawl(projectRoot)
+  const moreRoots = resolvePkgIds(projectRoot,(includeTesting ? ['@jb6/testing','@jb6/llm-guide'] : []))
+  await Promise.all(Object.entries(moreRoots).map( async ([pkgId, indexPath]) => {
+    const pkgDir = await realpath(path.dirname(indexPath))
+    packages[pkgId] = {pkgDir, indexPath}
+    await crawl(pkgDir,pkgId,indexPath)
+  }))
 
-  const imports = Object.fromEntries(Object.entries(packages).flatMap(([pkgId, {pkgDir, pkgPath, ...rest}]) => {
-      const localDir = pkgDir.replace(servingRoot,'')
-      serveEntries.push({dir: localDir, pkgDir, pkgId, ...rest})
+  const imports = Object.fromEntries(Object.entries(packages).flatMap(([pkgId, {pkgDir, indexPath, ...rest}]) => {
+      const localDir = pkgDir.replace(repoRoot,'')
+      serveEntries.push({urlPath: localDir, pkgDir, pkgId, ...rest})
       return [
-        [ pkgId, pkgPath.replace(servingRoot,'')],
+        [ pkgId, indexPath.replace(repoRoot,'')],
         [`${pkgId}/`, `${localDir}/`]
       ]
     }))
         
   return { repoRoot, imports, serveEntries }
 
-  async function crawl(dir) {
-    if (visited.has(dir)) return
-    visited.add(dir)
-    const pkg = JSON.parse(await readFile(path.join(dir, 'package.json'), 'utf8'))
-    const dependencies = [...Object.keys(pkg.dependencies || {}), 
-      ...(dir == repoRoot && includeTesting ? ['@jb6/testing','@jb6/llm-guide'] : [])].filter(d=>d.startsWith('@jb6/'))
-    const localCreateRequire = createRequire(path.join(dir, 'package.json'))
-    const resolved = Object.fromEntries(dependencies.flatMap(d=>{ 
+  async function crawl(pkgDir) {
+    if (visited.has(pkgDir)) return
+    visited.add(pkgDir)
+    const pkg = JSON.parse(await readFile(path.join(pkgDir, 'package.json'), 'utf8'))
+    const dependencies = Object.keys(pkg.dependencies || {}).filter(d=>d.startsWith('@jb6/'))
+    const resolved = resolvePkgIds(pkgDir,dependencies)
+    await Promise.all(Object.entries(resolved).map( async ([pkgId, indexPath]) => {
+      const pkgDir = await realpath(path.dirname(indexPath))
+      packages[pkgId] = {pkgDir, indexPath}
+      await crawl(pkgDir,pkgId,indexPath)
+    }))
+  }
+
+  function resolvePkgIds(pkgDir, ids) {
+    const localCreateRequire = createRequire(path.join(pkgDir, 'package.json'))
+    return Object.fromEntries(ids.flatMap(d=>{ 
       try {
         return [[d,localCreateRequire.resolve(d)]]
       } catch (e) {
-        console.error(`Error resolving ${d} in ${dir}`, e)
+        console.error(`Error resolving ${d} in ${pkgDir}`, e)
         return []
       }
-    }))
-    await Promise.all(Object.entries(resolved).map( async ([pkgId, pkgPath]) => {
-      const pkgDir = await realpath(path.dirname(pkgPath))
-      const supportingFiles = await calcSupportingFiles(pkgDir,pkgId)
-      packages[pkgId] = {pkgDir, pkgPath, ...supportingFiles}
-      await crawl(pkgDir)
     }))
   }
 
@@ -189,7 +198,7 @@ async function calcImportMapOfRepoRoot(repoRoot, { servingRoot = '', includeTest
 
     const testsDirFiles = await listFiles(path.join(pkgDir, 'tests'))
     const llmGuideDirFiles = await listFiles(path.join(pkgDir, 'llm-guide'))
-    const tests = files.filter(file => file.isFile() && file.name.endsWith('test.js')).map(file => path.join(pkgPrefix, file.name))
+    const tests = files.filter(file => file.isFile() && file.name.endsWith('tests.js')).map(file => path.join(pkgPrefix, file.name))
     const llmGuides = files.filter(file => file.isFile() && file.name.endsWith('llm-guide.js')).map(file => path.join(pkgPrefix, file.name))
     return { tests: [...tests, ...testsDirFiles], llmGuides: [...llmGuides, ...llmGuideDirFiles] }
   }

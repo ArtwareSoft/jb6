@@ -15,12 +15,5 @@
     "@jb6/core": "file:../../packages/core",
     "@jb6/llm-guide": "file:../../packages/llm-guide",
     "@jb6/testing": "file:../../packages/testing"
-  },
-  "serveEntries": [
-    {
-      "pkgDir": "/home/shaiby/projects/jb6/hosts/test-project",
-      "dir": "/hosts/test-project",
-      "pkgId": "jb6-test-project"
-    }
-  ]
+  } 
 }

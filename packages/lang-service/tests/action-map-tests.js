@@ -1,7 +1,7 @@
 import '@jb6/lang-service'
 import './lang-service-testers.js'
 import { dsls, coreUtils } from '@jb6/core'
-const { prettyPrint } = coreUtils
+const { prettyPrint, prettyPrintComp, asJbComp } = coreUtils
 
 const { 
   tgp: { Const, TgpType, 
@@ -189,6 +189,20 @@ Test('actionMapTest.funcDefaults', {
     expectedResult: and(not(contains('aB:')), contains('aB(c, { b } = {}) { 3 }')),
   })
 })
+
+// Test('prettyPrintTest.forward', {
+//   impl: dataTest({
+//     calculate: () => prettyPrintComp(Data.forward('forward2')[asJbComp],{tgpModel: { dsls: jb.dsls }}),
+//     expectedResult: contains("id: 'inp', as: 'string'"),
+//   })
+// })
+
+// Data('forward2', {
+//   params: [
+//     {id: 'inp', as: 'string'}
+//   ],
+//   impl: '%$inp%'
+// })
 
 /*
 

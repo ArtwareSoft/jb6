@@ -1,0 +1,19 @@
+{
+  "content": {
+    "userApplets": [
+      "movieRankingAppletShai",
+      "zui"
+    ],
+    "companion": {
+      "current_personality": "regular",
+      "custom_personalities": {}
+    },
+    "avatars": {
+      "current_avatar": "",
+      "custom_avatars": {}
+    }
+  },
+  "stamps": [
+    "113085269229346369198:1749095253045"
+  ]
+}

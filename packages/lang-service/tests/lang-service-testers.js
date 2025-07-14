@@ -19,13 +19,14 @@ jb.langServiceTestRegistry = {
   uniqueNameCounter: 0,
 }
 
-async function filePathForLangServiceTest() {
+async function filePathForLangServiceTest(filePath) {
   const repoRoot = '/home/shaiby/projects/jb6' // await coreUtils.calcRepoRoot()
-  return `${repoRoot}/hosts/test-project/a-tests.js`
+  const filePathToUse = filePath || 'hosts/test-project/a-tests.js'
+  return `${repoRoot}/${filePathToUse}`
 }
 
-async function calcCompTextAndCursorsForTest({ctx,compText}) {
-  const filePath = await filePathForLangServiceTest()
+async function calcCompTextAndCursorsForTest({ctx,compText,filePath: relativeFilePath}) {
+  const filePath = await filePathForLangServiceTest(relativeFilePath)
   const testId = ctx.vars.testID
   const fullText = compText.match(/^[a-z]+Test\(/) ? `Test('x', {\n  impl: ${compText}\n})` 
     : compText.match(/^ALL:/) ? compText.slice(4)

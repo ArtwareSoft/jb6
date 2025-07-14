@@ -28,8 +28,8 @@ Test('socialDbSingleUser', {
   ],
   impl: dataTest({
     vars: [
-      Var('userId', 'alice'),
-      Var('roomId', 'alicePrivateRoom')
+      Var('userId', 'Buyer'),
+      Var('roomId', 'buyPhone')
     ],
     calculate: '%$query()%',
     expectedResult: '%$expectedResult()%',

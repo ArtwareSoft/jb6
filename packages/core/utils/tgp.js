@@ -1,7 +1,7 @@
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 const { coreUtils } = jb
-const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType } = coreUtils
+const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx } = coreUtils
 
 Object.assign(coreUtils, { globalsOfType, ptsOfType })
 
@@ -31,7 +31,40 @@ function TgpTypeModifier(id, extraCompProps, tgpModel = jb) {
 }
 
 const nsProxy = (ns) => new Proxy(() => 0, {
-  get: (o,id) => (...args) => ({ $: '__', $delayed: () => jb.nsRepo[ns][id](...args) } )
+  get: (o,id) => {
+    const res = (...args) => ({ $: '__', $delayed: () => {
+      const comp = jb.nsRepo[ns][id]
+      if (!comp) {
+        logError(`delayed ns profile. can not find profile ${ns}.${id}`)
+        return 'missing ${ns}.${id}'
+      }
+      return comp(...args) 
+    }} )
+    res.$run = (...args) => new Ctx().run(res(...args))
+    return res
+  }
+})
+
+const forwardProxy = (dsl,type,id) => new Proxy(() => 0, {
+  get: (o,p) => {
+    const comp = jb.dsls[dsl]?.[type]?.[id]
+    if (!comp) {
+      logError(`delayed forward profile. can not find profile ${type}<${dsl}>${id}`)
+      return 'missing ${type}<${dsl}>${id}'
+    }
+    if (p == '$run')
+      return (...args) => comp.$run(...args) 
+    
+    return p === asJbComp && comp[asJbComp]
+  },
+  apply: () => (...args) => ({ $: '__', $delayed: () => {
+      const comp = jb.dsls[dsl]?.[type]?.[id]
+      if (!comp) {
+        logError(`delayed forward profile. can not find profile ${type}<${dsl}>${id}`)
+        return 'missing ${type}<${dsl}>${id}'
+      }
+      return comp(...args) 
+    }})
 })
 
 function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
@@ -64,9 +97,7 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
     return tgpType[id]
   }
 
-  const forward = (id) => new Proxy(() => 0, {
-    apply: () => (...args) => ({ $delayed: () => dsls[dsl][type][id](...args) })
-  })
+  const forward = id => forwardProxy(dsl,type,id)
   Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward})
   dsls[dsl] = dsls[dsl] || {}
   dsls[dsl][type] = dsls[dsl][type] || {}

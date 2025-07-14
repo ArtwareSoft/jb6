@@ -55,6 +55,29 @@ Test('coreTest.ns', {
   impl: dataTest(pipeline(-2, math.abs()), equals(2))
 })
 
+Data('ns1.nsWithRun', {
+  params: [
+    {id: 'inp', as: 'string'}
+  ],
+  impl: '%$inp%'
+})
+const {ns1} = ns
+
+Test('coreTest.nsWith$run', {
+  impl: dataTest(() => ns1.nsWithRun.$run('hello'), equals('hello'))
+})
+
+Test('coreTest.forwardWith$run', {
+  impl: dataTest(() => Data.forward('forward1').$run('hello'), equals('hello'))
+})
+
+Data('forward1', {
+  params: [
+    {id: 'inp', as: 'string'}
+  ],
+  impl: '%$inp%'
+})
+
 Test('coreTest.propertyPassive', {
   impl: dataTest(property('name', obj(prop('name', 'homer')), { useRef: true }), equals('homer'))
 })
