@@ -33,16 +33,6 @@ Tool('doclet', {
   })
 })
 
-Tool('guidance', {
-  params: [
-    {id: 'guidance', type: 'guidance<llm-guide>'}
-  ],
-  impl: (ctx,{guidance}) => ({
-    content: [{ type: 'text', text: JSON.stringify(guidance) }],
-    isError: false
-  })
-})
-
 Tool('defaultRepoRoot', {
   description: 'get repo root',
   params: [

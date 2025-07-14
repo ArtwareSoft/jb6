@@ -5,7 +5,7 @@ import '@jb6/llm-guide'
 
 const { 
   'llm-guide': { Doclet,
-    doclet: { exercise },
+    doclet: { howTo },
     guidance: { doNot, solution  },
     explanationPoint: { bestPractice, namingCategory,namingCollision },
     problemStatement: { problem }
@@ -15,7 +15,7 @@ const {
 
 Doclet('tgpNamingConventions', {
 Doclet('tgpNamingConventions', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How to use package namespaces when extending foreign DSLs with new operations',
       intro: 'When your package needs to add operations to DSLs you don\'t own (like adding social-db operations to common DSL components), namespaces provide clean extension without modifying the original DSL.'

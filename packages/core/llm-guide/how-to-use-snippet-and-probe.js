@@ -8,7 +8,7 @@ const {
   common: { Data, data: { pipeline, filter, count, join, sum }, boolean: { and, equals } },
   test: { Test, test : { dataTest } },
   'llm-guide': { Doclet,
-    doclet: { exercise },
+    doclet: { howTo },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation },
     problemStatement: { problem }
@@ -30,7 +30,7 @@ Test('peopleUnder30Test', {
 })
 
 Doclet('circuitConcept', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding the Circuit concept - execution environment containing multiple related components'),
     solution({
       code: `Data('peopleUnder30', {
@@ -99,7 +99,7 @@ function calcCircuit() {
 })
 
 Doclet('snippetExecution', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding TGP snippet execution for testing expressions'),
     solution({
       code: "'%$people%'",
@@ -141,7 +141,7 @@ const result = await dsls['common']['data']['noName'].$run()
 })
 
 Doclet('probeBasics', {
-  impl: exercise(
+  impl: howTo(
     problem('Using probe (__) as a cursor to inspect data flow at specific points'),
     solution({
       code: `'%$people/__%'`,
@@ -188,7 +188,7 @@ Doclet('probeBasics', {
 })
 
 Doclet('probeInExpressions', {
-  impl: exercise(
+  impl: howTo(
     problem('Advanced probe placement within expressions and function calls'),
     solution({
       code: "count('%$people/__%')",
@@ -225,7 +225,7 @@ Doclet('probeInExpressions', {
 })
 
 Doclet('probeResultInterpretation', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding probe output structure and execution metadata'),
     solution({
       code: "'%$people/__%'",
@@ -271,7 +271,7 @@ Doclet('probeResultInterpretation', {
 })
 
 Doclet('snippetDebuggingWorkflow', {
-  impl: exercise(
+  impl: howTo(
     problem('Systematic debugging approach using snippets and probes together'),
     solution({
       code: "'%$people/__%'",

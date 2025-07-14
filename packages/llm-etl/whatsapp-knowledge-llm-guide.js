@@ -7,7 +7,7 @@ const {
   tgp: { Const, var: { Var } }, 
   common: { data: { pipeline, filter, count, join, obj, splitByPivot, enrichGroupProps }, prop },
   'llm-guide': { Doclet, Spec,
-    doclet: { exercise, principle },
+    doclet: { howTo, principle },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax, proceduralSolution }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology, tradeoff, evidence, impact },
     problemStatement: { problem },
@@ -33,7 +33,7 @@ Const('whatsappMessages', [
 
 
 Doclet('whatsappToKnowledge', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Transform WhatsApp chat exports into searchable knowledge base',
       intro: 'WhatsApp groups contain valuable discussions and decisions buried in chronological message streams. This use case demonstrates how to extract meaningful conversation threads, enrich them with context, and build a searchable knowledge base using LLM-ETL components.'
@@ -88,7 +88,7 @@ Doclet('whatsappToKnowledge', {
 })
 
 Doclet('conversationSegmentation', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Segment continuous message stream into meaningful conversation groups',
       intro: 'The first challenge is identifying where one discussion ends and another begins. This requires understanding both temporal patterns and semantic coherence.'
@@ -196,7 +196,7 @@ pipeline(
 })
 
 Doclet('conversationEnrichment', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Enrich conversation groups with semantic properties for searchability',
       intro: 'Once conversations are segmented, we need to extract meaningful metadata that enables powerful search and knowledge retrieval.'
@@ -306,7 +306,7 @@ llmEnrich.knowledgeGraph({
 })
 
 Doclet('embeddingAndSearch', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Generate embeddings and build semantic search capabilities',
       intro: 'The final step transforms enriched conversations into a searchable knowledge base using vector embeddings for semantic similarity.'
@@ -441,7 +441,7 @@ llmQA.conversational({
 })
 
 Doclet('implementationConsiderations', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Key considerations for production WhatsApp knowledge systems',
       intro: 'Building a production-ready system requires addressing privacy, performance, and continuous learning challenges.'

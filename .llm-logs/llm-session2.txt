@@ -32,7 +32,7 @@ Key insight: The guide emphasizes learning through tests and active experimentat
 
 === ISSUES IDENTIFIED ===
 ⚠️ CURRENT ISSUE: The existing implementation focuses too much on documentation reading rather than hands-on experimentation
-✅ POSITIVE: The structure follows llm-guide/exercise pattern correctly
+✅ POSITIVE: The structure follows llm-guide/howTo pattern correctly
 
 === FRAMEWORK UNDERSTANDING SUCCESS ===
 ✅ SUCCESS: Read all core documentation and implementation files

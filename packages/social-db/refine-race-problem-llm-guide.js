@@ -6,7 +6,7 @@ import '@jb6/llm-guide'
 const { 
   tgp: { Const },
   'llm-guide': { Doclet,
-    doclet: { exercise },
+    doclet: { howTo },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, evidence, impact },
     problemStatement: { problem }
@@ -26,7 +26,7 @@ Const('serverFileFormat', {
 })
 
 Doclet('refineRaceConditionProblem', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'What happens when multiple users call refine() simultaneously on the same data?',
       importance: 'critical',
@@ -107,7 +107,7 @@ actualResult = {
 })
 
 Doclet('detectingLostUpdates', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How can the system detect and recover from lost updates caused by race conditions?',
       intro: 'Two mechanisms help detect lost updates: mergeReadWithCache for reading stale data, and reCheckRefine for verifying write success.'
@@ -185,7 +185,7 @@ reCheckRefine: ({stamp}, content) => {
 })
 
 Doclet('preventingRaceConditions', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'What strategies can prevent or minimize refine race conditions?',
       intro: 'Several approaches can reduce race condition frequency: faster operations, conflict retry mechanisms, operational transforms, and architectural patterns.'
@@ -279,7 +279,7 @@ await counters.refine(userId, roomId, counters => {
 })
 
 Doclet('architecturalSolutions', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'What architectural patterns can eliminate refine race conditions entirely?',
       intro: 'Advanced solutions include operational transforms, event sourcing, and command queuing that provide stronger consistency guarantees.'
@@ -382,7 +382,7 @@ const transformedBobOp = transform(aliceOp, bobOp)
 })
 
 Doclet('commonMistakes', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'What are common misconceptions about refine race conditions?',
       intro: 'Developers often misunderstand the timing, scope, and solutions for race conditions in optimistic concurrency systems.'
@@ -455,7 +455,7 @@ async function refine(userId, roomId, updateFunction) {
 
 
 Doclet('dataStructuresAndIdBasedRecovery', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How do data structures (appendOnly vs randomAccess) and unique IDs affect race condition recovery?',
       intro: 'With unique IDs available, we can implement sophisticated conflict resolution that preserves all user contributions regardless of data structure type.'
@@ -633,7 +633,7 @@ reCheckRefine: ({stamp}, content) => {
 })
 
 Doclet('idGenerationStrategies', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How should unique IDs be generated to enable effective conflict resolution?',
       intro: 'ID generation strategy affects conflict detection, ordering, and debugging. Different patterns work better for different data structures.'
@@ -745,7 +745,7 @@ mergeReadWithCache: (freshData, cachedData) => {
 })
 
 Doclet('practicalRecoveryPatterns', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'What are the complete recovery patterns for real-world applications with unique IDs?',
       intro: 'Combining data structure awareness with unique IDs enables robust recovery patterns that preserve all user work.'

@@ -28,7 +28,7 @@ Next: Implementing big-to-small approach
 - primer-summary-4: ~262 tokens (sixteenth)
 - primer-summary-5: ~131 tokens (thirty-second)
 
-This is a progressive distillation exercise - much more valuable!
+This is a progressive distillation howTo - much more valuable!
 [2025-07-12T11:39:59.547Z] PAUSE: Need deeper discussion of summary content strategy
 - This is about distillation priorities, not just token counting
 - What mental models are most critical at each level?

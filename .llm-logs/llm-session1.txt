@@ -6,7 +6,7 @@ TIMESTAMP: Starting analysis
 SUCCESS: Successfully read packages/common/common-llm-guide.js
 FINDINGS:
 1. File contains comprehensive examples using llm-guide-based learning structure
-2. Uses Doclet with exercise, solution, problem, doNot, bestPractice patterns
+2. Uses Doclet with howTo, solution, problem, doNot, bestPractice patterns
 3. Shows multiple solution approaches (TGP DSL, JavaScript functions)
 4. Includes mechanismUnderTheHood explanations
 5. Has good coverage of common operations: pipeline, filter, count, join, and
@@ -15,7 +15,7 @@ STRUCTURE OBSERVED:
 - Imports dsls from @jb6/core and various packages
 - Defines sample data (people array)
 - Creates multiple Doclet exercises covering different scenarios
-- Each exercise has problem statement and multiple solutions with explanations
+- Each howTo has problem statement and multiple solutions with explanations
 
 NEXT STEPS: Need to examine TGP model and understand how to implement learnCommonDsl
 
@@ -31,7 +31,7 @@ FINDINGS:
 SUCCESS: Examined llm-guide DSL definition
 KEY COMPONENTS:
 - Doclet: Main container for exercises
-- exercise: Contains problem + solutions + guidance
+- howTo: Contains problem + solutions + guidance
 - solution: Code with explanation points
 - doNot/bestPractice: Anti-patterns and improvements  
 - explanationPoint: Various types like syntax, whenToUse, performance, comparison
@@ -141,7 +141,7 @@ GOAL: Propose better ordering and summaries for LLM effectiveness
 === LLM-GUIDE DSL ANALYSIS ===
 SUCCESS: Read the comprehensive llm-guide DSL definition
 AVAILABLE COMPONENTS:
-- Doclet: exercise, principle
+- Doclet: howTo, principle
 - Guidance: solution, doNot, bestPractice, illegalSyntax, mechanismUnderTheHood  
 - ExplanationPoint: explanation, syntax, whenToUse, performance, comparison, tradeoff, evidence, impact, methodology
 - Evidence: research, measurement, benchmark

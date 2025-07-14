@@ -1,13 +1,8 @@
 import { dsls } from '@jb6/core'
-import '@jb6/mcp'
 
 const { 
   common: { Data },
   tgp: { TgpType },
-  mcp: { 
-    Tool,
-    tool: { tgpModel, runSnippet, runSnippets, getFilesContent, replaceComponent, appendToFile, overrideFileContent, dslDocs, scrambleText }
-  }
 } = dsls
 // ============================================================================= 
 // DOCLET DSL - 
@@ -31,22 +26,21 @@ const Scenario = TgpType('scenario', 'llm-guide')
 // =============================================================================
 // TYPE: doclet - Main documentation container
 // =============================================================================
-
-Doclet('exercise', {
+Doclet('howTo', {
   params: [
-    {id: 'problem', type: 'problemStatement', mandatory: true},
+    {id: 'problem', type: 'problemStatement', templateValue: '', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
-    {id: 'validation', type: 'validation[]', description: 'verify exercise knowledge achieved'},
+    {id: 'validation', type: 'validation[]', description: 'verify howTo knowledge achieved'},
     {id: 'outro', as: 'text', description: 'Concluding explanation'}
   ]
 })
 
 Spec('specification', {
   params: [
-    {id: 'introduction', as: 'text' },    
+    {id: 'introduction', as: 'text'},
     {id: 'useCases', type: 'use-case[]', mandatory: true},
-    {id: 'dataSamples', type: 'dataSample[]' },
-    {id: 'expectedOutputs', type: 'dataSample[]' },
+    {id: 'dataSamples', type: 'dataSample[]'},
+    {id: 'expectedOutputs', type: 'dataSample[]'}
   ]
 })
 
@@ -157,7 +151,7 @@ Guidance('solution', {
 Guidance('proceduralSolution', {
   description: 'Solution using step-by-step procedures and workflows',
   params: [
-    {id: 'procedure', as: 'text', description: 'Name/description of the procedure'},
+    {id: 'procedure', as: 'text', description: 'Name/description of the procedure', templateValue: ''},
     {id: 'usefulPoints', type: 'explanationPoint[]', byName: true},
     {id: 'steps', type: 'step[]', mandatory: true, description: 'Ordered sequence of steps'},
     {id: 'summaryPoints', type: 'explanationPoint[]'}

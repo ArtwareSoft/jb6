@@ -48,4 +48,4 @@ Details: Learn to use probe cursor to inspect data at any point in pipeline exec
 
 Result of runSnippet (probe): {"circuitCmpId":"data<common>noName","probePath":"data<common>noName~impl~operators~1","visits":{"data<common>noName~impl~source":1,"data<common>noName~impl~operators~0~filter":3,"data<common>noName~impl~operators~0":1,"data<common>noName~impl~operators~1":2,"data<common>noName~impl~operators~2":1,"data<common>noName~impl":1},"totalTime":3,"result":[{"from":null,"out":"Bart","in":{"data":{"name":"Bart","age":12},"params":null,"vars":{}}},{"from":null,"out":"Lisa","in":{"data":{"name":"Lisa","age":10},"params":null,"vars":{}}}],"circuitRes":"Bart,Lisa","errors":[],"logs":[]}
 
---- learnCommonDsl exercise completed ---
+--- learnCommonDsl howTo completed ---

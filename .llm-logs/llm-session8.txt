@@ -973,7 +973,7 @@ DOCLET DSL STRUCTURE:
 ```javascript
 'llm-guide': { 
   Doclet,
-  doclet: { exercise },
+  doclet: { howTo },
   guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
   explanationPoint: { whenToUse, performance, comparison, syntax, explanation },
   problemStatement: { problem }
@@ -982,7 +982,7 @@ DOCLET DSL STRUCTURE:
 
 DOCLET AS TEMPLATING ENGINE:
 - **Doclet()**: Main container template
-- **exercise()**: Learning exercise template  
+- **howTo()**: Learning howTo template  
 - **solution()**: Code example with structured explanation points
 - **problem()**: Problem statement template
 - **explanation()**, **syntax()**, **whenToUse()**: Structured explanation components
@@ -990,7 +990,7 @@ DOCLET AS TEMPLATING ENGINE:
 EXAMPLE DOCLET TEMPLATE:
 ```javascript
 Doclet('workingWithCommonDSL', {
-  impl: exercise(
+  impl: howTo(
     problem('Working with the common DSL - data processing components'),
     solution({
       code: `// Working examples...`,

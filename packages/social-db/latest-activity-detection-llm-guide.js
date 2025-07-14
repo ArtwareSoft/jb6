@@ -5,7 +5,7 @@ import '@jb6/llm-guide'
 
 const { 
   'llm-guide': { Doclet,
-    doclet: { exercise },
+    doclet: { howTo },
     guidance: { solution, doNot, bestPractice }, 
     explanationPoint: { whenToUse, performance, explanation, syntax },
     problemStatement: { problem }
@@ -13,7 +13,7 @@ const {
 } = dsls
 
 Doclet('activityDetectionEssentials', {
-  impl: exercise(
+  impl: howTo(
     problem('What does activity detection actually do and when should you use it?'),
     solution({
       code: `// SIMPLE OUTPUT: Boolean + timestamp
@@ -62,7 +62,7 @@ const userSettings = dataStore('settings', {
 })
 
 Doclet('howItWorksDistributed', {
-  impl: exercise(
+  impl: howTo(
     problem('How do browsers coordinate without a central server?'),
     solution({
       code: `// PEER-TO-PEER: Each user owns their activity file
@@ -101,7 +101,7 @@ const freshActivity = await Promise.all(otherUsers.map(user =>
 })
 
 Doclet('commonMistakes', {
-  impl: exercise(
+  impl: howTo(
     problem('What are the most common misconceptions about this distributed system?'),
     doNot('// ❌ WRONG: Central coordination\nserver.getAllUserActivity()  // No central server exists!', {
       reason: 'This is peer-to-peer - each browser operates independently'

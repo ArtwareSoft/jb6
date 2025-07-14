@@ -7,7 +7,7 @@ const {
   tgp: { Const, var: { Var } }, 
   common: { data: { pipeline, filter, count, join, toUpperCase } },
   'llm-guide': { Doclet,
-    doclet: { exercise, principle },
+    doclet: { howTo, principle },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, evidence, impact },
     problemStatement: { problem }
@@ -37,7 +37,7 @@ Const('contentTypeScopes', [
 ])
 
 Doclet('understandingDataStores', {
-  impl: exercise(
+  impl: howTo(
     problem('What are DataStores in the social-db DSL and how do they enable distributed collaborative storage?'),
     solution({
       code: `// DataStore is a TGP component for distributed collaborative storage
@@ -100,7 +100,7 @@ const userSettings = dataStore('settings', {
 })
 
 Doclet('dataStructureAndVisibilityScopes', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding dataStructure and readVisibility - the two key parameters that control DataStore behavior'),
     solution({
       code: `// TWO KEY DATASTORE PARAMETERS control behavior:
@@ -188,7 +188,7 @@ const moviesCatalog = dataStore('movies-db', {
 })
 
 Doclet('dataStoreOperations', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding get, put, refine, and appendItem operations - how to interact with DataStore data'),
     solution({
       code: `// FOUR CORE OPERATIONS for DataStore data access:
@@ -269,7 +269,7 @@ await refine(chatMessages, userId, roomId, (messages) => {
 })
 
 Doclet('collaborativeWriteStrategies', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding collaborative write strategies - singleUser vs multiUserDistributed'),
     solution({
       code: `// TWO COLLABORATIVE WRITE STRATEGIES handle different use cases:
@@ -341,7 +341,7 @@ const collaborativeData = dataStore('shared-todos', {
 }),
 
 Doclet('raceConditionRecovery', {
-  impl: exercise(
+  impl: howTo(
     problem('How does the social-db DSL handle race conditions when multiple users edit simultaneously?'),
     solution({
       code: `// RACE CONDITION SCENARIO:
@@ -422,7 +422,7 @@ reCheckRefine: async ({stamp}, content, dataStoreArgs) => {
 })
 
 Doclet('structuredMessaging', {
-  impl: exercise(
+  impl: howTo(
     problem('How does the social-db DSL handle structured messaging and communication?'),
     solution({
       code: `// STRUCTURED MESSAGING with appendOnly DataStores
@@ -498,7 +498,7 @@ await refine(roomItems, userId, roomId, (items) => {
 })
 
 Doclet('realTimeCollaboration', {
-  impl: exercise(
+  impl: howTo(
     problem('How does the social-db DSL enable real-time awareness and collaboration?'),
     solution({
       code: `// REAL-TIME COLLABORATION through activity detection and subscriptions
@@ -581,7 +581,7 @@ const realTimeChat = dataStore('messages', {
 })
 
 Doclet('distributedStorageArchitecture', {
-  impl: exercise(
+  impl: howTo(
     problem('How does ContentType implement a distributed database using files and URLs?'),
     solution({
       code: `// DISTRIBUTED STORAGE via computed URLs and file abstraction
@@ -674,7 +674,7 @@ async function refineFile(url, updateAction, options) {
 })
 
 Doclet('dataStorePatterns', {
-  impl: exercise(
+  impl: howTo(
     problem('Common patterns and best practices for using DataStore effectively'),
     solution({
       code: `// PATTERN 1: Chat/Communication Systems
@@ -749,7 +749,7 @@ const userProfile = dataStore('profile', {
 }),
 
 Doclet('socialDbTgpImplementation', {
-  impl: exercise(
+  impl: howTo(
     problem('How does the social-db DSL integrate with TGP components for declarative distributed database operations?'),
     solution({
       code: `// DECLARATIVE DATA ACCESS with TGP integration

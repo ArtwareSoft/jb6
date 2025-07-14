@@ -7,7 +7,7 @@ const {
   tgp: { Const, var: { Var } }, 
   common: { data: { pipeline, filter, count, join } },
   'llm-guide': { Doclet,
-    doclet: { exercise, principle },
+    doclet: { howTo, principle },
     guidance: { solution, proceduralSolution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology, evidence },
     problemStatement: { problem },
@@ -25,7 +25,7 @@ Const('sessionLogs', [
 
 Doclet('dslOwnerVsClient', {
   description: 'Understanding the fundamental distinction between DSL owners and DSL clients',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How to extend DSLs appropriately based on whether you own the DSL or are a client of it',
       intro: 'Different extension strategies apply based on your relationship to the DSL: owners can modify directly, clients must extend via namespaces.'
@@ -118,7 +118,7 @@ await socialDb.put(store, userId, roomId, data)      // ← Package operation
 
 Doclet('extendingDslsGuide', {
   description: 'Comprehensive guide for extending DSLs safely and effectively',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How to extend existing DSLs without breaking compatibility while adding valuable new functionality',
       intro: 'This guide captures lessons learned from extending the llm-guide DSL with validation, quiz systems, and MCP tool integration. It addresses the critical balance between innovation and stability.'
@@ -403,7 +403,7 @@ step({
 
 Doclet('learningFromMistakes', {
   description: 'Key lessons learned about what NOT to do when extending DSLs',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Common mistakes in DSL extension and how to avoid them',
       intro: 'Real mistakes made during the llm-guide DSL extension process and the lessons learned.'

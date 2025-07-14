@@ -5,7 +5,7 @@ import '@jb6/llm-guide'
 
 const { 
   'llm-guide': { Doclet,
-    doclet: { exercise },
+    doclet: { howTo },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology, evidence, impact },
     problemStatement: { problem }
@@ -16,7 +16,7 @@ const {
 
 Doclet('learnCommonDsl.version1.original', {
   description: 'Original simple version - follows progressive complexity principle',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How to learn and master the common DSL, focusing on groupBy',
       intro: 'This guide provides a structured learning path for understanding the common DSL and its powerful data aggregation features.'
@@ -67,7 +67,7 @@ getFilesContent({
 
 Doclet('learnCommonDsl.version2.enhanced', {
   description: 'Enhanced version - comprehensive but potentially overwhelming',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How to learn and master the common DSL, focusing on groupBy and data transformations',
       intro: 'This guide provides a comprehensive learning path for the common DSL, with practical examples and proven patterns.'
@@ -142,7 +142,7 @@ Aggregator('splitByPivot', {
 
 Doclet('learnCommonDsl.principledAnalysis', {
   description: 'Analysis of both versions against LLM guide principles',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Which learning approach is more effective for LLMs based on established principles?',
       intro: 'Comparing both versions against the principles from packages/llm-guide/principles-llm-guide.js'
@@ -255,7 +255,7 @@ Doclet('learnCommonDsl.principledAnalysis', {
 
 Doclet('learnCommonDsl.version3.progressive', {
   description: 'Principled version combining best aspects while following LLM guide principles',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How to progressively master common DSL data operations, starting with basic aggregations?',
       intro: 'A step-by-step learning path that builds understanding incrementally, from simple data operations to complex groupBy analytics.'
@@ -320,7 +320,7 @@ enrichGroupProps adds: [{dept: "sales", items: [...], count: 2}, ...]`,
 
 Doclet('learningProgression.evidence', {
   description: 'Evidence for why progressive learning works better',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Why does progressive complexity outperform comprehensive coverage for LLM learning?',
       intro: 'Analysis of learning effectiveness based on LLM guide principles and evidence.'

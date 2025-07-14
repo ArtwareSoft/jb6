@@ -150,6 +150,7 @@ Tool('appendToFile', {
   }
 })
 
+
 Tool('saveToFile', {
   params: [
     {id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where timestamp will be added'},
@@ -310,6 +311,57 @@ Tool('listRepoFiles', {
     } catch (error) {
       return {
         content: [{ type: 'text', text: `Error listing repository files: ${error.message}` }],
+        isError: true
+      }
+    }
+  }
+})
+
+
+Tool('createDirectoryStructure', {
+  description: 'Create a directory structure with files based on JSON input. Directories are objects, files are strings with content.',
+  params: [
+    { id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root' },
+    { id: 'dirPath', as: 'string', mandatory: true, description: 'Relative path within repo where to create the structure' },
+    { id: 'structure', as: 'object', mandatory: true, description: 'JSON describing directory structure. Objects are directories, strings are file contents.' }
+  ],
+  impl: async (ctx, {repoRoot, dirPath, structure}) => {
+    try {
+      const { mkdirSync, writeFileSync } = await import('fs')
+      const { join } = await import('path')            
+      const basePath = join(repoRoot, dirPath)
+
+      let files = 0, dirs = 0
+      const createStructure = (obj, currentPath) => {
+        mkdirSync(currentPath, { recursive: true })        
+        for (const [name, content] of Object.entries(obj)) {
+          const itemPath = join(currentPath, name)
+          if (typeof content === 'string') {
+            writeFileSync(itemPath, content, 'utf8')
+            files++
+          } else if (typeof content === 'object' && content !== null) {
+            dirs++
+            createStructure(content, itemPath)
+          } else {
+            throw new Error(`Invalid item type for '${name}': expected string (file) or object (directory)`)
+          }
+        }
+      }
+      createStructure(structure, basePath)
+            
+      return {
+        content: [{ 
+          type: 'text', 
+          text: JSON.stringify({ 
+            result: 'Directory structure created successfully',
+            created: { dirs, files, location: join(dirPath) }
+          }) 
+        }],
+        isError: false
+      }
+    } catch (error) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ error: error.message }) }],
         isError: true
       }
     }

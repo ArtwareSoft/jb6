@@ -8,7 +8,7 @@ const {
   common: { data: { pipeline, filter, count, join, toUpperCase, mapValues }, Boolean: { and } },
   ui: { control: { button, text, group } },
   'llm-guide': { Doclet,
-    doclet: { exercise, principle },
+    doclet: { howTo, principle },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, evidence, impact, methodology },
     problemStatement: { problem },
@@ -26,7 +26,7 @@ Const('currentUser', {id: 'user123', name: 'Alice', role: 'admin'})
 
 Doclet('profilesVsFunctionsUnderstanding', {
   description: 'Critical foundational understanding that prevents catastrophic confusion about TGP nature',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Why calling TGP profiles "functions" creates catastrophic conceptual confusion for both humans and LLMs',
       intro: 'This distinction is absolutely fundamental. Getting this wrong makes everything else impossible to understand. TGP profiles are data structures with lexical scoping, NOT executable functions.'
@@ -271,7 +271,7 @@ const result2 = pipelineTemplate.$run({data: data2})   // ✅ Same template, dif
 
 Doclet('dynamicParameterPatterns', {
   description: 'Understanding how dynamic: true parameters work with real examples from common DSL',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How dynamic parameters enable context-dependent behavior in TGP generic comps',
       intro: 'Dynamic parameters are a key TGP feature that enables deferred execution and context-dependent behavior. Understanding how they work is essential for advanced TGP usage.'
@@ -375,7 +375,7 @@ transform(ctx.setData(currentItem))
 
 Doclet('profileReadingLiteracy', {
   description: 'Essential skill for understanding TGP: reading and interpreting profile structures',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How to read TGP profiles to understand what they actually do',
       intro: 'Profile reading is the foundational skill for TGP literacy. You must understand profile structure before learning to create better generic comps.'

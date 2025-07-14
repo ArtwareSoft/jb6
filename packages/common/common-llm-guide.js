@@ -7,7 +7,7 @@ const {
   tgp: { Const, var: { Var } }, 
   common: { data: { pipeline, filter, count, scrambleText }, Boolean: { and } },
   'llm-guide': { Doclet,
-    doclet: { exercise },
+    doclet: { howTo },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology },
     problemStatement: {problem}
@@ -21,7 +21,7 @@ const {
 Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])
 
 Doclet('countUnder30', {
-  impl: exercise(
+  impl: howTo(
     problem('count people under 30'),
     solution({
       code: pipeline('%$people%', filter('%age% < 30'), count()),
@@ -70,7 +70,7 @@ Doclet('countUnder30', {
 })
 
 Doclet('joinNames', {
-  impl: exercise(
+  impl: howTo(
     problem('get names of all people concatenated with comma'),
     solution({
       code: pipeline('%$people%', '%name%', join()),
@@ -124,7 +124,7 @@ function runAsAggregator(ctx, arg, index, dataArray, profile) {
 })
 
 Doclet('complexFilter', {
-  impl: exercise(
+  impl: howTo(
     problem('filter people who are under 30 AND named Bart'),
     solution({
       code: pipeline('%$people%', filter(and('%age% < 30','%name% == "Bart"')), '%name%'),
@@ -138,7 +138,7 @@ Doclet('complexFilter', {
 })
 
 Doclet('complexFilter', {
-  impl: exercise(
+  impl: howTo(
     problem('filter people who are under 30 AND named Bart'),
     solution({
       code: pipeline('%$people%', filter(and('%age% < 30','%name% == "Bart"')), '%name%'),
@@ -185,7 +185,7 @@ Doclet('complexFilter', {
 })
   
 Doclet('formatAndJoin', {
-  impl: exercise(
+  impl: howTo(
     problem('Get a comma-separated list of people under 30, formatted as "Name (age)"'),
     solution({
       code: pipeline('%$people%', filter('%age% < 30'), '%name% (%age%)', join()),
@@ -205,10 +205,10 @@ Doclet('formatAndJoin', {
 })
 
 Doclet('nestedPipeline', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Get names of children for each parent, formatted as "Child is child of Parent"',
-      intro: `This exercise demonstrates how to use nested pipelines to process hierarchical data.
+      intro: `This howTo demonstrates how to use nested pipelines to process hierarchical data.
         The outer pipeline iterates over a collection of parents, and for each parent,
         an inner pipeline processes its children. This pattern is useful for complex data transformations`
     }),
@@ -230,10 +230,10 @@ Doclet('nestedPipeline', {
 })
 
 Doclet('variableUsage', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Demonstrate variable definition and usage',
-      intro: `This exercise illustrates how to define and use variables within a pipeline.
+      intro: `This howTo illustrates how to define and use variables within a pipeline.
         Variables can improve readability and reusability of values in your DSL expressions.`
     }),
     solution({
@@ -254,7 +254,7 @@ Doclet('variableUsage', {
 
 Doclet('learnCommonDsl', {
   description: 'Master common DSL through structured learning with validation checkpoints',
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'Learn common DSL systematically through hands-on practice and self-validation',
       intro: 'The common DSL is the foundation of data processing in TGP. This structured learning path builds competency through progressive steps with quiz validation at each checkpoint.'

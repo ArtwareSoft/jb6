@@ -1,6 +1,6 @@
 import { dsls, coreUtils } from '@jb6/core'
 
-const { ptsOfType, asJbComp } = coreUtils
+const { ptsOfType, globalsOfType, asJbComp } = coreUtils
 const { 
     common: { Data, Action },
     tgp: { TgpType, typeAdapter },
@@ -102,7 +102,7 @@ export async function startMcpServer() {
 
 
     // Get all tools from the repository
-    const allTools = ptsOfType(Tool)
+    const allTools = [...ptsOfType(Tool),...globalsOfType(Tool)]
     const toolConfigs = allTools.map(toolId => {
       const toolComp = dsls.mcp.tool[toolId][asJbComp]
       return {
@@ -110,14 +110,14 @@ export async function startMcpServer() {
         description: toolComp.description || `Tool: ${toolId}`,
         inputSchema: {
           type: "object",
-          properties: toolComp.params.reduce((props, param) => {
+          properties: (toolComp.params || []).reduce((props, param) => {
             props[param.id] = {
               type: param.as === 'number' ? 'number' : 'string',
               description: param.description || ''
             }
             return props
           }, {}),
-          required: toolComp.params.filter(p => p.mandatory).map(p => p.id)
+          required: (toolComp.params || []).filter(p => p.mandatory).map(p => p.id)
         }
       }
     })
@@ -154,7 +154,7 @@ export async function startMcpServer() {
     mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       console.error('Received tool call request:', JSON.stringify(request, null, 2))
       debugger
-      const { name, arguments: args } = request.params      
+      const { name, arguments: args } = request.params 
       const result = await dsls.mcp.tool[name].$run(args)
       return result
     })

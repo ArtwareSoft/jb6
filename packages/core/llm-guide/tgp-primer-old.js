@@ -8,7 +8,7 @@ const {
   common: { data: { pipeline, filter, count, join, toUpperCase }, Boolean: { and } },
   ui: { control: { button, text, group } },
   'llm-guide': { Doclet,
-    doclet: { exercise },
+    doclet: { howTo },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation },
     problemStatement: {problem}
@@ -23,7 +23,7 @@ Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa
 // =============================================================================
 
 Doclet('tgpBasics', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding Type-Generic Profiles (TGP) - the component system in jb6'),
     solution({
       code: `// Component instantiation creates profiles (JSON-like structures)
@@ -74,7 +74,7 @@ profile.$run(ctx) // → instantiated according to "data<common>pipeline" implem
 })
 
 Doclet('workingWithCommonDSL', {
-  impl: exercise(
+  impl: howTo(
     problem('Working with the common DSL - data processing components'),
     solution({
       code: `// Common DSL provides data processing components
@@ -115,7 +115,7 @@ dsls.common.boolean.and          // Logical operations component`,
 })
 
 Doclet('componentInstantiation', {
-  impl: exercise(
+  impl: howTo(
     problem('How component instantiation works - using concrete examples'),
     solution({
       code: `// Instantiating components creates profile structures
@@ -160,7 +160,7 @@ button('Save', log('saved'))
 })
 
 Doclet('innerProfiles', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding inner profiles - nested component structures within other components'),
     solution({
       code: `// Inner profiles as direct component nesting
@@ -198,7 +198,7 @@ filter(and('%age% < 30', '%name% == "Bart"'))
 // =============================================================================
 
 Doclet('compDefExplanation', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding CompDef - component definitions that create reusable factories'),
     solution({
       code: `// TgpType creates type factories:
@@ -245,7 +245,7 @@ pipeline('%$people%', filter('%age% < 30'), count())
 })
 
 Doclet('understandingDSLs', {
-  impl: exercise(
+  impl: howTo(
     problem('What are DSLs? Domain-Specific Languages that organize components by purpose'),
     solution({
       code: `// DSLs are namespaces that group related component types by domain
@@ -293,7 +293,7 @@ ui DSL:
 })
 
 Doclet('workingWithUIDSL', {
-  impl: exercise(
+  impl: howTo(
     problem('Working with the ui DSL - user interface components you can compose'),
     solution({
       code: `// UI DSL provides user interface components
@@ -338,7 +338,7 @@ dsls.ui.feature.id               // Component features`,
 })
 
 Doclet('argsPosition', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding positional arguments - how component parameters are mapped by position'),
     solution({
       code: `// Positional arguments in order
@@ -373,7 +373,7 @@ pipeline('%$people%', filter('%age% < 30'), count())
 })
 
 Doclet('argsByValue', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding named arguments - explicit parameter specification using object syntax'),
     solution({
       code: `// Named arguments using object notation
@@ -417,7 +417,7 @@ pipeline({
 // =============================================================================
 
 Doclet('componentsWithinComponents', {
-  impl: exercise(
+  impl: howTo(
     problem('How components nest within other components - building complexity from simplicity'),
     solution({
       code: `// Components can be used as args to fill other components' params:
@@ -457,7 +457,7 @@ button(
 })
 
 Doclet('runtimeVariablesVsInstantiationArgs', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding variables vs args - data flow vs structure building'),
     solution({
       code: `// VARIABLES - resolved at execution time for data flow:
@@ -498,7 +498,7 @@ button(
 })
 
 Doclet('typeSystemInAction', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding TGP type system through working examples'),
     solution({
       code: `// Type constraints ensure components are used correctly:
@@ -548,7 +548,7 @@ pipeline(
 })
 
 Doclet('definingComponents', {
-  impl: exercise(
+  impl: howTo(
     problem('Defining reusable components - storing component definitions in the system'),
     solution({
       code: `// Define components using DSL functions
@@ -573,7 +573,7 @@ peopleUnder30()  // executes the defined component`,
 // =============================================================================
 
 Doclet('templating', {
-  impl: exercise(
+  impl: howTo(
     problem('Understanding templating - creating profiles with parameters instead of function calls'),
     solution({
       code: `// Templating: Component call creates profile template
@@ -652,7 +652,7 @@ template.$run(ctx) // → actual execution with context`,
 })
 
 Doclet('forwardReferences', {
-  impl: exercise(
+  impl: howTo(
     problem('Using components before they are defined in default values'),
     solution({
       code: `// Forward reference for default value:
@@ -675,7 +675,7 @@ Doclet('forwardReferences', {
  })
 
 Doclet('executionPatterns', {
-  impl: exercise(
+  impl: howTo(
     problem('How component instances get executed - from instantiation to results'),
     solution({
       code: `// Method 1: Direct execution with empty context
@@ -709,7 +709,7 @@ const result3 = new Ctx()
 })
 
 Doclet('practicalTGPExample', {
-  impl: exercise(
+  impl: howTo(
     problem('Complete example - building a document editor interface with TGP'),
     solution({
       code: `// Real-world example combining multiple DSLs:
@@ -776,7 +776,7 @@ group([
 })
 
 Doclet('abstractingToTGPPrinciples', {
-  impl: exercise(
+  impl: howTo(
     problem('From concrete examples to abstract TGP principles'),
     solution({
       code: `// What we've seen with concrete examples reveals TGP patterns:

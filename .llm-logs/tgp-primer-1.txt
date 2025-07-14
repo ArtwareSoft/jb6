@@ -13,7 +13,7 @@ KEY OBSERVATIONS:
 2. Heavy use of concrete working examples vs abstract explanations
 3. Strong emphasis on "templating" concept - components create profiles, not immediate execution
 4. Clear type system with <dsl> notation: data<common>, control<ui>, action<common>
-5. Sophisticated llm-guide DSL for LLM documentation with exercise/solution/guidance structure
+5. Sophisticated llm-guide DSL for LLM documentation with howTo/solution/guidance structure
 
 STRUCTURAL INSIGHTS:
 - Pass 1: Mental models (toUpperCase, pipeline, filter examples)

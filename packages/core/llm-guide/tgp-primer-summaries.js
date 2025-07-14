@@ -8,7 +8,7 @@ const {
   common: { data: { pipeline, filter, count, join, toUpperCase }, Boolean: { and } },
   ui: { control: { button, text, group } },
   'llm-guide': { Doclet,
-    doclet: { exercise },
+    doclet: { howTo },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation },
     problemStatement: {problem}
@@ -24,7 +24,7 @@ Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa
 
 Doclet('primerSummaryA1', {
   description: 'TGP Primer Summary - ~2100 tokens (÷2) - Complete mastery guide',
-  impl: exercise(
+  impl: howTo(
     problem('Mastering TGP: Complete system for building production component-based applications'),
     
     solution({
@@ -168,7 +168,7 @@ template.$run(ctx1), template.$run(ctx2)        // ✅ Reusable
 
 Doclet('primerSummaryA2', {
   description: 'TGP Primer Summary - ~1050 tokens (÷4) - Comprehensive practical guide',
-  impl: exercise(
+  impl: howTo(
     problem('Complete TGP system for building production applications'),
     
     solution({
@@ -284,7 +284,7 @@ docEditor.$run(ctx1), docEditor.$run(ctx2)                  // ✅ Reusable with
 
 Doclet('primerSummaryA3', {
   description: 'TGP Primer Summary - ~525 tokens (÷8) - Practical usage patterns',
-  impl: exercise(
+  impl: howTo(
     problem('How to effectively use TGP for building applications'),
     solution({
       code: `// Profiles are data structures with lexical scoping, NOT functions
@@ -347,7 +347,7 @@ docEditor.$run({doc: doc1}), docEditor.$run({doc: doc2})          // ✅ Reusabl
 
 Doclet('primerSummaryA4', {
   description: 'TGP Primer Summary - ~262 tokens (÷16) - Core concepts with examples',
-  impl: exercise(
+  impl: howTo(
     problem('Understanding TGP component system fundamentals'),
     solution({
       code: `// DSL domains organize components:
@@ -401,7 +401,7 @@ pipeline('%$people%', filter('%age% < 30'), count())  // source + operators`,
 
 Doclet('primerSummaryA5', {
     description: 'TGP Primer Summary - ~131 tokens (÷32) - Complete minimal introduction',
-    impl: exercise(
+    impl: howTo(
       problem('What is TGP and how do I use it?'),
       solution({
         code: `// Component instantiation creates profiles, NOT immediate execution

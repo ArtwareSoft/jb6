@@ -5,7 +5,7 @@ import '@jb6/llm-guide'
 
 const { 
   'llm-guide': { Doclet,
-    doclet: { exercise },
+    doclet: { howTo },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, evidence, impact },
     problemStatement: { problem }
@@ -15,7 +15,7 @@ const {
 // === LLM GUIDE BUILDING PRINCIPLES ===
 
 Doclet('goalOrientedStructure', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How should LLM guides be structured for maximum effectiveness?',
       importance: 'critical',
@@ -39,7 +39,7 @@ Doclet('goalOrientedStructure', {
 })
 
 Doclet('contextFirstOrdering', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'What order should information be presented in LLM guides?',
       importance: 'critical',
@@ -52,7 +52,7 @@ Doclet('contextFirstOrdering', {
         evidence('25% better pattern selection in user studies'),
         comparison('code-first documentation', { advantage: 'reduces inappropriate solution choices' }),
         syntax('problem() before solution()', 'motivation before implementation'),
-        whenToUse('every exercise should start with problem statement')
+        whenToUse('every howTo should start with problem statement')
       ]
     }),
     doNot(`solution({
@@ -63,7 +63,7 @@ Doclet('contextFirstOrdering', {
 })
 
 Doclet('grammarByExample', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How should DSL syntax be taught to LLMs?',
       importance: 'high',
@@ -96,7 +96,7 @@ solution({
 })
 
 Doclet('explicitAntiPatterns', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How should common mistakes be documented?',
       importance: 'high',
@@ -131,7 +131,7 @@ doNot('WHERE age < 30 AND name = "Bart"', {             // ← another anti-patt
 })
 
 Doclet('progressiveComplexity', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How should example complexity be ordered?',
       importance: 'high',
@@ -171,7 +171,7 @@ solution({
 })
 
 Doclet('qualityOverQuantity', {
-  impl: exercise(
+  impl: howTo(
     problem({
       statement: 'How many examples should be provided for each concept?',
       importance: 'high',
