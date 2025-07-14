@@ -24,16 +24,17 @@ Test('socialDbSingleUser', {
   params: [
     {id: 'operations', type: 'action<common>', dynamic: true, mandatory: true},
     {id: 'query', type: 'data<common>', dynamic: true, mandatory: true},
-    {id: 'expectedResult', dynamic: true, mandatory: true}
+    {id: 'expectedResult', type: 'boolean<common>', dynamic: true, mandatory: true}
   ],
   impl: dataTest({
     vars: [
       Var('userId', 'Buyer'),
-      Var('roomId', 'buyPhone')
+      Var('roomId', 'buyPhone'),
+      Var('locationOrigin', () => globalThis.location?.origin || 'http://localhost:8083')
     ],
     calculate: '%$query()%',
     expectedResult: '%$expectedResult()%',
-    runBefore: '%$operations()',
+    runBefore: '%$operations()%',
     timeout: 5000,
     includeTestRes: true
   })

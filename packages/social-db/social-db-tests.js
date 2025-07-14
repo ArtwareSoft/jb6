@@ -17,7 +17,7 @@ const {
   }, 
   common: { Boolean, Data, Action,
     boolean: { equals, contains },
-    data: { asIs, pipeline, first, property },
+    data: { asIs, pipeline, pipe, first, property },
     action: { runActions }
   }
 } = dsls
@@ -28,41 +28,36 @@ const { socialDB } = ns
 // SIMPLE DATA STORES FOR TESTING  
 // =============================================================================
 
-DataStore('a', { impl: dataStore() })
-
 const simpleNotes = DataStore('simpleNotes', {
-  impl: dataStore('notes', {  
-    sharing: globalUserOnly(),
-    dataStructure: 'keyValue',
+  impl: dataStore('notes', globalUserOnly(), {
     dbImpl: inMemoryTesting(),
-    features: [sampleData(asIs({
-      note1: { id: 'note1', title: 'First Note', content: 'This is my first note', createdAt: 1745526152578 },
-      note2: { id: 'note2', title: 'Second Note', content: 'This is my second note', createdAt: 1745526152579 }
-    }))]
+    features: [
+      sampleData(asIs({
+          note1: {id: 'note1', title: 'First Note', content: 'This is my first note', createdAt: 1745526152578},
+          note2: {id: 'note2', title: 'Second Note', content: 'This is my second note', createdAt: 1745526152579}
+      }))
+    ]
   })
 })
 
 const todoList = DataStore('todoList', {
-  impl: dataStore('todos', {
-    sharing: friends(),
+  impl: dataStore('todos', friends(), {
     dataStructure: 'array',
     dbImpl: inMemoryTesting(),
-    features: [sampleData(asIs([
-      { id: 'todo1', text: 'Buy groceries', completed: false, createdAt: 1745526152578 },
-      { id: 'todo2', text: 'Walk the dog', completed: true, createdAt: 1745526152579 },
-      { id: 'todo3', text: 'Finish project', completed: false, createdAt: 1745526152580 }
-    ]))]
+    features: [
+      sampleData(asIs([
+          {id: 'todo1', text: 'Buy groceries', completed: false, createdAt: 1745526152578},
+          {id: 'todo2', text: 'Walk the dog', completed: true, createdAt: 1745526152579},
+          {id: 'todo3', text: 'Finish project', completed: false, createdAt: 1745526152580}
+      ]))
+    ]
   })
 })
 
 Test('socialDBTest.get', {
   impl: socialDbSingleUser({
-    operations: runActions(
-      socialDB.put(simpleNotes(), asIs({ myNote: { title: 'Test Note', content: 'Hello World' } }))
-    ), 
-    query: pipeline(
-      socialDB.get(simpleNotes()),'%myNote.title%'
-    ),
+    operations: runActions(socialDB.put(simpleNotes(), asIs({myNote: {title: 'Test Note', content: 'Hello World'}}))),
+    query: pipe(socialDB.get(simpleNotes()), '%myNote/title%'),
     expectedResult: equals('Test Note')
   })
 })

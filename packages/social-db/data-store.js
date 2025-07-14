@@ -29,9 +29,10 @@ jb.socialDbCache = {
 }
 
 jb.socialDbUtils = {
-  async computeUrl({ctx, bucketName, storagePrefix, fileName, readVisibility, myRoomsSecrets}) {
+  async computeUrl({ctx, bucketName, storagePrefix: storagePrefixFunc, fileName, readVisibility, myRoomsSecrets}) {
     const { userId, roomId } = ctx.vars
     const isLocal = !bucketName
+    const storagePrefix = storagePrefixFunc(ctx)
 
     const userSecretsCache = jb.socialDbCache.userSecretsCache || await getUserSecretsCache(ctx)
     const privateUserId = userSecretsCache.private // only the user knows it
@@ -65,17 +66,10 @@ jb.socialDbUtils = {
       return jb.socialDbCache.userSecretsPromise ??= myRoomsSecrets.getMyRooms(ctx)
           .then(v => (jb.socialDbCache.userSecretsCache = v))
     }
-  },
-  testingStore(ctx,url,val) {
-    const { testID } = ctx.vars
-    const store = jb.socialDbCache.testingStore[testID] = jb.socialDbCache.testingStore[testID] || {}
-    if (val === undefined)
-      return store[url]
-    return store[url] = val
   }
 }
 
-const dataStore = DataStore('dataStore', {
+DataStore('dataStore', {
   params: [
     {id: 'fileName', as: 'string', mandatory: true},
     {id: 'sharing', type: 'sharing', mandatory: true },
@@ -112,7 +106,7 @@ const myRoomsSecrets = MyRoomsSecrets('myRoomsSecrets', {
 const fileBased = DbImpl('fileBased', {
   params: [
     {id: 'bucketName', as: 'string', defaultValue: '', byName: true},
-    {id: 'storagePrefix', as: 'string', mandatory: true},
+    {id: 'storagePrefix', as: 'string', dynamic: true, mandatory: true},
     {id: 'CRUDFunctions', defaultValue: () => jb.socialDbUtils},
     {id: 'myRoomsSecrets', type: 'my-rooms-secrets' }
   ],
@@ -256,6 +250,13 @@ Object.assign(jb.socialDbUtils, {
     
     log({t:'refineFile', duration: Date.now() - start,fetchTime, putTime: Date.now() - fetchTime, userId, fileName: event?.fileName, isInitialValue: !response.ok })
     return content
+  },
+  testingStore(ctx,url,val) {
+    const { testID } = ctx.vars
+    const store = jb.socialDbCache.testingStore[testID] = jb.socialDbCache.testingStore[testID] || {}
+    if (val === undefined)
+      return store[url]
+    return store[url] = val
   }
 })
 
@@ -334,22 +335,25 @@ DbImpl('inMemoryTesting', {
   ],
   impl: fileBased({
     bucketName: '',
-    storagePrefix: 'memory://',
+    storagePrefix: 'memory:/',
     CRUDFunctions: (ctx,{},{simulateLatency,simulateErrors}) => ({
       ...jb.socialDbUtils,
-      async readFile(url, defaultValue, options = {}) {
+      async readFile(_url, defaultValue, options = {}) {
+        const url = _url.split('?')[0]
         if (simulateLatency) await delay(simulateLatency)
         const data = jb.socialDbUtils.testingStore(ctx,url)
         return data?.content || defaultValue
       },
       
-      async writeFile(url, content, options = {}) {
+      async writeFile(_url, content, options = {}) {
+        const url = _url.split('?')[0]
         if (simulateLatency) await delay(simulateLatency)
         jb.socialDbUtils.testingStore(ctx,url,{content, stamps: []})
         return content
       },
       
-      async refineFile(url, updateAction, initialValue, options = {}) {
+      async refineFile(_url, updateAction, initialValue, options = {}) {
+        const url = _url.split('?')[0]
         if (simulateLatency) await delay(simulateLatency)
         
         const data = jb.socialDbUtils.testingStore(ctx,url) || {content: initialValue, stamps: []}
@@ -364,7 +368,7 @@ DbImpl('inMemoryTesting', {
       }
     }),
     myRoomsSecrets: myRoomsSecrets({
-      getMyRooms: ({},{userId}) => fetch(`/packages/social-db/.local-db/users/${userId}/myRooms.json`),
+      getMyRooms: ({},{userId}) => fetch(`%$locationOrigin%/packages/social-db/.local-db/users/${userId}/myRooms.json`),
       joinRoom: ''
     })
   })
@@ -373,9 +377,9 @@ DbImpl('inMemoryTesting', {
 DbImpl('dev', {
   impl: fileBased({
     bucketName: '',
-    storagePrefix: '/packages/social-db/.local-db',
+    storagePrefix: '%$locationOrigin%/packages/social-db/.local-db',
     myRoomsSecrets: myRoomsSecrets({
-      getMyRooms: ({},{userId}) => fetch(`/packages/social-db/.local-db/users/${userId}/myRooms.json`),
+      getMyRooms: ({},{userId}) => fetch(`%$locationOrigin%/packages/social-db/.local-db/users/${userId}/myRooms.json`),
       joinRoom: ''
     })
   })
@@ -390,4 +394,106 @@ DbImpl('prod', {
       joinRoom: socialDB.joinRoom()
     })
   })
+})
+
+// --- 
+
+const { 
+   'social-db': {
+    'data-store': { dataStore },
+    sharing: { globalUserOnly, roomUserOnly, friends, roomReadOnly, systemAccessible, publicGlobal, collaborative }
+   },
+} = dsls
+
+
+const myRooms = DataStore('myRooms', {
+  impl: dataStore('myRooms', globalUserOnly())
+})
+
+DataStore('chatRoom', {
+  impl: dataStore('room', collaborative(), { dataStructure: 'array' })
+})
+
+DataStore('privateChat', {
+  impl: dataStore('privateChat', roomUserOnly(), { dataStructure: 'array' })
+})
+
+DataStore('usersActivity', {
+  impl: dataStore('users-activity', collaborative())
+})
+
+DataStore('roomSettings', {
+  impl: dataStore('settings', collaborative())
+})
+
+DataStore('userSettings', {
+  impl: dataStore('userSettings', globalUserOnly())
+})
+
+DataStore('userProfile', {
+  impl: dataStore('profile', friends())
+})
+
+Action('socialDB.joinRoom', {
+  params: [
+    {id: 'userId', as: 'string', defaultValue: '%$userId%'},
+    {id: 'roomId', as: 'string', defaultValue: '%$roomId%'}
+  ],
+  impl: async (ctx, {userId, roomId}) => {
+    if (!roomId || roomId == 'undefined') {
+      return
+    }
+    await Promise.all([
+        roomSettingsCT.refine(userId, roomId, roomSettings => {
+         roomSettings.participants = roomSettings.participants || {} // No room scenario
+        const usedColors = new Set(Object.values(roomSettings.participants).map(p => p.color))
+        const color = userColors.find(c => !usedColors.has(c)) || userColors[Math.floor(Math.random() * userColors.length)]
+        roomSettings.participants[userId] = {
+          id: userId,
+          name: `User ${userId}`,
+          color: color
+        }
+        return roomSettings
+      }),
+      (async () => {
+        if (db == 'local') {
+          myRoomsCache = await myRoomsInLocalDB.refine(userId, roomId, myRooms => 
+            ({ 
+              private: myRooms.private || 'pr' + Math.random().toString(36).slice(2, 11), 
+              encryptedUserIdForFriends: myRooms.encryptedUserIdForFriends || 'pr' + Math.random().toString(36).slice(2, 11), 
+              rooms: [...new Set([...(myRooms.rooms || []), roomId])]
+            })
+            , {action: 'joinRoom', data: {userId, roomId}})
+        } else {
+          myRoomsCache = await joinRoomWithLambda(userId, roomId)
+          notifyInternalActivity(userId, roomId, {fullUrl, op: 'refine', action: 'joinRoom', data: {userId, roomId}})
+        }
+      })()
+    ])  
+  }
+})
+
+Action('socialDB.createRoom', {
+  params: [
+    {id: 'userId', as: 'string', defaultValue: '%$userId%'},
+    {id: 'displayName', as: 'string', mandatory: true},
+  ],
+  impl: async (ctx, {userId, displayName}) => {
+    const roomId = 'r' + Math.random().toString(36).slice(2, 11)
+    displayName = displayName || 'general'
+    const roomSettingsContent = { roomId, roomPublicKey: 'rpub' + Math.random().toString(36).slice(2, 11), displayName, participants: {} }
+    
+    const results = await Promise.all([ 
+      roomSettingsDS.$run().put(userId, roomId, roomSettingsContent, {action: 'createRoom', data: roomSettingsContent}),
+      chatRoom.put(userId, roomId,[]),
+      roomItems.put(userId, roomId,[])
+    ])
+    if (results.some(x=>x == null)) {
+        console.error('failed to create room file', response.status)
+        throw new Error(`Failed to create room: ${response.status}`)
+    }
+    await joinRoom(userId, roomId) // must come after creating the room settings
+  
+    return roomId  
+  }
 })
