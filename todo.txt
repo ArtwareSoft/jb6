@@ -11,25 +11,29 @@ make Const just a type
 i am shaiby the author is the jb6 repo.
 my repo is at /home/shaiby/projects/jb6
 ***please DO NOT change my fw code, docs and test files, consult me first ***
-this session id is "tgp-primer-4"
+this session id is "how-to-write-llm-guides-1"
 please log all the interesting success and problems you face. it will be used to discuss with me how to improve the docs and the framework!!!
 use the llm-guide-dsl for documentation suggestions
 use appendToFile /.llm-logs/${sessionId}.txt with TIMESTAMP for logging
+**after understanding errors you made, check if you can improve the llm-guide files to avoid this error in the future,
+ please approve with me the fixes you suggest to make in the llm-guide files. ensure you load packages/llm-guide/principles-llm-guide.js before**
+
 
 start with listRepoFiles mcp service
 please read carefully
 packages/core/llm-guide/tgp-primer.js
+packages/core/llm-guide/extending-dsls.js
 packages/llm-guide/llm-guide-dsl.js
 packages/llm-guide/principles-llm-guide.js
-packages/core/llm-guide/extending-dsls.js
+packages/llm-guide/how-to-write-llm-guides.js
 
-let's discuss tgp-primer
+read all the files under .llm-db/cursorContentAwareFiles
+
+let's discuss how-to-write-llm-guides.
+please show me a table with all points in 
 
 **please do not change fw code, docs and test files***. feel free to suggest changes
 **please suggest updates to the relevant llm-guide files after changing code, accroding to packages/llm-guide/principles-llm-guide.js**
-this session id is "social-db-5"
-please log all the interesting success and problems you face. it will be used to discuss with me how to improve the docs and the framework!!!
-use appendToFile mcp service /.llm-logs/${sessionId}.txt with TIMESTAMP for logging
 
 
 please read all the files packages/social-db and tell me when you ready
@@ -78,7 +82,7 @@ packages/llm-guide/llm-guide-dsl.js
 packages/llm-guide/principles-llm-guide.js
 packages/common/common-llm-guide.js
 
-please describe the doclet dsl
+please describe the llm-guide dsl
 
 this session id is "llm-session5"
 please log all the interesting success and problems you face. it will be used to discuss with me how to improve the docs and the framework!!!

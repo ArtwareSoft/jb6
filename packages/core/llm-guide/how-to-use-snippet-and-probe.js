@@ -7,8 +7,8 @@ const {
   tgp: { Const }, 
   common: { Data, data: { pipeline, filter, count, join, sum }, boolean: { and, equals } },
   test: { Test, test : { dataTest } },
-  doclet: { Doclet,
-    doclet: { exercise },
+  'llm-guide': { Doclet,
+    'llm-guide': { exercise },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation },
     problemStatement: { problem }

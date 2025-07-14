@@ -19,7 +19,7 @@ DataStoreFeature('validator', {
 
 DataStoreFeature('llmGuide', {
   params: [
-    {id: 'llmGuide', type: 'doclet<doclet>' },
+    {id: 'llmGuide', type: 'doclet<llm-guide>' },
   ]
 })
 
@@ -45,7 +45,7 @@ DataStoreFeature('itemView', {
   params: [
     {id: 'id', as: 'string' },
     {id: 'ui', type: 'comp<react>' },
-    {id: 'llmGuide', type: 'doclet<doclet>' },
+    {id: 'llmGuide', type: 'doclet<llm-guide>' },
   ]
 })
 
@@ -53,7 +53,7 @@ DataStoreFeature('itemEditor', {
   params: [
     {id: 'id', as: 'string' },
     {id: 'ui', type: 'comp<react>' },
-    {id: 'llmGuide', type: 'doclet<doclet>' },
+    {id: 'llmGuide', type: 'doclet<llm-guide>' },
   ]
 })
 
@@ -61,7 +61,7 @@ DataStoreFeature('itemsView', {
   params: [
     {id: 'id', as: 'string' },
     {id: 'ui', type: 'comp<react>' },
-    {id: 'llmGuide', type: 'doclet<doclet>' },
+    {id: 'llmGuide', type: 'doclet<llm-guide>' },
   ]
 })
 

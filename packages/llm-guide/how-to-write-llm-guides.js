@@ -3,8 +3,8 @@ import '@jb6/common'
 import '@jb6/llm-guide'
 
 const { 
-  doclet: { Doclet,
-    doclet: { principle },
+  'llm-guide': { Doclet,
+    'llm-guide': { principle },
     guidance: { solution, doNot, bestPractice, proceduralSolution }, 
     explanationPoint: { explanation, evidence, impact, methodology, comparison },
     step: { step }
@@ -73,34 +73,6 @@ Doclet('optimizeDslDocsForLLMs', {
     ]
   })
 })
-
-//       solution({
-//         code: `// OPTION A: Hierarchical Learning Path Structure
-// {
-//   "projectSummary": {
-//     "dsl": "common",
-//     "purpose": "Data processing and transformation toolkit",
-//     "totalComponents": 50,
-//     "entryPoint": "/packages/core/llm-guide/tgp-primer.js",
-//     "quickStart": "Start with pipeline, filter, count - covers 80% of use cases"
-//   },
-//   "learningPath": {
-//     "essential": [
-//       {
-//         "file": "/packages/core/llm-guide/tgp-primer.js",
-//         "purpose": "Foundation concepts",
-//         "topics": ["component types", "DS,
-
-//       doNot(`{
-//   llmGuides: {
-//     files: [...],  // flat array without categorization
-//     totalFiles: count
-//   }
-// }`, {
-//         reason: 'Flat structure provides no priority signals or learning progression for LLMs'
-//       }),
-
-// Concrete examples for Common DSL structure options
 
 Doclet('commonDslStructureOptions', {
   impl: principle({

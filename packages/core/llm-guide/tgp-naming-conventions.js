@@ -4,8 +4,8 @@ import '@jb6/testing'
 import '@jb6/llm-guide'
 
 const { 
-  doclet: { Doclet,
-    doclet: { exercise },
+  'llm-guide': { Doclet,
+    'llm-guide': { exercise },
     guidance: { doNot, solution  },
     explanationPoint: { bestPractice, namingCategory,namingCollision },
     problemStatement: { problem }

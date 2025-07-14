@@ -6,8 +6,8 @@ import '@jb6/llm-guide'
 const { 
   tgp: { Const, var: { Var } }, 
   common: { data: { pipeline, filter, count, join } },
-  doclet: { Doclet,
-    doclet: { exercise, principle },
+  'llm-guide': { Doclet,
+    'llm-guide': { exercise, principle },
     guidance: { solution, proceduralSolution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology, evidence },
     problemStatement: { problem },
@@ -121,7 +121,7 @@ Doclet('extendingDslsGuide', {
   impl: exercise(
     problem({
       statement: 'How to extend existing DSLs without breaking compatibility while adding valuable new functionality',
-      intro: 'This guide captures lessons learned from extending the doclet DSL with validation, quiz systems, and MCP tool integration. It addresses the critical balance between innovation and stability.'
+      intro: 'This guide captures lessons learned from extending the llm-guide DSL with validation, quiz systems, and MCP tool integration. It addresses the critical balance between innovation and stability.'
     }),
     principle({
       importance: 'critical',
@@ -141,7 +141,7 @@ Doclet('extendingDslsGuide', {
           points: [
             explanation('Framework ownership requires consultation for any changes'),
             methodology('Present options rather than implementations - collaboration over assumption'),
-            evidence('Prevented breaking changes to doclet DSL by consulting before major rewrite'),
+            evidence('Prevented breaking changes to llm-guide DSL by consulting before major rewrite'),
             performance('Consultation prevents rework and maintains team alignment')
           ]
         }),
@@ -283,7 +283,7 @@ step({
           purpose: 'Leverage existing systems rather than creating parallel implementations',
           details: `// Integration over duplication:
 // ✅ Use existing 'tool<mcp>' type instead of creating 'tool-activation'
-// ✅ Reference existing DSLs: 'validation' type references validation<doclet>
+// ✅ Reference existing DSLs: 'validation' type references validation<llm-guide>
 // ✅ Follow established patterns: params structure, naming conventions
 // ❌ Create parallel systems that duplicate existing functionality`,
           validation: practicalValidation({
@@ -321,14 +321,14 @@ step({
           }),
           points: [
             methodology('Systematic testing prevents regression and validates new functionality'),
-            evidence('Enhanced doclet DSL maintained 100% backwards compatibility while adding validation, quiz, and MCP integration'),
+            evidence('Enhanced llm-guide DSL maintained 100% backwards compatibility while adding validation, quiz, and MCP integration'),
             performance('Thorough testing upfront prevents expensive debugging later')
           ]
         })
       ],
       points: [
         explanation('Systematic methodology ensures consistent, safe DSL evolution'),
-        evidence('Applied this process successfully to extend doclet DSL with complex new features'),
+        evidence('Applied this process successfully to extend llm-guide DSL with complex new features'),
         performance('Structured approach scales to DSL extensions of any complexity')
       ]
     }),
@@ -406,7 +406,7 @@ Doclet('learningFromMistakes', {
   impl: exercise(
     problem({
       statement: 'Common mistakes in DSL extension and how to avoid them',
-      intro: 'Real mistakes made during the doclet DSL extension process and the lessons learned.'
+      intro: 'Real mistakes made during the llm-guide DSL extension process and the lessons learned.'
     }),
     solution({
       code: `// MISTAKE 1: Assuming compatibility instead of testing

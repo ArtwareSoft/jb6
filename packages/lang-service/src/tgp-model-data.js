@@ -16,6 +16,7 @@ export async function calcTgpModelData({ filePath } = {}) {
   const filePathToUse = filePath || await coreUtils.calcRepoRoot()
   const { projectImportMap, testFiles } = await studioAndProjectImportMaps(filePathToUse)
 
+  debugger
   const indexFileName = absPathToUrl(pathJoin(pathParent(filePathToUse),'index.js'), projectImportMap.serveEntries)
   const importModule = Object.entries(projectImportMap.imports).find(x=> x[1]==indexFileName)?.[0]
 

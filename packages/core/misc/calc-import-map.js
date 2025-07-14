@@ -198,7 +198,7 @@ async function calcImportMapOfRepoRoot(projectRoot, { repoRoot = '', includeTest
 
     const testsDirFiles = await listFiles(path.join(pkgDir, 'tests'))
     const llmGuideDirFiles = await listFiles(path.join(pkgDir, 'llm-guide'))
-    const tests = files.filter(file => file.isFile() && file.name.endsWith('tests.js')).map(file => path.join(pkgPrefix, file.name))
+    const tests = files.filter(file => file.isFile() && file.name.match(/test/)).map(file => path.join(pkgPrefix, file.name))
     const llmGuides = files.filter(file => file.isFile() && file.name.endsWith('llm-guide.js')).map(file => path.join(pkgPrefix, file.name))
     return { tests: [...tests, ...testsDirFiles], llmGuides: [...llmGuides, ...llmGuideDirFiles] }
   }

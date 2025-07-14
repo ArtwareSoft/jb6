@@ -2,7 +2,7 @@ Session: llm-session2 - Learning and Implementing learnCommonDsl
 
 === INITIAL ANALYSIS ===
 ✅ SUCCESS: Successfully read packages/common/common-llm-guide.js
-📊 Current state: Found existing learnCommonDsl doclet with basic 3-step structure
+📊 Current state: Found existing learnCommonDsl llm-guide with basic 3-step structure
 🎯 Goal: Enhance the implementation based on TGP model requirements
 
 === CURRENT IMPLEMENTATION FINDINGS ===
@@ -32,7 +32,7 @@ Key insight: The guide emphasizes learning through tests and active experimentat
 
 === ISSUES IDENTIFIED ===
 ⚠️ CURRENT ISSUE: The existing implementation focuses too much on documentation reading rather than hands-on experimentation
-✅ POSITIVE: The structure follows doclet/exercise pattern correctly
+✅ POSITIVE: The structure follows llm-guide/exercise pattern correctly
 
 === FRAMEWORK UNDERSTANDING SUCCESS ===
 ✅ SUCCESS: Read all core documentation and implementation files

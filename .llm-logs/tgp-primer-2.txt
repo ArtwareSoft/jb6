@@ -401,7 +401,7 @@ Good improvements already made:
 ✅ $run() explanation improved
 
 Still some opportunities:
-- "templating" doclet still uses "Component call creates profile template"
+- "templating" llm-guide still uses "Component call creates profile template"
 - Some places still mix "call" terminology
 - Could be even clearer about instantiation vs execution distinction
 [2025-07-12T11:27:17.519Z] COMPLETED: Rewritten TGP primer with terminology fixes

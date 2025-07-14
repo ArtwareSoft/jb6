@@ -5,7 +5,7 @@ TIMESTAMP: Starting analysis
 === INITIAL ANALYSIS ===
 SUCCESS: Successfully read packages/common/common-llm-guide.js
 FINDINGS:
-1. File contains comprehensive examples using doclet-based learning structure
+1. File contains comprehensive examples using llm-guide-based learning structure
 2. Uses Doclet with exercise, solution, problem, doNot, bestPractice patterns
 3. Shows multiple solution approaches (TGP DSL, JavaScript functions)
 4. Includes mechanismUnderTheHood explanations
@@ -25,7 +25,7 @@ FINDINGS:
 1. Project has multiple packages: core, common, testing, llm-guide, etc.
 2. Each package can have llm-guides and tests
 3. Common package has llm-guide at packages/common/common-llm-guide.js
-4. LLM-guide package provides doclet DSL for creating learning materials
+4. LLM-guide package provides llm-guide DSL for creating learning materials
 
 === DOCLET DSL UNDERSTANDING ===
 SUCCESS: Examined llm-guide DSL definition
@@ -68,7 +68,7 @@ APPROACH: Will examine other packages for learning function examples
 === IMPLEMENTATION STRATEGY ===
 SUCCESS: Found clear patterns for learning functions from MCP and core guides
 KEY PATTERNS IDENTIFIED:
-1. Learning functions return doclet structures with exercises
+1. Learning functions return llm-guide structures with exercises
 2. Doclets contain problems, solutions, explanations, and best practices
 3. Functions are defined using Data() component definitions
 4. Real working examples are crucial for effective learning
@@ -76,7 +76,7 @@ KEY PATTERNS IDENTIFIED:
 
 IMPLEMENTATION PLAN:
 1. Add learnCommonDsl as a Data component in jb-common.js
-2. Return comprehensive doclet structure covering core common DSL concepts
+2. Return comprehensive llm-guide structure covering core common DSL concepts
 3. Include working examples that can be executed
 4. Follow the established patterns from the existing llm-guide.js
 
@@ -139,7 +139,7 @@ APPROACH: Analyze tgpModel structure against LLM research principles
 GOAL: Propose better ordering and summaries for LLM effectiveness
 
 === LLM-GUIDE DSL ANALYSIS ===
-SUCCESS: Read the comprehensive doclet DSL definition
+SUCCESS: Read the comprehensive llm-guide DSL definition
 AVAILABLE COMPONENTS:
 - Doclet: exercise, principle
 - Guidance: solution, doNot, bestPractice, illegalSyntax, mechanismUnderTheHood  

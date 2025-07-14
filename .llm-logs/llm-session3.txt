@@ -3,7 +3,7 @@ SESSION: llm-session3 - Implementing learnCommonDsl
 
 ✅ SUCCESS: Successfully read packages/common/common-llm-guide.js
 - File contains excellent learning examples using the Doclet DSL
-- Found existing learnCommonDsl doclet with 3-step learning methodology
+- Found existing learnCommonDsl llm-guide with 3-step learning methodology
 - Structure follows progressive complexity principle: Overview → Implementation → Experimentation
 
 📝 OBSERVATION: The current learnCommonDsl implementation provides a solid foundation but could be enhanced to be more comprehensive and hands-on
@@ -289,7 +289,7 @@ The enhanced DSL is now ready to support sophisticated learning experiences like
 
 1. **Consultation Principle** ⭐⭐⭐⭐⭐
    - Critical rule: Always consult before changing framework code
-   - Evidence from session: Prevented breaking doclet DSL rewrite
+   - Evidence from session: Prevented breaking llm-guide DSL rewrite
    - Methodology: Present options, not implementations
 
 2. **Backwards Compatibility Understanding** ⭐⭐⭐⭐⭐  

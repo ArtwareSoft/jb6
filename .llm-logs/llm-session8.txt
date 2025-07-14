@@ -967,13 +967,13 @@ This makes much more sense - prompts are "question templates", not answer provid
 
 === BRILLIANT INSIGHT: DOCLET DSL AS TEMPLATING SYSTEM ===
 
-YES! You're absolutely right! Looking at the code, the **doclet DSL** is already a sophisticated templating system for documentation and learning materials.
+YES! You're absolutely right! Looking at the code, the **llm-guide DSL** is already a sophisticated templating system for documentation and learning materials.
 
 DOCLET DSL STRUCTURE:
 ```javascript
-doclet: { 
+'llm-guide': { 
   Doclet,
-  doclet: { exercise },
+  'llm-guide': { exercise },
   guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
   explanationPoint: { whenToUse, performance, comparison, syntax, explanation },
   problemStatement: { problem }
@@ -1005,16 +1005,16 @@ Doclet('workingWithCommonDSL', {
 ```
 
 CONNECTION TO MCP PROMPTS:
-The **doclet DSL templates** could be the PERFECT foundation for **MCP prompt generation**!
+The **llm-guide DSL templates** could be the PERFECT foundation for **MCP prompt generation**!
 
 PROPOSED INTEGRATION:
 ```javascript
-// MCP Prompt that generates from doclet templates
+// MCP Prompt that generates from llm-guide templates
 @mcpPrompt("learn-common-dsl-basics")
 function generateLearningPrompt(skill_level, focus_area) {
-  // Use existing doclet templates to generate structured learning prompts
-  const doclet = dsls.doclet.Doclet('workingWithCommonDSL')
-  return doclet.render({
+  // Use existing llm-guide templates to generate structured learning prompts
+  const llm-guide = dsls.llm-guide.Doclet('workingWithCommonDSL')
+  return llm-guide.render({
     skill_level,
     focus_area,
     includeExamples: true,
@@ -1024,11 +1024,11 @@ function generateLearningPrompt(skill_level, focus_area) {
 ```
 
 ADVANTAGES:
-1. **Reuse existing templating infrastructure**: Don't build new templating - extend doclet DSL
+1. **Reuse existing templating infrastructure**: Don't build new templating - extend llm-guide DSL
 2. **Consistent documentation approach**: MCP prompts use same structured approach as docs
 3. **Rich template components**: explanation(), syntax(), whenToUse() etc already exist
-4. **Learning-focused design**: doclet DSL already designed for educational content
+4. **Learning-focused design**: llm-guide DSL already designed for educational content
 
-SO YES - the **doclet DSL** is your templating system, and it's perfectly positioned to power MCP prompts for jb6 learning and discovery!
+SO YES - the **llm-guide DSL** is your templating system, and it's perfectly positioned to power MCP prompts for jb6 learning and discovery!
 
 This could be the bridge between your existing documentation system and discoverable MCP prompt templates.

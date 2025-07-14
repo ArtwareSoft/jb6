@@ -1,7 +1,7 @@
-[2025-07-12T11:37:03.761Z] Session tgp-primer-3 started - Task: Create TGP primer summaries using doclet DSL
+[2025-07-12T11:37:03.761Z] Session tgp-primer-3 started - Task: Create TGP primer summaries using llm-guide DSL
 [2025-07-12T11:37:21.401Z] Successfully read all key documentation files:
 - tgp-primer.js: 31.61KB, 4201 tokens - comprehensive TGP primer
-- llm-guide-dsl.js: 13.43KB, 1796 tokens - doclet DSL definition
+- llm-guide-dsl.js: 13.43KB, 1796 tokens - llm-guide DSL definition
 - principles-llm-guide.js: 9.21KB, 1299 tokens - LLM guide principles
 - extending-dsls.js: 16.97KB, 2301 tokens - DSL extension guide
 
@@ -101,7 +101,7 @@ Key improvements:
 - Level 2: Complete coverage with clear progression 
 - Level 1: Master-level comprehensive reference
 [2025-07-12T11:57:22.466Z] DETAILED COMPARISON: Original tgp-primer.js vs primerSummaryA1
-- Need to systematically check each doclet from original
+- Need to systematically check each llm-guide from original
 - Identify missing concepts, examples, and important details
 - Create comprehensive table of omissions
 [2025-07-12T12:02:17.074Z] KEY INSIGHTS FROM ADDITIONAL FILES:

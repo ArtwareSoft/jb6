@@ -7,8 +7,8 @@ const {
   tgp: { Const }, 
   common: { data: { pipeline, splitByPivot, enrichGroupProps, asIs }, boolean: { equals } },
   test: { Test, test: { dataTest } },
-  doclet: { Doclet,
-    doclet: { principle },
+  'llm-guide': { Doclet,
+    'llm-guide': { principle },
     guidance: { solution, doNot, bestPractice }, 
     explanationPoint: { explanation }
   } 
@@ -140,7 +140,7 @@ Doclet('testDevelopmentWorkflow', {
     rule: 'Verify test logic with snippets and probes before writing the actual test',
     rationale: 'Incremental verification prevents test bugs and builds confidence in correctness',
     evidence: explanation('Using __ probes helps understand component behavior before committing to expectations'),
-    dslCompIds: ['guidance<doclet>solution']
+    dslCompIds: ['guidance<llm-guide>solution']
   })
 })
 
@@ -150,7 +150,7 @@ Doclet('testNamingClarity', {
     rule: 'Use descriptive test names that indicate what behavior is being verified',
     rationale: 'Clear names provide documentation and enable quick failure diagnosis',
     evidence: explanation('Test names like "component.behavior" make test organization and purpose immediately clear'),
-    dslCompIds: ['guidance<doclet>solution', 'guidance<doclet>doNot']
+    dslCompIds: ['guidance<llm-guide>solution', 'guidance<llm-guide>doNot']
   })
 })
 
@@ -160,7 +160,7 @@ Doclet('testCoveragePyramid', {
     rule: 'Balance component tests (many), integration tests (some), and workflow tests (few)',
     rationale: 'Balanced coverage provides confidence while remaining maintainable',
     evidence: explanation('Most tests at component level provide precise failure localization, fewer integration and workflow tests catch interaction issues'),
-    dslCompIds: ['guidance<doclet>solution']
+    dslCompIds: ['guidance<llm-guide>solution']
   })
 })
 

@@ -11,16 +11,16 @@ SUCCESS: Read TGP primer (packages/core/llm-guide/tgp-primer.js)
 SUCCESS: Read common DSL guide (packages/common/common-llm-guide.js) 
 - Contains multiple doclets with practical examples
 - Shows pipeline, filter, count, join, groupBy operations
-- Has sophisticated learnCommonDsl doclet with procedural learning approach
+- Has sophisticated learnCommonDsl llm-guide with procedural learning approach
 - 3092 tokens including validation quizzes and MCP tool integration
 
-OBSERVATION: The learnCommonDsl doclet is already implemented but seems to be a comprehensive learning system rather than a function. It uses:
+OBSERVATION: The learnCommonDsl llm-guide is already implemented but seems to be a comprehensive learning system rather than a function. It uses:
 - Procedural learning with progressive steps
 - Validation quizzes with scrambled answers
 - MCP tool integration for hands-on practice
 - Predict-then-verify methodology
 
-QUESTION: Should I implement a different learnCommonDsl function or work with the existing doclet?
+QUESTION: Should I implement a different learnCommonDsl function or work with the existing llm-guide?
 
 STARTING learnCommonDsl learning workflow
 Following predict-then-verify methodology:

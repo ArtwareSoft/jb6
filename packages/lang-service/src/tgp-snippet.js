@@ -38,17 +38,19 @@ async function runSnippetCli({compText: _compText, filePath, setupCode = '', pac
     const dslsSection = calcDslsSection([comp])
     const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
 
-    const indexFileName = absPathToUrl(pathJoin(pathParent(filePath),'index.js'), projectImportMap.serveEntries)
-    const importModule = Object.entries(projectImportMap.imports).find(x=> x[1]==indexFileName)?.[0]
-  
-    const imports = unique([importModule, filePath, ...packages]).filter(Boolean).map(f=>`\timport '${f}'`).join('\n')
+    const indexFileName = pathJoin(pathParent(filePath),'index.js')  
+    const imports = unique([filePath, ...packages]).filter(Boolean).map(f=>`\tawait import('${f}')`).join('\n')
     const script = `
 import { jb, dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/core/misc/probe.js'
-
-${imports}
-${dslsSection}
       ;(async () => {
+        try {
+          await import('${indexFileName}') // not guaranteed to have index.js in the directory
+        } catch(e) {}
+        ${imports}
+
+        ${dslsSection}
+
         try {
           ${setupCode}
           ${compText}

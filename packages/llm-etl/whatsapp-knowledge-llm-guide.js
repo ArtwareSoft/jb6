@@ -6,8 +6,8 @@ import '@jb6/llm-guide'
 const { 
   tgp: { Const, var: { Var } }, 
   common: { data: { pipeline, filter, count, join, obj, splitByPivot, enrichGroupProps }, prop },
-  doclet: { Doclet, Spec,
-    doclet: { exercise, principle },
+  'llm-guide': { Doclet, Spec,
+    'llm-guide': { exercise, principle },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax, proceduralSolution }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology, tradeoff, evidence, impact },
     problemStatement: { problem },

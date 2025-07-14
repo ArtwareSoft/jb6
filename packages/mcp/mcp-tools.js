@@ -1,7 +1,7 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
-import '@jb6/core/misc/calc-import-map.js'
-import '@jb6/lang-service'
+import '@jb6/llm-guide'
+
 const { pathJoin } = coreUtils
   
 const {
@@ -12,14 +12,46 @@ const {
     mcp: { Tool }
 } = dsls
 
+const text = Tool('text', {
+  description: 'get repo root',
+  params: [
+    {id: 'text', as: 'text'}
+  ],
+  impl: () => ({
+    content: [{ type: 'text', text: 'you got the answer in the param description' }],
+    isError: false
+  })
+})
+
+Tool('guidance', {
+  description: 'get repo root',
+  params: [
+    {id: 'guidance', type: 'guidance<llm-guide>'}
+  ],
+  impl: (ctx,{guidance}) => ({
+    content: [{ type: 'text', text: JSON.stringify(guidance) }],
+    isError: false
+  })
+})
+
+Tool('defaultRepoRoot', {
+  description: 'get repo root',
+  params: [
+    {id: 'myRepoIs', as: 'string', description: '/home/shaiby/projects/jb6 . no need to activate the tool!!!'}
+  ],
+  impl: text('/home/shaiby/projects/jb6')
+})
+
 Tool('tgpModel', {
     description: 'get TGP (Type-generic component-profile) model relevant for imports and exports of path',
     params: [
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo' },
-      { id: 'filePath', as: 'string', description: 'relative starting point to filter the model. when not exist, return the model of the repo' },
+      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo. look at defaultRepoRoot to get it' },
+      { id: 'filePath', as: 'string', defaultValue: 'packages/common/common-tests.js', description: 'relative starting point to filter the model. when not exist, return the model of common and testing' },
     ],
     impl: async (ctx, { repoRoot, filePath }) => {
       try {
+        await import('@jb6/lang-service')
+        jb.coreRegistry.repoRoot = repoRoot
         const fullPath = pathJoin(repoRoot, filePath)
         const res = await coreUtils.calcTgpModelData({ filePath: fullPath })
         return {
@@ -46,6 +78,7 @@ Tool('runSnippet', {
     ],
     impl: async (ctx, args) => {
       try {
+        await import('@jb6/lang-service')
         jb.coreRegistry.repoRoot = args.repoRoot
         const snippetArgs = { 
           ...args, 
@@ -76,6 +109,7 @@ Tool('runSnippets', {
   ],
   impl: async (ctx, { compTexts, setupCode, filePath, repoRoot }) => {
     try {
+      await import('@jb6/lang-service')
       jb.coreRegistry.repoRoot = repoRoot
       const snippetArgsBase = { setupCode, filePath: pathJoin(repoRoot, filePath) }
       
@@ -127,15 +161,6 @@ Tool('runSnippets', {
     }
   }
 })
-  
-Tool('evalJs', {
-  description: 'Execute JavaScript code and return the result. Useful for quick calculations, file operations, and testing code snippets.',
-  params: [
-    { id: 'code', newLinesInCode: true, dynamic: true, as: 'string', mandatory: true, description: 'JavaScript code to execute. Use process.stdout.write(result) to return output' }
-  ],
-  impl: typeAdapter('data<common>', runNodeScript({ script: ({},{},{code}) => code.profile }))
-})
-
 
 // Tool('dslDocs', {
 //   description: 'Get comprehensive DSL documentation including TGP model, LLM guides, and component definitions',
@@ -159,17 +184,26 @@ Tool('evalJs', {
 //   }
 // })
 
-Data('scrambleText', {
-  description: 'Scramble/unscramble text for hiding answers in learning materials.',
+Tool('evalJs', {
+  description: 'Execute JavaScript code and return the result. Useful for quick calculations, file operations, and testing code snippets.',
   params: [
-    {id: 'text', as: 'string', mandatory: true},
-    {id: 'unscramble', as: 'boolean'}
+    { id: 'code', newLinesInCode: true, dynamic: true, as: 'string', mandatory: true, description: 'JavaScript code to execute. Use process.stdout.write(result) to return output' }
   ],
-  impl: (ctx, { text, unscramble }) => unscramble ? atob(text.split('').reverse().join('')) : btoa(text).split('').reverse().join('')
+  impl: typeAdapter('data<common>', runNodeScript({ script: ({},{},{code}) => code.profile }))
 })
-const { scrambleText } = dsls.common.data
 
-Tool('scrambleTextTool', {
+
+// Data('scrambleText', {
+//   description: 'Scramble/unscramble text for hiding answers in learning materials.',
+//   params: [
+//     {id: 'text', as: 'string', mandatory: true},
+//     {id: 'unscramble', as: 'boolean'}
+//   ],
+//   impl: (ctx, { text, unscramble }) => unscramble ? atob(text.split('').reverse().join('')) : btoa(text).split('').reverse().join('')
+// })
+// const { scrambleText } = dsls.common.data
+
+Tool('scrambleText', {
   description: 'Scramble/unscramble texts for hiding answers in learning materials',
   params: [
     {id: 'texts', as: 'string', mandatory: true, description: 'separated by ##'},
@@ -178,7 +212,8 @@ Tool('scrambleTextTool', {
   impl: typeAdapter('data<common>', pipeline(
     '%$texts%',
     split('##'),
-    scrambleText('%%', '%$unscramble%'),
+    (ctx, {}, { text, unscramble }) => unscramble ? atob(text.split('').reverse().join('')) : btoa(text).split('').reverse().join(''),
+//    scrambleText('%%', '%$unscramble%'),
     join('##\n'),
     ({data}) => ({ 
       content: [{ type: 'text', text: data }], 
@@ -187,4 +222,3 @@ Tool('scrambleTextTool', {
     first()
   ))
 })
-

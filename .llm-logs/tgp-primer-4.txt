@@ -86,7 +86,7 @@ OBSERVATIONS:
 5. Shows both problem and solution with actual code examples
 
 INTERESTING POINTS:
-- Uses the extended doclet DSL (namingCategory, namingCollision) that we discussed in extending-dsls.js
+- Uses the extended llm-guide DSL (namingCategory, namingCollision) that we discussed in extending-dsls.js
 - Real-world evidence: "Real collision discovered in packages/social-db"
 - Progressive dependency: each naming layer builds toward the next
 - Concrete technical solution to abstract naming problem
@@ -252,21 +252,21 @@ KEY INSIGHT: Package-identity namespacing (socialDb.get) is superior to componen
 
 The user's suggestion to use package name as namespace was the key breakthrough that led to a much cleaner solution.
 
-[2025-07-12T14:00:43.895Z] USER FEEDBACK: Simplify the doclet discussion
+[2025-07-12T14:00:43.895Z] USER FEEDBACK: Simplify the llm-guide discussion
 - Current version is too complex with all the collision scenarios
 - Should focus on: HOW to use namespace and WHY to use it
 - Remove redundant explanations and focus on practical guidance
 - Make it more actionable and less theoretical
 
 [2025-07-12T14:02:07.078Z] MISSING KEY POINT: Namespace is needed when extending FOREIGN DSLs!
-- The doclet doesn't explain WHY namespaces are needed
+- The llm-guide doesn't explain WHY namespaces are needed
 - Key insight: When packages/social-db wants to add operations to common DSL components
 - This is about extending DSLs you don't own
 - Need to add this crucial context to the explanation
 
 [2025-07-12T14:03:54.266Z] ADDED DSL OWNER VS CLIENT DISTINCTION
 
-Successfully added new doclet 'dslOwnerVsClient' to packages/core/llm-guide/extending-dsls.js
+Successfully added new llm-guide 'dslOwnerVsClient' to packages/core/llm-guide/extending-dsls.js
 
 Key concepts covered:
 1. ✅ DSL OWNER privileges and responsibilities
@@ -284,4 +284,4 @@ Key concepts covered:
    - Client: DSL components + package operations
    - Clear separation enables multiple clients
 
-This complements the naming conventions doclet by explaining the fundamental architectural distinction that drives the namespace strategy.
+This complements the naming conventions llm-guide by explaining the fundamental architectural distinction that drives the namespace strategy.

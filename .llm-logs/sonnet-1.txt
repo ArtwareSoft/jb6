@@ -7,7 +7,7 @@ Starting with TGP model retrieval and documentation reading
 - Read tgp-primer.js: comprehensive TGP concepts and patterns with working examples
 - Read common-llm-guide.js: contains structured learning methodology for learnCommonDsl
 
-Key insight: The learnCommonDsl doclet provides a PROCEDURAL SOLUTION with systematic learning steps using TURN BATCHING methodology. I need to implement this carefully following the predict-then-verify approach with MCP tools.
+Key insight: The learnCommonDsl llm-guide provides a PROCEDURAL SOLUTION with systematic learning steps using TURN BATCHING methodology. I need to implement this carefully following the predict-then-verify approach with MCP tools.
 [2025-07-06T07:27:24.477Z] IMPLEMENTATION PHASE STARTED
 Following the learnCommonDsl procedural solution methodology
 Phase 1: BATCH PREPARATION - Reading all steps and preparing predictions

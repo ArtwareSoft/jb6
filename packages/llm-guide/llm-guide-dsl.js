@@ -1,14 +1,13 @@
-// === COMPLETE DOCLET DSL DEFINITION ===
-
 import { dsls } from '@jb6/core'
+import '@jb6/mcp'
 
 const { 
   common: { Data },
   tgp: { TgpType },
-  // mcp: { 
-  //   Tool,
-  //   tool: { tgpModel, runSnippet, runSnippets, getFilesContent, replaceComponent, appendToFile, overrideFileContent, dslDocs, scrambleText }
-  // }
+  mcp: { 
+    Tool,
+    tool: { tgpModel, runSnippet, runSnippets, getFilesContent, replaceComponent, appendToFile, overrideFileContent, dslDocs, scrambleText }
+  }
 } = dsls
 // ============================================================================= 
 // DOCLET DSL - 
@@ -17,20 +16,17 @@ const {
 // =============================================================================
 
 // Define the DSL types
-const Doclet = TgpType('doclet', 'doclet')           // Main documentation container
-const Guidance = TgpType('guidance', 'doclet')       // Solution/anti-pattern components
-const Evidence = TgpType('evidence', 'doclet') 
-const ExplanationPoint = TgpType('explanationPoint', 'doclet') // Individual explanation components
-const ProblemStatement = TgpType('problemStatement', 'doclet') // New: Problem statement container
-const Validation = TgpType('validation', 'doclet')
-const Spec = TgpType('spec', 'doclet')
-const UseCase = TgpType('use-case', 'doclet')
-const Actor = TgpType('actor', 'doclet')
-const ActorFeature = TgpType('actor-feature', 'doclet')
-const Scenario = TgpType('scenario', 'doclet')
-
-
-const McpTool = TgpType('tool', 'mcp')               // MCP tool components
+const Doclet = TgpType('doclet', 'llm-guide')           // Main documentation container
+const Guidance = TgpType('guidance', 'llm-guide')       // Solution/anti-pattern components
+const Evidence = TgpType('evidence', 'llm-guide') 
+const ExplanationPoint = TgpType('explanationPoint', 'llm-guide') // Individual explanation components
+const ProblemStatement = TgpType('problemStatement', 'llm-guide') // New: Problem statement container
+const Validation = TgpType('validation', 'llm-guide')
+const Spec = TgpType('spec', 'llm-guide')
+const UseCase = TgpType('use-case', 'llm-guide')
+const Actor = TgpType('actor', 'llm-guide')
+const ActorFeature = TgpType('actor-feature', 'llm-guide')
+const Scenario = TgpType('scenario', 'llm-guide')
 
 // =============================================================================
 // TYPE: doclet - Main documentation container
@@ -141,7 +137,7 @@ Doclet('principle', {
     { id: 'importance', as: 'text', mandatory: true, options: 'critical,high,medium,low' },
     { id: 'rule', as: 'text', mandatory: true, description: 'The principle statement' },
     { id: 'rationale', as: 'text', mandatory: true, description: 'Why this principle matters' },
-    { id: 'dslCompIds', as: 'text', description: "Full component IDs to use. E.g., 'guidance<doclet>doNot,data<common>pipeline'" },
+    { id: 'dslCompIds', as: 'text', description: "Full component IDs to use. E.g., 'guidance<llm-guide>doNot,data<common>pipeline'" },
     { id: 'guidance', type: 'guidance[]' },
     { id: 'validation', type: 'validation[]', description: 'verify principle is understood'},
   ]
@@ -314,7 +310,7 @@ Evidence('benchmark', {
 })
 
 // New step type for procedural solutions
-const Step = TgpType('step', 'doclet')
+const Step = TgpType('step', 'llm-guide')
 
 Step('step', {
   params: [

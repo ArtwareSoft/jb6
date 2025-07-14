@@ -6,7 +6,7 @@ Permission: Can modify fw code, docs, and test files (with consultation)
 Free to add tests and docs
 [2025-07-06T10:24:29.411Z] SUCCESS: Read key TGP framework files
 - tgp-primer.js (2634 tokens): Comprehensive examples of TGP patterns with concrete code samples
-- llm-guide-dsl.js (1495 tokens): Complete doclet DSL definition with Spec, UseCase, Actor components
+- llm-guide-dsl.js (1495 tokens): Complete llm-guide DSL definition with Spec, UseCase, Actor components
 - principles-llm-guide.js (1299 tokens): LLM guide building principles and best practices
 
 Key insights learned:
@@ -21,7 +21,7 @@ Error: "SyntaxError: Unexpected token '{'"
 Issue appears to be with the inline import statement inside setupCode. Let me try a different approach by creating a proper file first.
 [2025-07-06T10:26:10.383Z] PROBLEM: useCase is not a function
 Error indicates that useCase component is not properly loaded. Let me check the correct DSL namespace structure.
-[2025-07-06T10:26:40.411Z] SUCCESS: Found doclet DSL components
+[2025-07-06T10:26:40.411Z] SUCCESS: Found llm-guide DSL components
 From the docs I can see:
 - specification (type:spec) 
 - useCase (type:use-case)
@@ -30,11 +30,11 @@ From the docs I can see:
 - motivation, goal, backgroundKnowledge (type:actor-feature)
 
 The issue was with the import structure and component naming. Let me fix the file.
-[2025-07-06T10:39:25.097Z] PROBLEM: useCase component not found in doclet.spec namespace
+[2025-07-06T10:39:25.097Z] PROBLEM: useCase component not found in llm-guide.spec namespace
 Need to investigate the correct DSL structure. Let me try different approach.
 [2025-07-06T10:41:19.583Z] SUCCESS: Created WhatsApp to Knowledge specification profile artifact
 - Shows complete TGP profile structure with $$ identifiers
-- Includes type<dsl> pattern (e.g., spec<doclet>, actor<doclet>, use-case<doclet>)
+- Includes type<dsl> pattern (e.g., spec<llm-guide>, actor<llm-guide>, use-case<llm-guide>)
 - Demonstrates nested component composition
 - Contains realistic use cases, actors, and scenarios
 - Profile ready for execution in jb6 framework
@@ -42,7 +42,7 @@ Need to investigate the correct DSL structure. Let me try different approach.
 Key TGP concepts demonstrated:
 1. Component instantiation creates profiles with $$ identifiers
 2. Nested composition (specifications contain use cases, use cases contain actors, etc.)
-3. Type safety with doclet DSL components
+3. Type safety with llm-guide DSL components
 4. Data samples show practical knowledge extraction scenarios
 5. Follows goal-oriented structure principles from llm-guide
 [2025-07-06T10:47:05.368Z] FOCUS: Narrowing scope to semantic search use case

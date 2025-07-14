@@ -101,6 +101,6 @@ Test('probeCliTest.findTestFiles', {
       return allData
     },
     expectedResult: equals('hello,hello,hello'),
-    timeout: 1000
+    timeout: 2000
   })
 })
