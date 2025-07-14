@@ -8,7 +8,7 @@ const {
   common: { data: { pipeline, filter, count, join, toUpperCase, mapValues }, Boolean: { and } },
   ui: { control: { button, text, group } },
   'llm-guide': { Doclet,
-    'llm-guide': { exercise, principle },
+    doclet: { exercise, principle },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, evidence, impact, methodology },
     problemStatement: { problem },

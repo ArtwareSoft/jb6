@@ -8,7 +8,7 @@ const {
   common: { data: { pipeline, splitByPivot, enrichGroupProps, asIs }, boolean: { equals } },
   test: { Test, test: { dataTest } },
   'llm-guide': { Doclet,
-    'llm-guide': { principle },
+    doclet: { principle },
     guidance: { solution, doNot, bestPractice }, 
     explanationPoint: { explanation }
   } 

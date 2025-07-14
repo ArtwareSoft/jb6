@@ -7,7 +7,7 @@ const {
   tgp: { Const, var: { Var } }, 
   common: { data: { pipeline, filter, count, scrambleText }, Boolean: { and } },
   'llm-guide': { Doclet,
-    'llm-guide': { exercise },
+    doclet: { exercise },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology },
     problemStatement: {problem}

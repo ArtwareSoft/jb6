@@ -4,7 +4,7 @@ import '@jb6/llm-guide'
 
 const { 
   'llm-guide': { Doclet,
-    'llm-guide': { principle },
+    doclet: { principle },
     guidance: { solution, doNot, bestPractice, proceduralSolution }, 
     explanationPoint: { explanation, evidence, impact, methodology, comparison },
     step: { step }

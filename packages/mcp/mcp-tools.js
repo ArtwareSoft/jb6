@@ -23,8 +23,17 @@ const text = Tool('text', {
   })
 })
 
+Tool('doclet', {
+  params: [
+    {id: 'doclet', type: 'doclet<llm-guide>'}
+  ],
+  impl: (ctx,{doclet}) => ({
+    content: [{ type: 'text', text: JSON.stringify(doclet) }],
+    isError: false
+  })
+})
+
 Tool('guidance', {
-  description: 'get repo root',
   params: [
     {id: 'guidance', type: 'guidance<llm-guide>'}
   ],

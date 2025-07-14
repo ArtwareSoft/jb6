@@ -6,7 +6,7 @@ import '@jb6/llm-guide'
 const { 
   tgp: { Const },
   'llm-guide': { Doclet,
-    'llm-guide': { exercise },
+    doclet: { exercise },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, evidence, impact },
     problemStatement: { problem }

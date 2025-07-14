@@ -5,7 +5,7 @@ import '@jb6/llm-guide'
 
 const { 
   'llm-guide': { Doclet,
-    'llm-guide': { exercise },
+    doclet: { exercise },
     guidance: { doNot, solution  },
     explanationPoint: { bestPractice, namingCategory,namingCollision },
     problemStatement: { problem }

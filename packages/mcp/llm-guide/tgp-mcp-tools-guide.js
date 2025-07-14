@@ -5,7 +5,7 @@ import '@jb6/llm-guide'
 const { 
   tgp: { Const }, 
   'llm-guide': { Doclet,
-    'llm-guide': { principle },
+    doclet: { principle },
     guidance: { solution, doNot, bestPractice }, 
     explanationPoint: { explanation, syntax, whenToUse }
   } 
