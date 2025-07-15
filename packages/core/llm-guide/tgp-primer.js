@@ -8,7 +8,7 @@ const {
   common: { data: { pipeline, filter, count, join, toUpperCase }, Boolean: { and } },
   ui: { control: { button, text, group } },
   'llm-guide': { Doclet,
-    doclet: { howTo },
+    doclet: { howTo, principle },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation },
     problemStatement: {problem}
@@ -114,56 +114,11 @@ dsls.common.boolean.and          // Logical operations component`,
   )
 })
 
-Doclet('componentInstantiation', {
-  impl: howTo(
-    problem('How component instantiation works - using concrete examples'),
-    solution({
-      code: `// Instantiating components creates profile structures
-// Starting with familiar examples:
-
-// Simple component instantiation:
-toUpperCase('hello')
-// Creates: {"$$": "data<common>toUpperCase", "text": "hello"}
-
-// Complex component instantiation:
-button('Save', log('saved'))  
-// Creates: {
-//   "$$": "control<ui>button",
-//   "title": "Save", 
-//   "action": {"$$": "action<common>log", "logName": "saved"}
-// }`,
-      points: [
-        explanation('Component instantiation creates profile structures, not immediate execution'),
-        syntax('component(args...)', 'function-like syntax creates profiles'),
-        whenToUse('when building reusable component structures'),
-        performance('profiles are data structures that can be stored, modified, and instantiated later')
-      ]
-    }),
-    solution({
-      code: `// Args fill params based on component definitions:
-// button component has these params:
-// - title (mandatory)
-// - action (mandatory) 
-// - style (optional)
-
-button('Save', log('saved'))
-//     ^^^^^ fills 'title' param
-//            ^^^^^^^^^^^^^ fills 'action' param (another component instance)`,
-      points: [
-        explanation('Args fill component params by position to create instances'),
-        syntax('positional args', 'first arg fills first param, second fills second, etc.'),
-        whenToUse('understanding how component parameters get filled during instantiation'),
-        performance('param filling happens at instantiation time, not execution time')
-      ]
-    })
-  )
-})
-
 Doclet('profiles', {
   impl: howTo(
-    problem('Understanding profiles - nested component structures within other components'),
+    problem('Understanding profiles - component instantiation'),
     solution({
-      code: `// Profiles as direct component nesting
+      code: `// Profiles as direct component instantiation nesting
 pipeline(
   '%$people%',
   filter('%age% < 30'),    // Profile
@@ -198,14 +153,15 @@ filter(and('%age% < 30', '%name% == "Bart"'))
 // =============================================================================
 
 Doclet('compDefExplanation', {
-  impl: howTo(
-    problem('Understanding CompDef - component definitions that create reusable factories'),
-    solution({
-      code: `// TgpType creates type factories:
-const Data = TgpType('data', 'common')           // Type factory for data components
+  impl: principle('critical', 'CompDef (Component Definition) creates reusable components from TgpTypes', {
+    rationale: 'CompDef provides the three-level structure that enables TGP component system: TgpType creates CompDef, CompDef creates component, component creates profile.',
+    guidance: [
+      solution({
+        code: `// TgpType creates CompDef:
+const Data = TgpType('data', 'common')           // Data is CompDef for data components
 
-// CompDef uses type factories to define components:
-Data('pipeline', {                               // CompDef - defines pipeline component
+// CompDef creates components:
+Data('pipeline', {                               // CompDef defines pipeline component
   params: [
     {id: 'source', type: 'data', mandatory: true},
     {id: 'operators', type: 'data[]', mandatory: true, secondParamAsArray: true}
@@ -215,35 +171,149 @@ Data('pipeline', {                               // CompDef - defines pipeline c
   }
 })
 
-// Now pipeline component is available globally:
-dsls.common.data.pipeline                        // Component factory created by CompDef`,
-      points: [
-        explanation('CompDef creates reusable component factories from TgpTypes'),
-        syntax('Data("componentName", { params, impl })', 'CompDef registration pattern'),
-        syntax('TgpType creates type factories, CompDef creates component factories'),
-        performance('CompDef enables component reuse across the entire system'),
-        whenToUse('when creating new components that others can use')
-      ]
-    }),
-    solution({
-      code: `// Component instantiation uses CompDef:
+// Component creates profiles:
+pipeline('%$people%', filter('%age% < 30'), count())    // Creates profile structure`,
+        points: [
+          explanation('CompDef creates reusable components from TgpTypes'),
+          syntax('Data("componentName", { params, impl })', 'CompDef registration pattern'),
+          syntax('TgpType → CompDef → component → profile', 'three-level TGP structure'),
+          performance('CompDef enables component reuse across the entire system'),
+          whenToUse('when creating new components that others can use')
+        ]
+      }),
+      solution({
+        code: `// Component instantiation uses CompDef:
 pipeline('%$people%', filter('%age% < 30'), count())     
-// ^^^^^^^^ Uses the CompDef we just defined
+// ^^^^^^^^ Uses the component created by CompDef
 
-// The progression is:
-// 1. TgpType('data', 'common') creates type factory
-// 2. Data('pipeline', {...}) creates component factory  
-// 3. pipeline(...args) creates component instance`,
-      points: [
-        explanation('Three-level structure: TgpType → CompDef → Instance'),
-        syntax('pipeline(...)', 'uses CompDef to create profile instances'),
-        performance('CompDef factories are cached and reused for efficiency'),
-        comparison('traditional functions', { advantage: 'profiles can be serialized and modified' })
-      ]
-    })
-  )
+// The three-level progression:
+// 1. TgpType('data', 'common') creates CompDef (Data)
+// 2. Data('pipeline', {...}) creates component (pipeline)  
+// 3. pipeline(...args) creates profile`,
+        points: [
+          explanation('Three-level structure: TgpType creates CompDef, CompDef creates component, component creates profile'),
+          syntax('component instantiation', 'creates profiles, not immediate execution'),
+          whenToUse('understanding the fundamental TGP component creation hierarchy'),
+          performance('profiles can be stored, modified, and instantiated later')
+        ]
+      }),
+      solution({
+        code: `// CompDef naming conventions:
+const Data = TgpType('data', 'common')           // ✅ PascalCase CompDef variable
+const Control = TgpType('control', 'ui')         // ✅ Matches domain purpose
+const Action = TgpType('action', 'common')       // ✅ Clear, descriptive
+
+const dataType = TgpType('data', 'common')       // ❌ camelCase inappropriate for CompDef
+const d = TgpType('data', 'common')              // ❌ abbreviated, unclear`,
+        points: [
+          syntax('PascalCase CompDef variables', 'Data, Control, Action - match their domain purpose'),
+          explanation('CompDef variables should clearly indicate their component type and domain'),
+          whenToUse('when creating CompDef variables for component definition')
+        ]
+      })
+    ]
+  })
 })
 
+// =============================================================================
+// TGP TERMINOLOGY ERRORS DOCLET
+// =============================================================================
+
+Doclet('tgpTerminologyErrors', {
+  impl: principle('high', 'Use precise TGP terminology to avoid confusion with external programming concepts', {
+    rationale: 'LLMs often mix TGP terminology with general programming terms, creating confusion. TGP has specific terminology that should be used consistently.',
+    guidance: [
+      solution({
+        code: `// ✅ CORRECT TGP TERMINOLOGY:
+// TgpType creates CompDef
+const Data = TgpType('data', 'common')           // Data is CompDef
+  
+// CompDef creates component  
+Data('pipeline', { params, impl })               // pipeline is component
+
+// Component creates profile
+pipeline('%$people%', count())                   // Creates profile structure
+
+// Profile instantiation
+profile.$run(ctx)                                // Instantiates profile according to DSL`,
+        points: [
+          syntax('TgpType → CompDef → component → profile', 'correct TGP hierarchy'),
+          syntax('profile.$run()', 'profile instantiation, not execution'),
+          explanation('TGP uses specific terms that should not be mixed with general programming terminology')
+        ]
+      }),
+      doNot('Using general programming terminology instead of TGP terms', {
+        reason: 'Creates confusion and misunderstanding of TGP concepts'
+      }),
+      solution({
+        code: `// ❌ COMMON TERMINOLOGY ERRORS:
+
+// ERROR: Using "factory" (external term)
+"TgpType creates type factories"                 // ❌ Use "CompDef" 
+"CompDef creates component factories"            // ❌ Use "component"
+"component factory creates instances"            // ❌ Use "profile"
+
+// ERROR: Using "instance" instead of "profile"  
+"component instantiation creates instances"      // ❌ Use "profile"
+"component instances can be stored"              // ❌ Use "profile"
+
+// ERROR: Using "execution" instead of "instantiation"
+"profile execution"                              // ❌ Use "profile instantiation" 
+"execute the component"                          // ❌ Use "instantiate the profile"
+
+// ERROR: Mixing "class" terminology
+"component class definition"                     // ❌ Use "CompDef"
+"instantiate a class"                           // ❌ Use "create profile"`,
+        points: [
+          explanation('Avoid "factory" - use CompDef and component'),
+          explanation('Avoid "instance" - use profile'),
+          explanation('Avoid "execution" - use instantiation'),
+          explanation('Avoid OOP terms like "class" - use TGP terminology'),
+          syntax('profile', 'not instance - profiles are data structures, not objects')
+        ]
+      }),
+      solution({
+        code: `// ✅ CORRECT TGP TERMINOLOGY CHEAT SHEET:
+
+// CREATION HIERARCHY:
+TgpType()     → creates → CompDef
+CompDef()     → creates → component  
+component()   → creates → profile
+profile.$run() → instantiates according to DSL
+
+// NAMING:
+CompDef variable: PascalCase (Data, Control, Action)
+component name: camelCase (pipeline, button, filter)
+profile: JSON structure with $$ property
+
+// CONCEPTS:
+✅ "profile"          ❌ "instance"
+✅ "instantiation"    ❌ "execution" 
+✅ "CompDef"         ❌ "factory"
+✅ "component"       ❌ "component factory"
+✅ "DSL"             ❌ "namespace"
+✅ "type<dsl>"       ❌ "class hierarchy"`,
+        points: [
+          syntax('TGP terminology', 'use TGP-specific terms consistently'),
+          explanation('TGP terminology is precise and should not be mixed with general programming terms'),
+          performance('consistent terminology improves understanding and reduces confusion'),
+          whenToUse('always when discussing TGP concepts')
+        ]
+      }),
+      bestPractice({
+        suboptimalCode: 'CompDef creates component factories that instantiate component instances',
+        better: 'CompDef creates components that create profiles',
+        reason: 'TGP terminology is precise - avoid external programming terms like "factory" and "instance"'
+      }),
+      doNot('Mixing OOP terminology (class, instance, factory) with TGP concepts', {
+        reason: 'TGP has its own conceptual model - mixing terminologies creates confusion'
+      }),
+      doNot('Using "execution" when referring to profile instantiation', {
+        reason: 'profiles are instantiated according to DSL type, not executed like functions'
+      })
+    ]
+  })
+})
 Doclet('understandingDSLs', {
   impl: howTo(
     problem('What are DSLs? Domain-Specific Languages that organize components by purpose'),
@@ -283,9 +353,9 @@ ui DSL:
   "action": {"$$": "action<common>log", "logName": "clicked"}
 }`,
       points: [
-        explanation('Every component instance shows its type<dsl> in the $$ property'),
+        explanation('Every profile shows its type<dsl> in the $$ property'),
         syntax('"$$": "type<dsl>componentName"', 'component identifier format'),
-        whenToUse('understanding the internal structure of component instances'),
+        whenToUse('understanding the internal structure of profiles'),
         performance('type<dsl> format enables the system to route components correctly')
       ]
     })
@@ -422,12 +492,12 @@ Doclet('componentsWithinComponents', {
     solution({
       code: `// Components can be used as args to fill other components' params:
 button('Save', log('saved'))
-//             ^^^^^^^^^^^^ log() component instance fills button's 'action' param
+//             ^^^^^^^^^^^^ log() profile fills button's 'action' param
 
 group([
-  text('User: Homer'),           // text() instance in group's 'controls' param
-  button('Edit', log('edit')),   // button() instance in group's 'controls' param  
-  button('Delete', log('delete')) // another button() instance
+  text('User: Homer'),           // text() profile in group's 'controls' param
+  button('Edit', log('edit')),   // button() profile in group's 'controls' param  
+  button('Delete', log('delete')) // another button() profile
 ])`,
       points: [
         explanation('Components can contain other components as profiles'),
@@ -676,16 +746,16 @@ Doclet('forwardReferences', {
 
 Doclet('instantiationPatterns', {
   impl: howTo(
-    problem('How component instances get instantiated - from template creation to results'),
+    problem('How profiles get instantiated - from template creation to results'),
     solution({
       code: `// Method 1: Direct instantiation with empty context
-const buttonInstance = button('Save', log('clicked'))
-const result = buttonInstance.$run({})
+const buttonProfile = button('Save', log('clicked'))
+const result = buttonProfile.$run({})
 
 // Method 2: Context-based instantiation  
 const result2 = new Ctx()
   .setVars({docId: 'doc123', currentUser: {name: 'Homer'}})
-  .run(buttonInstance)
+  .run(buttonProfile)
 
 // Method 3: Runtime instantiation and execution
 const result3 = new Ctx()
@@ -698,11 +768,11 @@ const result3 = new Ctx()
     ])
   ))`,
       points: [
-        explanation('Component instances can be instantiated in multiple ways'),
-        syntax('template.$run({})', 'instantiate with empty context'),
-        syntax('new Ctx().setVars({}).run(template)', 'instantiate with specific variables'),
+        explanation('Profiles can be instantiated in multiple ways'),
+        syntax('profile.$run({})', 'instantiate with empty context'),
+        syntax('new Ctx().setVars({}).run(profile)', 'instantiate with specific variables'),
         whenToUse('different instantiation patterns for different use cases'),
-        performance('same instance can be instantiated multiple times with different contexts')
+        performance('same profile can be instantiated multiple times with different contexts')
       ]
     })
   )

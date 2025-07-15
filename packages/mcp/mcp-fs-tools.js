@@ -317,7 +317,6 @@ Tool('listRepoFiles', {
   }
 })
 
-
 Tool('createDirectoryStructure', {
   description: 'Create a directory structure with files based on JSON input. Directories are objects, files are strings with content.',
   params: [
@@ -368,4 +367,12 @@ Tool('createDirectoryStructure', {
   }
 })
 
-
+Tool('createResearchDir', {
+  params: [
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
+    {id: 'researchId', as: 'string', mandatory: true}
+  ],
+  impl: createDirectoryStructure('%$repoRoot%', 'research/%$researchId%', {
+    structure: asIs({theory: { }, examples: {}, tests: {}})
+  })
+})

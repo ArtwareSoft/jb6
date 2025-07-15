@@ -1,16 +1,11 @@
 import { dsls, coreUtils } from '@jb6/core'
-import '@jb6/llm-guide'
 
 const { 
   common: { Data,
     data: {asIs}
   },
   tgp: { TgpType },
-  mcp: { 
-    Tool,
-    tool: { doclet, createDirectoryStructure }
-  },
-  'llm-guide': { 
+  'llm-guide': { Doclet,
     doclet: { howTo },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology, evidence, impact },
@@ -18,8 +13,8 @@ const {
   }
 } = dsls
 
-Tool('howToWriteLLmGuide', {
-  impl: doclet(howTo(
+Doclet('howToWriteLLmGuide', {
+  impl: howTo(
     problem('How to write effective LLM guides using the llm-guide DSL'),
     solution({
       code: `// Required reading:
@@ -40,19 +35,22 @@ packages/llm-guide/llm-guide-dsl.js           // Available components`,
       reason: 'LLMs tend to use too many words - essential wording only'
     }),
     doNot('Accept first draft as final - MANDATORY second round required', {
-      reason: 'MANDATORY to try cutting 75% word count while keeping all essential information - this is very common and achievable'
+      reason: 'MANDATORY to try cutting 75% word count while keeping all essential information - this is very common and achievable after first time generation'
     })
-  ))
+  )
 })
 
-Tool('howToConductResearch', {
-  impl: doclet(howTo(
+Doclet('howToConductResearch', {
+  impl: howTo(
     problem('How to conduct systematic research for LLM guides'),
     solution({
-      code: `// Research workflow:
+      code: `// STEP 1 - ASK USER IMMEDIATELY:
+"Before research: What's the domain, context, goal, and audience?"
+
+// Research workflow:
 1. Define: domain, context, goal, audience
 2. Create: research/{{researchId}}/ structure  
-3. Gather: theory/, examples/, tests/ materials
+3. Gather: theory/, examples/, tests/ **evidence** materials and save ***original docs***, do not process or filter
 4. Document: research-guide.js with methodology
 5. Organize: examples-x.js, theory-x.js, tests-x.js
 6. Log: successes and problems for framework improvement`,
@@ -62,9 +60,19 @@ Tool('howToConductResearch', {
         explanation('Log all interesting successes and problems - used to improve docs and framework'),
         syntax('createResearchDir mcp', 'creates organized directory structure'),
         syntax('llm-guide DSL', 'document all findings and methodology'),
-        syntax('appendToFile /.llm-logs/${researchId}.txt with TIMESTAMP', 'log discoveries and issues in the environment and meta research (not the research)')
+        syntax({
+          expression: 'appendToFile /.llm-logs/${researchId}.txt with TIMESTAMP',
+          explain: 'log discoveries and issues in the environment and meta research (not the research)'
+        })
       ]
     }),
+    bestPractice({
+      suboptimalCode: 'bring docs and data about usage, prefer external independent sources'
+    }),
+    bestPractice({
+      suboptimalCode: 'save all the **evidence** and ***original docs*** in the resaerch directories, do not process or filter'
+    }),
+    doNot('Do not Keep the original data and docs in your memory, it will be lost, save it!!'),
     doNot('Start research without clear domain/goal definition', {
       reason: 'unclear scope leads to unfocused material gathering'
     }),
@@ -76,12 +84,11 @@ Tool('howToConductResearch', {
       better: 'After understanding errors: check if llm-guide files misled you, suggest fixes to user for approval',
       reason: 'Improve guides to prevent future errors - load packages/llm-guide/principles-llm-guide.js before suggesting fixes'
     })
-  ))
+  )
 })
 
-
-Tool('howToWriteTests', {
-  impl: doclet(howTo(
+Doclet('howToWriteTests', {
+  impl: howTo(
     problem('How to write effective tests for TGP components'),
     solution({
       code: `// Required reading:
@@ -94,24 +101,11 @@ packages/testing/llm-guide/how-to-write-tests.js  // Testing principles`,
         syntax('dataTest({calculate: pipeline(), expectedResult: equals()})', 'standard pattern')
       ]
     }),
-    doNot('Test internal structures', {
-      reason: 'breaks during refactoring'
-    }),
-    doNot('Giant multi-behavior tests', {
-      reason: 'difficult failure diagnosis'
-    }),
+    doNot('Test internal structures', { reason: 'breaks during refactoring' }),
+    doNot('Giant multi-behavior tests', { reason: 'difficult failure diagnosis' }),
     doNot('Accept first test draft as final - MANDATORY second round required', {
       reason: 'MANDATORY to try cutting 75% test size while keeping all essential verification - this is very common and achievable'
     })
-  ))
+  )
 })
 
-Tool('createResearchDir', {
-  params: [
-    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
-    {id: 'researchId', as: 'string', mandatory: true}
-  ],
-  impl: createDirectoryStructure('%$repoRoot%', 'research/%$researchId%', {
-    structure: asIs({theory: { }, examples: {}, tests: {}})
-  })
-})

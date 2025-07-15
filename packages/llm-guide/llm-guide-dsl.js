@@ -17,11 +17,6 @@ const Evidence = TgpType('evidence', 'llm-guide')
 const ExplanationPoint = TgpType('explanationPoint', 'llm-guide') // Individual explanation components
 const ProblemStatement = TgpType('problemStatement', 'llm-guide') // New: Problem statement container
 const Validation = TgpType('validation', 'llm-guide')
-const Spec = TgpType('spec', 'llm-guide')
-const UseCase = TgpType('use-case', 'llm-guide')
-const Actor = TgpType('actor', 'llm-guide')
-const ActorFeature = TgpType('actor-feature', 'llm-guide')
-const Scenario = TgpType('scenario', 'llm-guide')
 
 // =============================================================================
 // TYPE: doclet - Main documentation container
@@ -30,89 +25,33 @@ Doclet('howTo', {
   params: [
     {id: 'problem', type: 'problemStatement', templateValue: '', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
-    {id: 'validation', type: 'validation[]', description: 'verify howTo knowledge achieved'},
-    {id: 'outro', as: 'text', description: 'Concluding explanation'}
+    {id: 'outro', as: 'text', description: 'Concluding explanation'},
+    {id: 'testLlmUnderstanding', type: 'validation[]'},
   ]
 })
 
-Spec('specification', {
+Doclet('principle', {
+  description: 'Fundamental principle for effective LLM documentation',
   params: [
-    {id: 'introduction', as: 'text'},
-    {id: 'useCases', type: 'use-case[]', mandatory: true},
-    {id: 'dataSamples', type: 'dataSample[]'},
-    {id: 'expectedOutputs', type: 'dataSample[]'}
+    { id: 'importance', as: 'text', mandatory: true, options: 'critical,high,medium,low' },
+    { id: 'rule', as: 'text', mandatory: true, description: 'The principle statement' },
+    { id: 'rationale', as: 'text', mandatory: true, description: 'Why this principle matters' },
+    { id: 'guidance', type: 'guidance[]' },
+    { id: 'testLlmUnderstanding', type: 'validation[]'},
   ]
 })
 
-Actor('endUser', {
+Doclet('fundamentalLlmMethodology', {
+  description: 'Fundamental methodology for LLM guide writing process',
   params: [
-    {id: 'description', as: 'text' },
-    {id: 'features', type: 'actor-feature' },
-  ]
-})
-
-Actor('admin', {
-  params: [
-    {id: 'description', as: 'string' },
-    {id: 'adminFlow', as: 'text' },
-    {id: 'features', type: 'actor-feature' },
-  ]
-})
-
-ActorFeature('motivation', {
-  params: [
-    {id: 'motivation', as: 'text' },
-  ]  
-})
-
-ActorFeature('goal', {
-  params: [
-    {id: 'goal', as: 'text' },
-  ]  
-})
-
-ActorFeature('backgroundKnowledge', {
-  params: [
-    {id: 'knowledge', as: 'text' },
-  ]
-})
-
-UseCase('useCase', {
-  description: 'abstraction of user scenarios. looking at the system from the outside',
-  params: [
-    {id: 'goal', as: 'text', description: 'the essence of user scenarios'},
     {id: 'importance', as: 'text', mandatory: true, options: 'critical,high,medium,low'},
-    {id: 'relevantActors', type: 'actor[]'},
-    {id: 'flow', as: 'text', description: 'abstract flow. the essence of user scenarios'},
-    {id: 'exampleScenarios', type: 'scenario[]', description: 'can refer to data samples'}
+    {id: 'rule', as: 'text', mandatory: true},
+    {id: 'rationale', as: 'text', mandatory: true},
+    {id: 'process', as: 'text', description: 'Step-by-step process'},
+    {id: 'guidance', type: 'guidance[]'},
+    {id: 'testLlmUnderstanding', type: 'validation[]'}
   ]
 })
-
-Scenario('inventedUserStory', {
-  description: 'very concrete story for the use case',
-  params: [
-    {id: 'context', as: 'text', description: 'detailed context of the example including names'},
-    {id: 'actors', as: 'text', description: 'detailed including name & position'},
-    {id: 'motivation', as: 'text', description: 'client and end user motivation'},
-    {id: 'interactionDescription', as: 'text', description: 'detailed interaction with system from the user point of view'},
-    {id: 'dataSamples'}
-  ]
-})
-
-Scenario('realClientStory', {
-  description: 'very concrete story for the use case',
-  params: [
-    {id: 'context', as: 'text', description: 'detailed context of the example including names'},
-    {id: 'actors', as: 'text', description: 'detailed including name & position'},
-    {id: 'motivation', as: 'text', description: 'client and end user motivation'},
-    {id: 'interactionDescription', as: 'text', description: 'detailed interaction with system from the user point of view'},
-    {id: 'dataSamples'},
-    {id: 'webSiteUrl', as: 'string'},
-    {id: 'crmId'}
-  ]
-})
-
-
 
 // =============================================================================
 // TYPE: problemStatement - Problem statement components
@@ -125,28 +64,10 @@ ProblemStatement('problem', {
   ]
 })
 
-Doclet('principle', {
-  description: 'Fundamental principle for effective LLM documentation',
-  params: [
-    { id: 'importance', as: 'text', mandatory: true, options: 'critical,high,medium,low' },
-    { id: 'rule', as: 'text', mandatory: true, description: 'The principle statement' },
-    { id: 'rationale', as: 'text', mandatory: true, description: 'Why this principle matters' },
-    { id: 'dslCompIds', as: 'text', description: "Full component IDs to use. E.g., 'guidance<llm-guide>doNot,data<common>pipeline'" },
-    { id: 'guidance', type: 'guidance[]' },
-    { id: 'validation', type: 'validation[]', description: 'verify principle is understood'},
-  ]
-})
 
 // =============================================================================
 // TYPE: guidance - Solution and anti-pattern components
 // =============================================================================
-
-Guidance('solution', {
-  params: [
-    {id: 'code', as: 'text', mandatory: true, byName: true},
-    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true}
-  ]
-})
 
 Guidance('proceduralSolution', {
   description: 'Solution using step-by-step procedures and workflows',
@@ -155,6 +76,25 @@ Guidance('proceduralSolution', {
     {id: 'usefulPoints', type: 'explanationPoint[]', byName: true},
     {id: 'steps', type: 'step[]', mandatory: true, description: 'Ordered sequence of steps'},
     {id: 'summaryPoints', type: 'explanationPoint[]'}
+  ]
+})
+
+const Step = TgpType('step', 'llm-guide')
+Step('step', {
+  params: [
+    {id: 'action', as: 'text', mandatory: true, description: 'What to do'},
+    {id: 'purpose', as: 'text', description: 'Why this step matters'},
+    {id: 'details', as: 'text', description: 'How to implement this step'},
+    {id: 'validation', type: 'validation[]', description: 'How to verify step completion - can be text or validation object'},
+    {id: 'mcpTool', type: 'tool<mcp>', description: 'Optional MCP tool to execute as part of this step'},
+    {id: 'points', type: 'explanationPoint[]', description: 'Detailed explanations for this step'}
+  ]
+})
+
+Guidance('solution', {
+  params: [
+    {id: 'code', as: 'text', mandatory: true, byName: true},
+    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true}
   ]
 })
 
@@ -189,15 +129,18 @@ Guidance('mechanismUnderTheHood', {
   ]
 })
 
+// =============================================================================
+// TYPE: ExplanationPoint
+// =============================================================================
 
-ExplanationPoint('explanation', {
+ExplanationPoint('p', {
+  description: 'Single line bullet-point',
   params: [
-    {id: 'text', as: 'text', mandatory: true},
+    {id: 'text', as: 'string', mandatory: true},
   ]
 })
 
-ExplanationPoint('p', {
-  description: 'Simple point for bullet-point style documentation',
+ExplanationPoint('explanation', {
   params: [
     {id: 'text', as: 'text', mandatory: true},
   ]
@@ -243,6 +186,12 @@ ExplanationPoint('evidence', {
   ]
 })
 
+ExplanationPoint('detailedEvidence', {
+  params: [
+    { id: 'evidence', type: 'evidence', mandatory: true }
+  ]
+})
+
 ExplanationPoint('impact', {
   params: [
     { id: 'impact', as: 'text', mandatory: true }
@@ -255,26 +204,9 @@ ExplanationPoint('methodology', {
   ]
 })
 
-ExplanationPoint('namingCategory', {
-  description: 'Individual naming category with examples and reasoning',
-  params: [
-    {id: 'name', as: 'string', mandatory: true, description: 'Category name (e.g., "DSL Names")'},
-    {id: 'pattern', as: 'string', mandatory: true, description: 'Naming pattern to follow'},
-    {id: 'examples', as: 'text', mandatory: true, description: 'Real syntax examples with good/bad comparisons'},
-    {id: 'reasoning', as: 'text', mandatory: true, description: 'Why this pattern matters'},
-    {id: 'buildsToward', as: 'text', description: 'How this category connects to the next in the progression'}
-  ]
-})
-
-ExplanationPoint('namingCollision', {
-  description: 'Concrete collision scenario with evidence and solution',
-  params: [
-    {id: 'scenario', as: 'text', mandatory: true, description: 'Concrete code showing the collision happening'},
-    {id: 'explanation', as: 'text', mandatory: true, description: 'Technical explanation of why the collision occurs'},
-    {id: 'fix', as: 'text', mandatory: true, description: 'How the naming rules prevent this collision'},
-    {id: 'evidence', as: 'text', description: 'Real-world evidence this collision occurred'}
-  ]
-})
+// =============================================================================
+// TYPE: Evidence
+// =============================================================================
 
 Evidence('research', {
   description: 'Research findings and evidence base',
@@ -304,18 +236,7 @@ Evidence('benchmark', {
 })
 
 // New step type for procedural solutions
-const Step = TgpType('step', 'llm-guide')
 
-Step('step', {
-  params: [
-    {id: 'action', as: 'text', mandatory: true, description: 'What to do'},
-    {id: 'purpose', as: 'text', description: 'Why this step matters'},
-    {id: 'details', as: 'text', description: 'How to implement this step'},
-    {id: 'validation', type: 'validation[]', description: 'How to verify step completion - can be text or validation object'},
-    {id: 'mcpTool', type: 'tool<mcp>', description: 'Optional MCP tool to execute as part of this step'},
-    {id: 'points', type: 'explanationPoint[]', description: 'Detailed explanations for this step'}
-  ]
-})
 
 
 Validation('multipleChoiceQuiz', {

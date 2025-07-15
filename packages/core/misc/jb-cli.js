@@ -20,29 +20,6 @@ async function runCliInContext(script, {requireNode, importMap} = {}) {
   return res
 }
 
-// async function runNodeCli(script, {importMap} = {}) {
-//   const { execFile } = await import('child_process')
-//   const cwd = importMap?.projectRoot || ''
-//   const args = ['--input-type=module', '-e', script]
-//   const cmd = process.execPath + ' ' + args.map(a => JSON.stringify(a)).join(' ')
-//   const { error, stdout } = await new Promise(res =>
-//     execFile(process.execPath, args, { cwd, encoding: 'utf8' }, (err, out) =>
-//       res({ error: err, stdout: out })
-//     )
-//   )
-//   if (error) {
-//     logException(error, 'error in run node cli', { cmd, importMap, stdout })
-//     return { error, cmd, importMap }
-//   }
-//   try {
-//     const result = JSON.parse(stdout)
-//     return { result, cmd, importMap }
-//   } catch (e) {
-//     logException(e, 'error in run node cli', { cmd, importMap, stdout })
-//     return { error: e, cmd, importMap }
-//   }
-// }
-
 async function runNodeCli(script, {importMap} = {}) {
   const {spawn} = await import('child_process')
   const cwd = importMap?.projectRoot || ''
