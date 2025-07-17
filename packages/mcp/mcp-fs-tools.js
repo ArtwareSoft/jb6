@@ -2,21 +2,23 @@ import { dsls, coreUtils } from '@jb6/core'
 const { pathJoin } = coreUtils
   
 const {
-    common: { Data,
-       data: { runNodeScript, pipeline, split, join, first }
+    common: { Data, Action,
+       data: { runNodeScript, pipeline, split, join, first, asIs }
     },
     tgp: { any: { typeAdapter }},
-    mcp: { Tool }
+    mcp: { Tool, 
+      tool: { text, doclet }
+     }
 } = dsls
 
  
-Tool('getFilesContent', {
-    description: 'Read the content of one or more files from the repository. Essential for understanding existing code before making changes.',
-    params: [
-      { id: 'filesPaths', as: 'string', mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")' },
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root' }
-    ],
-    impl: async (ctx, { filesPaths, repoRoot }) => {
+const getFilesContent = Data('getFilesContent', {
+  description: 'Read the content of one or more files from the repository. Essential for understanding existing code before making changes.',
+  params: [
+    {id: 'filesPaths', as: 'string', mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")'},
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'}
+  ],
+  impl: async (ctx, { filesPaths, repoRoot }) => {
       try {
         const { readFileSync } = await import('fs')
         const { pathJoin, estimateTokens } = coreUtils
@@ -30,23 +32,41 @@ Tool('getFilesContent', {
             tokens: estimateTokens(fileContent)
           }
         })
+        return files.map(file => `=== File: ${file.filePath} (${file.tokens} tokens) ===\n${file.content}`).join('\n\n')
         
-        // Format for MCP server - readable content with file separators
-        const formattedContent = files.map(file => 
-          `=== File: ${file.filePath} (${file.tokens} tokens) ===\n${file.content}`
-        ).join('\n\n')
-        
-        return {
-          content: [{ type: 'text', text: formattedContent }],
-          isError: false
-        }
       } catch (error) {
-        return {
-          content: [{ type: 'text', text: `Error reading files: ${error.message}` }],
-          isError: true
-        }
+        return `Error reading files: ${error.message}`
       }
     }
+})
+
+Action('saveToFile', {
+  params: [
+    {id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where timestamp will be added'},
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
+    {id: 'content', as: 'string', dynamic: true, mandatory: true, description: 'Content to add to the file'},
+  ],
+  impl: async (ctx, args) => {
+    try {
+      const { writeFileSync } = await import('fs')
+      const { join } = await import('path')
+
+      const { repoRoot, filePath, content } = { ...args, content: args.content.profile }
+      const fullPath = join(repoRoot, filePath)
+      writeFileSync(fullPath, content, 'utf8')      
+    } catch (error) {
+      logError(error,{ctx})
+    }
+  }
+})
+
+Tool('getFilesContent', {
+  description: 'Read the content of one or more files from the repository. Essential for understanding existing code before making changes.',
+  params: [
+    {id: 'filesPaths', as: 'string', mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")'},
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'}
+  ],
+  impl: text(getFilesContent('%$filesPaths%', '%$repoRoot%'))
 })
   
 Tool('replaceFileSection', {
@@ -317,7 +337,7 @@ Tool('listRepoFiles', {
   }
 })
 
-Tool('createDirectoryStructure', {
+const createDirectoryStructure = Tool('createDirectoryStructure', {
   description: 'Create a directory structure with files based on JSON input. Directories are objects, files are strings with content.',
   params: [
     { id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root' },

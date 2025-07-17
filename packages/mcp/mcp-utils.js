@@ -1,17 +1,17 @@
 import { dsls, coreUtils } from '@jb6/core'
+import '@jb6/common'
 
 const { ptsOfType, globalsOfType, asJbComp } = coreUtils
 const { 
-    common: { Data, Action },
-    tgp: { TgpType, typeAdapter },
+    common: { Data, Action,
+      data: { pipe }
+     },
+    tgp: { TgpType, any: {typeAdapter }},
 } = dsls
   
 // Define core types  
 const Tool = TgpType('tool', 'mcp')
 const Prompt = TgpType('prompt', 'mcp')
-
-// Export for use in other files
-export { Tool, Prompt, typeAdapter }
 
 function injectConsoleSuppressionAfterImports(script) {
   const lines = script.split('\n')
@@ -102,7 +102,8 @@ export async function startMcpServer() {
 
 
     // Get all tools from the repository
-    const allTools = [...ptsOfType(Tool),...globalsOfType(Tool)]
+    const exclude = ['text','doclet']
+    const allTools = [...ptsOfType(Tool),...globalsOfType(Tool)].filter(id => !exclude.includes(id))
     const toolConfigs = allTools.map(toolId => {
       const toolComp = dsls.mcp.tool[toolId][asJbComp]
       return {
@@ -198,3 +199,36 @@ export async function startMcpServer() {
     await mcpServer.connect(transport)
     console.error(`JB6 MCP Server running on stdio`)
 }
+
+Tool('text', {
+  description: 'wrap text as mcp result',
+  params: [
+    {id: 'text' },
+    {id: 'maxLength', as: 'number', defaultValue: 20000}
+  ],
+  impl: typeAdapter('data<common>', pipe(
+    '%$text%',
+    ({data}) => Promise.resolve(data),
+    ({data}) => data || '',
+    ({data},{},{maxLength}) => (data.length > maxLength) ?
+        [data.slice(0,1000),
+          `===data was originally ${data.length} ${data.length - maxLength} missing chars here====`,
+          data.slice(data.length-maxLength-1000)
+        ].join('') : data,
+    ({data}) => ({
+        content: [{ type: 'text', text: data }], 
+        isError: data.indexOf('Error') == 0
+    })
+  ))
+})
+
+Tool('doclet', {
+  description: 'wrap doclet as mcp result',
+  params: [
+    {id: 'doclet', type: 'doclet<llm-guide>'}
+  ],
+  impl: (ctx,{doclet}) => ({
+    content: [{ type: 'text', text: JSON.stringify(doclet) }],
+    isError: false
+  })
+})

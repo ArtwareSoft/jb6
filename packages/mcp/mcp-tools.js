@@ -2,36 +2,17 @@ import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
 import '@jb6/llm-guide'
 
-const { pathJoin } = coreUtils
+const { pathJoin, deepMapValues, omitProps } = coreUtils
   
 const {
     common: { Data,
        data: { runNodeScript, pipeline, split, join, first }
     },
     tgp: { any: { typeAdapter }},
-    mcp: { Tool }
+    mcp: { Tool, 
+      tool: { text, doclet }
+     }
 } = dsls
-
-const text = Tool('text', {
-  description: 'get repo root',
-  params: [
-    {id: 'text', as: 'text'}
-  ],
-  impl: () => ({
-    content: [{ type: 'text', text: 'you got the answer in the param description' }],
-    isError: false
-  })
-})
-
-Tool('doclet', {
-  params: [
-    {id: 'doclet', type: 'doclet<llm-guide>'}
-  ],
-  impl: (ctx,{doclet}) => ({
-    content: [{ type: 'text', text: JSON.stringify(doclet) }],
-    isError: false
-  })
-})
 
 Tool('defaultRepoRoot', {
   description: 'get repo root',
@@ -47,23 +28,39 @@ Tool('tgpModel', {
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo. look at defaultRepoRoot to get it' },
       { id: 'filePath', as: 'string', defaultValue: 'packages/common/common-tests.js', description: 'relative starting point to filter the model. when not exist, return the model of common and testing' },
     ],
-    impl: async (ctx, { repoRoot, filePath }) => {
+    impl: text( async (ctx, {}, { repoRoot, filePath }) => {
       try {
         await import('@jb6/lang-service')
         jb.coreRegistry.repoRoot = repoRoot
-        const fullPath = pathJoin(repoRoot, filePath)
-        const res = await coreUtils.calcTgpModelData({ filePath: fullPath })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(res) }],
-          isError: false
-        }
+        const res = await coreUtils.calcTgpModelData({ filePath: pathJoin(repoRoot, filePath) })
+        const {dsls, ns} = deepMapValues(res,minifyComp,filter)
+        return JSON.stringify({dsls,ns})
       } catch (error) {
-        return {
-          content: [{ type: 'text', text: `Error calculating TGP model: ${error.message}` }],
-          isError: true
-        }
+        return `Error calculating TGP model: ${error.message}`
       }
-    }
+
+      function filter(obj, key, parent,path) {
+        return (key == 'ns' && !path || key[0] == key[0]?.toUpperCase() && path.split('~').length == 3 || obj.$location) 
+      }
+
+      function minifyComp(obj, key,parent,path) {
+        if (key == 'ns' && !path)
+          return Object.keys(obj).join(',')
+        if (key[0] == key[0]?.toUpperCase() && path.split('~').length == 3)
+          return 'compDef'
+
+        const {description,params} = obj
+        const res = {}
+        if (description) res.description = description
+        if (params?.length > 0)
+          res.params = params.map(p=>{
+            const resP = omitProps(p,['$location','dsl','$dslType'])
+            if (resP.type == 'data<common>') delete resP.type
+            return resP
+        })
+        return res
+      }
+    })
 })
   
 Tool('runSnippet', {

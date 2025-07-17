@@ -7,7 +7,7 @@ import '../utils/tgp.js'
 const { coreUtils } = jb
 
 const { logException, logError, isNode } = coreUtils
-Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext})
+Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runShellScript})
 
 async function runCliInContext(script, {requireNode, importMap} = {}) {
   let res = {}
@@ -18,6 +18,39 @@ async function runCliInContext(script, {requireNode, importMap} = {}) {
   else
     res = await runNodeCli(script, {importMap})
   return res
+}
+
+async function runShellScript(script) {
+  if (!isNode) {
+    const response = await fetch('/run-shell', { method: 'POST', headers: {'Content-Type': 'application/json' }, body: JSON.stringify({ script }) })
+    const result = await response.json()
+    return result.result
+  }
+  const {spawn} = await import('child_process')
+  return new Promise((resolve) => {
+    let stdout = ''
+    let stderr = ''
+    const child = spawn('bash', ['-c', script], { encoding: 'utf8' })
+    child.stdout.on('data', data => stdout += data)
+    child.stderr.on('data', data => stderr += data)
+
+    child.on('close', code => {
+      if (code !== 0) {
+        const error = new Error(`Shell script exited with code ${code}`)
+        logError(error, 'error in run shell script', { script, stdout, stderr })
+        return resolve({ error, stdout, stderr, script })
+      }
+      try {
+        stdout = JSON.parse(stdout)
+      } catch (e) {}
+      resolve({ stdout, stderr, script })
+    })
+
+    child.on('error', err => {
+      logException(err, 'error spawning shell script', { script })
+      resolve({script, err})
+    })
+  })
 }
 
 async function runNodeCli(script, {importMap} = {}) {

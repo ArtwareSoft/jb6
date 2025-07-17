@@ -5,7 +5,7 @@ import { serveImportMap } from '@jb6/server-utils'
 import { coreUtils } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
 
-const { runNodeCli, calcRepoRoot}  = coreUtils
+const { runNodeCli, runShellScript, calcRepoRoot}  = coreUtils
 
 export async function expressTestServices(app) {
   app.use(express.json({ limit: '10mb' }))
@@ -24,6 +24,12 @@ export async function expressTestServices(app) {
   app.post('/run-cli', async (req, res) => {
     const { script, importMap } = req.body
     const result = await runNodeCli(script, {importMap})
+    res.status(200).json({ result })
+  })
+
+  app.post('/run-shell', async (req, res) => {
+    const { script } = req.body
+    const result = await runShellScript(script)
     res.status(200).json({ result })
   })
 

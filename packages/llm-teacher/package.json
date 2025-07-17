@@ -1,0 +1,36 @@
+{
+  "name": "@jb6/llm-teacher",
+  "version": "0.1.0",
+  "description": "Systematic LLM teaching material generation and validation system",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/llm-teacher-tests.js",
+    "extract": "node llm-teacher-cli.js extract",
+    "generate": "node llm-teacher-cli.js generate", 
+    "validate": "node llm-teacher-cli.js test",
+    "deploy": "node llm-teacher-cli.js deploy"
+  },
+  "dependencies": {
+    "@jb6/core": "*",
+    "@jb6/common": "*", 
+    "@jb6/testing": "*",
+    "@jb6/llm-guide": "*",
+    "@jb6/mcp": "*"
+  },
+  "devDependencies": {
+    "anthropic": "^0.21.0",
+    "commander": "^11.0.0"
+  },
+  "keywords": [
+    "llm",
+    "ai", 
+    "education",
+    "pedagogy",
+    "documentation",
+    "teaching",
+    "validation"
+  ],
+  "author": "JB6 Team",
+  "license": "MIT"
+}

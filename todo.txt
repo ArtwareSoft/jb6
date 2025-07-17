@@ -1,6 +1,7 @@
-connect to cursor rules
-conncet llm cli with pipe
-write mcp clients
+mcp clients - build tests for mcp
+exprt db
+mixin dsl
+
 write fixProfile mcpService
 
 add profile source code MCP
@@ -11,44 +12,56 @@ make Const just a type
 i am shaiby the author is the jb6 repo.
 my repo is at /home/shaiby/projects/jb6
 ***please DO NOT change my fw code, docs and test files, consult me first ***
-this session id is "understanding-tgp-1"
+this session id is "common-dsl-course-1"
+== write to log
 please log all the interesting success and problems you face. it will be used to discuss with me how to improve the docs and the framework!!!
 use the llm-guide-dsl for documentation suggestions
 use appendToFile /.llm-logs/${sessionId}.txt with TIMESTAMP for logging
 **after understanding errors you made, check if you can improve the llm-guide files to avoid this error in the future,
- please approve with me the fixes you suggest to make in the llm-guide files. ensure you load packages/llm-guide/principles-llm-guide.js before**
 
-
+== llm-guide
 start with listRepoFiles mcp service
 please read carefully
 packages/core/llm-guide/tgp-primer.js
-packages/core/llm-guide/extending-dsls.js
 packages/llm-guide/llm-guide-dsl.js
 packages/llm-guide/principles-llm-guide.js
 packages/llm-guide/how-to-guides.js
-
-read all the files under .llm-db/cursorContentAwareFiles
-
-let's discuss how-to-write-llm-guides.
-please show me a table with all points in 
+please approve with me the fixes you suggest to make in the llm-guide files. ensure you load packages/llm-guide/principles-llm-guide.js before**
 
 **please do not change fw code, docs and test files***. feel free to suggest changes
 **please suggest updates to the relevant llm-guide files after changing code, accroding to packages/llm-guide/principles-llm-guide.js**
 
+== commom dsl course
+get the common dsl using tgpModel(packages/common/common-tests.js) mcp service
+please read carefully packages/core/llm-guide/tgp-primer.js and read packages/common/common-llm-guide.js 
+implement carefully learnCommonDsl from packages/common/common-llm-guide.js, 
+do not change the packages/common/common-llm-guide.js code
+**follow up the methodology and do all the quizes**
+**use TURN BATCHING**
+***please DO NOT change my fw code, docs and test files, consult me first ***
 
-please read all the files packages/social-db and tell me when you ready
 
-read packages/social-db/refine-race-problem-llm-guide.js
-now write the code in packages/social-db/multi-user-distributed.js. 
-fix the wording and param names to reflect the docs
-
-we are refactoring social db from packages/social-db/old-source-code.js
-
+llm-db
 then read all the files in .llm-db
 we are working on the dsl in packages/llm-guide/llm-rules-dsl.js
 please open it and see what we have built so far
 **please do not change fw code, docs and test files***. 
 the only exception is the file we are working on packages/llm-guide/llm-rules-dsl.js
+
+please read
+packages/mcp
+packages/llm-teacher
+packages/server-utils
+packages/testing and packages/testing/probe.html to see how we use the http server
+
+I would like to add mcp-services and llm-teacher service to my server utils. 
+I would like to build mcp client chat that uses my http server and uses claude-cli as service
+please explain what I want to do.
+
+read all the files under .llm-db/cursorContentAwareFiles
+
+let's discuss how-to-write-llm-guides.
+please show me a table with all points in 
 
 now please prepare some summaries 
 primer-summary-1 tokens/2

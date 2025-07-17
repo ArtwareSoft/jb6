@@ -367,11 +367,29 @@ function pathJoin(...segments) {
 function pathParent(path) {
   const i = path.replace(/\/+$/, '').lastIndexOf('/')
   return i <= 0 ? (i === 0 ? '/' : '.') : path.substring(0, i)
- }
+}
+
+const deepMapValues = (obj, mapFunc, condition = () => true, path = '') => {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return obj
+  const res = Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [ key, condition(value, key, obj,path) ? mapFunc(value, key, obj,path) 
+        : typeof value === 'object' && value !== null && !Array.isArray(value) ? deepMapValues(value, mapFunc, condition, [path,key].join('~'))
+        : value
+    ]))
+
+  return res
+}
+
+const omitProps = (obj, keys) => {
+  const keySet = new Set(Array.isArray(keys) ? keys : [keys])
+  return Object.fromEntries(
+    Object.entries(obj).filter(([key]) => !keySet.has(key))
+  )
+}
 
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logCli, isNode, logByEnv, fetchByEnv, absPathToUrl,
-  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, 
+  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
   calcValue, stripData, estimateTokens, pathJoin, pathParent
