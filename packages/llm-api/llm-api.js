@@ -1,7 +1,7 @@
-import { dsls, coreUtils } from '@jb6/core'
+import { dsls, coreUtils, ns } from '@jb6/core'
 
 const { 
-  common: { Data, ReactiveSource },
+  common: { Data, ReactiveSource, ReactiveOperator, data: asIs },
   tgp: { TgpType },
 } = dsls
 
@@ -12,10 +12,10 @@ const Model = TgpType('model', 'llm-api')
 const Prompt = TgpType('prompt', 'llm-api')
 const gpt_35_turbo_0125 = Model.forward('gpt_35_turbo_0125')
 
-ReactiveSource('llm.Completions', {
+ReactiveSource('llm.completionsRx', {
   params: [
-    {id: 'prompt', type: 'prompt', dynamic: true},
-    {id: 'llmModel', type: 'model', defaultValue: gpt_35_turbo_0125()},
+    {id: 'prompt', type: 'prompt<llm-api>', dynamic: true},
+    {id: 'llmModel', type: 'model<llm-api>', defaultValue: gpt_35_turbo_0125()},
     {id: 'maxTokens', as: 'number', defaultValue: 3500},
     {id: 'includeSystemMessages', as: 'boolean'},
     {id: 'useLocalStorageCache', as: 'boolean'},
@@ -205,6 +205,21 @@ ReactiveOperator('llm.accumulateText', {
       if (t === 2) sink(2, d)
     })
   }
+})
+
+const { llm } = ns
+
+Data('llm.completions', {
+  description: 'synchronious version of llm.completionsRx',
+  params: [
+    {id: 'prompt', type: 'prompt<llm-api>', dynamic: true},
+    {id: 'llmModel', type: 'model<llm-api>', defaultValue: gpt_35_turbo_0125()},
+    {id: 'maxTokens', as: 'number', defaultValue: 3500},
+    {id: 'includeSystemMessages', as: 'boolean'},
+    {id: 'useLocalStorageCache', as: 'boolean'},
+    {id: 'notifyUsage', type: 'action<common>', dynamic: true}
+  ],
+  impl: (ctx,args) => ctx.run(llm.completionsRx(ctx.jbCtx.profile))(llm.accumulateText())
 })
 
 Provider('provider', {

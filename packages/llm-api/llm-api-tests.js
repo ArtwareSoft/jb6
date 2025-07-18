@@ -1,38 +1,59 @@
-using('ui-testers')
+import { coreUtils, dsls, ns, jb } from '@jb6/core'
+import '@jb6/llm-api'
+import '@jb6/testing'
 
-component('llmTest.hello', {
+const {
+  tgp: { TgpType },
+  common: { Data, Action, Boolean,
+    data: { pipeline, filter, join, property, obj, delay, asIs, pipe, list }, 
+    Boolean: { contains, equals, and },
+    Prop: { prop }
+  },
+  'llm-api': {
+    prompt: { prompt, user, system }
+  },
+  test: { Test, 
+    test: { dataTest}
+  }
+} = dsls
+const { llm } = ns
+
+Test('llmTest.hello', {
+  impl: dataTest(llm.completions(''), contains('srael'), { timeout: 5000 })
+})
+
+Test('llmTest.hello', {
   doNotRunInTests: true,
   impl: dataTest({
-    calculate: llmViaApi.completions(prompt(system('please answer clearly'), user('how large is israel'))),
+    calculate: llm.completions(prompt(system('please answer clearly'), user('how large is israel'))),
     expectedResult: contains('srael'),
     timeout: 5000
   })
 })
 
-component('llmTest.hello.withRedis', {
+Test('llmTest.hello.withRedis', {
   doNotRunInTests: true,
   impl: dataTest({
     calculate: llmViaApi.completions(prompt(system('please answer clearly'), user('how large is USA')), {
-      useRedisCache: true
+      useLocalStorageCache: true
     }),
     expectedResult: contains('3.8'),
     timeout: 5000
   })
 })
 
-component('llmTest.hello.reasoning', {
+Test('llmTest.hello.reasoning', {
   doNotRunInTests: true,
   impl: dataTest({
     calculate: llmViaApi.completions(user('how large is USA?'), {
-      metaPrompt: reasoning(),
-      useRedisCache: true
+      useLocalStorageCache: true
     }),
     expectedResult: contains('3.8'),
     timeout: 5000
   })
 })
 
-component('llmTest.rx', {
+Test('llmTest.rx', {
   doNotRunInTests: true,
   impl: dataTest({
     calculate: rx.pipe(
@@ -74,7 +95,7 @@ component('llmTest.rx', {
   })
 })
 
-component('llmTest.count', {
+Test('llmTest.count', {
   doNotRunInTests: true,
   impl: browserTest({
     control: group({
