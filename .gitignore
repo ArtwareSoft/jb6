@@ -6,5 +6,4 @@ package-lock.json
 claude.log
 .llm-db/
 claude.log
-.llm-db/
 .env

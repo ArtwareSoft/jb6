@@ -144,8 +144,11 @@ MetaVar('Var', {
 
 // common dsl
 const Data = TgpType('data','common')
-const Boolean = TgpType('boolean','common')
 const Action = TgpType('action','common')
+
+TgpType('boolean','common')
+TgpType('reactive-source','common') // callbag api
+TgpType('reactive-operator','common') // callbag api
 
 function DefComponents(items,def) { items.forEach(item=>def(item)) }
 

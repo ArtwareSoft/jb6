@@ -7,4 +7,6 @@ import '../lang-service/tests/snippet-tests.js'
 import '../react/tests/react-tests.js'
 import '../social-db/social-db-tests.js'
 import '../mcp/tests/mcp-tests.js'
+import '../rx/tests/rx-core-tests.js'
+
 //import '../plugins/remote/jbm/tests/jbm-tests.js'

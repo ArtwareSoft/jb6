@@ -12,9 +12,6 @@ const {
 } = coreUtils 
 
 const {
-  rx: { RxSource, RXOperator
-
-  },
   remote: { Jbm, SourceCode,
     jbm: {},
     sourceCode: {}

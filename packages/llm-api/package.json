@@ -1,19 +1,18 @@
 {
-    "name": "@jb6/rx",
+    "name": "@jb6/llm-api",
     "version": "1.250630.1",
     "type": "module",
     "exports": {
-      ".": "./index.js",
-      "./rx-common.js": "./rx-common.js",
-      "./rx-misc.js": "./rx-misc.js"
+      ".": "./index.js"
     },
     "dependencies": {
+      "@modelcontextprotocol/sdk": "^1.13.2",
       "@jb6/core": "1.250630.1"
     },
     "repository": {
       "type": "git",
       "url": "git+https://github.com/Artwaresoft/jb6.git",
-      "directory": "packages/rx"
+      "directory": "packages/llm-api"
     }
   }
   
