@@ -4,8 +4,8 @@ import '@jb6/core/misc/probe.js'
 import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 
-const { jb, logError, asArray, log, Ctx, resolveWithImportMap, studioAndProjectImportMaps } = coreUtils
-const { calcHash, closestComp, applyCompChange } = langServiceUtils
+const { jb, logError, asArray, log, Ctx, resolveWithImportMap, studioAndProjectImportMaps, calcHash } = coreUtils
+const { closestComp, applyCompChange } = langServiceUtils
 const { langService } = ns
 
 let lastEdit
@@ -103,7 +103,6 @@ vscodeNS.workspace.onDidChangeTextDocument(({document, reason, contentChanges}) 
 
 export function vsCodelog(...args) {
     asArray(args).map(x=>jbVSCodeLog(tryStringify(x)))
-//    jbHost.log([...args,`time: ${new Date().getTime() % 100000}`])
 
     function tryStringify(x) {
         if (!x) return ''

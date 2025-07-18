@@ -1,8 +1,8 @@
 import { coreUtils, dsls } from '@jb6/core'
 import { update } from '../lib/immutable.js'
 
-const { jb, resolveCompArgs, prettyPrint, prettyPrintComp, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique } = coreUtils
-const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems, filePosOfPath, getPosOfPath, calcHash } = jb.langServiceUtils
+const { jb, resolveCompArgs, prettyPrint, prettyPrintComp, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique, calcHash } = coreUtils
+const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems, filePosOfPath, getPosOfPath } = jb.langServiceUtils
 
 const { 
    common: { Data }

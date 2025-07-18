@@ -103,11 +103,6 @@ ReactiveOperator('rx.takeWhile',{
   impl: (ctx, {whileCondition, passLastEvent}) => jb.rxUtils.takeWhile(ctx => whileCondition(ctx), passLastEvent)
 })
 
-ReactiveOperator('rx.last',{
-  category: 'filter',
-  impl: () => jb.rxUtils.last()
-})
-
 ReactiveOperator('rx.toArray',{
   description: 'wait for all and returns next item as array',
   impl: ctx => source => jb.rxUtils.pipe(source, jb.rxUtils.toArray(), jb.rxUtils.map(arr => ctx.dataObj(arr.map(x => x.data))))
@@ -249,23 +244,6 @@ takeWhile: (predicate,passLastEvent) => source => (start, sink) => {
         sink(2)
       } else {
         sink(t, d)
-      }
-    })
-},
-last: () => source => (start, sink) => {
-    if (start !== 0) return
-    let talkback, lastVal, matched = false
-    source(0, function last(t, d) {
-      if (t === 0) {
-        talkback = d
-        sink(t, d)
-      } else if (t === 1) {
-        lastVal = d
-        matched = true
-        talkback(1)
-      } else if (t === 2) {
-        if (matched) sink(1, lastVal)
-        sink(2)
       }
     })
 },

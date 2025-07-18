@@ -1,6 +1,7 @@
 import express from 'express'
 import child from 'child_process'
 import path from 'path'
+import { readFile } from 'fs/promises'
 import { serveImportMap } from '@jb6/server-utils'
 import { coreUtils } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
@@ -37,5 +38,10 @@ export async function expressTestServices(app) {
   app.get('/repoRoot', async (req, res) => {
     res.status(200).send(repoRoot)
   })
+  app.get('/env', async (req, res) => {
+    const env = await readFile(path.join(repoRoot, '.env'), 'utf8')
+    res.status(200).send(env)
+  })
+
   app.use('/hosts', express.static(path.join(repoRoot, 'hosts')))
 }

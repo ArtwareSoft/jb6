@@ -124,7 +124,7 @@ function logError(err,logObj) {
   const srcLink = url && globalThis.window ? `${window.location.origin}${url}:${line+1}:${col} ` : ''
   globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, callerStack, creatorStack)
   const errObj = { err , ...logObj, callerStack, creatorStack}
-  globalThis.jbHost?.process && globalThis.jbHost.process.stderr.write(err)
+  globalThis.process?.stderr.write(err)
   logCli('error', stripData(errObj))
   jb.ext.spy?.log('error', errObj)
 }
@@ -132,7 +132,7 @@ function logError(err,logObj) {
 function logException(e,err,logObj) {
   globalThis.window && globalThis.console.log('%c Exception: ','color: red', err, e, logObj)
   const errObj = { message: e.message, err, stack: e.stack||'', ...logObj, e}
-  globalThis.jbHost?.process && globalThis.jbHost.process.stderr.write(`${err}\n${e}`)
+  globalThis.process?.stderr.write(`${err}\n${e}`)
   logCli('exception', stripData(errObj))
   jb.ext.spy?.log('exception error', errObj)
 }
@@ -387,10 +387,21 @@ const omitProps = (obj, keys) => {
   )
 }
 
+function calcHash(str) {
+  let hash = 0, i, chr;
+  if (str.length === 0) return hash
+  for (i = 0; i < str.length; i++) {
+      chr = str.charCodeAt(i)
+      hash = ((hash << 5) - hash) + chr;
+      hash |= 0; // Convert to 32bit integer
+  }
+  return hash
+}
+
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logCli, isNode, logByEnv, fetchByEnv, absPathToUrl,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, estimateTokens, pathJoin, pathParent
+  calcValue, stripData, estimateTokens, pathJoin, pathParent, calcHash
 })

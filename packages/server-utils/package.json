@@ -3,7 +3,10 @@
   "version": "1.250630.1",
   "description": "Server-side utilities (import-map, serveRpc, etc) for JB6",
   "type": "module",
-  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./proxy.js": "./proxy.js"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.1.0",

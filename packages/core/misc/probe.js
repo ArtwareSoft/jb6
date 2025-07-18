@@ -126,10 +126,11 @@ class Probe {
             const res = await this.circuitComp.runProfile({}, this.circuitCtx)
             this.circuitRes = await waitForInnerElements(res)
             this.result = this.records[probePath] || []
-            await waitForInnerElements(this.result)
+            this.result = await waitForInnerElements(this.result)
+            const resolvedOuts = await Promise.all(this.result.map(x=>waitForInnerElements(x.out)))
             log('probe completed',{probePath, probe: this})
             // ref to values
-            this.result.forEach(obj=> { obj.out = calcValue(obj.out) ; obj.in.data = calcValue(obj.in.data)})
+            this.result.forEach((obj,i)=> { obj.out = calcValue(resolvedOuts[i]) ; obj.in.data = calcValue(obj.in.data)})
 
             return this
         } catch (e) {

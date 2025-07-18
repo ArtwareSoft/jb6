@@ -25,7 +25,7 @@ const { rx } = ns
 
 
 ReactiveSource('rx.pipe', {
-  moreTypes: 'data<common>,action<common>',
+  moreTypes: 'data<common>',
   description: 'pipeline of reactive observables with source',
   params: [
     {id: 'source', type: 'reactive-source', dynamic: true, mandatory: true, templateValue: '', composite: true },
@@ -197,6 +197,11 @@ ReactiveOperator('rx.take',{
     {id: 'count', as: 'number', dynamic: true, mandatory: true}
   ],
   impl: (ctx, {count}) => jb.rxUtils.take(count(), ctx)
+})
+
+ReactiveOperator('rx.last',{
+  category: 'filter',
+  impl: () => jb.rxUtils.last()
 })
 
 ReactiveOperator('rx.var',{
@@ -508,6 +513,24 @@ jb.rxUtils = {
         }
       })
   },
+  last: () => source => (start, sink) => {
+    if (start !== 0) return
+    let talkback, lastVal, matched = false
+    source(0, function last(t, d) {
+      if (t === 0) {
+        talkback = d
+        sink(t, d)
+      } else if (t === 1) {
+        lastVal = d
+        matched = true
+        talkback(1)
+      } else if (t === 2) {
+        if (matched) sink(1, lastVal)
+        sink(2)
+      }
+    })
+},
+
   subscribe: (listener = {}) => source => {
       if (typeof listener === "function") listener = { next: listener }
       let { next, error, complete } = listener

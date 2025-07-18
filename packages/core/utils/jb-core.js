@@ -42,12 +42,8 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
         ctx = ctx.setData(run(profile.data, ctx.setJbCtx(jbCtx.innerParam({id: 'data'}, profile)), settings))
 
     const {openExpression, openArray, openObj, openComp} = settings
+    resolveDelayed(profile)
     let res = profile
-    if (profile?.$delayed) {
-        Object.assign(profile, profile.$delayed())
-        delete profile.$delayed
-        resolveProfileArgs(profile)
-    }
 
     if (typeof profile == 'string' && openExpression)
         res = toRTType(jbCtx.parentParam, calcExpression(profile, ctx))
@@ -75,6 +71,14 @@ function toRTType(parentParam, value) {
     const convert = RT_types[parentParam?.as]
     if (convert) return convert(value)
     return value
+}
+
+function resolveDelayed(profile) {
+    if (profile?.$delayed) {
+        Object.assign(profile, profile.$delayed())
+        delete profile.$delayed
+        resolveProfileArgs(profile)
+    }
 }
 
 class JBCtx {
@@ -121,6 +125,7 @@ class Ctx {
         return new Ctx({data: this.data, vars: this.vars, jbCtx})
     }
     run(profile) {
+        resolveDelayed(profile)
         return run(resolveProfileArgs(profile),this)
     }
     exp(exp,jstype) { 

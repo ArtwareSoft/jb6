@@ -15,7 +15,6 @@ export async function startDedicatedRpcServer({port = 3000, entryPoints = [], se
   })
 }
 
-
 export async function serveRpc(app) {
   app.post('/rpc', async (req, res) => {
       const { jsonrpc, method, params, id } = req.body

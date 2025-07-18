@@ -4,7 +4,7 @@ const { jb, systemParams, astToTgpObj, astNode, logException, logError, resolveP
     resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType } = coreUtils
 
 export const langServiceUtils = jb.langServiceUtils = { closestComp, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath, 
-    lineColToOffset, offsetToLineCol, tgpEditorHost, applyCompChange, calcHash }
+    lineColToOffset, offsetToLineCol, tgpEditorHost, applyCompChange }
 
 function tgpEditorHost() {
     return jb.ext.tgpTextEditor.host
@@ -27,17 +27,6 @@ async function applyCompChange(editAndCursor, {ctx} = {}) {
         host.log(`applyCompChange exception`)
         logException(e, 'completion apply comp change', { editAndCursor })
     }
-}
-
-function calcHash(str) {
-    let hash = 0, i, chr;
-    if (str.length === 0) return hash
-    for (i = 0; i < str.length; i++) {
-        chr = str.charCodeAt(i)
-        hash = ((hash << 5) - hash) + chr;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash
 }
 
 function offsetToLineCol(text, offset) {

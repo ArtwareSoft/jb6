@@ -1,28 +1,30 @@
 import { dsls, coreUtils, ns } from '@jb6/core'
+import '@jb6/rx'
 
 const { 
-  common: { Data, ReactiveSource, ReactiveOperator, data: asIs },
+  common: { Data, ReactiveSource, ReactiveOperator, 
+  },
   tgp: { TgpType },
 } = dsls
-
-const { calcHash, log, delay, logError, logException } = coreUtils
+const { rx } = ns
+const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType } = coreUtils
 
 const Provider = TgpType('provider', 'llm-api')
 const Model = TgpType('model', 'llm-api')
 const Prompt = TgpType('prompt', 'llm-api')
-const gpt_35_turbo_0125 = Model.forward('gpt_35_turbo_0125')
 
 ReactiveSource('llm.completionsRx', {
   params: [
     {id: 'prompt', type: 'prompt<llm-api>', dynamic: true},
-    {id: 'llmModel', type: 'model<llm-api>', defaultValue: gpt_35_turbo_0125()},
+    {id: 'llmModel', type: 'model<llm-api>' },
     {id: 'maxTokens', as: 'number', defaultValue: 3500},
     {id: 'includeSystemMessages', as: 'boolean'},
     {id: 'useLocalStorageCache', as: 'boolean'},
     {id: 'notifyUsage', type: 'action<common>', dynamic: true}
   ],
-  impl: (ctx,{ prompt, model, maxTokens: max_tokens,includeSystemMessages, useLocalStorageCache, notifyUsage}) => (start,sink) => {
+  impl: (ctx,{ prompt, llmModel, maxTokens: max_tokens,includeSystemMessages, useLocalStorageCache, notifyUsage}) => (start,sink) => {
       if (start !== 0) return
+      const model = llmModel || dsls['llm-api'].model.gpt_35_turbo_0125.$run()
       let controller = null, connection, connectionAborted, DONE, fullContent = ''
       sink(0, (t,d) => {
         if (t == 2) {
@@ -42,8 +44,7 @@ ReactiveSource('llm.completionsRx', {
             return
         }
         const start_time = new Date().getTime()
-        let {controller, connection} = await jb.llmUtils.apiCall(model, {messages, max_tokens, ctx})
-        const reader = connection.body.getReader()
+        let {controller, reader} = await jb.llmUtils.apiCall(model, {messages, max_tokens, ctx})
         let chunkLeft = ''
         return reader.read().then(async function processResp({ done, value }) {
           if (done) {
@@ -56,7 +57,7 @@ ReactiveSource('llm.completionsRx', {
             return
           }
           const fullStr = chunkLeft + String.fromCharCode(...value)
-          chunkLeftForLog = chunkLeft
+          const chunkLeftForLog = chunkLeft
           chunkLeft = ''
           fullStr.split('\n').map(x=>x.trim()).filter(x=>x).forEach(line => {
             if (DONE) return
@@ -113,7 +114,7 @@ Prompt('prompt', {
   params: [
     {id: 'elems', type: 'prompt[]', composite: true}
   ],
-  impl: (ctx,elems) => elems
+  impl: (ctx,{elems}) => elems
 })
 
 Prompt('system', {
@@ -121,7 +122,7 @@ Prompt('system', {
   params: [
     {id: 'content', as: 'string', newLinesInCode: true}
   ],
-  impl: (ctx,content) => ({role: 'system', content})
+  impl: (ctx,{content}) => ({role: 'system', content})
 })
 
 Prompt('assistant', {
@@ -129,7 +130,7 @@ Prompt('assistant', {
     params: [
         {id: 'content', as: 'string', newLinesInCode: true}
     ],
-    impl: (ctx,content) => ({role: 'assistant', content})
+    impl: (ctx,{content}) => ({role: 'assistant', content})
 })
 
 Prompt('user', {
@@ -137,7 +138,7 @@ Prompt('user', {
   params: [
     {id: 'content', as: 'string', newLinesInCode: true}
   ],
-  impl: (ctx,content) => ({role: 'user', content})
+  impl: (ctx,{content}) => ({role: 'user', content})
 })
 
 ReactiveOperator('llm.textToJsonItems', {
@@ -213,13 +214,22 @@ Data('llm.completions', {
   description: 'synchronious version of llm.completionsRx',
   params: [
     {id: 'prompt', type: 'prompt<llm-api>', dynamic: true},
-    {id: 'llmModel', type: 'model<llm-api>', defaultValue: gpt_35_turbo_0125()},
+    {id: 'llmModel', type: 'model<llm-api>'},
     {id: 'maxTokens', as: 'number', defaultValue: 3500},
     {id: 'includeSystemMessages', as: 'boolean'},
     {id: 'useLocalStorageCache', as: 'boolean'},
     {id: 'notifyUsage', type: 'action<common>', dynamic: true}
   ],
-  impl: (ctx,args) => ctx.run(llm.completionsRx(ctx.jbCtx.profile))(llm.accumulateText())
+  impl: rx.pipe(
+    llm.completionsRx('%$prompt()%', '%$llmModel%', {
+      maxTokens: '%$maxTokens%',
+      includeSystemMessages: '%$includeSystemMessages%',
+      useLocalStorageCache: '%$useLocalStorageCache%',
+      notifyUsage: '%$notifyUsage()%'
+    }),
+    llm.accumulateText(),
+    rx.last()
+  )
 })
 
 Provider('provider', {
@@ -261,27 +271,34 @@ jb.llmUtils = {
 
     const reqObj = {
       url: model.provider.url, method: 'POST', headers,
-      body: JSON.stringify({ ...maxTokens, ...openAIProps, model: model.name,  stream, messages: jb.asArray(messages)  })
+      body: JSON.stringify({ ...maxTokens, ...openAIProps, model: model.name,  stream, messages: asArray(messages)  })
     }
-    if (model.provider.useProxy) {
+    if (model.provider.useProxy && !isNode) {
       reqObj.body = JSON.stringify({originalBody: reqObj.body, targetUrl: reqObj.url, headers})
-      reqObj.url = '/?op=fetch'
+      reqObj.url = '/proxy'
     }
 
-    const connection = await fetch(reqObj.url, {...reqObj, signal: controller.signal}).catch(e => {
+    const response = await fetch(reqObj.url, {...reqObj, signal: controller.signal}).catch(e => {
         if (e instanceof DOMException && e.name == "AbortError") {
           log('llm source done from app logic', {ctx})
         } else {
           logException(e, 'llm connection', {ctx})
         }
     })
-    return { connection, controller}
+
+    let bodyStream = response?.body
+    // if (isNode) {
+    //   const { Readable } = await import('stream')
+    //   bodyStream = Readable.toWeb(bodyStream)
+    // }
+    const reader = bodyStream.getReader()
+    return { controller, reader }
   },
   async apiKey(model) {
     const keyName = model.provider.keyName
-    let key = globalThis.localStorage && localStorage.getItem(keyName) || jbHost.isNode && globalThis.process.env[keyName]
-    if (!key) {
-      const env = jbHost.isNode ? '' : await fetch(`/?env`).then(res=>res.text())
+    let key = globalThis.localStorage && localStorage.getItem(keyName) || isNode && globalThis.process.env[keyName]
+    if (!key || key == 'undefined') {
+      const env = isNode ? '' : await fetch(`/env`).then(res=>res.text())
       key = env.split('\n').filter(l=>l.startsWith(keyName)).map(l=>l.split('=').pop())[0]
       globalThis.localStorage && globalThis.localStorage.setItem(keyName,key)
     }
@@ -289,7 +306,7 @@ jb.llmUtils = {
   },
   notifyApiUsage(rec, ctx) {
     jb.llmRepository.callHistory.push(rec)
-    const model = globalsOfType(Model).map(prof=>prof.$run()).find(m=>m.name == rec.model) 
+    const model = globalsOfType(Model).map(id=>dsls['llm-api'].model[id].$run()).find(m=>m.name == rec.model) 
     if (!model)
       return logError(`notifyApiUsage can not find model ${rec.model}`, {rec, ctx})
     const usage = rec.usage
