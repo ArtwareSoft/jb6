@@ -1,9 +1,9 @@
+.env
 node_modules/
 .tmp/
 hosts/vscode-tgp-lang/lib/*.tgz
-
 package-lock.json
 claude.log
 .llm-db/
 claude.log
-.env
+
