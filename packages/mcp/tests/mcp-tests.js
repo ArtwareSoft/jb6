@@ -14,12 +14,14 @@ const {
 } = dsls
 
 Test('mcpTest.scrambleText', {
+  HeavyTest: true,
   impl: mcpToolTest('scrambleText', asIs({texts: 'hello world##test text'}), {
     expectedResult: equals('kVmbpZWZk5Wd##\nkVmbpZWZk5Wd', '%stdout/result.content/text%')
   })
 })
 
 Test('mcpTest.tgpModel', {
+  HeavyTest: true,
   impl: mcpToolTest({
     tool: 'tgpModel',
     args: asIs({repoRoot: '/home/shaiby/projects/jb6', filePath: 'packages/common/common-tests.js'}),

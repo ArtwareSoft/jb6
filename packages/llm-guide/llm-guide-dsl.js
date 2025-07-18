@@ -1,8 +1,10 @@
 import { dsls } from '@jb6/core'
+import '@jb6/mcp'
 
 const { 
   common: { Data },
   tgp: { TgpType },
+  mcp: { Tool }
 } = dsls
 // ============================================================================= 
 // DOCLET DSL - 
@@ -17,6 +19,8 @@ const Evidence = TgpType('evidence', 'llm-guide')
 const ExplanationPoint = TgpType('explanationPoint', 'llm-guide') // Individual explanation components
 const ProblemStatement = TgpType('problemStatement', 'llm-guide') // New: Problem statement container
 const Validation = TgpType('validation', 'llm-guide')
+const Booklet = TgpType('booklet', 'llm-guide') // documentation package for llm prompt
+const BookletAndModel = TgpType('booklet-and-model', 'llm-guide') 
 
 // =============================================================================
 // TYPE: doclet - Main documentation container
@@ -26,7 +30,7 @@ Doclet('howTo', {
     {id: 'problem', type: 'problemStatement', templateValue: '', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
     {id: 'outro', as: 'text', description: 'Concluding explanation'},
-    {id: 'testLlmUnderstanding', type: 'validation[]'},
+    {id: 'testLlmUnderstanding', type: 'validation[]'}
   ]
 })
 
@@ -266,3 +270,16 @@ Validation('explainConceptQuiz', {
   ]
 })
 
+Booklet('booklet', {
+  params: [
+      {id: 'doclets', type: 'doclet[]', madatory: true},
+      {id: 'guidance', type: 'guidance[]' },
+  ]
+})
+
+BookletAndModel('bookletAndModel', {
+  params: [
+      {id: 'booklet', type: 'booklet', madatory: true},
+      {id: 'llmModel', as: 'string', madatory: true },
+  ]
+})

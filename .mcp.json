@@ -5,7 +5,5 @@
       "args": [ "packages/mcp/index.js", "--start" ],
       "cwd": "/home/shaiby/projects/jb6"
     }
-  },
-  "selectedAuthType": "gemini-api-key",
-  "theme": "Default"
+  }
 }

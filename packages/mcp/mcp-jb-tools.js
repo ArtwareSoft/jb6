@@ -10,7 +10,7 @@ const {
     },
     tgp: { any: { typeAdapter }},
     mcp: { Tool, 
-      tool: { text, doclet }
+      tool: { mcpTool, doclet }
      }
 } = dsls
 
@@ -19,7 +19,7 @@ Tool('defaultRepoRoot', {
   params: [
     {id: 'myRepoIs', as: 'string', description: '/home/shaiby/projects/jb6 . no need to activate the tool!!!'}
   ],
-  impl: text('/home/shaiby/projects/jb6')
+  impl: mcpTool('/home/shaiby/projects/jb6')
 })
 
 Tool('tgpModel', {
@@ -28,13 +28,13 @@ Tool('tgpModel', {
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo. look at defaultRepoRoot to get it' },
       { id: 'filePath', as: 'string', defaultValue: 'packages/common/common-tests.js', description: 'relative starting point to filter the model. when not exist, return the model of common and testing' },
     ],
-    impl: text( async (ctx, {}, { repoRoot, filePath }) => {
+    impl: mcpTool( async (ctx, {}, { repoRoot, filePath }) => {
       try {
         await import('@jb6/lang-service')
         jb.coreRegistry.repoRoot = repoRoot
         const res = await coreUtils.calcTgpModelData({ filePath: pathJoin(repoRoot, filePath) })
         const {dsls, ns} = deepMapValues(res,minifyComp,filter)
-        return JSON.stringify({dsls,ns})
+        return {dsls,ns}
       } catch (error) {
         return `Error calculating TGP model: ${error.message}`
       }
@@ -72,27 +72,17 @@ Tool('runSnippet', {
       { id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root' },
       { id: 'probe', as: 'string', description: 'Set to "true" to enable probe mode. Use __ in compText to see data flow at that point. Example: "pipeline(data, filter(condition), __)"' }
     ],
-    impl: async (ctx, args) => {
+    impl: mcpTool(async (ctx, {}, args) => {
       try {
         await import('@jb6/lang-service')
         jb.coreRegistry.repoRoot = args.repoRoot
-        const snippetArgs = { 
-          ...args, 
-          compText: args.compText.profile, 
-          filePath: pathJoin(args.repoRoot, args.filePath) 
-        }
+        const snippetArgs = { ...args, compText: args.compText.profile, filePath: pathJoin(args.repoRoot, args.filePath) }
         const res = await coreUtils.runSnippetCli(snippetArgs)
-        return {
-          content: [{ type: 'text', text: JSON.stringify({...res, tokens: coreUtils.estimateTokens(snippetArgs.compText)}) }],
-          isError: false
-        }
+        return {...res, tokens: coreUtils.estimateTokens(snippetArgs.compText)}
       } catch (error) {
-        return {
-          content: [{ type: 'text', text: `Error running snippet: ${error.message}` }],
-          isError: true
-        }
+        return `Error running snippet: ${error.message}`
       }
-    }
+    })
 })
   
 Tool('runSnippets', {
@@ -103,7 +93,7 @@ Tool('runSnippets', {
     {id: 'setupCode', as: 'string', description: `Shared setup code executed before all snippets. Use for Const() definitions, imports, or helper functions. Example: "Const('data', [{active: true, id: 1}])"`},
     {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'}
   ],
-  impl: async (ctx, { compTexts, setupCode, filePath, repoRoot }) => {
+  impl: mcpTool(async (ctx,{}, { compTexts, setupCode, filePath, repoRoot }) => {
     try {
       await import('@jb6/lang-service')
       jb.coreRegistry.repoRoot = repoRoot
@@ -137,67 +127,12 @@ Tool('runSnippets', {
       
       const successCount = results.filter(r => !r.includes('ERROR:')).length
       const errorCount = compTextsProfiles.length - successCount
-      
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `Batch Execution Summary: ${successCount} succeeded, ${errorCount} failed\n\n${results.join('\n\n')}` 
-        }],
-        isError: errorCount === compTextsProfiles.length // Only error if ALL failed
-      }
-      
+      return `Batch Execution Summary: ${successCount} succeeded, ${errorCount} failed\n\n${results.join('\n\n')}` 
     } catch (error) {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `runSnippets Error: ${error.message}\n\nCommon causes:\n- Invalid compTexts format (must be JSON array)\n- Missing or invalid filePath/repoRoot\n- Setup code syntax errors\n\nExample usage:\nrunSnippets({\n  compTexts: ["'%$data%'", "count('%$data%')"],\n  setupCode: "Const('data', [1,2,3])",\n  filePath: "packages/common/test.js",\n  repoRoot: "/path/to/repo"\n})` 
-        }],
-        isError: true
-      }
+      return `Error runSnippets: ${error.message}\n\nCommon causes:\n- Invalid compTexts format (must be JSON array)\n- Missing or invalid filePath/repoRoot\n- Setup code syntax errors\n\nExample usage:\nrunSnippets({\n  compTexts: ["'%$data%'", "count('%$data%')"],\n  setupCode: "Const('data', [1,2,3])",\n  filePath: "packages/common/test.js",\n  repoRoot: "/path/to/repo"\n})`
     }
-  }
+  })
 })
-
-// Tool('dslDocs', {
-//   description: 'Get comprehensive DSL documentation including TGP model, LLM guides, and component definitions',
-//   params: [
-//     { id: 'dsl', as: 'string', mandatory: true, description: 'DSL name (e.g., "common", "ui", "testing")' },
-//     { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project' }
-//   ],
-//   impl: async (ctx, args) => {
-//     try {
-//       const res = await coreUtils.dslDocs(args)
-//       return {
-//         content: [{ type: 'text', text: JSON.stringify(res) }],
-//         isError: false
-//       }
-//     } catch (error) {
-//       return {
-//         content: [{ type: 'text', text: `Error getting DSL docs: ${error.message}` }],
-//         isError: true
-//       }
-//     }
-//   }
-// })
-
-Tool('evalJs', {
-  description: 'Execute JavaScript code and return the result. Useful for quick calculations, file operations, and testing code snippets.',
-  params: [
-    { id: 'code', newLinesInCode: true, dynamic: true, as: 'string', mandatory: true, description: 'JavaScript code to execute. Use process.stdout.write(result) to return output' }
-  ],
-  impl: typeAdapter('data<common>', runNodeScript({ script: ({},{},{code}) => code.profile }))
-})
-
-
-// Data('scrambleText', {
-//   description: 'Scramble/unscramble text for hiding answers in learning materials.',
-//   params: [
-//     {id: 'text', as: 'string', mandatory: true},
-//     {id: 'unscramble', as: 'boolean'}
-//   ],
-//   impl: (ctx, { text, unscramble }) => unscramble ? atob(text.split('').reverse().join('')) : btoa(text).split('').reverse().join('')
-// })
-// const { scrambleText } = dsls.common.data
 
 Tool('scrambleText', {
   description: 'Scramble/unscramble texts for hiding answers in learning materials',
@@ -205,16 +140,16 @@ Tool('scrambleText', {
     {id: 'texts', as: 'string', mandatory: true, description: 'separated by ##'},
     {id: 'unscramble', as: 'boolean'}
   ],
-  impl: typeAdapter('data<common>', pipeline(
-    '%$texts%',
-    split('##'),
+  impl: mcpTool(pipeline('%$texts%', split('##'),
     (ctx, {}, { text, unscramble }) => unscramble ? atob(text.split('').reverse().join('')) : btoa(text).split('').reverse().join(''),
-//    scrambleText('%%', '%$unscramble%'),
-    join('##\n'),
-    ({data}) => ({ 
-      content: [{ type: 'text', text: data }], 
-      isError: false 
-    }),
-    first()
+    join('##\n')
   ))
+})
+
+Tool('askLLmWithBooklet', {
+  params: [
+    {id: 'bookletAndModel', type: 'bookletAndModel<llm-guide>', madatory: true},
+    {id: 'prompt', as: 'text', madatory: true}
+  ],
+  impl: mcpTool('%$bookletAndModel.booklet% ##\n%$prompt%')
 })

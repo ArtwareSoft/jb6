@@ -16,3 +16,26 @@ Requirements:
 [2025-07-17T06:24:38.471Z] Error: tgpModel response too large (53690 tokens > 25000 limit)
 - Need to use pagination or filtering to get common DSL model
 - This suggests the TGP model is quite comprehensive
+[2025-07-17T09:45:53.278Z] Starting common DSL course session. Goal: Learn and implement common DSL methodology following tgp-primer and common-llm-guide.js
+[2025-07-17T10:10:30.398Z] Starting common DSL course session
+- Session ID: common-dsl-course-1
+- Author: shaiby
+- Repo: /home/shaiby/projects/jb6
+- Instructions: Do not change fw code, docs and test files without consultation
+- Goal: Implement learnCommonDsl methodology with quizzes and turn batching
+[2025-07-17T10:19:18.653Z] SUCCESS: MCP tools working via JSON-RPC interface
+- tgpModel tool successfully retrieved common DSL model
+- Found comprehensive TGP model with data, boolean, action types
+- Available data components: pipeline, filter, count, join, toUpperCase, etc.
+- Ready to implement learnCommonDsl 7-step methodology
+
+Starting Step 1: Master runSnippet and probe debugging...
+[2025-07-17T10:21:07.743Z] Step 1 COMPLETED: Master runSnippet and probe debugging
+✅ Successfully understood snippet execution model
+✅ Mastered probe (__) placement in variable expressions: '%$people/__%'
+✅ Verified probe placement in pipelines: pipeline(..., __)
+✅ Probe correctly shows filtered data: [{name: "Bart", age: 12}, {name: "Lisa", age: 10}]
+✅ Probe shows complete people array: [{name: "Homer", age: 42}, {name: "Bart", age: 12}, {name: "Lisa", age: 10}]
+✅ Understood 4-step debugging workflow: 1) verify source, 2) test operations, 3) test formatting, 4) final execution
+
+Moving to Step 2: Understand DSL landscape and component organization...

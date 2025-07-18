@@ -3,105 +3,20 @@ import '@jb6/common'
 
 const { ptsOfType, globalsOfType, asJbComp } = coreUtils
 const { 
-    common: { Data, Action,
-      data: { pipe }
-     },
-    tgp: { TgpType, any: {typeAdapter }},
+    tgp: { TgpType },
 } = dsls
   
 // Define core types  
 const Tool = TgpType('tool', 'mcp')
 const Prompt = TgpType('prompt', 'mcp')
-
-function injectConsoleSuppressionAfterImports(script) {
-  const lines = script.split('\n')
-  const lastImportIndex = lines.findLastIndex(line => line.trim().startsWith('import '))
-  const insertIndex = lastImportIndex >= 0 ? lastImportIndex + 1 : 0
-  return lastImportIndex >= 0 ? [...lines.slice(0, insertIndex), 'console.log = () => {};', ...lines.slice(insertIndex)].join('\n') 
-    : `console.log = () => {};\n${script}`
-}
-
-export const runNodeScript = Data('runNodeScript', {
-    params: [
-      { id: 'script', as: 'string', dynamic: true, mandatory: true, description: 'JavaScript code to execute' },
-      { id: 'repoRoot', as: 'string', description: 'Working directory for execution' }
-    ],
-    impl: async (ctx, { script, repoRoot }) => {
-      const { spawn } = await import('child_process')
-      
-      return new Promise((resolve) => {
-        const _script = typeof script.profile == 'string' ? script.profile : script()
-        const scriptToRun = injectConsoleSuppressionAfterImports(_script)
-        debugger
-        const cmd = `node --inspect-brk --input-type=module -e "${scriptToRun.replace(/"/g, '\\"')}"`
-        const proc = spawn('/bin/node', ['--input-type=module', '-e', scriptToRun], { 
-          cwd: repoRoot || process.cwd(), 
-          stdio: ['ignore', 'pipe', 'pipe'] 
-        })
-        
-        let out = '', err = ''
-        proc.stdout.on('data', c => out += c)
-        proc.stderr.on('data', c => err += c)
-        
-        proc.on('close', (exit) => {
-          if (exit === 0) {
-            let parsed
-            try { 
-              parsed = JSON.parse(out) 
-            } catch { 
-              parsed = null 
-            }
-            
-            const text = parsed?.result != null ? JSON.stringify(parsed.result) : out.trim()
-            resolve({ 
-              content: [{ type: 'text', text }, {type: 'text', text: scriptToRun}], 
-              isError: false 
-            })
-          } else {
-            const msg = err.trim() || `Process exited with code ${exit}`
-            resolve({ 
-              content: [{ type: 'text', text: msg  + '\nSCRIPT\n\n' + scriptToRun}], 
-              isError: true 
-            })
-          }
-        })
-      })
-    }
-})
   
 export async function startMcpServer() {
-  const { Server } = await import("@modelcontextprotocol/sdk/server/index.js");
-  const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js");
-  const { z } = await import('zod');
-
-  const { 
-    ListToolsRequestSchema, 
-    CallToolRequestSchema,
-    ListPromptsRequestSchema,
-    GetPromptRequestSchema 
-  } = await import("@modelcontextprotocol/sdk/types.js");
-
-  const GenericToolCallSchema = z.object({
-    jsonrpc: z.literal("2.0"),
-    id: z.union([z.string(), z.number(), z.null()]),
-    method: z.literal("callTool"),
-    params: z.object({
-      name: z.enum([
-        "runSnippet",
-        "runSnippets", 
-        "getFileContent",
-        "replaceComponent",
-        "addComponent",
-        "overrideFileContent",
-        "tgpModel",
-        "evalJs"
-      ]),
-      arguments: z.record(z.unknown())
-    })
-  })
-
-
-    // Get all tools from the repository
+  const { Server } = await import("@modelcontextprotocol/sdk/server/index.js")
+  const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js")
+  const { z } = await import('zod')
+  const { ListToolsRequestSchema, CallToolRequestSchema, ListPromptsRequestSchema, GetPromptRequestSchema } = await import("@modelcontextprotocol/sdk/types.js")
+    
+  // Get all tools from jb repository
     const exclude = ['text','doclet']
     const allTools = [...ptsOfType(Tool),...globalsOfType(Tool)].filter(id => !exclude.includes(id))
     const toolConfigs = allTools.map(toolId => {
@@ -138,20 +53,9 @@ export async function startMcpServer() {
       }
     })
   
-    const mcpServer = new Server({
-      name: 'JB6 MCP Server',
-      version: '1.0.0'
-    }, {
-      capabilities: { 
-        tools: {},
-        prompts: {}
-      }
-    })
-  
-    mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: toolConfigs
-    }))
-  
+    const mcpServer = new Server({ name: 'JB6 MCP Server', version: '1.0.0' }, { capabilities: { tools: {}, prompts: {} } })
+    mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolConfigs }))
+
     mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       console.error('Received tool call request:', JSON.stringify(request, null, 2))
       debugger
@@ -160,14 +64,20 @@ export async function startMcpServer() {
       return result
     })
 
+
+    // used for one of the mcp servers - maybe claude desktop
+    const GenericToolCallSchema = z.object({
+      jsonrpc: z.literal("2.0"),
+      id: z.union([z.string(), z.number(), z.null()]),
+      method: z.literal("callTool"),
+      params: z.object({ name: z.string(), arguments: z.record(z.unknown()) })
+    })
+
     mcpServer.setRequestHandler(GenericToolCallSchema, async (request) => {
       console.error('Received generic tool call request:', JSON.stringify(request, null, 2))
-      debugger
-      
-      const { name, arguments: args } = request.params
-      
+      debugger      
       try {
-        // Execute the tool using the DSL system
+        const { name, arguments: args } = request.params
         const result = await dsls.mcp.tool[name].$run(args)
         return result
       } catch (error) {
@@ -176,59 +86,32 @@ export async function startMcpServer() {
       }
     })
     
-
-    mcpServer.setRequestHandler(ListPromptsRequestSchema, async () => ({
-      prompts: promptConfigs
-    }))
+    mcpServer.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: promptConfigs }))
 
     mcpServer.setRequestHandler(GetPromptRequestSchema, async (request) => {
       const { name, arguments: args } = request.params
-      // Execute the prompt implementation
       const result = await dsls.mcp.prompt[name].$run(args)
-      
-      return {
-        messages: [{
-          role: "user",
-          content: result.content[0]
-        }]
-      }
+      return { messages: [{ role: "user", content: result.content[0] }] }
     })
   
-    // Start stdio transport
     const transport = new StdioServerTransport()
     await mcpServer.connect(transport)
-    console.error(`JB6 MCP Server running on stdio`)
 }
 
-Tool('text', {
+const mcpTool = Tool('mcpTool', {
   description: 'wrap text as mcp result',
   params: [
     {id: 'text' },
     {id: 'maxLength', as: 'number', defaultValue: 20000}
   ],
-  impl: typeAdapter('data<common>', pipe(
-    '%$text%',
-    ({data}) => Promise.resolve(data),
-    ({data}) => data || '',
-    ({data},{},{maxLength}) => (data.length > maxLength) ?
-        [data.slice(0,1000),
-          `===data was originally ${data.length} ${data.length - maxLength} missing chars here====`,
-          data.slice(data.length-maxLength-1000)
-        ].join('') : data,
-    ({data}) => ({
-        content: [{ type: 'text', text: data }], 
-        isError: data.indexOf('Error') == 0
-    })
-  ))
+  impl: async (ctx, {text: _text, maxLength}) => {
+    const text = await Promise.resolve(_text).then(x=>x||'').then(x=>typeof x == 'object' ? JSON.stringify(x) : x)
+    const squized = (text.length > maxLength) ? [text.slice(0,1000),
+      `===text was originally ${text.length}. sorry, we had to squeeze it to ${maxLength} chars. ${text.length - maxLength} missing chars here====`,
+      text.slice(text.length-maxLength+1000)
+    ].join('') : text
+
+    return { content: [{ type: 'text', text: squized }], isError: squized.indexOf('Error') == 0 }
+  }
 })
 
-Tool('doclet', {
-  description: 'wrap doclet as mcp result',
-  params: [
-    {id: 'doclet', type: 'doclet<llm-guide>'}
-  ],
-  impl: (ctx,{doclet}) => ({
-    content: [{ type: 'text', text: JSON.stringify(doclet) }],
-    isError: false
-  })
-})

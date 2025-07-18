@@ -1,5 +1,5 @@
 import { dsls } from '@jb6/core'
-import '@jb6/llm-guide'
+import './llm-guide-dsl.js'
 
 const Spec = TgpType('spec', 'llm-guide')
 const UseCase = TgpType('use-case', 'llm-guide')

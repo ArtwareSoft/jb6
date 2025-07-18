@@ -7,7 +7,7 @@ const {
     },
     tgp: { any: { typeAdapter }},
     mcp: { Tool, 
-      tool: { text, doclet }
+      tool: { mcpTool, doclet }
      }
 } = dsls
 
@@ -22,7 +22,6 @@ const getFilesContent = Data('getFilesContent', {
       try {
         const { readFileSync } = await import('fs')
         const { pathJoin, estimateTokens } = coreUtils
-        
         const files = filesPaths.split(',').map(filePath => {
           const fullPath = pathJoin(repoRoot, filePath.trim())
           const fileContent = readFileSync(fullPath, 'utf8')
@@ -66,7 +65,7 @@ Tool('getFilesContent', {
     {id: 'filesPaths', as: 'string', mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")'},
     {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'}
   ],
-  impl: text(getFilesContent('%$filesPaths%', '%$repoRoot%'))
+  impl: mcpTool(getFilesContent('%$filesPaths%', '%$repoRoot%'))
 })
   
 Tool('replaceFileSection', {
@@ -78,53 +77,32 @@ Tool('replaceFileSection', {
       { id: 'fromLine', as: 'number', mandatory: true, description: 'line number to start replacement from (1-indexed)' },
       { id: 'oldSectionText', as: 'string', dynamic: true, mandatory: true, description: 'old section text to find and replace for validation' }
     ],
-    impl: async (ctx, args) => {
+    impl: mcpTool(async (ctx, {}, args) => {
       try {
         const { readFileSync, writeFileSync } = await import('fs')
-        const fullPath = pathJoin(args.repoRoot, args.filePath)
-        
-        const { repoRoot, filePath, newSectionText, oldSectionText, fromLine } = {
-          ...args, 
-          newSectionText: args.newSectionText.profile,
-          oldSectionText: args.oldSectionText.profile
-        }
+        const fullPath = pathJoin(args.repoRoot, args.filePath)  
+        const { newSectionText, oldSectionText, fromLine } = {
+          ...args, newSectionText: args.newSectionText.profile, oldSectionText: args.oldSectionText.profile  }
         const content = readFileSync(fullPath, 'utf8')
         const lines = content.split('\n')
+      
+        if (fromLine < 1 || fromLine > lines.length)
+          return `Error line number ${fromLine} is out of range (1-${lines.length})`
         
-        // Validate fromLine
-        if (fromLine < 1 || fromLine > lines.length) {
-          return {
-            content: [{ type: 'text', text: JSON.stringify({ error: `Line number ${fromLine} is out of range (1-${lines.length})` }) }],
-            isError: true
-          }
-        }
-        
-        // Validate oldSectionText exists from the specified line
         const beforeLines = lines.slice(0, fromLine - 1)
         const contentAfterLine = lines.slice(fromLine - 1).join('\n')
-        if (!contentAfterLine.includes(oldSectionText)) {
-          return {
-            content: [{ type: 'text', text: JSON.stringify({ error: 'Old section text not found starting from the specified line' }) }],
-            isError: true
-          }
-        }
-        
+        if (!contentAfterLine.includes(oldSectionText))
+          return 'Error. Old section text not found starting from the specified line'
+
         const updatedContentAfterLine = contentAfterLine.replace(oldSectionText, newSectionText)        
         const newContent = [...beforeLines, updatedContentAfterLine].join('\n')
         
         writeFileSync(fullPath, newContent, 'utf8')
-        
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ result: 'File section replaced successfully' }) }],
-          isError: false
-        }
+        return 'File section replaced successfully'
       } catch (error) {
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ error: error.message }) }],
-          isError: true
-        }
+        return `Error. ${error.message}`
       }
-    }
+    })
 })
 
 Tool('appendToFile', {
@@ -135,41 +113,23 @@ Tool('appendToFile', {
     {id: 'content', as: 'string', dynamic: true, mandatory: true, description: 'Content to add to the file'},
     {id: 'timeStamp', as: 'boolean', description: 'If true, prepend a timestamp to the content'}
   ],
-  impl: async (ctx, args) => {
+  impl: mcpTool(async (ctx, {}, args) => {
     try {
       const { readFileSync, writeFileSync } = await import('fs')
       const fullPath = pathJoin(args.repoRoot, args.filePath)
-
-      const { repoRoot, filePath, content, timeStamp } = {
-        ...args, 
-        content: args.content.profile 
-      }
-      
+      const { content, timeStamp } = { ...args, content: args.content.profile }
       let existingContent = ''
-      try {
-         existingContent = readFileSync(fullPath, 'utf8')
-      } catch (error) {
-        // File doesn't exist, will create new file
-      }
-      
+      try { existingContent = readFileSync(fullPath, 'utf8') } catch (error) {}
       const dateTime = new Date().toISOString()
       const contentToAdd = timeStamp ? '[' + dateTime + '] ' + content : content
       const newContent = existingContent + (existingContent ? '\n' : '') + contentToAdd
       writeFileSync(fullPath, newContent, 'utf8')
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify({ result: 'Content added successfully' }) }],
-        isError: false
-      }
+      return 'Content added successfully'
     } catch (error) {
-      return {
-        content: [{ type: 'text', text: JSON.stringify({ error: error.message }) }],
-        isError: true
-      }
+      return `Error. ${error.message}`
     }
-  }
+  })
 })
-
 
 Tool('saveToFile', {
   params: [
