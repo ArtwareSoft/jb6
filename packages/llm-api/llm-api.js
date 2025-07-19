@@ -1,13 +1,12 @@
 import { dsls, coreUtils, ns } from '@jb6/core'
+
 import '@jb6/core/misc/jb-cli.js'
-import '@jb6/rx'
 
 const { 
-  common: { Data, ReactiveSource, ReactiveOperator, 
+  common: { Data, ReactiveSource, ReactiveOperator,
   },
   tgp: { TgpType, DefComponents },
 } = dsls
-const { rx } = ns
 const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript } = coreUtils
 
 const Provider = TgpType('provider', 'llm-api')
@@ -216,18 +215,21 @@ Data('llm.completions', {
     {id: 'useLocalStorageCache', as: 'boolean'},
     {id: 'notifyUsage', type: 'action<common>', dynamic: true}
   ],
-  impl: rx.pipe(
-    llm.completionsRx('%$prompt()%', '%$llmModel%', {
-      maxTokens: '%$maxTokens%',
-      includeSystemMessages: '%$includeSystemMessages%',
-      useLocalStorageCache: '%$useLocalStorageCache%',
-      notifyUsage: '%$notifyUsage()%'
-    }),
-    llm.accumulateText(),
-    rx.last()
-  )
+  impl: (ctx, args) => {
+    const $ = dsls.common['reactive-source']['llm.completionsRx'][coreUtils.asJbComp]
+    const profile = ctx.jbCtx.profile = { ... ctx.jbCtx.profile, $ }
+    const source = ctx.run(profile)
+    return new Promise(resolve => {
+      let fullContent
+      source(0, (t,d) => { 
+        if (t === 1)
+          fullContent = d.vars.fullContent
+        if (t === 2) resolve(fullContent)
+      })
+    })
+  }
 })
-
+  
 Provider('providerByApi', {
   params: [
     {id: 'name', as: 'string'},
