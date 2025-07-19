@@ -4,7 +4,7 @@ import '@jb6/mcp'
 const { 
   common: { Data },
   tgp: { TgpType },
-  mcp: { Tool }
+//  mcp: { Tool }
 } = dsls
 // ============================================================================= 
 // DOCLET DSL - 
@@ -30,7 +30,7 @@ Doclet('howTo', {
     {id: 'problem', type: 'problemStatement', templateValue: '', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
     {id: 'outro', as: 'text', description: 'Concluding explanation'},
-    {id: 'testLlmUnderstanding', type: 'validation[]'}
+  {id: 'testLlmUnderstanding', type: 'validation[]'}
   ]
 })
 

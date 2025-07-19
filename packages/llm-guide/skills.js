@@ -4,12 +4,21 @@ import './llm-guide-dsl.js'
 const { 
   common: { Data },
   tgp: { TgpType },
+  'llm-api' : { Prompt,
+    prompt: { } 
+  }
 } = dsls
 
 const Skill = TgpType('skill', 'llm-guide')
 const SkillSet = TgpType('skill-set', 'llm-guide')
 const Benchmark = TgpType('benchmark', 'llm-guide')
 const BenchmarkResult = TgpType('benchmark-result', 'llm-guide')
+
+Prompt('includeBooklet', {
+  params: [
+    { id: 'booklet', type: 'booklet<llm-guide>' }
+  ]
+})
 
 Skill('skill', {
   params: [
