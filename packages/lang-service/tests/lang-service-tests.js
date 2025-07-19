@@ -26,6 +26,10 @@ Test('completionTest.param', {
   })
 })
 
+// Test('completionTest.DefComponents', {
+//   impl: completionOptionsTest('autoGen1(__)', ['p1'])
+// })
+
 Test('completionTest.pt', {
   impl: completionOptionsTest({
     compText: `uiTest(group(__text('__hello world'), __text('2'__)__), __contains('hello world','2'))`,

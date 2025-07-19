@@ -1,13 +1,14 @@
 import { dsls, coreUtils, ns } from '@jb6/core'
+import '@jb6/core/misc/jb-cli.js'
 import '@jb6/rx'
 
 const { 
   common: { Data, ReactiveSource, ReactiveOperator, 
   },
-  tgp: { TgpType },
+  tgp: { TgpType, DefComponents },
 } = dsls
 const { rx } = ns
-const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType } = coreUtils
+const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript } = coreUtils
 
 const Provider = TgpType('provider', 'llm-api')
 const Model = TgpType('model', 'llm-api')
@@ -36,21 +37,26 @@ ReactiveSource('llm.completionsRx', {
       })
       ;(async ()=>{
         const messages = prompt()
-        const key = 'llm' + calcHash(model.name + JSON.stringify(messages))
-        
+  
+        const key = 'llm' + calcHash(model.name + JSON.stringify(messages))        
         if (useLocalStorageCache && globalThis.localStorage && localStorage.getItem(key)) {
             sink(1,ctx.dataObj(fullContent, {...ctx.vars, fullContent: localStorage.getItem(key) }))
             sink(2)
             return
         }
         const start_time = new Date().getTime()
+
         let {controller, reader} = await jb.llmUtils.apiCall(model, {messages, max_tokens, ctx})
         let chunkLeft = ''
-        return reader.read().then(async function processResp({ done, value }) {
+        return reader.read().then(async function processResp({ done, value, fullResponse }) {
           if (done) {
             log('llm source done from reader', {ctx})
             if (!DONE) {
               DONE = true
+              if (fullResponse) {// for cli cases
+                fullContent = fullResponse
+                sink(1,ctx.dataObj(fullContent, {...ctx.vars, fullContent}))
+              }
               onEnd()
               sink(2)
             }
@@ -118,28 +124,18 @@ Prompt('prompt', {
 })
 
 Prompt('system', {
-  type: 'prompt',
-  params: [
-    {id: 'content', as: 'string', newLinesInCode: true}
-  ],
+  params: [ {id: 'content', as: 'text'} ],
   impl: (ctx,{content}) => ({role: 'system', content})
 })
-
-Prompt('assistant', {
-    type: 'prompt',
-    params: [
-        {id: 'content', as: 'string', newLinesInCode: true}
-    ],
-    impl: (ctx,{content}) => ({role: 'assistant', content})
-})
-
 Prompt('user', {
-  type: 'prompt',
-  params: [
-    {id: 'content', as: 'string', newLinesInCode: true}
-  ],
+  params: [ {id: 'content', as: 'text'} ],
   impl: (ctx,{content}) => ({role: 'user', content})
 })
+Prompt('assistant', {
+  params: [ {id: 'content', as: 'text'} ],
+  impl: (ctx,{content}) => ({role: 'assistant', content})
+})
+
 
 ReactiveOperator('llm.textToJsonItems', {
   params: [],
@@ -232,7 +228,7 @@ Data('llm.completions', {
   )
 })
 
-Provider('provider', {
+Provider('providerByApi', {
   params: [
     {id: 'name', as: 'string'},
     {id: 'keyName', as: 'string'},
@@ -242,14 +238,30 @@ Provider('provider', {
   ]
 })
 
+Provider('providerByCli', {
+  params: [
+    {id: 'name', as: 'string'},
+    {id: 'cli', as: 'text', dynamic: true, description: 'use $model and $prompt'},
+    {id: 'processResult', dynamic: true, defaultValue: '%%'}
+  ]
+})
+
 Model('model', {
   params: [
     {id: 'name', as: 'string'},
     {id: 'price', as: 'array', byName: true, description: 'input/output $/M tokens'},
-    {id: 'provider', type: 'provider' },
+    {id: 'provider', type: 'provider'},
     {id: 'maxRequestTokens', as: 'array', description: 'input/output K'},
     {id: 'maxContextLength', as: 'number', defaultValue: 4096},
-    {id: 'reasoning', as: 'boolean'}
+    {id: 'bestFor', as: 'string'},
+    {id: 'doNotUseFor', as: 'string'},
+    {id: 'reasoning', as: 'boolean'},
+    {id: 'codingScore', as: 'number', description: 'Programming ability benchmark score (SWE-bench/HumanEval)'},
+    {id: 'mathScore', as: 'number', description: 'Mathematical reasoning benchmark score (AIME/MATH)'},
+    {id: 'contextWindow', as: 'number', description: 'Maximum context length in tokens'},
+    {id: 'responseSpeed', as: 'number', description: 'Average tokens per second'},
+    {id: 'latency', as: 'number', description: 'Time to first token in seconds'},
+    {id: 'factualAccuracy', as: 'number', description: 'Knowledge correctness benchmark score (MMLU)'}
   ]
 })
 
@@ -260,6 +272,18 @@ jb.llmRepository = {
 
 jb.llmUtils = {
    async apiCall(model, {messages, max_tokens,stream, ctx}) {
+    if (model.provider.cli) {
+      const escapedMessages = asArray(messages).map(m=>m.content).join('\n').replace(/'/g, "'\\''")
+      const cli = model.provider.cli(ctx.setVars({model: model.name, prompt: escapedMessages}))
+      const resultAsString = await runBashScript(cli)
+      const reader = {
+        async read() {
+          return { done: true, fullResponse: model.provider.processResult(ctx.setData(resultAsString.stdout)) }
+        }
+      }
+      return { reader }
+    }
+
     stream = stream || true
     const apiKey = await jb.llmUtils.apiKey(model)
     const headers = {... model.provider.headers(ctx.setVars({apiKey})), 'Content-Type': 'application/json' }
@@ -270,7 +294,7 @@ jb.llmUtils = {
       ? { stream_options: { include_usage: true}, top_p: 1, frequency_penalty: 0, presence_penalty: 0 } : {}
 
     const reqObj = {
-      url: model.provider.url, method: 'POST', headers,
+      url: model.provider.url, method: 'POST', headers ,
       body: JSON.stringify({ ...maxTokens, ...openAIProps, model: model.name,  stream, messages: asArray(messages)  })
     }
     if (model.provider.useProxy && !isNode) {
@@ -286,19 +310,21 @@ jb.llmUtils = {
         }
     })
 
-    let bodyStream = response?.body
-    // if (isNode) {
-    //   const { Readable } = await import('stream')
-    //   bodyStream = Readable.toWeb(bodyStream)
-    // }
-    const reader = bodyStream.getReader()
+    const reader = response?.body.getReader()
     return { controller, reader }
   },
   async apiKey(model) {
     const keyName = model.provider.keyName
     let key = globalThis.localStorage && localStorage.getItem(keyName) || isNode && globalThis.process.env[keyName]
     if (!key || key == 'undefined') {
-      const env = isNode ? '' : await fetch(`/env`).then(res=>res.text())
+      let env = ''
+      if (isNode) {
+        const { readFile } = await import('fs/promises')
+        const path = await import('path')
+        env = await readFile(path.join(process.cwd(),'.env'), 'utf8') || ''
+      } else {
+        env = await fetch(`/env`).then(res=>res.text())
+      }
       key = env.split('\n').filter(l=>l.startsWith(keyName)).map(l=>l.split('=').pop())[0]
       globalThis.localStorage && globalThis.localStorage.setItem(keyName,key)
     }

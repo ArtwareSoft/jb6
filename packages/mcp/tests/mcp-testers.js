@@ -3,7 +3,7 @@ import '@jb6/core/misc/jb-cli.js'
 import '@jb6/core/misc/calc-import-map.js'
 import '@jb6/testing'
 import '@jb6/mcp'
-const { runShellScript, calcRepoRoot } = coreUtils
+const { runBashScript, calcRepoRoot } = coreUtils
 
 const { 
   tgp: { TgpType },
@@ -25,7 +25,7 @@ Test('mcpToolTest', {
 
             const req  = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":tool,arguments: args}}
             const script = `echo '${JSON.stringify(req)}' | node ${repoRoot}/packages/mcp/index.js --start`
-            const res = await runShellScript(script)
+            const res = await runBashScript(script)
             return res
         },
         expectedResult: '%$expectedResult()%',

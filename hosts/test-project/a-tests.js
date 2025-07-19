@@ -4,7 +4,7 @@ import { dsls } from "@jb6/core"
 import './main.js'
 
 const { 
-    tgp: { Const, TgpType, 
+    tgp: { Const, TgpType, DefComponents
       var : { Var } 
     },
     common: { Data, Action, Boolean,
@@ -16,6 +16,16 @@ const {
       test: { dataTest }
     }
 } = dsls
+
+DefComponents('abs,acos', templateParam => Data(`math.${templateParam}`, {
+    autoGen: true,
+    category: 'math:70',
+    params: [
+      {id: 'func', as: 'string', defaultValue: templateParam}
+    ],
+    impl: (ctx, {func}) => Math[func](ctx.data)
+  })
+)
 
 Test('myTests.HelloWorld', {
   impl: dataTest(pipeline('hello world'), contains('world'))

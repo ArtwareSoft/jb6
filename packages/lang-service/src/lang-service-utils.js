@@ -179,6 +179,7 @@ class tgpModelForLangService {
         return calcPath(this.compById(path.split('~')[0]),path.split('~').slice(1))
     }
     compIdOfPath(path) {
+        if (!path) return ''
         if (path.indexOf('~') == -1)
             return 'comp<tgp>tgpComp'
         if (path.match(/~\vars$/)) 

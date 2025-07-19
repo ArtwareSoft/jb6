@@ -99,8 +99,8 @@ function argsToProfile(prof, comp) {
 }
 
 function compByFullId(id, tgpModel) {
-  const [type, dsl, shortId] = id.match(/^([^<]+)<([^>]+)>(.+)$/).slice(1)
-  return tgpModel.dsls[dsl||'common'][type][shortId]
+  const [type, dsl, shortId] = (id.match(/^([^<]+)<([^>]+)>(.+)$/)||[]).slice(1)
+  return tgpModel.dsls[dsl||'common']?.[type]?.[shortId]
 }
 
 function resolveProfileTop(comp) {

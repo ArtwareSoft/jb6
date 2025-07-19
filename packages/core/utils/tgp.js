@@ -150,7 +150,7 @@ TgpType('boolean','common')
 TgpType('reactive-source','common') // callbag api
 TgpType('reactive-operator','common') // callbag api
 
-function DefComponents(items,def) { items.forEach(item=>def(item)) }
+function DefComponents(items,def) { items.split(',').forEach(item=>def(item)) } // 'templateParam' must be used as param name
 
 function calcSourceLocation(errStack) {
   try {

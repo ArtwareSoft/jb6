@@ -10,7 +10,8 @@ const {
     Prop: { prop }
   },
   'llm-api': {
-    prompt: { prompt, user, system }
+    prompt: { prompt, user, system },
+    model: {claude_code_sonnet_4, sonnet_4, opus_4, claude3Haiku, gemini_2_5_flash, gemini_2_5_pro, gemini_2_5_flash_lite_preview, gemini_2_0_flash, gemini_1_5_flash, gemini_1_5_flash_8b, gemini_1_5_pro, o1, o1_mini, o4_mini, gpt_4o, gpt_4o_mini, gpt_35_turbo_0125, gpt_35_turbo_16k}
   },
   test: { Test, 
     test: { dataTest}
@@ -19,32 +20,38 @@ const {
 const { llm } = ns
 
 Test('llmTest.hello', {
+  HeavyTest: true,
   impl: dataTest({
     calculate: llm.completions(prompt(system('please answer clearly'), user('how large is israel'))),
     expectedResult: contains('srael'),
-    timeout: 5000
+    timeout: 50000
   })
 })
 
-Test('llmTest.hello.withRedis', {
-  doNotRunInTests: true,
+Test('llmTest.hello.withCache', {
+  HeavyTest: true,
   impl: dataTest({
     calculate: llm.completions(prompt(system('please answer clearly'), user('how large is USA')), {
       useLocalStorageCache: true
     }),
     expectedResult: contains('3.8'),
-    timeout: 5000
+    timeout: 50000
   })
 })
 
-Test('llmTest.hello.reasoning', {
-  doNotRunInTests: true,
+Test('llmTest.hello.claudeCode', {
+  HeavyTest: true,
   impl: dataTest({
-    calculate: llm.completions(user('how large is USA?'), {
-      useLocalStorageCache: true
-    }),
+    calculate: llm.completions(prompt(user('how large is USA?')), claude_code_sonnet_4()),
     expectedResult: contains('3.8'),
-    timeout: 5000
+    timeout: 50000
+  })
+})
+
+Test('llmTest.hello.geminiCli', {
+  HeavyTest: true,
+  impl: dataTest(llm.completions(prompt(user('how large is USA area?')), gemini_2_0_flash()), contains('3.8'), {
+    timeout: 50000
   })
 })
 

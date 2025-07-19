@@ -5,6 +5,7 @@ import { parse } from 'url'
 export function expressProxy(app) {
 app.post('/proxy', (req, res) => {
     try {
+      console.log(req.body)
       const { originalBody, targetUrl, headers = {} } = req.body
       
       if (!targetUrl) throw new Error('No target URL specified')

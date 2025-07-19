@@ -96,7 +96,7 @@ Data('langService.definition', {
     impl: async (ctx, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
         const { errors, tgpModel, path } = compProps
-        const cmpId = tgpModel.compIdOfPath(path)
+        const cmpId = path && tgpModel.compIdOfPath(path)
         if (cmpId)
             return compByFullId(cmpId, tgpModel)?.$location
         if (errors) {

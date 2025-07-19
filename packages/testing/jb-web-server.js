@@ -4,6 +4,7 @@ import { expressProxy } from '@jb6/server-utils/proxy.js'
 dotenv.config()
 import { expressTestServices } from './express-testing-utils.js'
 const app = express()
+app.use(express.json())
 const port = process.env.PORT || 8083
 expressTestServices(app)
 expressProxy(app)

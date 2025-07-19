@@ -49,3 +49,9 @@ Test('snippet.filePath', {
     filePath: '/home/shaiby/projects/jb6/packages/common/aggregators.js'
   })
 })
+
+Test('snippet.filePath2', {
+  impl: snippetTest(`prompt('hello')`, equals('hello', '%result%'), {
+    filePath: '/home/shaiby/projects/jb6/packages/llm-api/llm-api-tests.js'
+  })
+})

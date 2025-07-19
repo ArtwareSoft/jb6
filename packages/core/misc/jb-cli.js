@@ -7,7 +7,7 @@ import '../utils/tgp.js'
 const { coreUtils } = jb
 
 const { logException, logError, isNode } = coreUtils
-Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runShellScript})
+Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript})
 
 async function runCliInContext(script, {requireNode, importMap} = {}) {
   let res = {}
@@ -20,9 +20,9 @@ async function runCliInContext(script, {requireNode, importMap} = {}) {
   return res
 }
 
-async function runShellScript(script) {
+async function runBashScript(script) {
   if (!isNode) {
-    const response = await fetch('/run-shell', { method: 'POST', headers: {'Content-Type': 'application/json' }, body: JSON.stringify({ script }) })
+    const response = await fetch('/run-bash', { method: 'POST', headers: {'Content-Type': 'application/json' }, body: JSON.stringify({ script }) })
     const result = await response.json()
     return result.result
   }
@@ -30,13 +30,18 @@ async function runShellScript(script) {
   return new Promise((resolve) => {
     let stdout = ''
     let stderr = ''
+
     const child = spawn('bash', ['-c', script], { encoding: 'utf8' })
-    child.stdout.on('data', data => stdout += data)
-    child.stderr.on('data', data => stderr += data)
+    child.stdout.on('data', data => {
+      stdout += data
+    })
+    child.stderr.on('data', data => {
+      stderr += data
+    })
 
     child.on('close', code => {
       if (code !== 0) {
-        const error = new Error(`Shell script exited with code ${code}`)
+        const error = `Shell script exited with code ${code}`
         logError(error, 'error in run shell script', { script, stdout, stderr })
         return resolve({ error, stdout, stderr, script })
       }

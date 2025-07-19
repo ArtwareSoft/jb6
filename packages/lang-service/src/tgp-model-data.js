@@ -80,9 +80,11 @@ export async function calcTgpModelData({ filePath } = {}) {
     const constDefs =  ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations)
     const allDefs = [...exportDefs, ...constDefs].filter(decl=>decl?.init)
 
+
     allDefs.forEach(decl => parseCompDec({exportName: decl.id.name , decl: decl.init, url, src}))
     const directDefs = ast.body.map(n => n?.expression).filter(Boolean)
     directDefs.forEach(decl => parseCompDec({decl, url, src}))
+    //directDefs.filter(d => d?.callee?.name === 'DefComponents').forEach(decl=> { })
 
   })
 

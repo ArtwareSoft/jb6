@@ -197,8 +197,8 @@ Data('div', {
   impl: (ctx, {x, y}) => +x / +y
 })
 
-DefComponents('abs,acos,acosh,asin,asinh,atan,atan2,atanh,cbrt,ceil,clz32,cos,cosh,exp,expm1,floor,fround,hypot,log2,random,round,sign,sin,sinh,sqrt,tan,tanh,trunc'
-  .split(','), f => Data(`math.${f}`, {
+DefComponents('abs,acos,acosh,asin,asinh,atan,atan2,atanh,cbrt,ceil,clz32,cos,cosh,exp,expm1,floor,fround,hypot,log2,random,round,sign,sin,sinh,sqrt,tan,tanh,trunc', 
+  f => Data(`math.${f}`, {
     autoGen: true,
     category: 'math:70',
     params: [
