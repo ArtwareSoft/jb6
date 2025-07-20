@@ -1,9 +1,4 @@
-import { jb } from '@jb6/repo'
-import '../utils/core-utils.js'
-import '../utils/jb-expression.js'
-import '../utils/jb-args.js'
-import '../utils/jb-core.js'
-import '../utils/tgp.js'
+import { jb } from '@jb6/core'
 const { coreUtils } = jb
 const { asJbComp, astNode, OrigArgs, systemParams, jbComp, unique, asArray, isPrimitiveValue, logError, splitDslType, compByFullId } = coreUtils
 

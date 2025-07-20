@@ -14,7 +14,7 @@ Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext,
 
 Data('bash', {
   params: [
-    {id: 'script', as: undefined}
+    {id: 'script', as: 'text' }
   ],
   impl: (ctx, {script}) => runBashScript(script)
 })

@@ -1,4 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
+import '@jb6/core/misc/resolve-types.js'
 
 const { resolveCompArgs, resolveProfileArgs, resolveProfileTypes, sysProps, resolveProfileTop, OrigArgs,
   jbComp, asJbComp, isPrimitiveValue, asArray, calcValue, compIdOfProfile, compByFullId, resolveDelayed } = coreUtils

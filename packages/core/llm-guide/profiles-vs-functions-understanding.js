@@ -16,10 +16,6 @@ const {
   } 
 } = dsls
 
-// Sample data for examples
-Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])
-Const('currentUser', {id: 'user123', name: 'Alice', role: 'admin'})
-
 // =============================================================================
 // CRITICAL UNDERSTANDING: TGP PROFILES vs FUNCTIONS
 // =============================================================================

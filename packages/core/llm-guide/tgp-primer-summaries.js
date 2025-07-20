@@ -15,8 +15,6 @@ const {
   } 
 } = dsls
 
-Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])
-
 // =============================================================================
 // TGP PRIMER SUMMARIES - Progressive token reduction (÷2, ÷4, ÷8, ÷16, ÷32)
 // Each summary is self-contained and coherent at its token level

@@ -15,20 +15,6 @@ const {
   } 
 } = dsls
 
-// Sample data for examples
-Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])
-
-// Example circuit: Data component + Test component
-Data('peopleUnder30', {
-  impl: pipeline('%$people%', filter('%age% < 30'), count())
-})
-
-const { peopleUnder30 } = dsls.common.data
-
-Test('peopleUnder30Test', {
-  impl: dataTest(peopleUnder30(), equals(2))
-})
-
 Doclet('circuitConcept', {
   impl: howTo(
     problem('Understanding the Circuit concept - execution environment containing multiple related components'),

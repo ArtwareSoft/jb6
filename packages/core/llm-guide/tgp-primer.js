@@ -16,9 +16,6 @@ const {
   } 
 } = dsls
 
-// Sample data for examples
-Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])
-
 // =============================================================================
 // PASS 1: BASIC MENTAL MODELS (Get Started Fast)
 // =============================================================================

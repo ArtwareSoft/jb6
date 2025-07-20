@@ -18,8 +18,6 @@ const {
   }
 } = dsls
 
-Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])
-
 Doclet('countUnder30', {
   impl: howTo(
     problem('count people under 30'),

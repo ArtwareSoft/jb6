@@ -15,13 +15,6 @@ const {
   } 
 } = dsls
 
-// Sample data for examples
-Const('employees', [
-  {name: 'John', dept: 'sales', salary: 50000},
-  {name: 'Jane', dept: 'sales', salary: 60000},
-  {name: 'Bob', dept: 'tech', salary: 80000}
-])
-
 Doclet('testBehaviorNotImplementation', {
   impl: principle('5 of 5', 'Test user-visible behavior, not internal implementation details', {
     rationale: 'Tests that focus on behavior survive refactoring and provide stable verification',

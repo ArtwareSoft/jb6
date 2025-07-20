@@ -8,7 +8,7 @@ const {
   common: { Data, data : { pipe, bash } },
   tgp: { TgpType },
   'llm-api' : { Prompt,
-    prompt: { user, system } 
+    prompt: { user, system, prompt } 
   }
 } = dsls
 
@@ -28,7 +28,7 @@ Prompt('includeFiles', {
   params: [
     {id: 'fileNames', as: 'string', description: 'separated by comma'}
   ],
-  impl: prompt(user(bash(`echo '%$fileNames%' | tr ',' '\n' | xargs -I{} sh -c 'printf "==> file content %s <==\n" "{}"; cat "{}"'"`)))
+  impl: system(bash(`echo '%$fileNames%' | tr ',' '\n' | xargs -I{} sh -c 'printf "==> file content %s <==\n" "{}"; cat "{}"'"`))
 })
 
 Skill('skill', {

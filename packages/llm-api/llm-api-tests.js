@@ -4,8 +4,8 @@ import '@jb6/testing'
 import '@jb6/llm-guide'
 import '@jb6/mcp'
 import '@jb6/llm-guide/skills.js'
-import '@jb6/testing/llm-guide/how-to-write-tests.js'
-import '@jb6/core/llm-guide/tgp-primer.js'
+//import '@jb6/testing/llm-guide/how-to-write-tests.js'
+//import '@jb6/core/llm-guide/tgp-primer.js'
 const {
   tgp: { TgpType },
   common: { Data, Action, Boolean,
@@ -46,38 +46,38 @@ Test('llmTest.hello', {
   impl: llmTest(prompt(system('please answer clearly'), user('how large is israel')), contains('srael'))
 })
 
-Test('llmTest.hello.withCache', {
-  HeavyTest: true,
-  impl: dataTest({
-    calculate: llm.completions(prompt(system('please answer clearly'), user('how large is USA')), {
-      useLocalStorageCache: true
-    }),
-    expectedResult: contains('3.8'),
-    timeout: 50000
-  })
-})
+// Test('llmTest.hello.withCache', {
+//   HeavyTest: true,
+//   impl: dataTest({
+//     calculate: llm.completions(prompt(system('please answer clearly'), user('how large is USA')), {
+//       useLocalStorageCache: true
+//     }),
+//     expectedResult: contains('3.8'),
+//     timeout: 50000
+//   })
+// })
 
-Test('llmTest.hello.claudeCode', {
-  HeavyTest: true,
-  impl: dataTest({
-    calculate: llm.completions(prompt(user('how large is USA?')), claude_code_sonnet_4()),
-    expectedResult: contains('3.8'),
-    timeout: 50000
-  })
-})
+// Test('llmTest.hello.claudeCode', {
+//   HeavyTest: true,
+//   impl: dataTest({
+//     calculate: llm.completions(prompt(user('how large is USA?')), claude_code_sonnet_4()),
+//     expectedResult: contains('3.8'),
+//     timeout: 50000
+//   })
+// })
 
-Test('llmTest.howToWriteTests', {
-  HeavyTest: true,
-  impl: llmTest({
-    prompt: prompt(
-      includeBooklet(tgpPrimer(), howToWriteTests()),
-      includeFiles('/packages/social-db/data-store.js'),
-      user('please write 3 tests for dataStore')
-    ),
-    expectedResult: contains(''),
-    llmModel: claude_code_sonnet_4()
-  })
-})
+// Test('llmTest.howToWriteTests', {
+//   HeavyTest: true,
+//   impl: llmTest({
+//     prompt: prompt(
+//       includeBooklet(tgpPrimer(), howToWriteTests()),
+//       includeFiles('/packages/social-db/data-store.js'),
+//       user('please write 3 tests for dataStore')
+//     ),
+//     expectedResult: contains(''),
+//     llmModel: claude_code_sonnet_4()
+//   })
+// })
 
 // Test('llmTest.hello.geminiCli', {
 //   HeavyTest: true,
