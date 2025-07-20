@@ -8,7 +8,8 @@
     "./misc/calc-import-map.js": "./misc/calc-import-map.js",
     "./misc/resolve-types.js": "./misc/resolve-types.js",
     "./misc/jb-cli.js": "./misc/jb-cli.js",
-    "./misc/probe.js": "./misc/probe.js"
+    "./misc/probe.js": "./misc/probe.js",
+    "./misc/pretty-print.js": "./misc/pretty-print.js"
   },
   "scripts": {},
   "dependencies": {
