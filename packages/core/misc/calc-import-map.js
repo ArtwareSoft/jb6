@@ -97,14 +97,14 @@ async function calcImportMap() {
     const pkgsDir = path.resolve(repoRoot, 'packages')
     const entries = await readdir(pkgsDir, { withFileTypes: true })
     const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
-    const runtime = Object.fromEntries(
+    const imports = Object.fromEntries(
       folders.flatMap(f => [
         [`@jb6/${f}`,  `/packages/${f}/index.js`],
         [`@jb6/${f}/`, `/packages/${f}/`]          // enables sub-path imports
       ])
     )    
     const serveEntries = [{urlPath: '/packages', pkgId: '@jb6/packages', pkgDir: pkgsDir}, {urlPath: '/hosts', pkgDir: path.resolve(repoRoot, 'hosts')}]    
-    const res = { imports: { ...runtime, '#jb6/': '/packages/' }, serveEntries }
+    const res = { imports: { ...imports, '#jb6/': '/packages/' }, serveEntries }
     //logCli('JB6 dev mode: calcImportMap', res)
     return res
   } else {
@@ -126,7 +126,7 @@ async function calcImportMapOfRepoRoot(projectRoot, { repoRoot = '', includeTest
     const res = await Promise.all(folders.map(f => calcImportMapOfRepoRoot(path.join(pkgsDir, f), { repoRoot, includeTesting })))
     const selfImports = Object.fromEntries(folders.flatMap(f => [[`${monoRepoShortcut}/${f}`,  `${pkgsDir}/${f}/index.js`], 
       [`${monoRepoShortcut}/${f}/`, `${pkgsDir}/${f}/`] ]))
-    const serveEntries = {}
+    const serveEntries = { 'monoRepo' : {urlPath: '/packages', pkgDir: pkgsDir, pkgId: monoRepoShortcut} }
     for (const f of folders) {
       const supportingFiles = await calcSupportingFiles(path.join(pkgsDir, f),`${monoRepoShortcut}/${f}`)
       serveEntries[`/${f}`] = { urlPath: `/packages/${f}`, pkgDir: path.join(pkgsDir, f), pkgId: `${monoRepoShortcut}/${f}`, ...supportingFiles }
@@ -162,6 +162,7 @@ async function calcImportMapOfRepoRoot(projectRoot, { repoRoot = '', includeTest
         [`${pkgId}/`, `${localDir}/`]
       ]
     }))
+  serveEntries.push({urlPath: '/packages', pkgDir: path.join(repoRoot, 'packages'), pkgId: 'repoRoot'})
         
   return { repoRoot, imports, serveEntries }
 

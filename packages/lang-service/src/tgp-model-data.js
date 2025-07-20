@@ -1,7 +1,8 @@
 import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
 
-const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, pathParent, pathJoin, absPathToUrl, unique } = coreUtils
+const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, pathParent
+  , pathJoin, absPathToUrl, unique, resolveProfileTypes, splitDslType } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -109,7 +110,7 @@ export async function calcTgpModelData(filePaths) {
     if (!shortId)
       logError(`calcTgpModelData no id mismatch`,{ url, ...offsetToLineCol(src, decl) })
 
-    const $location = { path: url, ...offsetToLineCol(src, decl.start) }
+    const $location = { path: url, ...offsetToLineCol(src, decl.start), to: offsetToLineCol(src, decl.end) }
     const _comp = compDefs[tgpType](shortId, {...comp, $location})
     const jbComp = _comp[asJbComp] // remove the proxy
     dsls[jbComp.dsl][jbComp.type][shortId] = jbComp 
@@ -140,7 +141,29 @@ export async function calcTgpModelData(filePaths) {
       console.error(`Error crawling ${url}:`, e)
     }
   }
+
+  function loadCompWithImpl(node) {
+    const topComp = astToTgpObj(node)
+    try {
+        resolveProfileTypes(topComp, {tgpModel, expectedType: 'comp<tgp>', topComp, tgpPath: topComp?.id})
+    } catch (error) {
+      return error
+    }
+    let compId = '', dslTypeId
+    if (topComp?.id) {
+        const typeId = topComp.$
+        if (!tgpModel.dsls.tgp.comp[typeId])
+            return `can not find ${typeId}`
+        
+        const dslType = tgpModel.dsls.tgp.comp[topComp.$].dslType
+        compId = `${dslType}${topComp.id}`
+        const [ type, dsl ] = splitDslType(dslType)
+        dslTypeId = [ dsl, type, topComp.id]
+        tgpModel.dsls[dsl][type][topComp.id] = topComp
+    }
+  }
 }
+
 
 function astToTgpObj(node, code) {
 	if (!node) return undefined
@@ -161,6 +184,7 @@ function astToTgpObj(node, code) {
         return attachNode({$: callee.name || [callee.object?.name,callee.property?.name].join('.'), $unresolvedArgs})
       }
       case 'ArrowFunctionExpression': {
+        if (!code) return undefined
         let func 
         try {
           func = eval(code.slice(node.start, node.end))

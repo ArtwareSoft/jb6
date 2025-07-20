@@ -52,7 +52,7 @@ async function runBashScript(script) {
     child.on('close', code => {
       if (code !== 0) {
         const error = `Shell script exited with code ${code}`
-        logError(error, 'error in run shell script', { script, stdout, stderr })
+        logError('error in run shell script', { error, script, stdout, stderr })
         return resolve({ error, stdout, stderr, script })
       }
       try {

@@ -9,5 +9,6 @@ import '../social-db/social-db-tests.js'
 import '../mcp/tests/mcp-tests.js'
 import '../rx/tests/rx-core-tests.js'
 import '../llm-api/tests/llm-api-tests.js'
+import '../llm-api/tests/llm-skills-tests.js'
 
 //import '../plugins/remote/jbm/tests/jbm-tests.js'

@@ -118,9 +118,7 @@ Prompt('prompt', {
   params: [
     {id: 'elems', type: 'prompt[]', composite: true}
   ],
-  impl: async (ctx,{elems}) => { 
-    debugger; return waitForInnerElements(elems) 
-  }
+  impl: async (ctx,{elems}) => waitForInnerElements(elems)
 })
 
 Prompt('system', {

@@ -23,7 +23,6 @@ const ExplanationPoint = TgpType('explanationPoint', 'llm-guide') // Individual 
 const ProblemStatement = TgpType('problemStatement', 'llm-guide') // New: Problem statement container
 const Validation = TgpType('validation', 'llm-guide')
 const Booklet = TgpType('booklet', 'llm-guide') // documentation package for llm prompt
-const BookletAndModel = TgpType('booklet-and-model', 'llm-guide') 
 
 // =============================================================================
 // TYPE: doclet - Main documentation container

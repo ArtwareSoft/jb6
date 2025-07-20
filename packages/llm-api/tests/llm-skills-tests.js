@@ -20,7 +20,7 @@ const {
     tool: { getFilesContent }
   },
   test: { Test, 
-    test: { dataTest}
+    test: { llmTest }
   }
 } = dsls
 const { llm } = ns
@@ -29,8 +29,8 @@ Test('llmTest.howToWriteTests', {
   HeavyTest: true,
   impl: llmTest({
     prompt: prompt(
-      includeBooklet(tgpPrimer(), howToWriteTests()),
-      includeFiles('/packages/social-db/data-store.js'),
+      includeBooklet('tgpPrimer,howToWriteTests'),
+      includeFiles('packages/social-db/data-store.js'),
       user('please write 3 tests for dataStore')
     ),
     expectedResult: contains(''),

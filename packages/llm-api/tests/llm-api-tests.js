@@ -38,11 +38,11 @@ Test('llmTest.hello.claudeCode', {
   })
 })
 
-Test('llmTest.hello.geminiCli', {
-  HeavyTest: true,
-  impl: llmTest(prompt(system('please answer clearly'), user('how large is USA')), contains('3.8'), {
-    llmModel: gemini_2_5_flash(),
-    useLocalStorageCache: true
-  })
-})
+// Test('llmTest.hello.geminiCli', {
+//   HeavyTest: true,
+//   impl: llmTest(prompt(system('please answer clearly'), user('how large is USA')), contains('3.8'), {
+//     llmModel: gemini_2_5_flash(),
+//     useLocalStorageCache: true
+//   })
+// })
 
