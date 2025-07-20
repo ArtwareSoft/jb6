@@ -52,6 +52,6 @@ Test('snippet.filePath', {
 
 Test('snippet.llmApiTests', {
   impl: snippetTest(`Prompt('p',{impl:user('hello')})`, equals('hello', '%result/content%'), {
-    filePath: '/home/shaiby/projects/jb6/packages/llm-api/llm-api-tests.js'
+    filePath: '/home/shaiby/projects/jb6/packages/llm-api/tests/llm-api-tests.js'
   })
 })

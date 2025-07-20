@@ -13,7 +13,7 @@ export async function startMcpServer() {
   const { Server } = await import("@modelcontextprotocol/sdk/server/index.js")
   const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js")
   const { z } = await import('zod')
-  const { ListToolsRequestSchema, CallToolRequestSchema, ListPromptsRequestSchema, GetPromptRequestSchema } = await import("@modelcontextprotocol/sdk/types.js")
+  const { ListToolsRequestSchema, CallToolRequestSchema } = await import("@modelcontextprotocol/sdk/types.js")
     
   // Get all tools from jb repository
     const exclude = ['text','doclet']
@@ -34,21 +34,6 @@ export async function startMcpServer() {
           }, {}),
           required: (toolComp.params || []).filter(p => p.mandatory).map(p => p.id)
         }
-      }
-    })
-
-    // Get all prompts from the repository
-    const allPrompts = ptsOfType(Prompt)
-    const promptConfigs = allPrompts.map(promptId => {
-      const promptComp = dsls.mcp.prompt[promptId][asJbComp]
-      return {
-        name: promptId,
-        description: promptComp.description || `Prompt: ${promptId}`,
-        arguments: promptComp.params.map(param => ({
-          name: param.id,
-          description: param.description || '',
-          required: param.mandatory || false
-        }))
       }
     })
   
@@ -84,15 +69,7 @@ export async function startMcpServer() {
         throw error
       }
     })
-    
-    mcpServer.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: promptConfigs }))
-
-    mcpServer.setRequestHandler(GetPromptRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params
-      const result = await dsls.mcp.prompt[name].$run(args)
-      return { messages: [{ role: "user", content: result.content[0] }] }
-    })
-  
+      
     const transport = new StdioServerTransport()
     await mcpServer.connect(transport)
 }

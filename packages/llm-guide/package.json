@@ -3,8 +3,7 @@
   "version": "1.250630.1",
   "type": "module",
   "exports": {
-    ".": "./index.js",
-    "./skills.js": "./skills.js"
+    ".": "./index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.2",

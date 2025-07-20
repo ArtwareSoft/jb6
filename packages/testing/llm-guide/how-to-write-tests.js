@@ -157,7 +157,3 @@ Doclet('testCoveragePyramid', {
     dslCompIds: ['guidance<llm-guide>solution']
   })
 })
-
-Booklet('howToWriteTests', {
-  impl: booklet('testBehaviorNotImplementation,extractKeyValues,testDevelopmentWorkflow,smallFocusedTests,minimalTestData,testCoveragePyramid')
-})

@@ -32,7 +32,7 @@ Tool('tgpModel', {
       try {
         await import('@jb6/lang-service')
         jb.coreRegistry.repoRoot = repoRoot
-        const res = await coreUtils.calcTgpModelData({ filePath: pathJoin(repoRoot, filePath) })
+        const res = await coreUtils.calcTgpModelData(pathJoin(repoRoot, filePath))
         const {dsls, ns} = deepMapValues(res,minifyComp,filter)
         return {dsls,ns}
       } catch (error) {

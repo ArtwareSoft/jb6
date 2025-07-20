@@ -20,7 +20,7 @@ async function calcCompProps(_compTextAndCursor) {
     return {...compTextAndCursor, tgpModel, ...calcProfileActionMap(compText, {inCompOffset, tgpModel}) }
 
     function getTgpModel() {
-        return jb.langServiceRegistry.tgpModelsPromise[filePath] = calcTgpModelData({filePath})
+        return jb.langServiceRegistry.tgpModelsPromise[filePath] = calcTgpModelData(filePath)
             .then(v => (jb.langServiceRegistry.tgpModels[filePath] = new tgpModelForLangService(v)))
     }
 }

@@ -9,7 +9,7 @@ Object.assign(coreUtils,{runSnippetCli})
 async function runSnippetCli({compText: _compText, filePath, setupCode = '', packages = [], probe } = {}) {
     const { projectImportMap } = await studioAndProjectImportMaps(filePath)
 
-    const tgpModel = await calcTgpModelData({filePath}) // todo: support packages
+    const tgpModel = await calcTgpModelData(filePath) // todo: support packages
     if (tgpModel.error) return { error: tgpModel.error }
     const origCompText = (_compText[0]||'').match(/[A-Z]/) ? _compText : `Data('noName',{impl: ${_compText}})`    
     const isProbeMode = probe === true || probe === 'true'

@@ -277,16 +277,5 @@ Booklet('booklet', {
   params: [
     {id: 'doclets', as: 'string', description: 'comma delimited names of doclets', madatory: true},
     {id: 'guidance', type: 'guidance[]'}
-  ],
-  impl: (ctx,{doclets, guidance}) => {
-    const comps = doclets.split(',').map(d=>d.trim()).filter(Boolean).map(d=>prettyPrintComp(dsls.test.test[d], {tgpModel: jb} ))
-    return comps
-  }
-})
-
-BookletAndModel('bookletAndModel', {
-  params: [
-      {id: 'booklet', type: 'booklet', madatory: true},
-      {id: 'llmModel', as: 'string', madatory: true },
   ]
 })

@@ -1,14 +1,18 @@
 import { dsls } from '@jb6/core'
-import './llm-guide-dsl.js'
-import {} from '@jb6/llm-api'
+import '@jb6/llm-guide'
+import '@jb6/llm-api'
 import '@jb6/common'
 import '@jb6/core/misc/jb-cli.js'
+import '@jb6/lang-service'
 
 const { 
   common: { Data, data : { pipe, bash } },
   tgp: { TgpType },
   'llm-api' : { Prompt,
     prompt: { user, system, prompt } 
+  },
+  'llm-guide' : { Booklet, 
+    booklet: { booklet }
   }
 } = dsls
 
@@ -17,11 +21,28 @@ const SkillSet = TgpType('skill-set', 'llm-guide')
 const Benchmark = TgpType('benchmark', 'llm-guide')
 const BenchmarkResult = TgpType('benchmark-result', 'llm-guide')
 
+// impl: (ctx,{doclets, guidance}) => {
+//   const comps = doclets.split(',').map(d=>d.trim()).filter(Boolean).map(d=>prettyPrintComp(dsls.test.test[d], {tgpModel: jb} ))
+//   return comps
+// }
+
+BookletAndModel('bookletAndModel', {
+  params: [
+    {id: 'booklet', type: 'booklet', madatory: true},
+    {id: 'llmModel', as: 'string', madatory: true}
+  ]
+})
+
 Prompt('includeBooklet', {
   params: [
     {id: 'booklet', type: 'booklet<llm-guide>[]'}
   ],
-  impl: system('%$booklet%')
+  impl: async (ctx, {booklet}) => {
+      const repoRoot = await coreUtils.calcRepoRoot()
+      const { llmGuideFiles } = await studioAndProjectImportMaps(repoRoot)
+      debugger
+      const tgpModel = await coreutils.calcTgpModelData(llmGuideFiles)
+  }
 })
 
 Prompt('includeFiles', {

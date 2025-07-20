@@ -87,7 +87,7 @@ Doclet('howToConductResearch', {
   )
 })
 
-Doclet('howToWriteTests', {
+Doclet('howToWriteTestsSummary', {
   impl: howTo(
     problem('How to write effective tests for TGP components'),
     solution({
@@ -107,5 +107,9 @@ packages/testing/llm-guide/how-to-write-tests.js  // Testing principles`,
       reason: 'MANDATORY to try cutting 75% test size while keeping all essential verification - this is very common and achievable'
     })
   )
+})
+
+Booklet('howToWriteTests', {
+  impl: booklet('testBehaviorNotImplementation,extractKeyValues,testDevelopmentWorkflow,smallFocusedTests,minimalTestData,testCoveragePyramid')
 })
 

@@ -1,7 +1,7 @@
 import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
 
-const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, pathParent, pathJoin, absPathToUrl } = coreUtils
+const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, pathParent, pathJoin, absPathToUrl, unique } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -12,15 +12,15 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
 
-export async function calcTgpModelData({ filePath } = {}) {
+export async function calcTgpModelData(filePaths) {
+  const filePath = Array.isArray(filePaths) ? filePaths[0] : filePaths
   const filePathToUse = filePath || await coreUtils.calcRepoRoot()
   const { projectImportMap, testFiles } = await studioAndProjectImportMaps(filePathToUse)
 
-  debugger
   const indexFileName = absPathToUrl(pathJoin(pathParent(filePathToUse),'index.js'), projectImportMap.serveEntries)
   const importModule = Object.entries(projectImportMap.imports).find(x=> x[1]==indexFileName)?.[0]
 
-  const rootFilePaths = [importModule,filePathToUse,...testFiles].filter(Boolean)
+  const rootFilePaths = unique([importModule,filePathToUse,...(Array.isArray(filePaths) ? filePaths : []), ...testFiles].filter(Boolean))
   const codeMap = {}
   const visited = {}  // urls seen
 

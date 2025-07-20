@@ -235,7 +235,7 @@ Test('snippetTest', {
 async function getTgpModel() {
   const filePath = await filePathForLangServiceTest()
   jb.langServiceRegistry.tgpModels[filePath] = jb.langServiceRegistry.tgpModels[filePath] 
-     || new tgpModelForLangService(await calcTgpModelData({filePath}))
+     || new tgpModelForLangService(await calcTgpModelData(filePath))
   const tgpModel = jb.langServiceRegistry.tgpModels[filePath]
   return tgpModel
 }

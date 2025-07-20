@@ -3,10 +3,13 @@
     "version": "1.250630.1",
     "type": "module",
     "exports": {
-      ".": "./index.js"
+      ".": "./index.js",
+      "./skills.js": "./skills.js",
+      "./tests/*.js": "./tests/*.js"
     },
     "dependencies": {
-      "@jb6/core": "1.250630.1"
+      "@jb6/core": "1.250630.1",
+      "@jb6/lang-service": "1.250630.1"
     },
     "repository": {
       "type": "git",
