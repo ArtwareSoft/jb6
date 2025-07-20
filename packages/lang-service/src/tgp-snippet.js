@@ -103,7 +103,8 @@ function calcDslsSection(comps) {
 
         const compDefsIds = unique(compDefs.map(compDef => compDef.dsl == dsl && compDef.id).filter(Boolean))
         const compDefsStr = compDefsIds.length ? compDefsIds.map(compDef=>`${compDef} ,`).join() : ''
-        return `\t${dsl}:{ ${compDefsStr}\n\t\t${types}\n\t}`
+        const dslStr = dsl.indexOf('-') == -1 ? dsl : `'${dsl}'`
+        return `\t${dslStr}:{ ${compDefsStr}\n\t\t${types}\n\t}`
     }).join(',\n')
     return [`const {\n${dsls}\n} = dsls`, ns_str].filter(Boolean).join('\n')
 

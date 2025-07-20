@@ -1,11 +1,14 @@
 import { dsls } from '@jb6/core'
 import './llm-guide-dsl.js'
+import {} from '@jb6/llm-api'
+import '@jb6/common'
+import '@jb6/core/misc/jb-cli.js'
 
 const { 
-  common: { Data },
+  common: { Data, data : { pipe, bash } },
   tgp: { TgpType },
   'llm-api' : { Prompt,
-    prompt: { } 
+    prompt: { user, system } 
   }
 } = dsls
 
@@ -16,8 +19,16 @@ const BenchmarkResult = TgpType('benchmark-result', 'llm-guide')
 
 Prompt('includeBooklet', {
   params: [
-    { id: 'booklet', type: 'booklet<llm-guide>' }
-  ]
+    {id: 'booklet', type: 'booklet<llm-guide>[]'}
+  ],
+  impl: system('%$booklet%')
+})
+
+Prompt('includeFiles', {
+  params: [
+    {id: 'fileNames', as: 'string', description: 'separated by comma'}
+  ],
+  impl: prompt(user(bash(`echo '%$fileNames%' | tr ',' '\n' | xargs -I{} sh -c 'printf "==> file content %s <==\n" "{}"; cat "{}"'"`)))
 })
 
 Skill('skill', {

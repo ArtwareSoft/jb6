@@ -1,9 +1,10 @@
-import { dsls } from '@jb6/core'
+import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/mcp'
 
 const { 
   common: { Data },
   tgp: { TgpType },
+//  'llm-api': { Prompt, prompt: {user}},
 //  mcp: { Tool }
 } = dsls
 // ============================================================================= 
@@ -30,7 +31,7 @@ Doclet('howTo', {
     {id: 'problem', type: 'problemStatement', templateValue: '', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
     {id: 'outro', as: 'text', description: 'Concluding explanation'},
-  {id: 'testLlmUnderstanding', type: 'validation[]'}
+    {id: 'testLlmUnderstanding', type: 'validation[]'}
   ]
 })
 
@@ -272,9 +273,13 @@ Validation('explainConceptQuiz', {
 
 Booklet('booklet', {
   params: [
-      {id: 'doclets', type: 'doclet[]', madatory: true},
-      {id: 'guidance', type: 'guidance[]' },
-  ]
+    {id: 'doclets', as: 'string', description: 'comma delimited names of doclets', madatory: true},
+    {id: 'guidance', type: 'guidance[]'}
+  ],
+  impl: (ctx,{doclets, guidance}) => {
+    const comps = doclets.split(',').map(d=>d.trim()).filter(Boolean).map(d=>dsls['llm-guide'].doclet[d][coreUtils.asJbComp])
+    return comps.map(comp=>coreUtils.prettyPrintComp(comp, { tgpModel : jb }))
+  }
 })
 
 BookletAndModel('bookletAndModel', {
@@ -283,3 +288,26 @@ BookletAndModel('bookletAndModel', {
       {id: 'llmModel', as: 'string', madatory: true },
   ]
 })
+
+function cleanDoclet(doclet) {
+  if (typeof doclet === 'object' && doclet !== null)
+    delete doclet.$
+  if (Array.isArray(doclet) && doclet.length === 1) {
+    return cleanDoclet(doclet[0])
+  } else if (typeof doclet === 'object' && doclet !== null && Object.keys(doclet).length === 1) {
+    const [key, value] = Object.entries(doclet)[0]
+    return cleanDoclet(value)
+  }
+  if (Array.isArray(doclet)) {
+    return doclet.map(cleanDoclet).filter(item => item !== null && item !== '')
+  } else if (typeof doclet === 'object' && doclet !== null) {
+    return Object.entries(doclet).reduce((acc, [key, value]) => {
+      const cleanedValue = cleanDoclet(value)
+      if (cleanedValue !== null && cleanedValue !== '') {
+        acc[key] = cleanedValue
+      }
+      return acc
+    }, {})
+  }
+  return doclet
+}

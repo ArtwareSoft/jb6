@@ -7,7 +7,8 @@ const {
   tgp: { Const, var: { Var } }, 
   common: { data: { pipeline, filter, count, join, toUpperCase }, Boolean: { and } },
   ui: { control: { button, text, group } },
-  'llm-guide': { Doclet,
+  'llm-guide': { Doclet, Booklet,
+    booklet: { booklet},
     doclet: { howTo, principle },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation },
@@ -888,5 +889,11 @@ button(toUpperCase('save'), runActions([...]))  // data<common> can fill ui titl
         comparison('traditional programming', { advantage: 'declarative composition with type safety across domains' })
       ]
     })
+  )
+})
+
+Booklet('tgpPrimer', {
+  impl: booklet(
+    'tgpBasics,workingWithCommonDSL,profiles,compDefExplanation,tgpTerminologyErrors,understandingDSLs,argsPosition,argsByValue,componentsWithinComponents'
   )
 })

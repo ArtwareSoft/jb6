@@ -7,7 +7,7 @@ const {
   },
   tgp: { TgpType, DefComponents },
 } = dsls
-const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript } = coreUtils
+const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript, waitForInnerElements } = coreUtils
 
 const Provider = TgpType('provider', 'llm-api')
 const Model = TgpType('model', 'llm-api')
@@ -35,7 +35,7 @@ ReactiveSource('llm.completionsRx', {
         }
       })
       ;(async ()=>{
-        const messages = prompt()
+        const messages = await waitForInnerElements(prompt())
   
         const key = 'llm' + calcHash(model.name + JSON.stringify(messages))        
         if (useLocalStorageCache && globalThis.localStorage && localStorage.getItem(key)) {
@@ -115,11 +115,12 @@ ReactiveSource('llm.completionsRx', {
 })
 
 Prompt('prompt', {
-  type: 'prompt',
   params: [
     {id: 'elems', type: 'prompt[]', composite: true}
   ],
-  impl: (ctx,{elems}) => elems
+  impl: async (ctx,{elems}) => { 
+    debugger; return waitForInnerElements(elems) 
+  }
 })
 
 Prompt('system', {

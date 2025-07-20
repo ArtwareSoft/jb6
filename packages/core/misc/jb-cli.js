@@ -6,8 +6,18 @@ import '../utils/jb-core.js'
 import '../utils/tgp.js'
 const { coreUtils } = jb
 
+const {
+  common: { Data }
+} = jb.dsls
 const { logException, logError, isNode } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript})
+
+Data('bash', {
+  params: [
+    {id: 'script', as: undefined}
+  ],
+  impl: (ctx, {script}) => runBashScript(script)
+})
 
 async function runCliInContext(script, {requireNode, importMap} = {}) {
   let res = {}
@@ -83,7 +93,6 @@ async function runNodeCli(script, {importMap} = {}) {
     })
   })
 }
-
 
 async function runNodeCliViaJbWebServer(script, {importMap, expressUrl = ''} = {}) {
   try { 

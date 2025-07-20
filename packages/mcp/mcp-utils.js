@@ -8,7 +8,6 @@ const {
   
 // Define core types  
 const Tool = TgpType('tool', 'mcp')
-const Prompt = TgpType('prompt', 'mcp')
   
 export async function startMcpServer() {
   const { Server } = await import("@modelcontextprotocol/sdk/server/index.js")

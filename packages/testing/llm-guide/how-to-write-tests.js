@@ -7,7 +7,8 @@ const {
   tgp: { Const }, 
   common: { data: { pipeline, splitByPivot, enrichGroupProps, asIs }, boolean: { equals } },
   test: { Test, test: { dataTest } },
-  'llm-guide': { Doclet,
+  'llm-guide': { Doclet, Booklet,
+    booklet: { booklet },
     doclet: { principle },
     guidance: { solution, doNot, bestPractice }, 
     explanationPoint: { explanation }
@@ -164,3 +165,6 @@ Doclet('testCoveragePyramid', {
   })
 })
 
+Booklet('howToWriteTests', {
+  impl: booklet('testBehaviorNotImplementation,extractKeyValues,testDevelopmentWorkflow,smallFocusedTests,minimalTestData,testCoveragePyramid')
+})
