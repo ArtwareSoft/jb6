@@ -1,7 +1,7 @@
 import { dsls, coreUtils } from '@jb6/core'
 
 const { resolveCompArgs, resolveProfileArgs, resolveProfileTypes, sysProps, resolveProfileTop, OrigArgs,
-  jbComp, asJbComp, isPrimitiveValue, asArray, calcValue, compIdOfProfile, compByFullId } = coreUtils
+  jbComp, asJbComp, isPrimitiveValue, asArray, calcValue, compIdOfProfile, compByFullId, resolveDelayed } = coreUtils
 const {
   common: { Data }
 } = dsls
@@ -22,8 +22,9 @@ const emptyLineWithSpaces = Array.from(new Array(200)).map(_=>' ').join('')
 
 function prettyPrintComp(comp,settings={}) {
   const { tgpModel } = settings
+  comp = comp[asJbComp] ? comp[asJbComp] : comp
   const originalParams = comp.params ? (comp.params || []).map(p=>({...p})) : undefined
-  const { type, dsl } = tgpModel.dsls.tgp.comp[comp.$]
+  const { type, dsl } = typeof comp.$ == 'string' ? tgpModel.dsls.tgp.comp[comp.$] : comp
   Object.assign(comp, {type,dsl})
   resolveProfileTop(comp)
   delete comp.type; delete comp.dsl
@@ -208,6 +209,8 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     const {forceByName, parentParam, posInArray} = settings
     if (noMacros)
       return asIsProps(profile,path)
+    if (profile.$unresolvedArgs)
+      resolveProfileArgs(profile)
 
     if (profile.$ == 'asIs') {
       const toPrint = profile[OrigArgs][0]
@@ -239,7 +242,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     const comp = profile.$ instanceof jbComp ? profile.$ : compByFullId(fullptId, tgpModel)
     if (!comp) 
       return asIsProps(profile,path)
-    const id = fullptId == 'comp<tgp>tgpComp' ? profile.$ : fullptId.split('>').pop()
+    const id = fullptId == 'comp<tgp>tgpComp' ? (profile.$?.id || profile.$) : fullptId.split('>').pop()
     if (typeof id != 'string') debugger
 
     const params = (comp.params || []).slice(0)

@@ -1,6 +1,7 @@
 import { dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/testing'
 import '@jb6/llm-guide'
+import '@jb6/core/misc/pretty-print.js'
 
 const { 
   tgp: { Const, TgpType, 
@@ -15,6 +16,7 @@ const {
     test: { dataTest }
   }
 } = dsls
+const { prettyPrintComp } = coreUtils
 const { math } = ns
 
 Const('person', {
@@ -254,5 +256,14 @@ Test('expTest.expWithArrayVar', {
     ],
     calculate: '%$children[0]/name%',
     expectedResult: equals('Bart')
+  })
+})
+
+Test('prettyPrintTest.comp', {
+  impl: dataTest({
+    calculate: () => prettyPrintComp(dsls.test.test['coreTest.asyncVar'], {tgpModel: jb} ),
+    expectedResult: equals(asIs(`tgpComp('coreTest.asyncVar', {
+  impl: dataTest(pipeline(Var(), Var(), '%$a%,%$b%'), equals('3,5'))
+})`))
   })
 })

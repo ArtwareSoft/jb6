@@ -213,4 +213,4 @@ class paramRunner {
     }
 }
 
-Object.assign(jb.coreUtils, {run, Ctx, jbComp})
+Object.assign(jb.coreUtils, {run, Ctx, jbComp, resolveDelayed})
