@@ -17,7 +17,7 @@ const {
 Test('mcpTest.scrambleText', {
   HeavyTest: true,
   impl: mcpToolTest('scrambleText', asIs({texts: 'hello world##test text'}), {
-    expectedResult: equals('kVmbpZWZk5Wd##\nkVmbpZWZk5Wd', '%stdout/result.content/text%')
+    expectedResult: equals('=QGby92dg8GbsVGa##\n0hXZ0BCdzVGd', '%stdout/result/content/text%')
   })
 })
 

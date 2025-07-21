@@ -39,9 +39,7 @@ Test('snippet.ns', {
 
 Test('snippet.probe', {
   HeavyTest: true,
-  impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/in/data/a%'), {
-    probe: true
-  })
+  impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/in/data/a%'))
 })
 
 Test('snippet.filePath', {

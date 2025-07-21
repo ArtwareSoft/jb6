@@ -51,7 +51,6 @@ jb6_mcp:runSnippet({
 // Debug with probe markers
 jb6_mcp:runSnippet({
   compText: "pipeline('%$data%', filter('%active%'), __)",  // __ shows data at this point
-  probe: "true",
   setupCode: "Const('data', [{active: true}])",
   filePath: "packages/common/test.js", 
   repoRoot: "/home/shaiby/projects/jb6"
@@ -106,7 +105,6 @@ jb6_mcp:evalJs({
           syntax('filePath', 'Always relative path from repoRoot'), 
           syntax('compText', 'TGP component expression to execute'),
           syntax('setupCode', 'Context setup like Const() definitions'),
-          syntax('probe: "true"', 'Enable debugging mode to see data flow'),
           syntax('__', 'Probe marker shows intermediate data at that point'),
           whenToUse('Use exploration tools first, then testing, then modification for safe development')
         ]
@@ -150,7 +148,6 @@ jb6_mcp:runSnippet({
 // 2. Debug step by step with probes
 jb6_mcp:runSnippet({
   compText: "pipeline('%$testData%', transform(), __)",
-  probe: "true",
   setupCode: "Const('testData', [1, 2, 3])",
   filePath: "packages/common/test.js",
   repoRoot: "/home/shaiby/projects/jb6"
@@ -261,16 +258,6 @@ jb6_mcp:runSnippet({
   repoRoot: "/home/shaiby/projects/jb6"
 })
 
-// ❌ Probe markers not working
-// Problem: Forgot to set probe parameter
-// Solution: Add probe: "true"
-jb6_mcp:runSnippet({
-  compText: "pipeline('%$data%', filter('%active%'), __)",
-  probe: "true",  // ✅ Required for __ markers to work
-  filePath: "packages/common/test.js",
-  repoRoot: "/home/shaiby/projects/jb6"
-})
-
 // ❌ "Old component text not found" in replaceComponent
 // Problem: Text doesn't match exactly
 // Solution: Get exact text first
@@ -311,7 +298,6 @@ jb6_mcp:runSnippet({
 // Step 3: Combine with probe markers
 jb6_mcp:runSnippet({
   compText: "pipeline('%$data%', filter('%active%'), __)",
-  probe: "true",
   setupCode: "Const('data', [{active: true}, {active: false}])",
   filePath: "packages/common/debug.js", 
   repoRoot: "/home/shaiby/projects/jb6"

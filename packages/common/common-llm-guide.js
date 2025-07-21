@@ -450,11 +450,9 @@ Doclet('learnCommonDsl', {
             setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
             filePath: 'packages/common/common-tests.js',
             repoRoot: '/home/shaiby/projects/jb6',
-            probe: 'true'
           }),
           points: [
             explanation('Probe (__) reveals data at any point - your debugging superpower'),
-            syntax('probe: "true"', 'enables probe mode in runSnippet'),
             syntax('__', 'place anywhere in pipeline to inspect data flow'),
             methodology('Use systematically: verify input, test each operation, confirm output'),
             whenToUse('debugging complex pipelines, learning new operations, validating data transformations'),
@@ -473,13 +471,6 @@ Doclet('learnCommonDsl', {
   )
 })
 
-
-
-
-
-
-
-// Common DSL Booklet - Comprehensive guide to common DSL components
 Booklet('commonDslBooklet', {
   impl: booklet(
     'countUnder30,complexFilter,formatAndJoin,nestedPipeline,variableUsage,learnCommonDsl'

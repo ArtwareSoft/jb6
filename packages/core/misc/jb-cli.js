@@ -82,10 +82,10 @@ async function runNodeCli(script, {importMap} = {}) {
       if (code !== 0) {
         const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
         logException(error, 'error in run node cli', {cmd, importMap, stdout: out})
-        return resolve({error, cmd, importMap})
+        return resolve({error})
       }
       try {
-        resolve({result: JSON.parse(out), cmd, importMap})
+        resolve({result: JSON.parse(out)})
       } catch (e) {
         logException(e, 'error in run node cli', {cmd, importMap, stdout: out})
         resolve({error: e, cmd, importMap})

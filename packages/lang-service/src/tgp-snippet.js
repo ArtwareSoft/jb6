@@ -6,24 +6,16 @@ const { calcProfileActionMap } = langServiceUtils
 const { unique, calcTgpModelData, studioAndProjectImportMaps, runCliInContext,pathJoin,pathParent,absPathToUrl } = coreUtils
 Object.assign(coreUtils,{runSnippetCli})
 
-async function runSnippetCli({compText: _compText, filePath, setupCode = '', packages = [], probe } = {}) {
+async function runSnippetCli({compText: _compText, filePath, setupCode = '', packages = [] } = {}) {
     const { projectImportMap } = await studioAndProjectImportMaps(filePath)
 
     const tgpModel = await calcTgpModelData(filePath) // todo: support packages
     if (tgpModel.error) return { error: tgpModel.error }
     const origCompText = (_compText[0]||'').match(/[A-Z]/) ? _compText : `Data('noName',{impl: ${_compText}})`    
-    const isProbeMode = probe === true || probe === 'true'
-    const hasProbeMarkers = origCompText.split('__').length > 1
-    
-    if (isProbeMode && !hasProbeMarkers) {
-      return { 
-        error: 'probe: true requires __ marker in expression. Example: pipeline(data, filter(condition)__)', 
-        compText: origCompText, probe, origCompText 
-      }
-    }
-    
+    const isProbeMode = origCompText.split('__').length > 1
+        
     let compText = origCompText, parts
-    if (isProbeMode && hasProbeMarkers) {
+    if (isProbeMode) {
       parts = origCompText.split('__')
       if (parts.length === 2)
         parts[0] = parts[0].replace(/,\s*$/, '')
@@ -32,7 +24,7 @@ async function runSnippetCli({compText: _compText, filePath, setupCode = '', pac
     
     const {dslTypeId, path: probePath, comp, error} = parseProfile({compText, tgpModel, inCompOffset : parts?.[0].length})
     if (error)
-      return { error, compText, probe, origCompText }
+      return { error, compText, isProbeMode, origCompText }
     if (!comp.id)
       return { error : 'runSnippet: compText must be wrapped with compDef of its type. e.g. Test("my comp", {impl: dataTest(...)}) ' }
     const dslsSection = calcDslsSection([comp])
@@ -70,7 +62,7 @@ import '@jb6/core/misc/probe.js'
 
     try {
       const result = await runCliInContext(script, {importMap: projectImportMap, requireNode: true})
-      return { ...result, probePath, script }
+      return result
     } catch (error) {
       return { error, script, probePath }
     }

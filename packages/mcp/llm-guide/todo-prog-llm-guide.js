@@ -477,7 +477,6 @@ jb6_mcp:runSnippet({
 // Test with probe to see data flow:
 jb6_mcp:runSnippet({
   compText: "pipeline(mockTodos, filterTodos('%%', 'high'), __)",
-  probe: "true",
   setupCode: "Const('mockTodos', [{priority: 'high'}, {priority: 'low'}])",
   filePath: "packages/mcp/test.js",
   repoRoot: "/home/shaiby/projects/jb6"

@@ -111,7 +111,6 @@ jb6_mcp:runSnippet({
 // Step 2: Debug with probes if needed
 jb6_mcp:runSnippet({
   compText: "pipeline('%$people%', filter('%age% < 30'), __)",  // __ shows data here
-  probe: "true",
   filePath: "packages/common/test.js",
   repoRoot: "/home/shaiby/projects/jb6"  
 })
