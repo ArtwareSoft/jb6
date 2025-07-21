@@ -30,10 +30,10 @@ Test('mcpTest.tgpModel', {
   })
 })
 
-Test('mcpTest.includeBooklet', {
+Test('mcpTest.bookletsContent', {
   HeavyTest: true,
   impl: mcpToolTest({
-    tool: 'includeBooklet',
+    tool: 'bookletsContent',
     args: asIs({repoRoot: '/home/shaiby/projects/jb6', booklets: 'tgpPrimer'}),
     expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
   })

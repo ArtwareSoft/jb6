@@ -6,8 +6,9 @@ import '@jb6/llm-guide'
 const { 
   tgp: { Const, var: { Var } }, 
   common: { data: { pipeline, filter, count, scrambleText }, Boolean: { and } },
-  'llm-guide': { Doclet,
+  'llm-guide': { Doclet, Booklet,
     doclet: { howTo },
+    booklet: { booklet },
     guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology },
     problemStatement: {problem}
@@ -475,3 +476,12 @@ Doclet('learnCommonDsl', {
 
 
 
+
+
+
+// Common DSL Booklet - Comprehensive guide to common DSL components
+Booklet('commonDslBooklet', {
+  impl: booklet(
+    'countUnder30,complexFilter,formatAndJoin,nestedPipeline,variableUsage,learnCommonDsl'
+  )
+})
