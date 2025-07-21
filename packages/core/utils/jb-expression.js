@@ -3,7 +3,7 @@ import './core-utils.js'
 const { coreUtils } = jb
 const { log, logError, isRefType, resolveFinishedPromise, toString, toNumber, RT_types, calcValue } = coreUtils
 
-const isRef = v => jb.dbUtils ? jb.dbUtils.isRef(v) : false
+const isRef = v => jb.dbUtils?.isRef(v)
 const objHandler = v => jb.dbUtils ? jb.dbUtils.objHandler(v) : null
 
 Object.assign(coreUtils, {calcExpression: calc, calcVar, calcBool})

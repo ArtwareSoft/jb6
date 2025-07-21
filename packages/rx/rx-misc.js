@@ -1,9 +1,8 @@
 import { coreUtils, dsls, ns, jb } from '@jb6/core'
-import '../rx-core.js'
 
 const { log, logError, isPromise, calcPath } = coreUtils
 const {
-  tgp: { TgpType },
+  tgp: { TgpType, any: {If } },
   common: { Data, Action, Boolean, ReactiveOperator, ReactiveSource,
     action: { writeValue }, 
   },  
@@ -234,7 +233,6 @@ ReactiveSink('sink.subscribe', {
 const { sink } = ns
 
 ReactiveSink('sink.action', {
-  type: 'reactive-sink',
   description: 'subscribe',
   params: [
     {id: 'action', type: 'action', dynamic: true, mandatory: true}
@@ -242,13 +240,12 @@ ReactiveSink('sink.action', {
   impl: (ctx,{action}) => jb.rxUtils.subscribe(ctx2 => { ctx; return action(ctx2) })
 })
 
-ReactiveSink('sink.data', {
-  type: 'reactive-sink',
-  params: [
-    {id: 'Data', as: 'ref', dynamic: true, mandatory: true}
-  ],
-  impl: sink.action(writeValue('%$Data()%', '%%'))
-})
+// ReactiveSink('sink.data', {
+//   params: [
+//     {id: 'Data', as: 'ref', dynamic: true, mandatory: true}
+//   ],
+//   impl: sink.action(writeValue('%$Data()%', '%%'))
+// })
 
 Object.assign(jb.rxUtils, {
   pipe(..._cbs) {

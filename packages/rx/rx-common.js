@@ -1,5 +1,4 @@
 import { coreUtils, dsls, ns, jb } from '@jb6/core'
-import '../rx-core.js'
 
 const { toArray, logError } = coreUtils
 const {
@@ -36,7 +35,7 @@ Subject('subject', {
     }
 })
 
-ReactiveSource('subject', {
+ReactiveSource('subjectSource', {
   params: [
     {id: 'subject', type: 'subject', mandatory: true}
   ],

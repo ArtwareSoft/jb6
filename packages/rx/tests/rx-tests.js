@@ -1,16 +1,19 @@
 import { coreUtils, dsls, ns, jb } from '@jb6/core'
 import '@jb6/rx'
-//import '@jb6/rx/rx-common.js'
-//import '@jb6/rx/rx-misc.js'
-
+import '@jb6/rx/rx-common.js'
+import '@jb6/rx/rx-misc.js'
 import '@jb6/testing'
+
 
 const { rxUtils } = jb
 const { log, logError, isPromise, calcPath } = coreUtils
 const {
-  tgp: { TgpType },
-  common: { Data, Action, Boolean,
-    data: { pipeline, filter, join, property, obj, delay, asIs }, 
+  tgp: { TgpType, var: { Var } },
+  common: { Data, Action, Boolean, ReactiveSource,
+    action: { runActions},
+    'reactive-source' : { interval, subjectSource, merge, mergeConcat },
+    'reactive-operator' : {},
+    data: { pipeline, filter, join, property, obj, delay, asIs, pipe, list, split }, 
     Boolean: { contains, equals, and },
     Prop: { prop }
   },
@@ -18,9 +21,30 @@ const {
     test: { dataTest}
   }
 } = dsls
-const { rx } = ns
+const { rx, subject } = ns
 
-/*
+Test('rxTest.pipeWithObservable', {
+  impl: dataTest(pipe(ctx => rxUtils.fromIter([1,2]), '%%a', join()), equals('1a,2a'))
+})
+  
+Test('rxTest.mapPromise', {
+  impl: dataTest(rx.pipe(rx.data(0), rx.mapPromise(({data}) => coreUtils.delay(1,data+2))), equals('2'))
+})
+
+Test('rxTest.doPromise', {
+  impl: dataTest({
+    calculate: rx.pipe(rx.data(1), rx.doPromise(delay(1, '-%%-')), rx.mapPromise(delay(1, '-%%-'))),
+    expectedResult: equals('-1-')
+  })
+})
+
+Test('rxTest.pipe', {
+  impl: dataTest({
+    calculate: pipe(rx.pipe(rx.data(list('1','2','3','4')), rx.map('-%%-')), join(',')),
+    expectedResult: equals('-1-,-2-,-3-,-4-')
+  })
+})
+
 Test('rxTest.toArray.empty', {
   impl: dataTest(rx.pipe(rx.data(list()), rx.toArray()), equals([]))
 })
@@ -80,14 +104,14 @@ Test('rxTest.TakeWhile', {
   impl: dataTest(pipe(rx.pipe(interval(1), rx.takeWhile('%%<2')), join(',')), equals('0,1'))
 })
 
-Test('rxTest.ActionPulls', {
-  impl: dataTest({
-    vars: Var('out', obj()),
-    calculate: '%$out/x%',
-    expectedResult: equals('1'),
-    runBefore: rx.pipe(rx.data(1), rx.map('%%'), sink.data('%$out/x%'))
-  })
-})
+// Test('rxTest.ActionPulls', {
+//   impl: dataTest({
+//     vars: Var('out', obj()),
+//     calculate: '%$out/x%',
+//     expectedResult: equals('1'),
+//     runBefore: rx.pipe(rx.data(1), rx.map('%%'), sink.data('%$out/x%'))
+//   })
+// })
 
 Test('rxTest.TakeWhileIter', {
   impl: dataTest(pipe(rx.pipe(rx.data([0,1,2,3]), rx.takeWhile('%%<2')), join(',')), equals('0,1'))
@@ -198,7 +222,7 @@ Test('rxTest.rawflatMapPassiveActive', {
 Test('rxTest.rawConcatMapPassiveActive', {
   impl: dataTest({
     calculate: () => { const {interval, take,concatMap,fromPromise,pipe,toPromiseArray} = rxUtils
-      return toPromiseArray(pipe(fromPromise(()=>utils.delay(1)), concatMap(()=> pipe(interval(1), take(2)) ))).then(x=>x.join(','))
+      return toPromiseArray(pipe(fromPromise(()=>coreUtils.delay(1)), concatMap(()=> pipe(interval(1), take(2)) ))).then(x=>x.join(','))
     },
     expectedResult: equals('0,1')
   })
@@ -253,7 +277,7 @@ Test('rxTest.flatMapActiveActive', {
 
 Test('rxTest.mapPromiseActiveSource', {
   impl: dataTest({
-    calculate: rx.pipe(interval(1), rx.take(1), rx.mapPromise(({data}) =>utils.delay(1,data+2))),
+    calculate: rx.pipe(interval(1), rx.take(1), rx.mapPromise(({data}) =>coreUtils.delay(1,data+2))),
     expectedResult: equals(2)
   })
 })
@@ -262,7 +286,7 @@ Test('rxTest.rawMapPromiseTwice', {
   impl: dataTest({
     calculate: ctx => { 
       const {fromIter,pipe,mapPromise,toPromiseArray} = rxUtils
-      return pipe(fromIter([0]), mapPromise(data =>utils.delay(1,data+2)), mapPromise(data =>utils.delay(1,data+2)))
+      return pipe(fromIter([0]), mapPromise(data =>coreUtils.delay(1,data+2)), mapPromise(data =>coreUtils.delay(1,data+2)))
     },
     expectedResult: equals(4)
   })
@@ -388,7 +412,7 @@ Test('rxTest.flatMap.timing', {
 Test('rxTest.RawConcatMapBug1', {
   impl: dataTest({
     calculate: ctx => { const {interval,take,pipe,concatMap,fromPromise} = rxUtils
-      return pipe(interval(1),take(1), concatMap(data => fromPromise(utils.delay(1,data+2) )))
+      return pipe(interval(1),take(1), concatMap(data => fromPromise(coreUtils.delay(1,data+2) )))
     },
     expectedResult: equals('2')
   })
@@ -399,8 +423,8 @@ Test('rxTest.RawFlatMapBug1', {
     calculate: ctx => { 
       const {interval,take,pipe,flatMap,fromPromise} = rxUtils
       return pipe(interval(1),take(1), 
-        flatMap(data => fromPromise(utils.delay(1,data+2) )), 
-        flatMap(data => fromPromise(utils.delay(1,data+2) )))
+        flatMap(data => fromPromise(coreUtils.delay(1,data+2) )), 
+        flatMap(data => fromPromise(coreUtils.delay(1,data+2) )))
     },
     expectedResult: equals(4)
   })
@@ -411,21 +435,21 @@ Test('rxTest.doPromiseActiveSource', {
     calculate: rx.pipe(
       interval(1),
       rx.take(1),
-      rx.doPromise(({data})=>utils.delay(1,data *10)),
-      rx.mapPromise(({data}) =>utils.delay(1,data+2))
+      rx.doPromise(({data})=>coreUtils.delay(1,data *10)),
+      rx.mapPromise(({data}) =>coreUtils.delay(1,data+2))
     ),
     expectedResult: equals('2')
   })
 })
 
-Test('rxTest.subjectReplay', {
-  impl: dataTest({
-    vars: Var('subj', rx.subject({ replay: true })),
-    calculate: rx.pipe(subject('%$subj%')),
-    expectedResult: equals('1'),
-    runBefore: runActions(subject.notify('%$subj%', '1'), subject.complete('%$subj%'))
-  })
-})
+// Test('rxTest.subjectReplay', {
+//   impl: dataTest({
+//     vars: Var('subj', rx.subject({ replay: true })),
+//     calculate: rx.pipe(subjectSource('%$subj%')),
+//     expectedResult: equals('1'),
+//     runBefore: runActions(subject.notify('%$subj%', '1'), subject.complete('%$subj%'))
+//   })
+// })
 
 Test('rxTest.throwPromiseRejection', {
   impl: dataTest({
@@ -482,45 +506,44 @@ Test('rxTest.throwErrorInterval', {
   })
 })
 
-Test('rxTest.retrySrc', {
-  impl: dataTest({
-    vars: [
-      Var('counters', () => ({ counter: 0, retries: 0})),
-      Var('interval', 3),
-      Var('times', 10)
-    ],
-    calculate: rx.pipe(
-      rx.data([1,2]),
-      rx.var('inp'),
-      rx.concatMap(
-        rx.pipe(
-          interval('%$interval%'),
-          rx.throwError('%%>%$times%', 'retry failed after %$times% times'),
-          rx.map('%$inp%'),
-          rx.map(({data},{counters}) => {
-          if (counters.counter > data) {
-            counters.counter = 0
-            return 'done'
-          }
-          counters.counter++
-          counters.retries++
-          return null // failed - will retry
-
-        }),
-          rx.filter('%%'),
-          rx.take(1)
-        )
-      )
-    ),
-    expectedResult: '%$counters/retries%==5'
-  })
-})
+// Test('rxTest.retrySrc', {
+//   impl: dataTest({
+//     vars: [
+//       Var('counters', () => ({ counter: 0, retries: 0})),
+//       Var('interval', 3),
+//       Var('times', 10)
+//     ],
+//     calculate: rx.pipe(
+//       rx.data([1,2]),
+//       rx.var('inp'),
+//       rx.concatMap(
+//         rx.pipe(
+//           interval('%$interval%'),
+//           rx.throwError('%%>%$times%', 'retry failed after %$times% times'),
+//           rx.map('%$inp%'),
+//           rx.map(({data},{counters}) => {
+//           if (counters.counter > data) {
+//             counters.counter = 0
+//             return 'done'
+//           }
+//           counters.counter++
+//           counters.retries++
+//           return null // failed - will retry
+//         }),
+//           rx.filter('%%'),
+//           rx.take(1)
+//         )
+//       )
+//     ),
+//     expectedResult: '%$counters/retries%==5'
+//   })
+// })
 
 Test('rxTest.emptyVar', {
   impl: dataTest(rx.pipe(rx.data(1), rx.var('')), '%%==1')
 })
 
-const paramedRxPipe = RXSource({
+const paramedRxPipe = ReactiveSource({
   params: [
     {id: 'source', type: 'reactive-source'},
     {id: 'op', type: 'reactive-operator'}
@@ -532,24 +555,24 @@ Test('rxTest.dynamicParam', {
   impl: dataTest(rx.pipe(paramedRxPipe(rx.data(1), rx.map('a%%'))), '%%==a1')
 })
 
-Test('rxTest.snifferBug', {
-  impl: dataTest({
-    vars: [
-      Var('a', () => ({ val: 1}))
-    ],
-    calculate: '%$a/val%',
-    expectedResult: '%%==2',
-    runBefore: rx.pipe(rx.data(1), rx.map('2'), sink.data('%$a/val%'))
-  })
-})
+// Test('rxTest.snifferBug', {
+//   impl: dataTest({
+//     vars: [
+//       Var('a', () => ({ val: 1}))
+//     ],
+//     calculate: '%$a/val%',
+//     expectedResult: '%%==2',
+//     runBefore: rx.pipe(rx.data(1), rx.map('2'), sink.data('%$a/val%'))
+//   })
+// })
 
 Test('rxTest.race', {
-  impl: dataTest(rx.pipe(source.merge(rx.pipe(rx.data('a'), rx.delay(1)), rx.data('b')), rx.take(1)), '%%==b')
+  impl: dataTest(rx.pipe(merge(rx.pipe(rx.data('a'), rx.delay(1)), rx.data('b')), rx.take(1)), '%%==b')
 })
 
 Test('rxTest.mergeConcat', {
   impl: dataTest({
-    calculate: pipe(rx.pipe(source.mergeConcat(rx.pipe(rx.data('a'), rx.delay(1)), rx.data('b')), rx.take(2)), join(',')),
+    calculate: pipe(rx.pipe(mergeConcat(rx.pipe(rx.data('a'), rx.delay(1)), rx.data('b')), rx.take(2)), join(',')),
     expectedResult: '%%==a,b'
   })
 })
@@ -569,21 +592,21 @@ Test('rxTest.timeoutLimit.notActivated', {
   impl: dataTest(rx.pipe(rx.data(1), rx.delay(1), rx.timeoutLimit(100, 'timeout error'), rx.catchError()), '%%==1')
 })
 
-Test('rxTest.fork', {
-  impl: dataTest({
-    vars: [Var('a', obj())],
-    calculate: pipe(
-      rx.pipe(
-        rx.data(list(1,2,3,4)),
-        rx.fork(rx.take(1), sink.data('%$a/fork%')),
-        rx.skip(1),
-        rx.take(1)
-      ),
-      join(',')
-    ),
-    expectedResult: equals('%%,%$a/fork%', '2,1')
-  })
-})
+// Test('rxTest.fork', {
+//   impl: dataTest({
+//     vars: [Var('a', obj())],
+//     calculate: pipe(
+//       rx.pipe(
+//         rx.data(list(1,2,3,4)),
+//         rx.fork(rx.take(1), sink.data('%$a/fork%')),
+//         rx.skip(1),
+//         rx.take(1)
+//       ),
+//       join(',')
+//     ),
+//     expectedResult: equals('%%,%$a/fork%', '2,1')
+//   })
+// })
 
 Test('rxTest.resource', {
   impl: dataTest({
@@ -599,59 +622,3 @@ Test('rxTest.resource', {
     expectedResult: equals('1-1,2-3,3-6')
   })
 })
-*/
-
-/*
-Test('rxTest.queue.add', {
-  impl: dataTest({
-    calculate: pipe(
-      rx.pipe(
-        rx.data(1),
-        rx.resource('q1', rx.queue(list(1,2,3))),
-        rx.do(runActions(delay(1), action.addToQueue('%$q1%', 4))),
-        rx.flatMap(source.queue('%$q1%')),
-        rx.take(4)
-      ),
-      join(',')
-    ),
-    expectedResult: equals('1,2,3,4')
-  })
-})
-
-Test('rxTest.queue.remove', {
-  impl: dataTest({
-    calculate: pipe(
-      rx.pipe(
-        rx.data(1),
-        rx.resource('q1', rx.queue(list(1,2,3))),
-        rx.do(action.removeFromQueue('%$q1%', 2)),
-        rx.flatMap(source.queue('%$q1%')),
-        rx.take(2),
-        rx.log('test')
-      ),
-      join(',')
-    ),
-    expectedResult: equals('1,3')
-  })
-})
-
-
-Test('rxTest.fork.cleanActiveSource', {
-  impl: dataTest({
-    vars: [Var('a', obj())],
-    calculate: pipe(
-      rx.pipe(
-        interval(1),
-        rx.log('test 0'),
-        rx.fork(rx.take(1), sink.data('%$a/fork%', { data: '%$a/fork%' })),
-        rx.skip(1),
-        rx.take(1),
-        rx.delay(1)
-      ),
-      join(',')
-    ),
-    expectedResult: and(() => jb.spy.search('test 0').length == 2, equals('%%,%$a/fork%', '1,0')),
-    spy: 'test'
-  })
-})
-*/

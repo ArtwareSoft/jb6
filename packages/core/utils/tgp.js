@@ -1,7 +1,7 @@
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 const { coreUtils } = jb
-const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray } = coreUtils
+const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError } = coreUtils
 
 Object.assign(coreUtils, { globalsOfType, ptsOfType })
 
@@ -222,4 +222,16 @@ Action('runActions', {
   impl: (ctx, {actions}) => asArray(actions).reduce((pr,_,index) => pr.finally(() => ctx.runInnerArg(actions,index)), Promise.resolve())
 })
 
-
+// Action('writeValue', {
+//   params: [
+//     {id: 'to', as: 'ref', mandatory: true},
+//     {id: 'value', mandatory: true},
+//   ],
+//   impl: (ctx,to,value) => {
+//     const val = calcValue(value)
+//     if (isPromise(val))
+//       return Promise.resolve(val).then(_val=>jb.dbUtils?.writeValue(to,_val,ctx))
+//     else
+//       jb.dbUtils?.writeValue(to,val,ctx)
+//   }
+// })
