@@ -5,6 +5,7 @@
     "exports": {
       ".": "./index.js",
       "./skills.js": "./skills.js",
+      "./llm-api-mcp-tools.js": "./llm-api-mcp-tools.js",
       "./tests/*.js": "./tests/*.js"
     },
     "dependencies": {

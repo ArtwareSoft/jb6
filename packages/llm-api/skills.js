@@ -7,7 +7,7 @@ import '@jb6/lang-service'
 const { studioAndProjectImportMaps, calcRepoRoot, calcTgpModelData, logError, fetchByEnv} = coreUtils
 const { 
   common: { Data, data : { pipe, bash } },
-  tgp: { TgpType },
+  tgp: { TgpType, any: { typeAdapter } },
   'llm-api' : { Prompt,
     prompt: { user, system, prompt } 
   },
@@ -31,15 +31,15 @@ BookletAndModel('bookletAndModel', {
 
 Prompt('includeBooklet', {
   params: [
-    {id: 'booklet', as: 'text'}
+    {id: 'booklets', as: 'text', description: 'comma delimited names'}
   ],
-  impl: async (ctx, {booklet}) => {
+  impl: async (ctx, {booklets}) => {
       const repoRoot = await calcRepoRoot()
       const { llmGuideFiles, projectImportMap } = await studioAndProjectImportMaps(repoRoot)
       const tgpModel = await calcTgpModelData(llmGuideFiles)
-      const notFound = booklet.split(',').filter(d=>!tgpModel.dsls['llm-guide'].booklet[d]).join(', ')
+      const notFound = booklets.split(',').filter(d=>!tgpModel.dsls['llm-guide'].booklet[d]).join(', ')
       notFound && logError(`includeBooklet can not find booklet ${notFound}`)
-      const booklets = await Promise.all(booklet.split(',').map(b=>tgpModel.dsls['llm-guide'].booklet[b]).filter(Boolean).map(async bookletCmp=>{
+      const bookletsText = await Promise.all(booklets.split(',').map(b=>tgpModel.dsls['llm-guide'].booklet[b]).filter(Boolean).map(async bookletCmp=>{
         const loc = bookletCmp.$location
         const src = await fetchByEnv(loc.path, projectImportMap.serveEntries)
         const doclets = src.split('\n').slice(loc.line, loc.to.line).join('').match(/booklet\(([^)]*)\)/)[1].split(',').map(x=>x.trim()).map(x=>x.replace("'",'')).filter(Boolean)
@@ -52,7 +52,8 @@ Prompt('includeBooklet', {
         }))
         return docs
       }))
-      return booklets.flatMap(x=>x).join('\n\n')
+      const content = bookletsText.flatMap(x=>x).join('\n\n')
+      return ({role: 'system', content})
   }
 })
 
@@ -60,7 +61,10 @@ Prompt('includeFiles', {
   params: [
     {id: 'fileNames', as: 'string', description: 'separated by comma'}
   ],
-  impl: system(bash(`for f in $(echo '%$fileNames%' | tr ',' ' '); do printf "==> %s <==\n" "$f"; cat "$f"; done`))
+  impl: typeAdapter('data<common>', pipe(
+    bash(`for f in $(echo '%$fileNames%' | tr ',' ' '); do printf "==> %s <==\n" "$f"; cat "$f"; done`),
+    ({data}) => ({role: 'system', content: data})
+  ))
 })
 
 Skill('skill', {
@@ -99,3 +103,4 @@ BenchmarkResult('benchmarkResult', {
         {id: 'date', as: 'number', madatory: true},
     ]
 })
+

@@ -37,7 +37,8 @@ const claudeCode = Provider('claudeCode', {
   impl: providerByCli({
     name: 'anthropic',
     cli: `mkdir -p /tmp/clean && cd /tmp/clean && echo '%$prompt%' | claude -p --model %$model% --output-format stream-json --verbose`,
-    processResult: ({data}) => JSON.stringify(data.split('\n').filter(Boolean).map(x=>JSON.parse(x)).filter(x=>x.type == 'result'))
+    processResult: ({data}) => data.split('\n').filter(Boolean).map(x=>JSON.parse(x)).map(x=>x.message).filter(Boolean).filter(x=>x.type == 'message').flatMap(x=>x.content).map(x=>x.text).filter(Boolean).join('##\n')
+      //JSON.stringify(data.split('\n').filter(Boolean).map(x=>JSON.parse(x)).filter(x=>x.type == 'result' || x.type == 'message'))
   })
 })
 
@@ -207,17 +208,17 @@ Model('opus_4', {
 
 Model('claude3Haiku', {
   description: 'medium(0.25~1.25) slow(79), cost-effective',
-  impl: model('claude-3-haiku-20240307', { 
-    price: [0.25, 1.25], // Validated pricing
-    provider: anthropic(),
+  impl: model('claude-3-5-haiku-20241022', {
+    price: [0.25,1.25],
+    provider: claudeCode(),
     bestFor: 'Fast, cost-effective tasks: customer support, simple analysis, basic content generation, quick Q&A, summarization',
     doNotUseFor: 'Complex reasoning, detailed analysis, creative writing, advanced coding, tasks requiring deep understanding',
     reasoning: false,
-    factualAccuracy: 73.8, // MMLU validated from search results
-    codingScore: 75.9, // HumanEval validated from search results
+    codingScore: 75.9,
     contextWindow: 200000,
-    responseSpeed: 79.6, // tokens/sec from Artificial Analysis (Claude 3.7 Sonnet as reference)
-    latency: 1.09 // seconds TTFT from Artificial Analysis (Claude 3.7 Sonnet as reference)
+    responseSpeed: 79.6,
+    latency: 1.09,
+    factualAccuracy: 73.8
   })
 })
 

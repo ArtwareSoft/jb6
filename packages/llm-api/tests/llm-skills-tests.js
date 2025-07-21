@@ -31,7 +31,7 @@ Test('llmTest.howToWriteTests', {
     prompt: prompt(
       includeBooklet('tgpPrimer,howToWriteTests'),
       includeFiles('packages/social-db/data-store.js'),
-      user('please write 3 tests for dataStore')
+      user('please tell a joke')
     ),
     expectedResult: contains(''),
     llmModel: claude_code_sonnet_4()

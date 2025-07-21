@@ -48,6 +48,7 @@ ReactiveSource('llm.completionsRx', {
         let {controller, reader} = await jb.llmUtils.apiCall(model, {messages, max_tokens, ctx})
         let chunkLeft = ''
         return reader.read().then(async function processResp({ done, value, fullResponse }) {
+          console.log(fullContent)
           if (done) {
             log('llm source done from reader', {ctx})
             if (!DONE) {

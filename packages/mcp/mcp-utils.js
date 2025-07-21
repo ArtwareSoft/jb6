@@ -78,9 +78,11 @@ const mcpTool = Tool('mcpTool', {
   description: 'wrap text as mcp result',
   params: [
     {id: 'text' },
-    {id: 'maxLength', as: 'number', defaultValue: 20000}
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
+    {id: 'maxLength', as: 'number', defaultValue: 20000},
   ],
-  impl: async (ctx, {text: _text, maxLength}) => {
+  impl: async (ctx, {text: _text, repoRoot, maxLength}) => {
+    jb.coreRegistry.repoRoot = repoRoot
     const text = await Promise.resolve(_text).then(x=>x||'').then(x=>typeof x == 'object' ? JSON.stringify(x) : x)
     const squized = (text.length > maxLength) ? [text.slice(0,1000),
       `===text was originally ${text.length}. sorry, we had to squeeze it to ${maxLength} chars. ${text.length - maxLength} missing chars here====`,

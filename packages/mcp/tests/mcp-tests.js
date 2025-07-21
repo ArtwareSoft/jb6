@@ -1,5 +1,6 @@
 import { dsls, ns } from '@jb6/core'
 import './mcp-testers.js'
+import '@jb6/llm-api/llm-api-mcp-tools.js'
 
 const {
   tgp: { Const},
@@ -25,6 +26,15 @@ Test('mcpTest.tgpModel', {
   impl: mcpToolTest({
     tool: 'tgpModel',
     args: asIs({repoRoot: '/home/shaiby/projects/jb6', filePath: 'packages/common/common-tests.js'}),
+    expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
+  })
+})
+
+Test('mcpTest.includeBooklet', {
+  HeavyTest: true,
+  impl: mcpToolTest({
+    tool: 'includeBooklet',
+    args: asIs({repoRoot: '/home/shaiby/projects/jb6', booklets: 'tgpPrimer'}),
     expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
   })
 })

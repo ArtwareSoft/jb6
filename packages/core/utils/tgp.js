@@ -160,7 +160,6 @@ function calcSourceLocation(errStack) {
           .filter(x=>x && !x.match(/^Error/) && !x.match(/tgp.js/)).shift()
       const location = line ? (line.split('at ').pop().split('eval (').pop().split(' (').pop().match(/\\?([^:]+):([^:]+):[^:]+$/) || ['','','','']).slice(1,3) : ['','']
       location[0] = location[0].split('?')[0]
-      if (location[0].match(/jb-loader.js/)) debugger
       const path = location[0]
       return { path, line: location[1] }
   } catch(e) {

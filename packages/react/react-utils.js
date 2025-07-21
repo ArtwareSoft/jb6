@@ -1,32 +1,34 @@
 import { jb } from '@jb6/core'
-import './lib/tailwind-4.js'
 import { icons } from './lib/lucide-04.js'
 export const reactUtils = jb.reactUtils = { h, L, waitForReact }
 
 let reactPromise
 function waitForReact() {
+  if (typeof document == 'undefined') 
+    return Promise.resolve({ useState: () => {}, useEffect: () => {}, useRef: () => {}, useContext: () => {} })
   if (globalThis.React && globalThis.ReactDOM) return Promise.resolve(globalThis.React)
   if (!reactPromise) {
     const urls = [
       '/packages/react/lib/react.development.js',
       '/packages/react/lib/react-dom.development.js'
     ]
-    reactPromise = Promise.all(urls.map(src => new Promise((resolve, reject) => {
-      let s = document.head.querySelector(`script[src="${src}"]`)
-      if (s) return resolve()
-      s = document.createElement('script')
-      s.src = src
-      s.onload = resolve
-      s.onerror = (e) => reject(new Error(`Failed to load ${src}: ${e.message}`))
-      document.head.appendChild(s)
-    }))).then(() => React)
+    reactPromise = Promise.all([import('./lib/tailwind-4.js'),
+      ...urls.map(src => new Promise((resolve, reject) => {
+        let s = document.head.querySelector(`script[src="${src}"]`)
+        if (s) return resolve()
+        s = document.createElement('script')
+        s.src = src
+        s.onload = resolve
+        s.onerror = (e) => reject(new Error(`Failed to load ${src}: ${e.message}`))
+        document.head.appendChild(s)
+    }))]).then(() => React)
   }
   return reactPromise
 }
 
 waitForReact().then(React => {
   const { useState, useEffect, useRef, useContext } = React
-  Object.assign(reactUtils, { useState, useEffect, useRef, useContext, ReactDOM })
+  Object.assign(reactUtils, { useState, useEffect, useRef, useContext, ReactDOM: globalThis.ReactDOM })
 })
 
 function h(t, p = {}, ...c){

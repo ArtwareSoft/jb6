@@ -9,9 +9,16 @@ if (coreUtils.isNode) {
     const args = process.argv.slice(2)
     if (args[0] == '--start') {
         //console.error('Starting jb6 MCP server...')
-        startMcpServer().catch((error) => {
-            console.error("jb6 Server error:", error)
-            process.exit(1)
-        })
+        ;(async function f() {
+            try {
+                await import('@jb6/llm-api/llm-api-mcp-tools.js')
+            } catch(e) {
+                debugger
+            }
+            startMcpServer().catch((error) => {
+                console.error("jb6 Server error:", error)
+                process.exit(1)
+            })
+        })()
     }
 }
