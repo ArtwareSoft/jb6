@@ -124,16 +124,17 @@ function logError(err,logObj) {
   const srcLink = url && globalThis.window ? `${window.location.origin}${url}:${line+1}:${col} ` : ''
   globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, callerStack, creatorStack)
   const errObj = { err , ...logObj, callerStack, creatorStack}
-  globalThis.process?.stderr.write(err)
-  logCli('error', stripData(errObj))
-  jb.ext.spy?.log('error', errObj)
+  //globalThis.process?.stderr.write(err)
+  logVsCode('error11')
+  logVsCode('error', stripData(errObj))
+  //jb.ext.spy?.log('error', errObj)
 }
 
 function logException(e,err,logObj) {
   globalThis.window && globalThis.console.log('%c Exception: ','color: red', err, e, logObj)
   const errObj = { message: e.message, err, stack: e.stack||'', ...logObj, e}
   globalThis.process?.stderr.write(`${err}\n${e}`)
-  logCli('exception', stripData(errObj))
+  logVsCode('exception', stripData(errObj))
   jb.ext.spy?.log('exception error', errObj)
 }
 
@@ -278,12 +279,9 @@ function sortedArraysDiff(newArr, oldArr, compareFn) {
   return { inserted, updated, deleted }
 }
 
-function logCli(...args) {
-  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ')
+function logVsCode(...args) {
   if (globalThis.jbVSCodeLog)
-    globalThis.jbVSCodeLog(msg)
-  else
-    console.error(msg)
+    globalThis.jbVSCodeLog(...args)
 }
 
 
@@ -306,7 +304,13 @@ async function fetchByEnv(url, serveEntries = []) {
     return await res.text()
   }
   const { readFile } = await import('fs/promises')
-  return await readFile(url, 'utf8')
+  logVsCode(`fetch ${url}`)
+  try {
+    return await readFile(url, 'utf8')
+  } catch(e) {
+    logError(`fetch ${url} → ${e}`)
+    return ''
+  }
 }
 
 function absPathToUrl(path, serveEntries = []) {
@@ -399,7 +403,7 @@ function calcHash(str) {
 }
 
 Object.assign(jb.coreUtils, {
-  jb, RT_types, log, logError, logException, logCli, isNode, logByEnv, fetchByEnv, absPathToUrl,
+  jb, RT_types, log, logError, logException, logVsCode, isNode, logByEnv, fetchByEnv, absPathToUrl,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,

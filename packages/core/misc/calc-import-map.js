@@ -2,7 +2,7 @@ import { jb } from '@jb6/repo'
 import '../utils/core-utils.js'
 import './jb-cli.js'
 const { coreUtils } = jb
-const { isNode, logException } = coreUtils
+const { isNode, logException, logVsCode } = coreUtils
 Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, studioAndProjectImportMaps, calcRepoRoot, calcImportMapOfRepoRoot, dslDocs })
 
 jb.importMapCache = {
@@ -105,7 +105,7 @@ async function calcImportMap() {
     )    
     const serveEntries = [{urlPath: '/packages', pkgId: '@jb6/packages', pkgDir: pkgsDir}, {urlPath: '/hosts', pkgDir: path.resolve(repoRoot, 'hosts')}]    
     const res = { imports: { ...imports, '#jb6/': '/packages/' }, serveEntries }
-    //logCli('JB6 dev mode: calcImportMap', res)
+    logVsCode('calcImportMap', res)
     return res
   } else {
     return calcImportMapOfRepoRoot(repoRoot)
@@ -113,6 +113,7 @@ async function calcImportMap() {
 }
 
 async function calcImportMapOfRepoRoot(projectRoot, { repoRoot = '', includeTesting } = {}) {
+  logVsCode('calcImportMapOfRepoRoot start', projectRoot)
   const { readFile, realpath, readdir, access } = await import('fs/promises')
   try {
     await access(projectRoot)
@@ -139,10 +140,12 @@ async function calcImportMapOfRepoRoot(projectRoot, { repoRoot = '', includeTest
     res.forEach(r => r.serveEntries.forEach(x=> serveEntries[x.urlPath] = {
       ...serveEntries[x.urlPath], ...x
     }))
-    return {
+    const result = {
       imports: { ...selfImports, ...Object.fromEntries(res.flatMap(r => Object.entries(r.imports))) },
       serveEntries: Object.values(serveEntries)
     }
+    logVsCode('calcImportMapOfRepoRoot mono repo', projectRoot, result)
+    return result
   }
 
   const pkg = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf8'))
@@ -169,7 +172,9 @@ async function calcImportMapOfRepoRoot(projectRoot, { repoRoot = '', includeTest
     }))
   serveEntries.push({urlPath: '/packages', pkgDir: path.join(repoRoot, 'packages'), pkgId: 'repoRoot'})
         
-  return { repoRoot, imports, serveEntries }
+  const result = { repoRoot, imports, serveEntries }
+  logVsCode('calcImportMapOfRepoRoot', projectRoot, result)
+  return result
 
   async function crawl(pkgDir) {
     if (visited.has(pkgDir)) return

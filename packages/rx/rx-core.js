@@ -100,7 +100,7 @@ ReactiveOperator('rx.mapPromise',{
 ReactiveOperator('rx.filter',{
   category: 'filter',
   params: [
-    {id: 'filter', dynamic: true, mandatory: true}
+    {id: 'filter', type: 'boolean', dynamic: true, mandatory: true}
   ],
   impl: (ctx, {filter}) => jb.rxUtils.filter(addDebugInfo(ctx2 => filter(ctx2), ctx))
 })

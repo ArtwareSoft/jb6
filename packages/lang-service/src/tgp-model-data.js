@@ -2,7 +2,7 @@ import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
 
 const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, pathParent
-  , pathJoin, absPathToUrl, unique, resolveProfileTypes, splitDslType } = coreUtils
+  , pathJoin, absPathToUrl, unique, resolveProfileTypes, splitDslType, logVsCode } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -89,7 +89,7 @@ export async function calcTgpModelData(filePaths) {
 
   })
 
-  //logByEnv('tgp model data', tgpModel)
+  logVsCode('tgp model data', tgpModel)
 
   return tgpModel
 
@@ -113,6 +113,7 @@ export async function calcTgpModelData(filePaths) {
     const $location = { path: url, ...offsetToLineCol(src, decl.start), to: offsetToLineCol(src, decl.end) }
     const _comp = compDefs[tgpType](shortId, {...comp, $location})
     const jbComp = _comp[asJbComp] // remove the proxy
+    delete jbComp.$
     dsls[jbComp.dsl][jbComp.type][shortId] = jbComp 
   }
 
@@ -134,6 +135,7 @@ export async function calcTgpModelData(filePaths) {
           .filter(ex => ex.type === 'CallExpression' && ex.callee.type === 'Import')
           .map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(rUrl, rel))
       ].filter(x=>!x.match(/^\/libs\//))
+      logVsCode('crawl', url, imports)
 
       await Promise.all(imports.map(url => crawl(url)))
     } catch (e) {
