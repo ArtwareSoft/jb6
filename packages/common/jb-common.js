@@ -335,7 +335,7 @@ Boolean('or', {
   description: 'logical or',
   type: 'boolean',
   params: [
-    {id: 'items', type: 'boolean[]', as: 'boolean', dynamic: true, mandatory: true, composite: true}
+    {id: 'items', type: 'boolean[]', dynamic: true, mandatory: true, composite: true}
   ],
   impl: (ctx, {items}) => asArray(items.profile).reduce((res,_,i) => res || ctx.runInnerArg(items,i), false)
 })

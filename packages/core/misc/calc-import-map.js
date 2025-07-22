@@ -113,7 +113,12 @@ async function calcImportMap() {
 }
 
 async function calcImportMapOfRepoRoot(projectRoot, { repoRoot = '', includeTesting } = {}) {
-  const { readFile, realpath, readdir } = await import('fs/promises')
+  const { readFile, realpath, readdir, access } = await import('fs/promises')
+  try {
+    await access(projectRoot)
+  } catch (err) {
+    return { repoRoot, imports : {}, serveEntries: [], error: `${repoRoot} does not exist` }
+  }
   const path = await import('path')
   const { createRequire } = await import('module')
 

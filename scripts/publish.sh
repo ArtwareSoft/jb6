@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ─── CONFIG ───────────────────────────────────────────────────
 # adjust this array if you add/remove packages
-PKGS=(common core lang-service server-utils testing react mcp llm-guide)
+PKGS=(common core lang-service server-utils testing react mcp llm-guide rx llm-api social-db)
 SCOPE="@jb6"
 
 # ─── PUBLISH LOOP ─────────────────────────────────────────────

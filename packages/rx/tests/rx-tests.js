@@ -9,7 +9,7 @@ const { rxUtils } = jb
 const { log, logError, isPromise, calcPath } = coreUtils
 const {
   tgp: { TgpType, var: { Var } },
-  common: { Data, Action, Boolean, ReactiveSource,
+  common: { Data, Action, Boolean, ReactiveSource,ReactiveOperator,
     action: { runActions},
     'reactive-source' : { interval, subjectSource, merge, mergeConcat },
     'reactive-operator' : {},
