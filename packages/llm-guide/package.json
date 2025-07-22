@@ -1,15 +1,15 @@
 {
   "name": "@jb6/llm-guide",
-  "version": "1.250630.1",
+  "version": "1.250721.1",
   "type": "module",
   "exports": {
     ".": "./index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.2",
-    "@jb6/core": "1.250630.1",
-    "@jb6/llm-api": "1.250630.1",
-    "@jb6/mcp": "1.250630.1"
+    "@jb6/core": "1.250721.1",
+    "@jb6/llm-api": "1.250721.1",
+    "@jb6/mcp": "1.250721.1"
   },
   "repository": {
     "type": "git",

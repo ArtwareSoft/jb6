@@ -1,21 +1,20 @@
 {
-    "name": "@jb6/llm-api",
-    "version": "1.250630.1",
-    "type": "module",
-    "exports": {
-      ".": "./index.js",
-      "./skills.js": "./skills.js",
-      "./llm-api-mcp-tools.js": "./llm-api-mcp-tools.js",
-      "./tests/*.js": "./tests/*.js"
-    },
-    "dependencies": {
-      "@jb6/core": "1.250630.1",
-      "@jb6/lang-service": "1.250630.1"
-    },
-    "repository": {
-      "type": "git",
-      "url": "git+https://github.com/Artwaresoft/jb6.git",
-      "directory": "packages/llm-api"
-    }
+  "name": "@jb6/llm-api",
+  "version": "1.250721.1",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./skills.js": "./skills.js",
+    "./llm-api-mcp-tools.js": "./llm-api-mcp-tools.js",
+    "./tests/*.js": "./tests/*.js"
+  },
+  "dependencies": {
+    "@jb6/core": "1.250721.1",
+    "@jb6/lang-service": "1.250721.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Artwaresoft/jb6.git",
+    "directory": "packages/llm-api"
   }
-  
+}
