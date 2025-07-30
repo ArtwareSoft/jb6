@@ -24,7 +24,7 @@ const promptContent = Tool('promptContent', {
   impl: mcpTool('%$prompt%', '%$repoRoot%', { maxLength: '%$maxLength%' })
 })
 
-Tool('bookletsContent', {
+Tool('bookletsContentTool', {
   description: 'the content of a booklet, which is the content of a list of doclets',
   params: [
     {id: 'booklets', as: 'text', description: 'comma delimited names'},

@@ -1,16 +1,16 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
-import '@jb6/llm-guide'
+import '@jb6/llm-guide/autogen-dsl-docs.js'
 
-const { pathJoin, deepMapValues, omitProps } = coreUtils
+const { pathJoin } = coreUtils
   
 const {
     common: { Data,
-       data: { runNodeScript, pipeline, split, join, first }
+       data: { pipeline, split, join, first, list, dslDocs, tgpModel }
     },
     tgp: { any: { typeAdapter }},
     mcp: { Tool, 
-      tool: { mcpTool, doclet }
+      tool: { mcpTool }
      }
 } = dsls
 
@@ -22,51 +22,28 @@ Tool('defaultRepoRoot', {
   impl: mcpTool('/home/shaiby/projects/jb6')
 })
 
-Tool('tgpModel', {
-    description: 'get TGP (Type-generic component-profile) model relevant for imports and exports of path',
-    params: [
-      { id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo. look at defaultRepoRoot to get it' },
-      { id: 'entryPointJsFile', as: 'string', defaultValue: 'packages/common/common-tests.js', description: 'relative starting point to filter the model. when not exist, return the model of common and testing' },
-    ],
-    impl: mcpTool( async (ctx, {}, { repoRoot, entryPointJsFile: filePath }) => {
-      try {
-        await import('@jb6/lang-service')
-        jb.coreRegistry.repoRoot = repoRoot
-        const res = await coreUtils.calcTgpModelData(pathJoin(repoRoot, filePath))
-        const {dsls, ns} = deepMapValues(res,minifyComp,filter)
-        return {dsls,ns}
-      } catch (error) {
-        return `Error calculating TGP model: ${error.message}`
-      }
-
-      function filter(obj, key, parent,path) {
-        return (key == 'ns' && !path || key[0] == key[0]?.toUpperCase() && path.split('~').length == 3 || obj.$location) 
-      }
-
-      function minifyComp(obj, key,parent,path) {
-        if (key == 'ns' && !path)
-          return Object.keys(obj).join(',')
-        if (key[0] == key[0]?.toUpperCase() && path.split('~').length == 3)
-          return 'compDef'
-
-        const {description,params} = obj
-        const res = {}
-        if (description) res.description = description
-        if (params?.length > 0)
-          res.params = params.map(p=>{
-            const resP = omitProps(p,['$location','dsl','$dslType'])
-            if (resP.type == 'data<common>') delete resP.type
-            return resP
-        })
-        return res
-      }
-    })
+Tool('dslDocs', {
+  description: 'get TGP (Type-generic component-profile) model relevant for dsls',
+  params: [
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo. look at defaultRepoRoot to get it'},
+    {id: 'dsls', as: 'string', defaultValue: 'common,llm-guide', description: 'Comma-separated other options: rx,llm-api,testing'}
+  ],
+  impl: mcpTool(dslDocs('%$dsls%'), '%$repoRoot%')
 })
-  
+
+Tool('tgpModel', {
+  description: 'get TGP (Type-generic component-profile) model relevant for imports and exports of path',
+  params: [
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo. look at defaultRepoRoot to get it'},
+    {id: 'forDsls', as: 'string', defaultValue: 'packages/common/common-tests.js', description: 'relative starting point to filter the model. when not exist, return the model of common and testing'}
+  ],
+  impl: mcpTool(tgpModel('%$forDsls%','%$repoRoot%'), '%$repoRoot%')
+})
+
 Tool('runSnippet', {
   description: 'Execute TGP component snippets in context. Essential for testing component behavior, debugging data flow, and validating logic before implementation.',
   params: [
-    {id: 'compText', as: 'string', dynamic: true, mandatory: true, description: `Component text to execute (e.g., "pipeline('%$data%', filter('%active%'), count())")`},
+    {id: 'compText', as: 'string', asIs: true, mandatory: true, description: `Component text to execute (e.g., "pipeline('%$data%', filter('%active%'), count())")`},
     {id: 'setupCode', as: 'string', description: `Helper components or JavaScript code to set up context (e.g., "Const('data', [{active: true}])")`},
     {id: 'entryPointJsFile', as: 'string', mandatory: true, description: 'Relative file path for import context (e.g., "packages/common/test.js")'},
     {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
@@ -75,9 +52,8 @@ Tool('runSnippet', {
     text: async (ctx, {}, args) => {
       try {
         await import('@jb6/lang-service')
-        const snippetArgs = { ...args, compText: args.compText.profile, filePath: pathJoin(args.repoRoot, args.entryPointJsFile) }
-        const res = await coreUtils.runSnippetCli(snippetArgs)
-        return {...res, tokens: coreUtils.estimateTokens(snippetArgs.compText)}
+        const snippetArgs = { ...args, filePath: pathJoin(args.repoRoot, args.entryPointJsFile) }
+        return coreUtils.runSnippetCli(snippetArgs)
       } catch (error) {
         return `Error running snippet: ${error.message}`
       }
@@ -119,7 +95,7 @@ Tool('runSnippets', {
             try {
               const snippetArgs = { ...snippetArgsBase, compText }
               const result = await coreUtils.runSnippetCli(snippetArgs)
-              return `Snippet ${index + 1}: ${compText} ===\n${JSON.stringify({...result, tokens: coreUtils.estimateTokens(compText)}, null, 2)}`
+              return `Snippet ${index + 1}: ${compText} ===\n${JSON.stringify(result, null, 2)}`
             } catch (error) {
               return `Snippet ${index + 1}: ${compText} ===\nERROR: ${error.message}\n\nDebugging tips:\n- Check syntax: ${compText}\n- Verify variables exist in setupCode\n- Ensure component is properly imported`
             }

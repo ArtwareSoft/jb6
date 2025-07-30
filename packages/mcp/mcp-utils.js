@@ -1,9 +1,13 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
+import '@jb6/llm-guide/autogen-dsl-docs.js'
 
 const { ptsOfType, globalsOfType, asJbComp } = coreUtils
 const { 
-    tgp: { TgpType },
+    tgp: { TgpType, any: {typeAdapter} },
+    common: {
+      data: { pipeline, squeezeText, pipe}
+    }
 } = dsls
   
 // Define core types  
@@ -74,22 +78,20 @@ export async function startMcpServer() {
     await mcpServer.connect(transport)
 }
 
-const mcpTool = Tool('mcpTool', {
+Tool('mcpTool', {
   description: 'wrap text as mcp result',
   params: [
-    {id: 'text' },
+    {id: 'text', dynamic: true},
     {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
-    {id: 'maxLength', as: 'number', defaultValue: 20000},
+    {id: 'maxLength', as: 'number', defaultValue: 20000}
   ],
-  impl: async (ctx, {text: _text, repoRoot, maxLength}) => {
-    jb.coreRegistry.repoRoot = repoRoot
-    const text = await Promise.resolve(_text).then(x=>x||'').then(x=>typeof x == 'object' ? JSON.stringify(x) : x)
-    const squized = (text.length > maxLength) ? [text.slice(0,1000),
-      `===text was originally ${text.length}. sorry, we had to squeeze it to ${maxLength} chars. ${text.length - maxLength} missing chars here====`,
-      text.slice(text.length-maxLength+1000)
-    ].join('') : text
-
-    return { content: [{ type: 'text', text: squized }], isError: squized.indexOf('Error') == 0 }
-  }
+  impl: typeAdapter('data<common>', pipe(
+    '%$text()%',
+    squeezeText('%%', '%$maxLength%'),
+    ({data},{},{repoRoot}) => {
+      jb.coreRegistry.repoRoot = repoRoot
+      return { content: [{ type: 'text', text: data }], isError: data.indexOf('Error') == 0 }
+    }
+  ))
 })
 

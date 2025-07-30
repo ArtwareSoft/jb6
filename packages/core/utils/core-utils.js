@@ -188,6 +188,7 @@ function waitForInnerElements(item, {passRx} = {}) { // resolve promises in arra
 
   if (Array.isArray(item)) {
     if (! item.find(v=> isCallbag(v) || isPromise(v))) return item
+    if (passRx && ! item.find(v=>isPromise(v))) return item
     return Promise.all(item.map(x=>waitForInnerElements(x,{passRx}))).then(items=>items.flatMap(x=>x))
   }
   return item

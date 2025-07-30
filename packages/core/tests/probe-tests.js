@@ -92,8 +92,6 @@ Test('probeCliTest.findTestFiles', {
     calculate: async () => {
       const repoRoot = await coreUtils.calcRepoRoot()
       const filePath = `${repoRoot}/hosts/test-project/a-tests.js`
-      const tgpModelAll = await coreUtils.dslDocs({dsl: 'common', repoRoot})
-      debugger
       const { projectImportMap, testFiles } = await coreUtils.studioAndProjectImportMaps(filePath)
       const probeResArr = await Promise.all(['cmpA','cmpB','cmpC'].map(cmp => 
         runProbeCli(`data<common>${cmp}~impl`,filePath,{testFiles, importMap: projectImportMap, requireNode: true})))

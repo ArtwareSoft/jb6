@@ -1,12 +1,10 @@
 import { dsls, coreUtils } from '@jb6/core'
-import '@jb6/llm-guide'
+import '@jb6/llm-guide/autogen-dsl-docs.js'
 import '@jb6/llm-api'
 import '@jb6/common'
-import '@jb6/core/misc/jb-cli.js'
-import '@jb6/lang-service'
-const { studioAndProjectImportMaps, calcRepoRoot, calcTgpModelData, logError, fetchByEnv} = coreUtils
+
 const { 
-  common: { Data, data : { pipe, bash } },
+  common: { Data, data : { pipe, bash, bookletsContent } },
   tgp: { TgpType, any: { typeAdapter } },
   'llm-api' : { Prompt,
     prompt: { user, system, prompt } 
@@ -33,28 +31,7 @@ Prompt('includeBooklet', {
   params: [
     {id: 'booklets', as: 'text', description: 'comma delimited names'}
   ],
-  impl: async (ctx, {booklets}) => {
-      const repoRoot = await calcRepoRoot()
-      const { llmGuideFiles, projectImportMap } = await studioAndProjectImportMaps(repoRoot)
-      const tgpModel = await calcTgpModelData(llmGuideFiles)
-      const notFound = booklets.split(',').filter(d=>!tgpModel.dsls['llm-guide'].booklet[d]).join(', ')
-      notFound && logError(`includeBooklet can not find booklet ${notFound}`)
-      const bookletsText = await Promise.all(booklets.split(',').map(b=>tgpModel.dsls['llm-guide'].booklet[b]).filter(Boolean).map(async bookletCmp=>{
-        const loc = bookletCmp.$location
-        const src = await fetchByEnv(loc.path, projectImportMap.serveEntries)
-        const doclets = src.split('\n').slice(loc.line, loc.to.line).join('').match(/booklet\(([^)]*)\)/)[1].split(',').map(x=>x.trim()).map(x=>x.replace("'",'')).filter(Boolean)
-        const notFound = doclets.filter(d=>!tgpModel.dsls['llm-guide'].doclet[d]).join(', ')
-        notFound && logError(`includeBooklet can not find doclet ${notFound}`)
-        const docs = await Promise.all(doclets.map(d=>tgpModel.dsls['llm-guide'].doclet[d]).filter(Boolean).map(async cmp=>{
-          const loc = cmp.$location
-          const src = await fetchByEnv(loc.path, projectImportMap.serveEntries)
-          return src.split('\n').slice(loc.line, loc.to.line).join('\n')
-        }))
-        return docs
-      }))
-      const content = bookletsText.flatMap(x=>x).join('\n\n')
-      return ({role: 'system', content})
-  }
+  impl: system(bookletsContent('%$booklets%'))
 })
 
 Prompt('includeFiles', {

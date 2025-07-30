@@ -1,6 +1,6 @@
 {
   "name": "@jb6/social-db",
-  "version": "1.250721.1",
+  "version": "1.250723.1",
   "description": "JB6 social-db package",
   "type": "module",
   "exports": {
@@ -11,7 +11,7 @@
   ],
   "scripts": {},
   "dependencies": {
-    "@jb6/core": "1.250721.1"
+    "@jb6/core": "1.250723.1"
   },
   "repository": {
     "type": "git",

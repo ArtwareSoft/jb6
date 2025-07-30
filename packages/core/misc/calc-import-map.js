@@ -2,12 +2,41 @@ import { jb } from '@jb6/repo'
 import '../utils/core-utils.js'
 import './jb-cli.js'
 const { coreUtils } = jb
-const { isNode, logException, logVsCode } = coreUtils
-Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, studioAndProjectImportMaps, calcRepoRoot, calcImportMapOfRepoRoot, dslDocs })
+const { isNode, logException, logVsCode, pathJoin } = coreUtils
+Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, studioAndProjectImportMaps, calcRepoRoot, 
+  calcImportMapOfRepoRoot, filePathsForDsls, listRepoFiles })
 
 jb.importMapCache = {
   studioAndProjectImportMaps: {}
 
+}
+
+async function filePathsForDsls(_dsls) {
+  if (!isNode) {
+        const script = `import { coreUtils } from '@jb6/core'
+    import '@jb6/core/misc/calc-import-map.js'
+    ;(async()=>{
+    try {
+      const result = await coreUtils.filePathsForDsls('${_dsls}')
+      process.stdout.write(JSON.stringify(result,null,2))
+    } catch (e) { console.error(e) }
+    })()`
+    const res = await coreUtils.runNodeCliViaJbWebServer(script)
+    return res.result
+  }
+  const path = await import('path')
+  const dsls = Array.isArray(_dsls) ? _dsls : (_dsls||'').split(',').map(x=>x.trim()).filter(Boolean)
+  const repoRoot = await calcRepoRoot()
+  const listRepo = await listRepoFiles(repoRoot)
+  let jb6NodeModulesList = { files: []}
+  try {
+      const jb6CorePath = createRequire(path.join(repoRoot, 'package.json')).resolve('@jb6/core')
+      if (jb6CorePath.includes('node_modules/@jb6'))
+        jb6NodeModulesList = await listRepoFiles(path.dirname(path.dirname(jb6CorePath)))
+  } catch (e) {}
+
+  const files = [...listRepo.files, ...jb6NodeModulesList.files].map(x=>x.path)
+  return dsls.flatMap(dsl=> files.filter(f=>f.endsWith(`${dsl}/index.js`))).map(localPath=>path.join(repoRoot,localPath))
 }
 
 async function studioAndProjectImportMaps(filePath) {
@@ -82,9 +111,9 @@ function resolveWithImportMap(specifier, { imports, serveEntries }) {
   }
   return urlToBeServed
 
-  function pathJoin(a, b) {
-    return `${a.replace(/\/+$/, '')}/${b.replace(/^\/+/, '')}`;
-  }
+  // function pathJoin(a, b) {
+  //   return `${a.replace(/\/+$/, '')}/${b.replace(/^\/+/, '')}`;
+  // }
 }
 
 async function calcImportMap() {
@@ -244,7 +273,6 @@ async function isMonorepo(repoRoot) {
   return rootPkg.workspaces
 }
 
-
 async function isJB6Dev() {
   const { readFile } = await import('fs/promises')
   const path = await import('path')
@@ -259,93 +287,81 @@ async function isJB6Dev() {
   }
 }
 
-async function dslDocs(args) {
-  const {dsl, repoRoot} = args
-  if (!isNode) {
-    const script = `
-    import { coreUtils } from '@jb6/core'
-    import '@jb6/core/misc/calc-import-map.js'
-    import '@jb6/lang-service'
-    console.log = () => {}
-
+async function listRepoFiles(repoRoot, {includeHidden } = {}) {
     try {
-      const result = await coreUtils.dslDocs(${JSON.stringify(args)})
-      process.stdout.write(JSON.stringify(result,null,2))
-    } catch (e) {
-      process.stdout.write(JSON.stringify(e,null,2))
-    }`
-    const res = await coreUtils.runNodeCliViaJbWebServer(script)
-    return _repoRoot = res.result
-  }
-  const { readFileSync } = await import('fs')
-  const { join } = await import('path')
-
-  try {
-    const { llmGuideFiles } = await studioAndProjectImportMaps(repoRoot)
-    const tgpModel = await coreUtils.calcTgpModelData()
-    const dslPackage = `@jb6/\${dsl}`
-    const corePackage = '@jb6/core'
-    const llmGuidePackage = '@jb6/llm-guide'
-    const includeDsls = [dsl,'llm-guide','core','testing']
-    const relevantGuides = llmGuideFiles.filter(file => includeDsls.some(dsl=>file.indexOf(dsl)) != -1)
-    
-    const llmGuides = await Promise.all(relevantGuides.map(async (filePath) => {
-        try {
-            const content = readFileSync(filePath, 'utf8')
-            return { filePath, content, tokens: coreUtils.estimateTokens(content) }
-        } catch (e) {}
-    })).then(results => results.filter(Boolean))
-    const filePaths = coreUtils.unique(Object.values(tgpModel.dsls[dsl])
-        .flatMap(t=>Object.values(t).map(c=>c.$location?.path))).filter(x=>x && x.indexOf(`/${dsl}/`) != -1)
-    const testingFiles = ['packages/testing/tester.js']
-    const allFiles = [...filePaths, ...testingFiles]
-    const componentFiles = await Promise.all(allFiles.map(async (filePath) => {
-        try {
-            const content = readFileSync(filePath, 'utf8')
-            return { filePath, content, tokens: coreUtils.estimateTokens(content) }
-        } catch (e) {}
-    })).then(results => results.filter(Boolean))
+      const { readdirSync, statSync, readFileSync } = await import('fs')
+      const { join, relative, sep } = await import('path')
+      
+      let gitignorePatterns = []
+      try {
+        const gitignoreContent = readFileSync(join(repoRoot, '.gitignore'), 'utf8')
+        gitignorePatterns = gitignoreContent.split('\n').map(line => line.trim()).filter(line => line && !line.startsWith('#'))
+      } catch (error) {}
+      
+      gitignorePatterns.push('.git', 'node_modules')
+      const isIgnored = (filePath) => {
+        const relativePath = relative(repoRoot, filePath).replace(/\\/g, '/')
+        const pathParts = relativePath.split('/')
         
-    const result = {
-      dsl,
-      tgpModel: {
-        description: 'System architecture, imports, and package structure',
-        content: tgpModel,
-        tokens: coreUtils.estimateTokens(JSON.stringify(tgpModel))
-      },
-      llmGuides: {
-        description: 'All documentation: DSL-specific, core TGP guides, and generic LLM principles',
-        files: llmGuides,
-        totalFiles: llmGuides.length,
-        tokens: llmGuides.reduce((sum, f) => sum + f.tokens, 0),
-        breakdown: {
-          dslSpecific: llmGuides.filter(f => f.package === dslPackage).length,
-          coreGuides: llmGuides.filter(f => f.package === corePackage).length,
-          genericGuides: llmGuides.filter(f => f.package === llmGuidePackage).length
-        }
-      },
-      componentSource: {
-        description: 'All component definitions, implementations, and source code',
-        files: componentFiles,
-        totalFiles: componentFiles.length,
-        tokens: componentFiles.reduce((sum, f) => sum + f.tokens, 0)
+        return gitignorePatterns.some(pattern => {
+          if (pattern.endsWith('/')) {
+            const dirPattern = pattern.slice(0, -1)
+            return pathParts.includes(dirPattern)
+          }
+          if (pattern.includes('*')) {
+            const regexPattern = pattern.replace(/\./g, '\\.').replace(/\*/g, '.*')
+            return new RegExp(`^${regexPattern}$`).test(relativePath) ||
+                   pathParts.some(part => new RegExp(`^${regexPattern}$`).test(part))
+          }
+          return relativePath === pattern || relativePath.endsWith('/' + pattern) || pathParts.includes(pattern)
+        })
       }
-    }
-    
-    const totalTokens = result.tgpModel.tokens + result.llmGuides.tokens + result.componentSource.tokens
-    result.summary = {
-      totalTokens: totalTokens,
-      totalFiles: result.llmGuides.totalFiles + result.componentSource.totalFiles,
-      tokens: {
-        capacity: 200000,
-        used: totalTokens,
-        percentageUsed: ((totalTokens / 200000) * 100).toFixed(1) + '%',
-        remaining: 200000 - totalTokens,
-        status: totalTokens < 20000 ? 'EXCELLENT' : totalTokens < 50000 ? 'GOOD' : 'LARGE'
+      
+      const walkDirectory = (dirPath) => {
+        const files = []
+        try {
+          const entries = readdirSync(dirPath)
+          
+          for (const entry of entries) {
+            const fullPath = join(dirPath, entry)
+            if (!includeHidden && entry.startsWith('.') && entry !== '.gitignore')  continue
+            if (isIgnored(fullPath)) continue
+            
+            try {
+              const stats = statSync(fullPath)              
+              if (stats.isFile()) {
+                const relativePath = relative(repoRoot, fullPath)
+                files.push({
+                  path: relativePath,
+                  size: stats.size,
+                  sizeFormatted: formatBytes(stats.size),
+                  modified: stats.mtime.toISOString()
+                })
+              } else if (stats.isDirectory()) {
+                files.push(...walkDirectory(fullPath))
+              }
+            } catch (statError) {
+              continue
+            }
+          }
+        } catch (readError) {}
+        return files
       }
+      
+      const formatBytes = (bytes) => {
+        if (bytes === 0) return '0 B'
+        const k = 1024
+        const sizes = ['B', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+      }
+      
+      const files = walkDirectory(repoRoot)
+      files.sort((a, b) => a.path.localeCompare(b.path))
+      const totalSize = files.reduce((sum, file) => sum + file.size, 0)
+      const summary = `Total: ${files.length} files, ${formatBytes(totalSize)}`
+      return { files, totalSize, summary }
+    } catch (error) {
+      return {error}
     }
-    return result    
-  } catch (error) {
-    return { error: error.message }
-  }
 }

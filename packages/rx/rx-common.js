@@ -19,7 +19,7 @@ ReactiveSource('interval', {
 })
 
 // ********** subject 
-Subject('subject', {
+Subject('topic', {
   description: 'callbag "variable" that you can write or listen to',
   category: 'variable',
   params: [

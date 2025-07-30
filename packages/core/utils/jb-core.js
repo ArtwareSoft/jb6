@@ -28,7 +28,7 @@ dynamic function 'hold' and keeps the args until called by client with ctx. it h
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 
-const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray, asJbComp, OrigArgs } = jb.coreUtils
+const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray, waitForInnerElements } = jb.coreUtils
 
 function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArray: false, openObj: false, openComp: true}) {
     // changing context with data and vars
@@ -53,8 +53,11 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
         res = profile.flatMap((p,i) => run(p, ctx.setJbCtx(jbCtx.innerArrayPath(i)), settings))
     else if (profile && profile.$ && openComp) {
         const comp = asComp(profile.$) // also lazy resolve
-        const ret = comp.runProfile(profile, ctx, settings)
-        res = toRTType(jbCtx.parentParam, ret)
+        const compArgs = Object.fromEntries(comp.calcParams().map(p =>[p.id, p.resolve(profile, ctx.setJbCtx(ctx.jbCtx.innerParam(p, profile)), settings)]))
+        if (comp.impl == null) return compArgs
+        if (typeof comp.impl == 'function')
+            comp.impl.compFunc = true
+        res = run(comp.impl, ctx.setJbCtx(ctx.jbCtx.newComp(comp,compArgs)), settings)
     } else if (typeof profile == 'function' && profile.compFunc)
         res = profile(ctx, jbCtx.args)
     else if (typeof profile == 'function')
@@ -69,7 +72,12 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
 
 function toRTType(parentParam, value) {
     const convert = RT_types[parentParam?.as]
-    if (convert) return convert(value)
+    const val = waitForInnerElements(value,{passRx: true})
+    if (convert) {
+        if (isPromise(val))
+            return val.then(res=>convert(res))
+        return convert(value)
+    }
     return value
 }
 
@@ -185,6 +193,10 @@ class paramRunner {
                 : run(innerProfile, ctxToUse, settings )
             return toRTType(this, value)
         }
+        const creatorProfile = creatorCtx.jbCtx.profile
+        const funcName = typeof creatorProfile == 'string' && creatorProfile.slice(0,30) 
+            || creatorProfile?.$?.id || typeof creatorProfile == 'function' && 'js' || ''
+        Object.defineProperty(doResolve, 'name', { value: `${funcName} ${creatorCtx.jbCtx.path}` })
 
         if (this.dynamic == true) {
             const res = (callerCtx, arrayIndex) => {

@@ -129,4 +129,3 @@ packages/core/llm-guide/tgp-primer.js
 use the tgpModel to get info about the files and the components in the system.
 use getFilesContent to load the llm-guide files and understand them
 
-echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "dslDocs", "arguments": {"dsl": "commone", "repoRoot": "/home/shaiby/projects/jb6"}}}' | node --inspect-brk packages/mcp/index.js

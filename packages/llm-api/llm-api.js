@@ -124,15 +124,15 @@ Prompt('prompt', {
 
 Prompt('system', {
   params: [ {id: 'content', as: 'text'} ],
-  impl: (ctx,{content}) => ({role: 'system', content})
+  impl: (ctx,{content}) => Promise.resolve(content).then(content => ({role: 'system', content}))
 })
 Prompt('user', {
   params: [ {id: 'content', as: 'text'} ],
-  impl: (ctx,{content}) => ({role: 'user', content})
+  impl: (ctx,{content}) => Promise.resolve(content).then(content => ({role: 'user', content}))
 })
 Prompt('assistant', {
   params: [ {id: 'content', as: 'text'} ],
-  impl: (ctx,{content}) => ({role: 'assistant', content})
+  impl: (ctx,{content}) => Promise.resolve(content).then(content => ({role: 'assistant', content}))
 })
 
 

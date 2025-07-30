@@ -15,7 +15,7 @@ const {
   },
   mcp: { 
     Tool,
-    tool: { tgpModel, runSnippet, runSnippets, getFilesContent, replaceComponent, appendToFile, overrideFileContent, dslDocs, scrambleTextTool }
+    tool: { tgpModel, runSnippet, runSnippets, getFilesContent }
   }
 } = dsls
 

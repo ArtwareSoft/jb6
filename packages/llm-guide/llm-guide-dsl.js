@@ -1,14 +1,8 @@
-import { dsls, coreUtils } from '@jb6/core'
-import '@jb6/mcp'
-import '@jb6/core/misc/pretty-print.js'
+import { dsls } from '@jb6/core'
 
 const { 
-  common: { Data },
   tgp: { TgpType },
-//  'llm-api': { Prompt, prompt: {user}},
-//  mcp: { Tool }
 } = dsls
-const { prettyPrintComp } = coreUtils
 // ============================================================================= 
 // DOCLET DSL - 
 // Guidance LLM doclets codify expert task-solving patterns into structured, reusable templates 
@@ -69,7 +63,6 @@ ProblemStatement('problem', {
     {id: 'intro', as: 'text', description: 'Introductory explanation for the problem'}
   ]
 })
-
 
 // =============================================================================
 // TYPE: guidance - Solution and anti-pattern components
@@ -278,3 +271,4 @@ Booklet('booklet', {
     {id: 'guidance', type: 'guidance[]'}
   ]
 })
+

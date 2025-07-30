@@ -20,12 +20,6 @@ Doclet('mcpToolsQuickReference', {
       solution({
         code: `// === EXPLORATION TOOLS ===
 
-// Get comprehensive DSL documentation
-jb6_mcp:dslDocs({
-  dsl: "common",  // or "ui", "testing", etc.
-  repoRoot: "/home/shaiby/projects/jb6"
-})
-
 // Get TGP model for file context
 jb6_mcp:tgpModel({
   repoRoot: "/home/shaiby/projects/jb6",
