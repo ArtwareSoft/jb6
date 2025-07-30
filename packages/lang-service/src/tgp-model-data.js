@@ -30,9 +30,7 @@ export async function calcTgpModelData(filePaths, forDsls) {
   const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, typeRules: [], imports: Object.keys(codeMap), projectImportMap}
   const {dsls, typeRules} = tgpModel
 
-//  logByEnv('codeMap', Object.keys(codeMap))
   // 2) Phase 1: find all `... = TgpType(...)`
-  //logByEnv('codeMap', Object.entries(codeMap).map(([url, src]) => ({url, src: src.slice(0, 100)})))
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
@@ -139,29 +137,7 @@ export async function calcTgpModelData(filePaths, forDsls) {
 
       await Promise.all(imports.map(url => crawl(url)))
     } catch (e) {
-      //logByEnv('calcTgpModelData imports error', {rUrl, url, projectImportMap, e})
       console.error(`Error crawling ${url}:`, e)
-    }
-  }
-
-  function loadCompWithImpl(node) {
-    const topComp = astToTgpObj(node)
-    try {
-        resolveProfileTypes(topComp, {tgpModel, expectedType: 'comp<tgp>', topComp, tgpPath: topComp?.id})
-    } catch (error) {
-      return error
-    }
-    let compId = '', dslTypeId
-    if (topComp?.id) {
-        const typeId = topComp.$
-        if (!tgpModel.dsls.tgp.comp[typeId])
-            return `can not find ${typeId}`
-        
-        const dslType = tgpModel.dsls.tgp.comp[topComp.$].dslType
-        compId = `${dslType}${topComp.id}`
-        const [ type, dsl ] = splitDslType(dslType)
-        dslTypeId = [ dsl, type, topComp.id]
-        tgpModel.dsls[dsl][type][topComp.id] = topComp
     }
   }
 }

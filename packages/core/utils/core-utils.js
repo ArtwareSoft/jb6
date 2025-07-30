@@ -285,14 +285,6 @@ function logVsCode(...args) {
     globalThis.jbVSCodeLog(...args)
 }
 
-
-function logByEnv(...args) {
-  if (globalThis.jbVSCodeLog)
-    globalThis.jbVSCodeLog(...args)
-  else
-    console.log(...args)
-}
-
 async function fetchByEnv(url, serveEntries = []) {
   if (globalThis.window) {
     const rUrl = absPathToUrl(url, serveEntries)
@@ -404,7 +396,7 @@ function calcHash(str) {
 }
 
 Object.assign(jb.coreUtils, {
-  jb, RT_types, log, logError, logException, logVsCode, isNode, logByEnv, fetchByEnv, absPathToUrl,
+  jb, RT_types, log, logError, logException, logVsCode, isNode, fetchByEnv, absPathToUrl,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
