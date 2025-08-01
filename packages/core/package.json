@@ -7,9 +7,6 @@
     "./misc/*.js": "./misc/*.js",
     "./tests/*.js": "./tests/*.js"
   },
-  "files": [
-    "misc/"
-  ],
   "scripts": {},
   "dependencies": {
     "@jb6/repo": "1.0.0"

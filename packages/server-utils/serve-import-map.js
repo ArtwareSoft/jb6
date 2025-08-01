@@ -12,7 +12,7 @@ export async function serveImportMap(app, {express}) {
       if (!req.path.endsWith('.html')) return next()
       try {
         const html = await fs.readFile(path.join(pkgDir, req.path), 'utf8')
-        const htmlToSend = html.replace(/JB_IMPORT_MAP/, JSON.stringify({imports}))
+        const htmlToSend = html.replace(/JB_IMPORT_MAP/g, JSON.stringify({imports}))
         return res.type('html').send(htmlToSend)
       } catch (err) {
         console.log(err)

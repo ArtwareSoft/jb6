@@ -21,10 +21,13 @@
     "#jb6/*": "./packages/*"
   },
   "devDependencies": {
-    "globby": "^14.1.0"
+    "globby": "^14.1.0",
+    "jsdom": "^26.1.0",
+    "mutationobserver-shim": "^0.3.7",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "dependencies": {}
+  "license": "ISC"
 }

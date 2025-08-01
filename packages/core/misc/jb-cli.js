@@ -75,27 +75,28 @@ async function runNodeCli(script, {importMap} = {}) {
   const scriptToRun = `console.log = () => {};\n${script}`
   return new Promise(resolve => {
     let out = '', err = ''
-    const child = spawn('/bin/node', ['--input-type=module', '-e', scriptToRun], {cwd, encoding: 'utf8'})
-    child.stdout.on('data', d => out += d)
-    child.stderr.on('data', d => err += d)
-    child.on('close', code => {
-      if (code !== 0) {
-        const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
-        logException(error, 'error in run node cli', {cmd, importMap, stdout: out})
-        return resolve({error})
-      }
-      try {
-        resolve({result: JSON.parse(out)})
-      } catch (e) {
-        logException(e, 'error in run node cli', {cmd, importMap, stdout: out})
-        resolve({error: e, cmd, importMap})
-      }
-    })
+    try {
+      const child = spawn('/bin/node', ['--input-type=module', '-e', scriptToRun], {cwd, encoding: 'utf8'})
+      child.stdout.on('data', d => out += d)
+      child.stderr.on('data', d => err += d)
+      child.on('close', code => {
+        if (code !== 0) {
+          const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
+          logException(error, 'error in run node cli', {cmd, importMap, stdout: out})
+          return resolve({error, cmd})
+        }
+        resolve({result: JSON.parse(out), cmd})
+      })
+    } catch(e) {
+      logException(e, 'error in run node cli', {cmd, importMap, cwd})
+      resolve({error: e, cmd, importMap})
+    }
   })
 }
 
 async function runNodeCliViaJbWebServer(script, {importMap, expressUrl = ''} = {}) {
   try { 
+    const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
     const res = await fetch(`${expressUrl}/run-cli`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -108,9 +109,9 @@ async function runNodeCliViaJbWebServer(script, {importMap, expressUrl = ''} = {
     
     const { result, error } = await res.json()
     if (error) 
-      return { error }
+      return { error, cmd }
 
-    return result
+    return { ...result, cmd }
   } catch (e) {
     return { error: `runNodeCliViaJbWebServer exception: ${e.message}`}
   }

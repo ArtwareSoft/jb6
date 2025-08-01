@@ -4,7 +4,7 @@ import './react-testers.js'
 
 const { 
   test: { Test, 
-    test: { dataTest, reactInBrowserTest }
+    test: { dataTest, reactTest }
   }, 
   common: { Data, Action, Boolean,
     data: { pipeline, filter, join, property, obj, delay }, 
@@ -14,6 +14,6 @@ const {
 } = dsls
 
 Test('reactTest.HelloWorld', {
-  impl: reactInBrowserTest(() => h('div', {}, 'hello world'), { expectedResult: contains('hello world') })
+  impl: reactTest(() => h('div', {}, 'hello world'), contains('hello world'))
 })
 

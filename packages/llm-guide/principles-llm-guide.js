@@ -143,7 +143,6 @@ Doclet('explicitAntiPatterns', {
       solution({
         code: `solution({code: correctExample}),
 doNot('commonMistake1', {reason: 'why wrong'}),
-doNot('commonMistake2', {reason: 'why wrong'})`,
         points: [syntax('doNot() components', 'explicit anti-pattern documentation')]
       }),
       bestPractice({
@@ -196,4 +195,8 @@ Doclet('qualityOverQuantity', {
       })
     ]
   })
+})
+
+Booklet('howToWriteLLmGuides', {
+  impl: booklet('conciseWriting,iterativeRefinement,progressiveComplexity,qualityOverQuantity')
 })

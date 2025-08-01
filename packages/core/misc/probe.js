@@ -15,9 +15,9 @@ jb.probeRepository = {
 }
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
-async function runProbeCli(probePath, filePath, {extraCode, importMap, testFiles = [], requireNode} = {}) {
+async function runProbeCli(probePath, filePath, {extraCode, importMap, testFiles = []} = {}) {
     const serveEntries = importMap?.serveEntries || []
-    const usingNode = requireNode || isNode
+    const usingNode = isNode
     const imports = unique([filePath, ...testFiles]).map(f=>usingNode ? f : absPathToUrl(f, serveEntries))
       .map(f=>`\timport '${f}'`).join('\n')
     const script = `
@@ -37,7 +37,7 @@ ${imports}
     `
 
     try {
-      const { result, error, cmd } = await runCliInContext(script, {importMap, requireNode})
+      const { result, error, cmd } = await runCliInContext(script, {importMap, requireNode: true})
       return { probeRes: result, error, cmd, importMap }
     } catch (error) {
       debugger
