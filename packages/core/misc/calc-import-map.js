@@ -262,8 +262,9 @@ async function calcRepoRoot() {
     return _repoRoot = res.result
   }
   const { execSync } = await import('child_process')
-  const cwd = jb.coreRegistry.repoRoot
-  return _repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8', cwd }).trim()
+  if (jb.coreRegistry.repoRoot)
+    return jb.coreRegistry.repoRoot
+  return _repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
 }
 
 async function isMonorepo(repoRoot) {

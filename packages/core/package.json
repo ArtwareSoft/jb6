@@ -4,13 +4,12 @@
   "type": "module",
   "exports": {
     ".": "./index.js",
-    "./tests/core-tests.js": "./tests/core-tests.js",
-    "./misc/calc-import-map.js": "./misc/calc-import-map.js",
-    "./misc/resolve-types.js": "./misc/resolve-types.js",
-    "./misc/jb-cli.js": "./misc/jb-cli.js",
-    "./misc/probe.js": "./misc/probe.js",
-    "./misc/pretty-print.js": "./misc/pretty-print.js"
+    "./misc/*.js": "./misc/*.js",
+    "./tests/*.js": "./tests/*.js"
   },
+  "files": [
+    "misc/"
+  ],
   "scripts": {},
   "dependencies": {
     "@jb6/repo": "1.0.0"

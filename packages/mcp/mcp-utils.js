@@ -4,9 +4,9 @@ import '@jb6/llm-guide/autogen-dsl-docs.js'
 
 const { ptsOfType, globalsOfType, asJbComp } = coreUtils
 const { 
-    tgp: { TgpType, any: {typeAdapter} },
+    tgp: { TgpType, any: {typeAdapter}, var: {Var} },
     common: {
-      data: { pipeline, squeezeText, pipe}
+      data: { pipeline, squeezeText, pipe, first}
     }
 } = dsls
   
@@ -86,12 +86,13 @@ Tool('mcpTool', {
     {id: 'maxLength', as: 'number', defaultValue: 20000}
   ],
   impl: typeAdapter('data<common>', pipe(
+    Var('dummy', ({},{},{repoRoot}) => {
+      jb.coreRegistry.repoRoot = repoRoot
+    }),
     '%$text()%',
     squeezeText('%%', '%$maxLength%'),
-    ({data},{},{repoRoot}) => {
-      jb.coreRegistry.repoRoot = repoRoot
-      return { content: [{ type: 'text', text: data }], isError: data.indexOf('Error') == 0 }
-    }
+    ({data}) => ({ content: [{ type: 'text', text: data }], isError: data.indexOf('Error') == 0 }),
+    first()
   ))
 })
 

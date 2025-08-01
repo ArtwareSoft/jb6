@@ -6,6 +6,19 @@ import './mcp-fs-tools.js'
 
 //console.error('Starting jb6 MCP server script...')
 if (coreUtils.isNode) {
+    // process.on('SIGINT', () => {
+    //     console.error('Received SIGINT, shutting down...')
+    //     process.exit(0)
+    // })
+      
+    // process.on('SIGTERM', () => {
+    //     console.error('Received SIGTERM, shutting down...')
+    //     process.exit(0)
+    // })
+    
+    // process.on('uncaughtException', (error) => {
+    //     console.error('Uncaught exception:', error)
+    // })
     const args = process.argv.slice(2)
     if (args[0] == '--start') {
         //console.error('Starting jb6 MCP server...')
@@ -15,10 +28,13 @@ if (coreUtils.isNode) {
             } catch(e) {
                 debugger
             }
-            startMcpServer().catch((error) => {
+            try {
+                  
+                await startMcpServer()
+            } catch(error) {
                 console.error("jb6 Server error:", error)
                 process.exit(1)
-            })
+            }
         })()
     }
 }

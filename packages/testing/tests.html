@@ -7,13 +7,14 @@
     .test-button { opacity: 0 }
     .test-button:hover { opacity: 1 }
   </style>
+  <script type="importmap">JB_IMPORT_MAP</script>
 
   <script type="module">
-    const map = await fetch('/import-map.json').then(r => r.json())
-    const im = document.createElement('script')
-    im.type = 'importmap'
-    im.textContent = JSON.stringify(map, null, 2)
-    document.head.appendChild(im)
+    // const map = await fetch('/import-map.json').then(r => r.json())
+    // const im = document.createElement('script')
+    // im.type = 'importmap'
+    // im.textContent = JSON.stringify(map, null, 2)
+    // document.head.appendChild(im)
     
     const urlQuery = prop => new URLSearchParams(location.search).get(prop)
     const { coreUtils } = await import('@jb6/core')

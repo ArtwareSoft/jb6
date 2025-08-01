@@ -21,6 +21,13 @@ Test('mcpTest.scrambleText', {
   })
 })
 
+Test('mcpTest.resultArrayBug', {
+  HeavyTest: true,
+  impl: mcpToolTest('scrambleText', asIs({texts: 'hello world##test text'}), {
+    expectedResult: ({data}) => !Array.isArray(data.stdout.result)
+  })
+})
+
 Test('mcpTest.tgpModel', {
   HeavyTest: true,
   impl: mcpToolTest({
