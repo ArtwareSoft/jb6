@@ -148,50 +148,7 @@ async function moveInArray(diff) {
     cursorPos && host().selectRange(cursorPos)
 }
 
-async function getHtmlTemplate({templateId, webview, studioImportMap}) {
-        const importmap = convertImportMapToVSCode(studioImportMap, webview)
-        const path = requireResolve(templateId)
-        const template = await readFile(path,'utf-8')
-
-        const nonce = [...Array(16)].map(() => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.random() * 62 | 0)).join('')
-
-        const csp = `
-        <meta http-equiv="Content-Security-Policy"
-                content="
-                default-src 'none';
-                script-src 'nonce-${nonce}' ${webview.cspSource};
-                style-src  ${webview.cspSource} 'unsafe-inline';
-                img-src    'self' ${webview.cspSource} data:;
-                worker-src ${webview.cspSource} blob:;
-                connect-src ${webview.cspSource};
-                ">
-        `
-
-        const header = csp + `\n<script nonce="NONCE" type="importmap">${JSON.stringify(importmap,null,2)}\n</script>`
-        const reactBase = convertFilePathToVSCode(resolveWithImportMap('@jb6/react/lib', studioImportMap), webview)
-        const extensionBase = convertFilePathToVSCode(VSCodeStudioExtensionRoot, webview)
-        vsCodelog('extensionBase',extensionBase)
-
-        return template.replace('VSCODE_HEADER', header).replace(/NONCE/g, nonce)
-            .replace(/REACT_BASE/g, reactBase)
-            .replace(/EXT_BASE/g, extensionBase)
-}
-
-function convertFilePathToVSCode(path, webview){
-    const diskUri = vscodeNS.Uri.file(path)
-    return webview.asWebviewUri(diskUri).toString()
-}
-
-function convertImportMapToVSCode(rawMap, webview) {
-    const fixed = {}
-    for (const specifier in rawMap.imports) {
-        const onDiskOrUrl = resolveWithImportMap(specifier, rawMap)
-        fixed[specifier] = convertFilePathToVSCode(onDiskOrUrl, webview)
-    }
-    return { imports: fixed }
-}
-
-const panels = {}
+let probeResultPanel
 export const commands = {
     async applyCompChangeOfCompletionItem(item) {
         const editAndCursor = item.edit ? item : await langService.editAndCursorOfCompletionItem.$run({item})
@@ -204,42 +161,27 @@ export const commands = {
         return moveInArray(1)
     },
 
-    async openProbeResultEditor() { // ctrl-I
-        vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows') 
-        const compProps = await langService.calcCompProps.$run() // IMPORTANT - get comp props here. opening the view will change the current editor
+    async openProbeResultEditor() { // ctrl-J
+        const compProps = await langService.calcCompProps.$run()
         const { path, filePath } = compProps
-        const projectRoot = VSCodeWorkspaceProjectRoot
-        const { studioImportMap, projectImportMap, testFiles } = await studioAndProjectImportMaps(filePath)
-
-        const probeRes = await runProbeCliToUse(path, filePath, {importMap: {projectRoot}, testFiles})
-        if (probeRes.error) {
-            const errorStr = JSON.stringify(probeRes.error)
-            const refError = (errorStr.match(/ReferenceError: ([^\s]+ is not defined)/) || [])[1]
-            if (refError) {
-                showUserMessage('error', `${refError}, maybe add it the dsls section at the top`)
-            } else {
-                showUserMessage('error', `probe cli failed: ${JSON.stringify(probeRes.error)}`)
-                showUserMessage('error', probeRes.cmd)
-            }
-            vscodeNS.commands.executeCommand('workbench.action.editorLayoutSingle')
+        if (!path) {
+            showUserMessage('error', 'No component path found at cursor position')
             return
         }
+        const projectRoot = VSCodeWorkspaceProjectRoot
+        const relativeFilePath = filePath.startsWith(projectRoot) ? filePath.substring(projectRoot.length) : filePath
 
-        if (!panels.inspect) {
-            panels.inspect = vscodeNS.window.createWebviewPanel('jbart.inpect', 'inspect', vscodeNS.ViewColumn.Two, { 
-                enableScripts: true,
-                localResourceRoots: [VSCodeWorkspaceProjectRoot,VSCodeStudioExtensionRoot,VSCodeStudioExtensionRootLinked]
-                    .map(x=>vscodeNS.Uri.file(x))
-            })
-            panels.inspect.onDidDispose(() => { delete panels.inspect })
-        }
-        const webview = panels.inspect.webview
-        const probeResultTemplate = await getHtmlTemplate({templateId: './probe.html', webview, studioImportMap})
-
-        const html = probeResultTemplate.replace('PROBE_RES', JSON.stringify(probeRes))
-            .replace('PROJECT_REPO_ROOT', convertFilePathToVSCode(VSCodeWorkspaceProjectRoot, webview))
-        vsCodelog(html)
-        panels.inspect.webview.html = html
+        const config = vscodeNS.workspace.getConfiguration('jbart')
+        const probeUrl = config.get('probeUrl') || 'http://localhost:8083/packages/core/misc/probe-view.html'        
+        const url = new URL(probeUrl)
+        url.searchParams.set('path', path)
+        url.searchParams.set('filePath', relativeFilePath)
+        
+        vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows') 
+        probeResultPanel = probeResultPanel || vscodeNS.window.createWebviewPanel('jbart.inspect', 'Probe Inspector', vscodeNS.ViewColumn.Two, {enableScripts: true})
+        probeResultPanel.webview.html = `<iframe src="${url}" style="width:100%;height:100vh;border:none"></iframe>`
+        
+        vsCodelog(`Opening probe view in ViewColumn.Two: ${url.toString()}`)
     },
 
     visitLastPath() { // ctrl-Q
@@ -247,9 +189,9 @@ export const commands = {
     },
 
     closeProbeResultEditor() { // ctrl-shift-I
-        delete panels.inspect
-        // delete jb.jbm.childJbms.vscode_inspect
+        // Restore single editor layout
         vscodeNS.commands.executeCommand('workbench.action.editorLayoutSingle')
+        vsCodelog('closeProbeResultEditor: Restored single editor layout')
     },
 
     openLiveProbeResultPanel() {

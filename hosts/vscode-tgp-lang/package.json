@@ -2,7 +2,7 @@
   "name": "jb6-tgp-lang",
   "displayName": "jb6 TGP Language",
   "description": "TGP language service and probe activation",
-  "version": "2508.1.6",
+  "version": "2508.2.1",
   "publisher": "artwaresoft",
   "license": "MIT",
   "engines": {
@@ -42,6 +42,16 @@
           "name": "main"
         }
       ]
+    },
+    "configuration": {
+      "title": "jBart TGP Language",
+      "properties": {
+        "jbart.probeUrl": {
+          "type": "string",
+          "default": "http://localhost:8083/packages/core/misc/probe-view.html",
+          "description": "URL for the probe view page"
+        }
+      }
     },
     "commands": [
       {
