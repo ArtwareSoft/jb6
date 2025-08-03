@@ -1,7 +1,7 @@
 import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
 
-const { jb, astNode, asJbComp, logError, studioAndProjectImportMaps, resolveWithImportMap, fetchByEnv, pathParent
+const { jb, astNode, asJbComp, logError, projectInfo, resolveWithImportMap, fetchByEnv, pathParent
   , pathJoin, absPathToUrl, unique, resolveProfileTypes, splitDslType, logVsCode, filePathsForDsls } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
@@ -16,7 +16,7 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 export async function calcTgpModelData(filePaths, forDsls) {
   const filePath = Array.isArray(filePaths) ? filePaths[0] : filePaths
   const filePathToUse = filePath || await filePathsForDsls(forDsls)
-  const { projectImportMap, testFiles } = await studioAndProjectImportMaps(filePathToUse)
+  const { projectImportMap, testFiles } = await projectInfo(filePathToUse)
 
   const indexFileName = absPathToUrl(pathJoin(pathParent(filePathToUse),'index.js'), projectImportMap.serveEntries)
   const importModule = Object.entries(projectImportMap.imports).find(x=> x[1]==indexFileName)?.[0]

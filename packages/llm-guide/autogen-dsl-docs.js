@@ -10,7 +10,7 @@ const {
   },
   tgp: { TgpType, any: {}, var: {Var } },
 } = dsls
-const { studioAndProjectImportMaps, filePathsForDsls, calcTgpModelData, logError, fetchByEnv, deepMapValues, omitProps} = coreUtils
+const { projectInfo, filePathsForDsls, calcTgpModelData, logError, fetchByEnv, deepMapValues, omitProps} = coreUtils
 
 const calcRepoRoot = Data('calcRepoRoot', {
   impl: () => coreUtils.calcRepoRoot()
@@ -30,7 +30,7 @@ const bookletsContent = Data('bookletsContent', {
   ],
   impl: async (ctx, {booklets, repoRoot: _repoRoot}) => {
       const repoRoot = await _repoRoot()
-      const { llmGuideFiles, projectImportMap } = await studioAndProjectImportMaps(repoRoot)
+      const { llmGuideFiles, projectImportMap } = await projectInfo(repoRoot)
       const tgpModel = await calcTgpModelData(llmGuideFiles)
       const notFound = booklets.split(',').filter(d=>!tgpModel.dsls['llm-guide'].booklet[d]).join(', ')
       notFound && logError(`includeBooklet can not find booklet ${notFound}`)

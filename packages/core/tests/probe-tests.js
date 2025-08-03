@@ -64,7 +64,7 @@ Test('probeCliTest.helloWorld', {
     calculate: async () => {
       const repoRoot = await coreUtils.calcRepoRoot()
       const filePath = `${repoRoot}/hosts/test-project/a-tests.js`
-      const { projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
+      const { projectImportMap } = await coreUtils.projectInfo(filePath)
       return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',filePath,{importMap: projectImportMap})
     },
     expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
@@ -77,7 +77,7 @@ Test('probeCliTest.requireNode', {
     calculate: async () => {
       const repoRoot = await coreUtils.calcRepoRoot()
       const filePath = `${repoRoot}/hosts/test-project/a-tests.js`
-      const { projectImportMap } = await coreUtils.studioAndProjectImportMaps(filePath)
+      const { projectImportMap } = await coreUtils.projectInfo(filePath)
       const res = await runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',filePath,{importMap: projectImportMap, requireNode: true})
       return res
     },
@@ -92,7 +92,7 @@ Test('probeCliTest.findTestFiles', {
     calculate: async () => {
       const repoRoot = await coreUtils.calcRepoRoot()
       const filePath = `${repoRoot}/hosts/test-project/a-tests.js`
-      const { projectImportMap, testFiles } = await coreUtils.studioAndProjectImportMaps(filePath)
+      const { projectImportMap, testFiles } = await coreUtils.projectInfo(filePath)
       const probeResArr = await Promise.all(['cmpA','cmpB','cmpC'].map(cmp => 
         runProbeCli(`data<common>${cmp}~impl`,filePath,{testFiles, importMap: projectImportMap, requireNode: true})))
       const allData = probeResArr.map(x=>x.probeRes.result[0].in.data).join(',')

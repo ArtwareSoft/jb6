@@ -3,11 +3,11 @@ import '../utils/core-utils.js'
 import './jb-cli.js'
 const { coreUtils } = jb
 const { isNode, logException, logVsCode, pathJoin } = coreUtils
-Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, studioAndProjectImportMaps, calcRepoRoot, 
+Object.assign(coreUtils, { calcImportMap, resolveWithImportMap, projectInfo, calcRepoRoot, 
   calcImportMapOfRepoRoot, filePathsForDsls, listRepoFiles })
 
 jb.importMapCache = {
-  studioAndProjectImportMaps: {}
+  projectInfo: {}
 
 }
 
@@ -39,9 +39,9 @@ async function filePathsForDsls(_dsls) {
   return dsls.flatMap(dsl=> files.filter(f=>f.endsWith(`${dsl}/index.js`))).map(localPath=>path.join(repoRoot,localPath))
 }
 
-async function studioAndProjectImportMaps(filePath) {
-  if (jb.importMapCache.studioAndProjectImportMaps[filePath])
-    return jb.importMapCache.studioAndProjectImportMaps[filePath]
+async function projectInfo(filePath) {
+  if (jb.importMapCache.projectInfo[filePath])
+    return jb.importMapCache.projectInfo[filePath]
   if (!isNode) {
         const script = `
   import { coreUtils } from '@jb6/core'
@@ -49,7 +49,7 @@ async function studioAndProjectImportMaps(filePath) {
 
   ;(async()=>{
     try {
-      const result = await coreUtils.studioAndProjectImportMaps('${filePath}')
+      const result = await coreUtils.projectInfo('${filePath}')
       process.stdout.write(JSON.stringify(result,null,2))
     } catch (e) {
       console.error(e)
@@ -59,14 +59,12 @@ async function studioAndProjectImportMaps(filePath) {
     return res.result
   }
   const repoRoot = globalThis.VSCodeWorkspaceProjectRoot || await calcRepoRoot()
-  const studioRoot = globalThis.VSCodeStudioExtensionRoot || `${repoRoot}/hosts/vscode-tgp-lang`
   const projectRoot = await findProjectRoot(filePath, repoRoot)
   const projectRootImportMap = await calcImportMapOfRepoRoot(projectRoot, { repoRoot, includeTesting: true })
   const testFiles = projectRootImportMap.serveEntries.flatMap(({tests}) => tests).filter(Boolean)
   const llmGuideFiles = projectRootImportMap.serveEntries.flatMap(({llmGuides}) => llmGuides).filter(Boolean)
 
-  return jb.importMapCache.studioAndProjectImportMaps[filePath] = { 
-      studioImportMap: await calcImportMapOfRepoRoot(studioRoot, { repoRoot }), 
+  return jb.importMapCache.projectInfo[filePath] = { 
       projectImportMap: {projectRoot, ...await calcImportMapOfRepoRoot(projectRoot, { repoRoot, includeTesting: true }) },
       testFiles,
       llmGuideFiles
@@ -110,10 +108,6 @@ function resolveWithImportMap(specifier, { imports, serveEntries }) {
     return pathJoin(dirEntry.pkgDir, restPath)
   }
   return urlToBeServed
-
-  // function pathJoin(a, b) {
-  //   return `${a.replace(/\/+$/, '')}/${b.replace(/^\/+/, '')}`;
-  // }
 }
 
 async function calcImportMap() {

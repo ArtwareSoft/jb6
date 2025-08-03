@@ -26,7 +26,7 @@ async function run() {
     ReactDOM.createRoot(document.getElementById('show')).render(h(LoadingView, { path, filePath }))
     
     try {
-        const { testFiles} = await coreUtils.studioAndProjectImportMaps(fullFilePath)
+        const { testFiles} = await coreUtils.projectInfo(fullFilePath)
         const result = await coreUtils.runProbeCli(path, fullFilePath, {importMap: {projectRoot}, testFiles})
         ReactDOM.createRoot(document.getElementById('show')).render(h(defaultProbeResultView,result))
     } catch (error) {

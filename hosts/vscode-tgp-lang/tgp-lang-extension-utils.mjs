@@ -4,7 +4,7 @@ import '@jb6/core/misc/probe.js'
 import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 
-const { jb, logError, asArray, log, Ctx, resolveWithImportMap, studioAndProjectImportMaps, calcHash } = coreUtils
+const { jb, logError, asArray, log, Ctx, resolveWithImportMap, projectInfo, calcHash } = coreUtils
 const { closestComp, applyCompChange } = langServiceUtils
 const { langService } = ns
 

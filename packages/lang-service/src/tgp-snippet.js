@@ -3,11 +3,11 @@ import { langServiceUtils } from './lang-service-parsing-utils.js'
 import '@jb6/core/misc/calc-import-map.js'
 const { calcProfileActionMap } = langServiceUtils
 
-const { unique, calcTgpModelData, studioAndProjectImportMaps, runCliInContext,pathJoin,pathParent,absPathToUrl } = coreUtils
+const { unique, calcTgpModelData, projectInfo, runCliInContext,pathJoin,pathParent,absPathToUrl } = coreUtils
 Object.assign(coreUtils,{runSnippetCli})
 
 async function runSnippetCli({compText: _compText, filePath, setupCode = '', packages = [] } = {}) {
-    const { projectImportMap } = await studioAndProjectImportMaps(filePath)
+    const { projectImportMap } = await projectInfo(filePath)
 
     const tgpModel = await calcTgpModelData(filePath) // todo: support packages
     if (tgpModel.error) return { error: tgpModel.error }

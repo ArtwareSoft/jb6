@@ -4,7 +4,7 @@ import '@jb6/core/misc/calc-import-map.js'
 
 const { tgpEditorHost, offsetToLineCol, calcProfileActionMap } = langServiceUtils
 const { jb, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, 
-    unique, compByFullId, splitDslType, runProbeCli, studioAndProjectImportMaps, toArray, calcVar, Ctx } = coreUtils
+    unique, compByFullId, splitDslType, runProbeCli, projectInfo, toArray, calcVar, Ctx } = coreUtils
 
 jb.langServiceRegistry = { 
     tgpModels : {},
@@ -266,7 +266,7 @@ const { test: { Test, test: { dataTest } } } = dsls
 ${compText}
 ` : ''
     
-    const { testFiles } = await studioAndProjectImportMaps(filePath)
+    const { testFiles } = await projectInfo(filePath)
     const {probeRes, error, cmd} = await runProbeCli(path, filePath, { testFiles, extraCode, importMap: compProps.tgpModel.projectImportMap })
     if (error) {
         globalThis.showUserMessage && showUserMessage('error', `probe cli failed: ${JSON.stringify(error)} ${cmd}`)
