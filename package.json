@@ -1,7 +1,7 @@
 {
   "name": "jb6-monorepo",
   "private": true,
-  "version": "1.250730.1",
+  "version": "1.250803.1",
   "description": "JB6 core + plugins (pure-JS workspaces mono-repo)",
   "type": "module",
   "scripts": {
@@ -12,7 +12,8 @@
     "jb6:publish": "bash scripts/publish.sh",
     "bumpPub": "npm run jb6:bumpVer && npm run jb6:publish",
     "update-vscode-ext": "bash scripts/update-vscode-ext.sh",
-    "publish-vscode-ext": "start https://marketplace.visualstudio.com/manage/publishers/"
+    "publish-vscode-ext": "start https://marketplace.visualstudio.com/manage/publishers/",
+    "update-test-project": "bash scripts/update-test-proj.sh"
   },
   "workspaces": [
     "packages/*"

@@ -178,10 +178,14 @@ export const commands = {
         url.searchParams.set('filePath', relativeFilePath)
         
         vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows') 
-        probeResultPanel = probeResultPanel || vscodeNS.window.createWebviewPanel('jbart.inspect', 'Probe Inspector', vscodeNS.ViewColumn.Two, {enableScripts: true})
-        probeResultPanel.webview.html = `<iframe src="${url}" style="width:100%;height:100vh;border:none"></iframe>`
-        
+        if (!probeResultPanel) {
+            probeResultPanel = vscodeNS.window.createWebviewPanel('jbart.inspect', 'Probe Inspector', vscodeNS.ViewColumn.Two, {enableScripts: true})
+            probeResultPanel.onDidDispose(() => probeResultPanel = undefined, null, globalThis.jbVSCodeContext?.subscriptions )
+        }
+
+        probeResultPanel.webview.html = `<iframe src="${url}" style="width:100%;height:100vh;border:none"></iframe>`        
         vsCodelog(`Opening probe view in ViewColumn.Two: ${url.toString()}`)
+
     },
 
     visitLastPath() { // ctrl-Q

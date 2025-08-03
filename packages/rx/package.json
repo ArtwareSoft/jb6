@@ -1,6 +1,6 @@
 {
   "name": "@jb6/rx",
-  "version": "1.250730.1",
+  "version": "1.250803.1",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -8,7 +8,7 @@
     "./rx-misc.js": "./rx-misc.js"
   },
   "dependencies": {
-    "@jb6/core": "1.250730.1"
+    "@jb6/core": "1.250803.1"
   },
   "repository": {
     "type": "git",

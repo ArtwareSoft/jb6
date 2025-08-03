@@ -7,6 +7,7 @@ async function activate(context) {
   const { workspace, window } = vscode
   const channel = window.createOutputChannel('jbart')
   context.subscriptions.push(channel)
+  globalThis.jbVSCodeContext = context
 
   globalThis.VSCodeStudioExtensionRoot = context.extensionPath
   globalThis.VSCodeStudioExtensionRootLinked = path.dirname(await realpath(VSCodeStudioExtensionRoot + '/node_modules/@jb6/repo'))

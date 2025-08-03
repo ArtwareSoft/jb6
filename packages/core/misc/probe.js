@@ -16,9 +16,9 @@ jb.probeRepository = {
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
 async function runProbeCli(probePath, filePath, {extraCode, importMap, testFiles = []} = {}) {
-    const serveEntries = importMap?.serveEntries || []
-    const usingNode = isNode
-    const imports = unique([filePath, ...testFiles]).map(f=>usingNode ? f : absPathToUrl(f, serveEntries))
+    // const serveEntries = importMap?.serveEntries || []
+    // const usingNode = isNode
+    const imports = unique([filePath, ...testFiles]) //.map(f=>usingNode ? f : absPathToUrl(f, serveEntries))
       .map(f=>`\timport '${f}'`).join('\n')
     const script = `
       import { jb, dsls } from '@jb6/core'

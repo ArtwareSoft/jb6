@@ -488,7 +488,7 @@ Test('langServiceTest.closestComp', {
 Test('langServiceTest.provideDefinition.firstInPipe', {
   impl: dataTest({
     calculate: langService.definition(calcCompTextAndCursor('dataTest(pipeline(l__ist()))')),
-    expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' }),
+    expectedResult: contains('/common/jb-common.js', { data: '%path%' }),
     timeout: '3000'
   })
 })
@@ -496,7 +496,7 @@ Test('langServiceTest.provideDefinition.firstInPipe', {
 Test('langServiceTest.provideDefinition.inProfile', {
   impl: dataTest({
     calculate: langService.definition(calcCompTextAndCursor('dataTest(pipeline(l__ist()))')),
-    expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' })
+    expectedResult: contains('/common/jb-common.js', { data: '%path%' })
   })
 })
 
