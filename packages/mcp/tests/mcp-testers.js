@@ -1,6 +1,6 @@
 import { dsls, ns, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
-import '@jb6/core/misc/calc-import-map.js'
+import '@jb6/core/misc/import-map-services.js'
 import '@jb6/testing'
 import '@jb6/mcp'
 const { runBashScript, calcRepoRoot } = coreUtils

@@ -1,10 +1,10 @@
 import { coreUtils } from '@jb6/core'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
-import '@jb6/core/misc/calc-import-map.js'
+import '@jb6/core/misc/import-map-services.js'
 
 const { tgpEditorHost, offsetToLineCol, calcProfileActionMap } = langServiceUtils
 const { jb, calcTgpModelData, compParams, asArray, isPrimitiveValue, calcPath, parentPath, compIdOfProfile, 
-    unique, compByFullId, splitDslType, runProbeCli, projectInfo, toArray, calcVar, Ctx } = coreUtils
+    unique, compByFullId, splitDslType, runProbeCli, toArray, calcVar, Ctx } = coreUtils
 
 jb.langServiceRegistry = { 
     tgpModels : {},
@@ -20,7 +20,7 @@ async function calcCompProps(_compTextAndCursor) {
     return {...compTextAndCursor, tgpModel, ...calcProfileActionMap(compText, {inCompOffset, tgpModel}) }
 
     function getTgpModel() {
-        return jb.langServiceRegistry.tgpModelsPromise[filePath] = calcTgpModelData(filePath)
+        return jb.langServiceRegistry.tgpModelsPromise[filePath] = calcTgpModelData({entryPointPaths: filePath})
             .then(v => (jb.langServiceRegistry.tgpModels[filePath] = new tgpModelForLangService(v)))
     }
 }
@@ -258,16 +258,14 @@ class tgpModelForLangService {
 }
 
 async function dataCompletions(compProps, path, ctx) {
-    const { actionMap, inCompOffset, text: compText, filePath, compPos, tgpModel } = compProps
+    const { actionMap, inCompOffset, text: compText, filePath: entryPointPaths, compPos, tgpModel } = compProps
 
     const inCompletionTest = ctx.jbCtx?.creatorStack?.find(x=> x && x.indexOf('completionTest') != -1)
     const extraCode = inCompletionTest ? `
 const { test: { Test, test: { dataTest } } } = dsls
 ${compText}
 ` : ''
-    
-    const { testFiles } = await projectInfo(filePath)
-    const {probeRes, error, cmd} = await runProbeCli(path, filePath, { testFiles, extraCode, importMap: compProps.tgpModel.projectImportMap })
+    const {probeRes, error, cmd} = await runProbeCli(path, {entryPointPaths, extraCode })
     if (error) {
         globalThis.showUserMessage && showUserMessage('error', `probe cli failed: ${JSON.stringify(error)} ${cmd}`)
         return []

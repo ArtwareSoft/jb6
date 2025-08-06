@@ -23,8 +23,8 @@ export async function expressTestServices(app) {
   })
 
   app.post('/run-cli', async (req, res) => {
-    const { script, importMap } = req.body
-    const result = await runNodeCli(script, {importMap})
+    const { script, ...options } = req.body
+    const result = await runNodeCli(script, options)
     res.status(200).json({ result })
   })
 

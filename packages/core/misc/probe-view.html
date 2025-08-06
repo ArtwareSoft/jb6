@@ -12,7 +12,7 @@ import { reactUtils } from '@jb6/react'
 import '@jb6/react/data-browser.js'
 const { h, L, useState, useEffect, useRef, useContext, DataBrowser } = reactUtils
 
-import '@jb6/core/misc/calc-import-map.js'
+import '@jb6/core/misc/import-map-services.js'
 import '@jb6/core/misc/probe.js'
 
 async function run() {
@@ -26,8 +26,7 @@ async function run() {
     ReactDOM.createRoot(document.getElementById('show')).render(h(LoadingView, { path, filePath }))
     
     try {
-        const { testFiles} = await coreUtils.projectInfo(fullFilePath)
-        const result = await coreUtils.runProbeCli(path, fullFilePath, {importMap: {projectRoot}, testFiles})
+        const result = await coreUtils.runProbeCli(path, {entryPointPaths: fullFilePath})
         ReactDOM.createRoot(document.getElementById('show')).render(h(defaultProbeResultView,result))
     } catch (error) {
         ReactDOM.createRoot(document.getElementById('show')).render(h(ErrorView, { error, path, filePath }))

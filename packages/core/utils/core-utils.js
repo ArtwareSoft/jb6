@@ -285,12 +285,12 @@ function logVsCode(...args) {
     globalThis.jbVSCodeLog(...args)
 }
 
-async function fetchByEnv(url, serveEntries = []) {
+async function fetchByEnv(url, staticMappings = []) {
   if (globalThis.window) {
-    const rUrl = absPathToUrl(url, serveEntries)
+    const rUrl = absPathToUrl(url, staticMappings)
     const res = await fetch(rUrl)
     if (!res.ok) {
-      absPathToUrl(url, serveEntries) // for debug
+      absPathToUrl(url, staticMappings) // for debug
       logError(`fetch ${url} → ${res.status}`)
       return ''
     } 
@@ -306,9 +306,9 @@ async function fetchByEnv(url, serveEntries = []) {
   }
 }
 
-function absPathToUrl(path, serveEntries = []) {
-    const servedEntry = serveEntries.find(x => x.pkgDir != x.urlPath && path.indexOf(x.pkgDir) == 0)
-    return servedEntry ? path.replace(servedEntry.pkgDir, servedEntry.urlPath) : path
+function absPathToUrl(path, staticMappings = []) {
+    const servedEntry = staticMappings.find(x => x.diskPath != x.urlPath && path.indexOf(x.diskPath) == 0)
+    return servedEntry ? path.replace(servedEntry.diskPath, servedEntry.urlPath) : path
 }
 
 const isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string'

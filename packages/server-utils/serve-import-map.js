@@ -1,8 +1,8 @@
 import path from 'path'
 import fs from 'fs/promises'
 import { coreUtils } from '@jb6/core'
-import '@jb6/core/misc/calc-import-map.js'    // Keep old implementation available
-import '@jb6/core/misc/package-services.js'   // NEW: Import new services
+import '@jb6/core/misc/import-map-services.js'    // Keep old implementation available
+import '@jb6/core/misc/import-map-services.js'   // NEW: Import new services
 
 const { calcImportMap, getStaticServeConfig, calcRepoRoot } = coreUtils
 

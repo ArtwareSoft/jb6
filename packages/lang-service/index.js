@@ -1,6 +1,6 @@
 import '@jb6/core'
 import '@jb6/core/misc/resolve-types.js'
-import '@jb6/core/misc/calc-import-map.js'
+import '@jb6/core/misc/import-map-services.js'
 import '@jb6/core/misc/probe.js'
 import '@jb6/core/misc/pretty-print.js'
 

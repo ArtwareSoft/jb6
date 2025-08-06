@@ -10,7 +10,7 @@ const {
   },
   tgp: { TgpType, any: {}, var: {Var } },
 } = dsls
-const { projectInfo, filePathsForDsls, calcTgpModelData, logError, fetchByEnv, deepMapValues, omitProps} = coreUtils
+const { calcImportData, calcTgpModelData, logError, fetchByEnv, deepMapValues, omitProps} = coreUtils
 
 const calcRepoRoot = Data('calcRepoRoot', {
   impl: () => coreUtils.calcRepoRoot()
@@ -30,19 +30,19 @@ const bookletsContent = Data('bookletsContent', {
   ],
   impl: async (ctx, {booklets, repoRoot: _repoRoot}) => {
       const repoRoot = await _repoRoot()
-      const { llmGuideFiles, projectImportMap } = await projectInfo(repoRoot)
-      const tgpModel = await calcTgpModelData(llmGuideFiles)
+      const { llmGuideFiles, staticMappings } = await calcImportData({forRepo: repoRoot})
+      const tgpModel = await calcTgpModelData({entryPointPaths: llmGuideFiles})
       const notFound = booklets.split(',').filter(d=>!tgpModel.dsls['llm-guide'].booklet[d]).join(', ')
       notFound && logError(`includeBooklet can not find booklet ${notFound}`)
       const bookletsText = await Promise.all(booklets.split(',').map(b=>tgpModel.dsls['llm-guide'].booklet[b]).filter(Boolean).map(async bookletCmp=>{
         const loc = bookletCmp.$location
-        const src = await fetchByEnv(loc.path, projectImportMap.serveEntries)
+        const src = await fetchByEnv(loc.path, staticMappings)
         const doclets = src.split('\n').slice(loc.line, loc.to.line).join('').match(/booklet\(([^)]*)\)/)[1].split(',').map(x=>x.trim()).map(x=>x.replace("'",'')).filter(Boolean)
         const notFound = doclets.filter(d=>!tgpModel.dsls['llm-guide'].doclet[d]).join(', ')
         notFound && logError(`includeBooklet can not find doclet ${notFound}`)
         const docs = await Promise.all(doclets.map(d=>tgpModel.dsls['llm-guide'].doclet[d]).filter(Boolean).map(async cmp=>{
           const loc = cmp.$location
-          const src = await fetchByEnv(loc.path, projectImportMap.serveEntries)
+          const src = await fetchByEnv(loc.path, staticMappings)
           return src.split('\n').slice(loc.line, loc.to.line).join('\n')
         }))
         return docs
@@ -56,11 +56,9 @@ const tgpModel = Data('tgpModel', {
     {id: 'forDsls', as: 'string', mandatory: true},
     {id: 'repoRoot', as: 'string', dynamic: true, defaultValue: calcRepoRoot() }
   ],
-  impl: async (ctx, { forDsls, repoRoot: _repoRoot }) => {
+  impl: async (ctx, { forDsls, repoRoot }) => {
     try {
-//      const repoRoot = await _repoRoot()
-      const filePaths = await filePathsForDsls(forDsls)
-      const res = await coreUtils.calcTgpModelData(filePaths)
+      const res = await coreUtils.calcTgpModelData({forDsls, forRepo: forDsls ? null : await repoRoot})
       const {dsls, ns} = deepMapValues(res,minifyComp,filter)
       return {dsls,ns}
     } catch (error) {

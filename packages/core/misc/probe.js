@@ -8,20 +8,20 @@ import './jb-cli.js'
 
 const { coreUtils } = jb
 const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, 
-  asJbComp, runCliInContext, absPathToUrl, compIdOfProfile, isNode, stripData, unique } = coreUtils
+  asJbComp, compIdOfProfile, stripData, unique } = coreUtils
 
 jb.probeRepository = {
     probeCounter: 0
 }
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
-async function runProbeCli(probePath, filePath, {extraCode, importMap, testFiles = []} = {}) {
-    // const serveEntries = importMap?.serveEntries || []
-    // const usingNode = isNode
-    const imports = unique([filePath, ...testFiles]) //.map(f=>usingNode ? f : absPathToUrl(f, serveEntries))
-      .map(f=>`\timport '${f}'`).join('\n')
+async function runProbeCli(probePath, dependencies) {
+    const { extraCode } = dependencies
+    const {entryFiles, testFiles, projectDir } = await coreUtils.calcImportData(dependencies)
+    const imports = unique([...entryFiles, ...testFiles]).map(f=>`\timport '${f}'`).join('\n')
     const script = `
       import { jb, dsls } from '@jb6/core'
+      import '@jb6/testing'
       import '@jb6/core/misc/probe.js'
 ${imports}
       ;(async () => {
@@ -37,15 +37,16 @@ ${imports}
     `
 
     try {
-      const { result, error, cmd } = await runCliInContext(script, {importMap, requireNode: true})
-      return { probeRes: result, error, cmd, importMap }
+      const { result, error, cmd } = await coreUtils.runCliInContext(script, {projectDir})
+      return { probeRes: result, error, cmd, projectDir }
     } catch (error) {
       debugger
-      return { probeRes: null, error, importMap}
+      return { probeRes: null, error, projectDir}
     }
 }
 
 async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
+  debugger
     if (!_probePath) {
        logError(`probe runCircuit missing probe path`, {})
        return { error: `probe runCircuit missing probe path` }

@@ -1,8 +1,9 @@
 import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
+import '@jb6/core/misc/import-map-services.js'  // NEW: Import new services
 
-const { jb, astNode, asJbComp, logError, projectInfo, resolveWithImportMap, fetchByEnv, pathParent
-  , pathJoin, absPathToUrl, unique, resolveProfileTypes, splitDslType, logVsCode, filePathsForDsls } = coreUtils
+const { jb, astNode, asJbComp, logError, resolveWithImportMap, fetchByEnv, pathParent
+  , pathJoin, absPathToUrl, unique, splitDslType, logVsCode, calcImportData } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -13,24 +14,36 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
 
-export async function calcTgpModelData(filePaths, forDsls) {
-  const filePath = Array.isArray(filePaths) ? filePaths[0] : filePaths
-  const filePathToUse = filePath || await filePathsForDsls(forDsls)
-  const { projectImportMap, testFiles } = await projectInfo(filePathToUse)
+export async function calcTgpModelData(dependencies) {
+  //const {entryPointPaths, forRepo, forDsls} = dependencies
 
-  const indexFileName = absPathToUrl(pathJoin(pathParent(filePathToUse),'index.js'), projectImportMap.serveEntries)
-  const importModule = Object.entries(projectImportMap.imports).find(x=> x[1]==indexFileName)?.[0]
+  // NEW IMPLEMENTATION - no fallback, fix bugs directly
+  //const entryPointPaths = Array.isArray(filePaths) ? filePaths : (filePaths ? [filePaths] : null)
+  const {importMap, staticMappings, entryFiles, testFiles, projectDir } = await calcImportData(dependencies)
+  
+  // const filePath = Array.isArray(filePaths) ? filePaths[0] : filePaths
+  // const filePathToUse = filePath || entryPointPaths[0] || entryPoints[0]
+  
+  // if (!filePathToUse) {
+  //   const error = `No valid file paths found. filePaths: ${JSON.stringify(filePaths)}, forDsls: ${forDsls}`
+  //   logError(error)
+  //   return { tgpModel: {dsls: {}, ns: {}, nsRepo: {}, typeRules: [], imports: []}, error }
+  // }
 
-  const rootFilePaths = unique([importModule,filePathToUse,...(Array.isArray(filePaths) ? filePaths : []), ...testFiles].filter(Boolean))
+  // const indexFileName = absPathToUrl(pathJoin(pathParent(filePathToUse),'index.js'), staticMappings)
+  // const importModule = Object.entries(importMap.imports).find(x=> x[1]==indexFileName)?.[0]
+
+  //const rootFilePaths = unique([importModule,filePathToUse,...(Array.isArray(filePaths) ? filePaths : []), ...testFiles].filter(Boolean))
+  const rootFilePaths = unique([...entryFiles, ...testFiles])
   const codeMap = {}
   const visited = {}  // urls seen
 
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
 
-  const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, typeRules: [], imports: Object.keys(codeMap), projectImportMap}
+  const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, typeRules: [], imports: Object.keys(codeMap), importMap, entryFiles, projectDir}
   const {dsls, typeRules} = tgpModel
 
-  // 2) Phase 1: find all `... = TgpType(...)`
+  // 2) Phase 1: find all `... = TgpType(...)`
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
@@ -52,7 +65,6 @@ export async function calcTgpModelData(filePaths, forDsls) {
   })
 
   if (!dsls.tgp) {
-    const error = `wrong filePath ${filePath}. calcTgpModelData no tgp dsl.  /packages/common/common-tests.js is safe`
     logError(error)
     return { tgpModel, error }
   }
@@ -62,29 +74,25 @@ export async function calcTgpModelData(filePaths, forDsls) {
   dsls.tgp.var.Var = jb.dsls.tgp.var.Var[asJbComp]
   dsls.tgp.comp.tgpComp = jb.dsls.tgp.tgpComp[asJbComp]
 
-  // 3) Phase 2a: non-exported in the entry file only
-  {
+  // 3) Phase 2a: non-exported in the entry files only
+  rootFilePaths.forEach(filePath=> {
     const src = codeMap[filePath]
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
     ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations)
-		  .forEach(decl => parseCompDec({exportName: decl.id.name, decl: decl.init, url: filePath, src}))
-  }
+        .forEach(decl => parseCompDec({exportName: decl.id.name, decl: decl.init, url: filePath, src}))
+  })
 
-  // 4) Phase 2b: exported components + direct compDef + typeRules in all files
+  // 4) Phase 2b: exported components + direct compDef + typeRules in all files
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
-    //if (url.match(/ui-dsl/)) debugger
     const exportDefs = ast.body.filter(n => n.type === 'ExportNamedDeclaration').flatMap(n => n.declaration?.declarations)
     const constDefs =  ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations)
     const allDefs = [...exportDefs, ...constDefs].filter(decl=>decl?.init)
 
-
     allDefs.forEach(decl => parseCompDec({exportName: decl.id.name , decl: decl.init, url, src}))
     const directDefs = ast.body.map(n => n?.expression).filter(Boolean)
     directDefs.forEach(decl => parseCompDec({decl, url, src}))
-    //directDefs.filter(d => d?.callee?.name === 'DefComponents').forEach(decl=> { })
-
   })
 
   logVsCode('tgp model data', tgpModel)
@@ -120,8 +128,8 @@ export async function calcTgpModelData(filePaths, forDsls) {
     visited[url] = true
     let rUrl = ''
     try {
-      rUrl = resolveWithImportMap(url, projectImportMap) || url
-      const src = await fetchByEnv(rUrl, projectImportMap.serveEntries)
+      rUrl = resolveWithImportMap(url, importMap, staticMappings) || url
+      const src = await fetchByEnv(rUrl, staticMappings)
       codeMap[url] = src
 
       const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
@@ -141,7 +149,6 @@ export async function calcTgpModelData(filePaths, forDsls) {
     }
   }
 }
-
 
 function astToTgpObj(node, code) {
 	if (!node) return undefined
@@ -230,4 +237,3 @@ function offsetToLineCol(text, offset) {
       col: offset - (cut.indexOf('\n') == -1 ? 0 : (cut.lastIndexOf('\n') + 1))
   }
 }
-

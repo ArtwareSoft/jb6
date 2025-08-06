@@ -1,15 +1,15 @@
 import { coreUtils, dsls } from '@jb6/core'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
-import '@jb6/core/misc/calc-import-map.js'
+import '@jb6/core/misc/import-map-services.js'
 const { calcProfileActionMap } = langServiceUtils
 
-const { unique, calcTgpModelData, projectInfo, runCliInContext,pathJoin,pathParent,absPathToUrl } = coreUtils
+const { unique, calcTgpModelData, runCliInContext,pathJoin,pathParent } = coreUtils
 Object.assign(coreUtils,{runSnippetCli})
 
-async function runSnippetCli({compText: _compText, filePath, setupCode = '', packages = [] } = {}) {
-    const { projectImportMap } = await projectInfo(filePath)
-
-    const tgpModel = await calcTgpModelData(filePath) // todo: support packages
+async function runSnippetCli({compText: _compText, forDsls, forRepo, entryPointPaths, setupCode = '' } = {}) {
+    const dependencies = {forDsls, entryPointPaths, forRepo }
+    const tgpModel = await calcTgpModelData(dependencies)
+    const {entryFiles, projectDir } = tgpModel
     if (tgpModel.error) return { error: tgpModel.error }
     const origCompText = (_compText[0]||'').match(/[A-Z]/) ? _compText : `Data('noName',{impl: ${_compText}})`    
     const isProbeMode = origCompText.split('__').length > 1
@@ -30,8 +30,9 @@ async function runSnippetCli({compText: _compText, filePath, setupCode = '', pac
     const dslsSection = calcDslsSection([comp])
     const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
 
-    const indexFileName = pathJoin(pathParent(filePath),'index.js')  
-    const imports = unique([filePath, ...packages]).filter(Boolean).map(f=>`\tawait import('${f}')`).join('\n')
+    const indexFileName = pathJoin(projectDir,'index.js')  
+    const imports = entryFiles.map(f=>`\tawait import('${f}')`).join('\n')
+    //const imports = unique([entryPointPath, ...packages]).filter(Boolean).map(f=>`\tawait import('${f}')`).join('\n')
     const script = `
 import { jb, dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/core/misc/probe.js'
@@ -61,7 +62,7 @@ import '@jb6/core/misc/probe.js'
     `
 
     try {
-      const result = await runCliInContext(script, {importMap: projectImportMap, requireNode: true})
+      const result = await runCliInContext(script, {projectDir})
       return result
     } catch (error) {
       return { error, script, probePath }

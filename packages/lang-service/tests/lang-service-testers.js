@@ -2,7 +2,7 @@ import '@jb6/testing'
 import { langServiceUtils } from '@jb6/lang-service'
 import { ns, dsls, coreUtils } from '@jb6/core'
 import './mock-workspace.js'
-import '@jb6/core/misc/calc-import-map.js'
+import '@jb6/core/misc/import-map-services.js'
 
 const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, runSnippetCli, prettyPrint } = coreUtils
 const { langService } = ns
@@ -216,13 +216,13 @@ Test('snippetTest', {
     {id: 'compText', as: 'text', dynamic: true},
     {id: 'expectedResult', type: 'boolean', as: 'boolean', dynamic: true},
     {id: 'probe', type: 'boolean', as: 'boolean'},
-    {id: 'filePath', dynamic: true, defaultValue: () => filePathForLangServiceTest()},
+    {id: 'entryPointPaths', dynamic: true, defaultValue: () => filePathForLangServiceTest()},
     {id: 'packages', as: 'array'}
   ],
   impl: dataTest({
     calculate: async ({},{},args) => {
-      const filePath = await args.filePath()
-      const res = await runSnippetCli({...args, filePath, compText: args.compText.profile })
+      const entryPointPaths = await args.entryPointPaths()
+      const res = await runSnippetCli({...args, entryPointPaths, compText: args.compText.profile })
       return res?.result || res.error
     },
     expectedResult: '%$expectedResult()%',
@@ -235,7 +235,7 @@ Test('snippetTest', {
 async function getTgpModel() {
   const filePath = await filePathForLangServiceTest()
   jb.langServiceRegistry.tgpModels[filePath] = jb.langServiceRegistry.tgpModels[filePath] 
-     || new tgpModelForLangService(await calcTgpModelData(filePath))
+     || new tgpModelForLangService(await calcTgpModelData({entryPointPaths: filePath}))
   const tgpModel = jb.langServiceRegistry.tgpModels[filePath]
   return tgpModel
 }

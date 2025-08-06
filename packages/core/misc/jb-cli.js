@@ -19,14 +19,12 @@ Data('bash', {
   impl: (ctx, {script}) => runBashScript(script)
 })
 
-async function runCliInContext(script, {requireNode, importMap} = {}) {
+async function runCliInContext(script, options) {
   let res = {}
-  if (!isNode && !requireNode)
-    res = await runCliInIframe(script, {importMap})
-  else if (!isNode && requireNode)
-    res = await  runNodeCliViaJbWebServer(script, {importMap})
+  if (!isNode)
+    res = await  runNodeCliViaJbWebServer(script, options)
   else
-    res = await runNodeCli(script, {importMap})
+    res = await runNodeCli(script, options)
   return res
 }
 
@@ -68,9 +66,8 @@ async function runBashScript(script) {
   })
 }
 
-async function runNodeCli(script, {importMap} = {}) {
+async function runNodeCli(script, { projectDir: cwd} = {}) {
   const {spawn} = await import('child_process')
-  const cwd = importMap?.projectRoot || ''
   const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
   const scriptToRun = `console.log = () => {};\n${script}`
   return new Promise(resolve => {
@@ -82,104 +79,45 @@ async function runNodeCli(script, {importMap} = {}) {
       child.on('close', code => {
         if (code !== 0) {
           const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
-          logException(error, 'error in run node cli', {cmd, importMap, stdout: out})
-          return resolve({error, cmd})
+          logException(error, 'error in run node cli', {cmd, ...options, cwd, stdout: out})
+          return resolve({error, cmd, cwd})
         }
         try {
           const result = JSON.parse(out)
-          resolve({result, cmd})
+          resolve({result, cmd, cwd})
         } catch (e) {
-          resolve({error: e, cmd, importMap})    
+          resolve({error: e, cmd, ...options, cwd})    
         }
       })
     } catch(e) {
-      logException(e, 'error in run node cli', {cmd, importMap, cwd})
-      resolve({error: e, cmd, importMap})
+      logException(e, 'error in run node cli', {cmd, ...options, cwd})
+      resolve({error: e, cmd, ...options, cwd})
     }
   })
 }
 
-async function runNodeCliViaJbWebServer(script, {importMap, expressUrl = ''} = {}) {
+async function runNodeCliViaJbWebServer(script, options = {}) {
   try { 
+    const expressUrl = options.expressUrl || ''
     const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
     const res = await fetch(`${expressUrl}/run-cli`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ script, importMap })
+      body: JSON.stringify({ script, ...options })
     })
     if (!res.ok) {
       const text = await res.text()
-      return { error: `runNodeCliViaJbWebServer failed: ${res.status} – ${text}`}
+      return { error: `runNodeCliViaJbWebServer failed: ${res.status} – ${text}`, ...options}
     }
     
     const { result, error } = await res.json()
     if (error) 
-      return { error, cmd }
+      return { error, cmd, ...options }
 
     return { ...result, cmd }
   } catch (e) {
-    return { error: `runNodeCliViaJbWebServer exception: ${e.message}`}
+    return { error: `runNodeCliViaJbWebServer exception: ${e.message}`, ...options}
   }
 }
 
-async function runCliInIframe(script, {importMap} = {}) {
-  const cliId = 'cli_' + Math.random().toString(36).slice(2)
-
-  return new Promise( resolve => {
-    const iframe = document.createElement('iframe')
-    iframe.style.display = 'none'
-
-    function onMsg(e) {
-      if (e.source === iframe.contentWindow && e.data?.cliId === cliId) {
-        console.log('runCliInIframe',e)
-        window.removeEventListener('message', onMsg)
-        document.body.removeChild(iframe)
-
-        //if (e.data.error) console.error(e.data.error)
-        return resolve({ result: e.data.result, error: e.data.error, cmd: 'iframe' })
-      }
-    }
-    window.addEventListener('message', onMsg)
-
-    //const importMap = document.querySelector('script[type="importmap"]')?.outerHTML || ''
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <script type="importmap">
-        ${JSON.stringify(importMap,null,2)}
-        </script>
-      <script type="module">
-            const cliId = '${cliId}'
-            const send = msg => parent.postMessage({ cliId, ...msg }, '*')
-
-            globalThis.process = {
-              stdout: {
-                write: s => {
-                  try {
-                    send({ result: JSON.parse(s) })
-                  } catch {
-                    send({ result: s })
-                  }
-                }
-              },
-              exit: code => {}
-            }
-
-            console.error = (...args) => send({ error: args.map(String).join(' ') })
-            console.log = (...args) => send({ log: args.map(String).join(' ') })
-        </script>
-      </head>
-      <body>
-        <script type="module">
-            ${script}
-        </script>
-      </body>
-      </html>
-    `
-    iframe.srcdoc = html
-    document.body.appendChild(iframe)
-  })
-}
 

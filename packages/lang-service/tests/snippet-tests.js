@@ -33,7 +33,7 @@ Test('snippet.ns', {
   impl: snippetTest({
     compText: `pipeline(asIs([{a: 1},{a: 1}, {a:2}]), splitByPivot('a'), enrichGroupProps(group.count('aCounter')))`,
     expectedResult: equals('%result/0/aCounter%', 2),
-    filePath: '/home/shaiby/projects/jb6/packages/common/common-tests.js'
+    entryPointPaths: '/home/shaiby/projects/jb6/packages/common/common-tests.js'
   })
 })
 
@@ -42,14 +42,14 @@ Test('snippet.probe', {
   impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/in/data/a%'))
 })
 
-Test('snippet.filePath', {
+Test('snippet.entryPointPaths', {
   impl: snippetTest(`pipeline('hello')`, equals('hello', '%result%'), {
-    filePath: '/home/shaiby/projects/jb6/packages/common/aggregators.js'
+    entryPointPaths: '/home/shaiby/projects/jb6/packages/common/aggregators.js'
   })
 })
 
 Test('snippet.llmApiTests', {
   impl: snippetTest(`Prompt('p',{impl:user('hello')})`, equals('hello', '%result/content%'), {
-    filePath: '/home/shaiby/projects/jb6/packages/llm-api/tests/llm-api-tests.js'
+    entryPointPaths: '/home/shaiby/projects/jb6/packages/llm-api/tests/llm-api-tests.js'
   })
 })

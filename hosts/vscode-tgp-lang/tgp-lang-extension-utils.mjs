@@ -4,7 +4,7 @@ import '@jb6/core/misc/probe.js'
 import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 
-const { jb, logError, asArray, log, Ctx, resolveWithImportMap, projectInfo, calcHash } = coreUtils
+const { jb, logError, asArray, log, Ctx, calcHash } = coreUtils
 const { closestComp, applyCompChange } = langServiceUtils
 const { langService } = ns
 
@@ -149,6 +149,7 @@ async function moveInArray(diff) {
 }
 
 let probeResultPanel
+let counter = 0
 export const commands = {
     async applyCompChangeOfCompletionItem(item) {
         const editAndCursor = item.edit ? item : await langService.editAndCursorOfCompletionItem.$run({item})
@@ -183,9 +184,8 @@ export const commands = {
             probeResultPanel.onDidDispose(() => probeResultPanel = undefined, null, globalThis.jbVSCodeContext?.subscriptions )
         }
 
-        probeResultPanel.webview.html = `<iframe src="${url}" style="width:100%;height:100vh;border:none"></iframe>`        
+        probeResultPanel.webview.html = `<iframe src="${url}" style="width:100%;height:100vh;border:none"></iframe><div>${counter++}</div>`        
         vsCodelog(`Opening probe view in ViewColumn.Two: ${url.toString()}`)
-
     },
 
     visitLastPath() { // ctrl-Q
