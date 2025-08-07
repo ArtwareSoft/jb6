@@ -12,6 +12,9 @@ Object.assign(coreUtils, { getStaticServeConfig, calcImportData, resolveWithImpo
 
 let _repoRoot
 async function calcRepoRoot() {
+  if (globalThis.VSCodeWorkspaceProjectRoot)
+    return globalThis.VSCodeWorkspaceProjectRoot
+
   if (_repoRoot) return _repoRoot
   if (!isNode) {
     const script = `

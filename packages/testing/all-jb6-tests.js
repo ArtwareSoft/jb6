@@ -1,6 +1,6 @@
 import '../core/tests/core-tests.js'
 import '../core/tests/probe-tests.js'
-import '../core/tests/package-service-tests.js'
+import '../core/tests/import-map-tests.js'
 import '../common/common-tests.js'
 import '../lang-service/tests/action-map-tests.js'
 import '../lang-service/tests/lang-service-tests.js'

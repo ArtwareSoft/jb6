@@ -1,9 +1,10 @@
 import { dsls, ns, coreUtils } from '@jb6/core'
-import './package-service-testers.js'
+import './import-map-testers.js'
 
 const { 
   test: { Test, 
-    test: { dataTest, staticServeConfigTest, fileContextTest }
+    test: { dataTest, staticServeConfigTest, calcImportDataTest },
+    repo: { Genie }
   }, 
   common: { Data, Action, Boolean,
     data: { pipeline, filter, join, property, obj, delay, asIs,list }, 
@@ -13,7 +14,7 @@ const {
 } = dsls
 const { json } = ns
 
-Test('packageServiceTest.jb6Monorepo', {
+Test('importMapTest.jb6Monorepo', {
   impl: staticServeConfigTest({
     transform: list(
       '%environment%',
@@ -26,3 +27,16 @@ Test('packageServiceTest.jb6Monorepo', {
   })
 })
 
+Test('importMapTest.genie', {
+  impl: staticServeConfigTest({
+    repo: Genie(),
+    transform: list(
+      '%environment%',
+      '%staticMappings/diskPath%',
+      pipeline('%importMap/imports%', property('@jb6/common'))
+    ),
+    expectedResult: contains('jb6-monorepo', '/home/shaiby/projects/jb6/packages', '/packages/common/index.js', {
+      allText: json.stringify()
+    })
+  })
+})

@@ -106,7 +106,7 @@ function stripProbeResult(raw) {
 
 class Probe {
     constructor(circuitCmpId) {
-        this.circuitCtx = new Ctx()
+        this.circuitCtx = new Ctx().setVars({singleTest: true})
         this.circuitCtx.jbCtx.probe = this
         this.circuitCtx.jbCtx.path = circuitCmpId
         this.records = {}

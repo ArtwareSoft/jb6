@@ -20,6 +20,10 @@ const Jb6 = Repo('Jb6', {
   impl: () => calcRepoRoot()
 })
 
+const Genie = Repo('Genie', {
+  impl: () => '/home/shaiby/projects/Genie'
+})
+
 Repo('mockRepo', {
   params: [
     {id: 'name', as: 'string'},
@@ -39,7 +43,7 @@ Test('staticServeConfigTest', {
   })
 })
 
-Test('fileContextTest', {
+Test('calcImportDataTest', {
   params: [
     {id: 'repo', type: 'repo', defaultValue: Jb6(), byName: true},
     {id: 'entryPointPaths', as: 'array'},

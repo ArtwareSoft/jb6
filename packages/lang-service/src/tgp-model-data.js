@@ -15,25 +15,7 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 // it is used by language services and wrapped by the class tgpModelForLangService
 
 export async function calcTgpModelData(dependencies) {
-  //const {entryPointPaths, forRepo, forDsls} = dependencies
-
-  // NEW IMPLEMENTATION - no fallback, fix bugs directly
-  //const entryPointPaths = Array.isArray(filePaths) ? filePaths : (filePaths ? [filePaths] : null)
-  const {importMap, staticMappings, entryFiles, testFiles, projectDir } = await calcImportData(dependencies)
-  
-  // const filePath = Array.isArray(filePaths) ? filePaths[0] : filePaths
-  // const filePathToUse = filePath || entryPointPaths[0] || entryPoints[0]
-  
-  // if (!filePathToUse) {
-  //   const error = `No valid file paths found. filePaths: ${JSON.stringify(filePaths)}, forDsls: ${forDsls}`
-  //   logError(error)
-  //   return { tgpModel: {dsls: {}, ns: {}, nsRepo: {}, typeRules: [], imports: []}, error }
-  // }
-
-  // const indexFileName = absPathToUrl(pathJoin(pathParent(filePathToUse),'index.js'), staticMappings)
-  // const importModule = Object.entries(importMap.imports).find(x=> x[1]==indexFileName)?.[0]
-
-  //const rootFilePaths = unique([importModule,filePathToUse,...(Array.isArray(filePaths) ? filePaths : []), ...testFiles].filter(Boolean))
+  const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot } = await calcImportData(dependencies)
   const rootFilePaths = unique([...entryFiles, ...testFiles])
   const codeMap = {}
   const visited = {}  // urls seen
@@ -65,6 +47,7 @@ export async function calcTgpModelData(dependencies) {
   })
 
   if (!dsls.tgp) {
+    const error = `calcTgpModelData: error for dependencies ${JSON.stringify({dependencies, importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot})}`
     logError(error)
     return { tgpModel, error }
   }

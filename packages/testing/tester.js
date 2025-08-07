@@ -32,7 +32,7 @@ Test('dataTest', {
 		let result = null, testRes
 		try {
 			testRes = await Promise.race([ 
-				(async() => {
+				!singleTest && (async() => {
 					await delay(_timeout)
 					return {testFailure: `timeout ${_timeout}mSec`}
 				})(),
@@ -47,7 +47,7 @@ Test('dataTest', {
 					const _res = await waitForInnerElements(res)
 					return _res
 				})()
-			])
+			].filter(Boolean))
 			let testFailure = testRes?.[0]?.testFailure || testRes?.testFailure
 			const countersErr = countersErrors(expectedCounters,allowError)
             const counters = Object.fromEntries(Object.keys(expectedCounters || {}).map(exp => [exp, spy.count(exp)]))
