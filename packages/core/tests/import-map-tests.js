@@ -21,7 +21,7 @@ Test('importMapTest.jb6Monorepo', {
       '%staticMappings/diskPath%',
       pipeline('%importMap/imports%', property('@jb6/common'))
     ),
-    expectedResult: contains('jb6-monorepo', '/home/shaiby/projects/jb6/packages', '/packages/common/index.js', {
+    expectedResult: contains('jb6-monorepo', '/home/shaiby/projects/jb6/packages', '/jb6_packages/common/index.js', {
       allText: json.stringify()
     })
   })
@@ -35,7 +35,7 @@ Test('importMapTest.genie', {
       '%staticMappings/diskPath%',
       pipeline('%importMap/imports%', property('@jb6/common'))
     ),
-    expectedResult: contains('jb6-monorepo', '/home/shaiby/projects/jb6/packages', '/packages/common/index.js', {
+    expectedResult: contains('genie','/home/shaiby/projects/Genie/node_modules/@jb6', '/jb6_packages/common/index.js', {
       allText: json.stringify()
     })
   })

@@ -43,10 +43,7 @@ async function discoverDslEntryPoints(forDsls) {
     const listRepo = await listRepoFiles(repoRoot)
     let jb6NodeModulesList = { files: []}
     try {
-      const { createRequire } = await import('module')
-      const jb6CorePath = createRequire(path.join(repoRoot, 'package.json')).resolve('@jb6/core')
-      if (jb6CorePath.includes('node_modules/@jb6')) 
-        jb6NodeModulesList = await listRepoFiles(path.dirname(path.dirname(jb6CorePath)))
+      jb6NodeModulesList = await listRepoFiles(path.resolve(repoRoot, 'node_modules/@jb6'))
     } catch (e) {}
     const files = [...listRepo.files, ...jb6NodeModulesList.files].map(x=>x.path)
     return dsls.flatMap(dsl=> files.filter(f=>f.endsWith(`${dsl}/index.js`))).map(localPath=>path.join(repoRoot,localPath))
@@ -69,7 +66,6 @@ try {
     return res.result
   }
   const environment = await detectEnvironment(repoRoot)
-  if (environment.error) return { importMap: { imports: {} }, staticMappings: [], environment: 'unknown', error: environment.error }
   return await getStaticConfig(repoRoot, environment)
 }
 
@@ -117,14 +113,7 @@ async function detectEnvironment(repoRoot) {
     const { readFile, access } = await import('fs/promises')
     const path = await import('path')
     const pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
-    const isJB6Monorepo = pkg.name === 'jb6-monorepo'
-    const hasJB6Deps = Object.keys(pkg.dependencies || {}).some(dep => dep.startsWith('@jb6/'))
-    const hasLocalPackages = await access(path.join(repoRoot, 'packages')).then(() => true, () => false)
-    
-    if (isJB6Monorepo) return 'jb6-monorepo'
-    if (hasJB6Deps && hasLocalPackages) return 'local-monorepo'
-    if (hasJB6Deps) return 'local-package'
-    return 'app'
+    return pkg.name
   } catch (error) {
     return { error: `Cannot read package.json at ${repoRoot}: ${error.message}` }
   }
@@ -133,123 +122,22 @@ async function detectEnvironment(repoRoot) {
 async function getStaticConfig(repoRoot, environment) {
   try {
     const path = await import('path')
-    const { readFile, readdir, access } = await import('fs/promises')
-    const pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
-    
-    if (environment === 'jb6-monorepo') {
-      const pkgsDir = path.resolve(repoRoot, 'packages')
-      const entries = await readdir(pkgsDir, { withFileTypes: true })
-      const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
-      const imports = Object.fromEntries(folders.flatMap(f => [[`@jb6/${f}`,  `/packages/${f}/index.js`], [`@jb6/${f}/`, `/packages/${f}/`]]))
-      imports['#jb6/'] = '/packages/'
-      const staticMappings = [
-        { urlPath: '/packages', diskPath: pkgsDir, pkgId: '@jb6/packages' },
-        { urlPath: '/hosts', diskPath: path.resolve(repoRoot, 'hosts'), pkgId: 'hosts' }
-      ]
-      return { importMap: { imports }, staticMappings, environment }
-    }
-
-    const baseImports = buildJB6Imports(pkg)
-    const thirdPartyPkgs = await findThirdPartyPkgs(repoRoot)
-    addThirdPartyImports(baseImports, thirdPartyPkgs)
-
-    if (environment === 'local-monorepo') {
-      await addLocalPackageImports(baseImports, repoRoot, pkg.name)
-      baseImports[pkg.name] = `/${pkg.name}/index.js`
-      baseImports[`${pkg.name}/`] = `/${pkg.name}/`
-      const staticMappings = buildStaticMappings(repoRoot, pkg.name, thirdPartyPkgs, [
-        { urlPath: '/@jb6', diskPath: path.join(repoRoot, 'node_modules/@jb6'), pkgId: '@jb6' },
-        { urlPath: `/${pkg.name}`, diskPath: repoRoot, pkgId: pkg.name }
-      ])
-      return { importMap: { imports: baseImports }, staticMappings, environment }
-    }
-
-    if (environment === 'local-package') {
-      await addMainPackageEntry(baseImports, repoRoot, pkg)
-      const staticMappings = buildStaticMappings(repoRoot, pkg.name, thirdPartyPkgs, [
-        { urlPath: '/@jb6', diskPath: path.join(repoRoot, 'node_modules/@jb6'), pkgId: '@jb6' },
-        { urlPath: '/', diskPath: repoRoot, pkgId: pkg.name }
-      ])
-      return { importMap: { imports: baseImports }, staticMappings, environment }
-    }
-
-    const staticMappings = [{ urlPath: '/@jb6', diskPath: path.join(repoRoot, 'node_modules/@jb6'), pkgId: '@jb6' }]
-    return { importMap: { imports: baseImports }, staticMappings, environment }
+    const { readFile, readdir, access } = await import('fs/promises')    
+    const pkgsDir = environment == 'jb6-monorepo' ? path.resolve(repoRoot, 'packages') : path.resolve(repoRoot, 'node_modules/@jb6')
+    const entries = await readdir(pkgsDir, { withFileTypes: true })
+    const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
+    const imports = Object.fromEntries(folders.flatMap(f => [[`@jb6/${f}`,  `/jb6_packages/${f}/index.js`], [`@jb6/${f}/`, `/jb6_packages/${f}/`]]))
+    const staticMappings = environment == 'jb6-monorepo' ? [
+      { urlPath: '/packages', diskPath: pkgsDir },
+      { urlPath: '/jb6_packages', diskPath: pkgsDir },
+      { urlPath: '/hosts', diskPath: path.resolve(repoRoot, 'hosts') }
+    ] : [
+      { urlPath: '/jb6_packages', diskPath: pkgsDir },
+    ]
+    return { importMap: { imports }, staticMappings, environment }
   } catch (error) {
     return { importMap: { imports: {} }, staticMappings: [], environment, error: `Failed to configure ${environment}: ${error.message}` }
   }
-}
-
-function buildJB6Imports(pkg) {
-  const jb6Deps = Object.keys(pkg.dependencies || {}).filter(dep => dep.startsWith('@jb6/'))
-  return Object.fromEntries(jb6Deps.flatMap(dep => {
-    const name = dep.replace('@jb6/', '')
-    return [[dep, `/@jb6/${name}/index.js`], [`${dep}/`, `/@jb6/${name}/`]]
-  }))
-}
-
-async function findThirdPartyPkgs(repoRoot) {
-  try {
-    const path = await import('path')
-    const { readFile, readdir } = await import('fs/promises')
-    const nodeModulesDir = path.join(repoRoot, 'node_modules')
-    const thirdPartyPkgs = []
-    const entries = await readdir(nodeModulesDir, { withFileTypes: true })
-    
-    for (const entry of entries) {
-      if (entry.isDirectory() && !entry.name.startsWith('@jb6/') && !entry.name.startsWith('.')) {
-        try {
-          const thirdPartyPkg = JSON.parse(await readFile(path.join(nodeModulesDir, entry.name, 'package.json'), 'utf8'))
-          if (Object.keys(thirdPartyPkg.dependencies || {}).some(dep => dep.startsWith('@jb6/'))) {
-            thirdPartyPkgs.push({ name: entry.name })
-          }
-        } catch (e) {}
-      }
-    }
-    return thirdPartyPkgs
-  } catch (e) {
-    return []
-  }
-}
-
-function addThirdPartyImports(imports, thirdPartyPkgs) {
-  thirdPartyPkgs.forEach(pkg => {
-    imports[pkg.name] = `/${pkg.name}/index.js`
-    imports[`${pkg.name}/`] = `/${pkg.name}/`
-  })
-}
-
-async function addLocalPackageImports(imports, repoRoot, pkgName) {
-  try {
-    const path = await import('path')
-    const { readdir } = await import('fs/promises')
-    const packageEntries = await readdir(path.join(repoRoot, 'packages'), { withFileTypes: true })
-    for (const entry of packageEntries.filter(e => e.isDirectory())) {
-      imports[entry.name] = `/${pkgName}/packages/${entry.name}/index.js`
-      imports[`${entry.name}/`] = `/${pkgName}/packages/${entry.name}/`
-    }
-  } catch (e) {}
-}
-
-async function addMainPackageEntry(imports, repoRoot, pkg) {
-  if (pkg.main) {
-    imports[pkg.name] = `/${pkg.main}`
-  } else {
-    try {
-      const { access } = await import('fs/promises')
-      const path = await import('path')
-      await access(path.join(repoRoot, 'index.js'))
-      imports[pkg.name] = `/index.js`
-    } catch (e) {}
-  }
-}
-
-function buildStaticMappings(repoRoot, pkgName, thirdPartyPkgs, baseMappings) {
-  const mappings = [...baseMappings]
-  thirdPartyPkgs.forEach(pkg => {
-    mappings.push({ urlPath: `/${pkg.name}`, diskPath: pathJoin(repoRoot, 'node_modules', pkg.name), pkgId: pkg.name })
-  })
-  return mappings
 }
 
 async function normalizeToValidEntryPoints({entryPointPaths, forDsls}) {
@@ -312,13 +200,8 @@ async function discoverFiles(staticMappings, environment, {repoRoot, projectDir}
   if (environment === 'jb6-monorepo') {
     const packagesEntry = staticMappings.find(entry => entry.urlPath === '/packages')
     if (packagesEntry) await walkDirectory(packagesEntry.diskPath, discoveredFiles)
-  } else if (environment === 'local-package' || environment === 'local-monorepo') {
-    const jb6Entry = staticMappings.find(entry => entry.urlPath === '/@jb6')
-    const localEntry = staticMappings.find(entry => entry.urlPath === '/' || entry.urlPath.startsWith('/') && entry.urlPath !== '/@jb6')
-    if (jb6Entry) await walkDirectory(jb6Entry.diskPath, discoveredFiles)
-    if (localEntry) await walkDirectory(localEntry.diskPath, discoveredFiles)
   } else {
-    const jb6Entry = staticMappings.find(entry => entry.urlPath === '/@jb6')
+    const jb6Entry = staticMappings.find(entry => entry.urlPath === '/jb6_packages')
     if (jb6Entry) await walkDirectory(jb6Entry.diskPath, discoveredFiles)
   }
   
@@ -362,7 +245,6 @@ async function discoverFiles(staticMappings, environment, {repoRoot, projectDir}
     }  
   }
 }
-
 
 async function listRepoFiles(repoRoot) {
   const { readdir } = await import('fs/promises')
