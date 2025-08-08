@@ -40,3 +40,33 @@ Test('importMapTest.genie', {
     })
   })
 })
+
+Test('importMapTest.genie_tests', {
+  impl: calcImportDataTest({
+    repo: Genie(),
+    entryPointPaths: '/home/shaiby/projects/Genie/tests/basic-tests.js',
+    transform: list(
+      '%environment%',
+      '%staticMappings/diskPath%',
+      '%importMap/imports%'
+    ),
+    expectedResult: contains('genie', '/home/shaiby/projects/Genie/node_modules/@jb6', '/jb6_packages/common/index.js', {
+      allText: json.stringify()
+    })
+  })
+})
+
+Test('importMapTest.genie_tests.calcTgpModelData', {
+  doNotRunInTests: true,
+  impl: dataTest({
+    calculate: async () => {
+      const {coreUtils} = await import('@jb6/core')
+      await import('@jb6/lang-service')
+      return coreUtils.calcTgpModelData({
+        entryPointPaths: '/home/shaiby/projects/Genie/tests/basic-tests.js', fetchByEnvHttpServer: 'http://localhost:3000'})
+    },
+    expectedResult: contains('/home/shaiby/projects/Genie/node_modules/@jb6', '/jb6_packages/common/index.js', {
+      allText: json.stringify()
+    })
+  })
+})

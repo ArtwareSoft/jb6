@@ -368,7 +368,7 @@ DbImpl('inMemoryTesting', {
       }
     }),
     myRoomsSecrets: myRoomsSecrets({
-      getMyRooms: ({},{userId}) => fetch(`%$locationOrigin%/packages/social-db/.local-db/users/${userId}/myRooms.json`),
+      getMyRooms: ({},{userId}) => fetch(`%$locationOrigin%/jb6_packages/social-db/.local-db/users/${userId}/myRooms.json`),
       joinRoom: ''
     })
   })
@@ -377,9 +377,9 @@ DbImpl('inMemoryTesting', {
 DbImpl('dev', {
   impl: fileBased({
     bucketName: '',
-    storagePrefix: '%$locationOrigin%/packages/social-db/.local-db',
+    storagePrefix: '%$locationOrigin%/jb6_packages/social-db/.local-db',
     myRoomsSecrets: myRoomsSecrets({
-      getMyRooms: ({},{userId}) => fetch(`%$locationOrigin%/packages/social-db/.local-db/users/${userId}/myRooms.json`),
+      getMyRooms: ({},{userId}) => fetch(`%$locationOrigin%/jb6_packages/social-db/.local-db/users/${userId}/myRooms.json`),
       joinRoom: ''
     })
   })

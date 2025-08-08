@@ -545,7 +545,7 @@ Test('langServiceTest.createTestEdits', {
 // Test('langServiceTest.compReferences.list', {
 //   impl: dataTest({
 //     calculate: langService.compReferences(calcCompTextAndCursor("dataTest('', e__quals(5))")),
-//     expectedResult: contains('/packages/common/jb-common.js', { data: '%path%' })
+//     expectedResult: contains('/jb6_packages/common/jb-common.js', { data: '%path%' })
 //   })
 // })
 

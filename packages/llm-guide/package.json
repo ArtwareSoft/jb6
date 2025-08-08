@@ -1,13 +1,13 @@
 {
   "name": "@jb6/llm-guide",
-  "version": "1.250803.1",
+  "version": "1.250807.1",
   "type": "module",
   "exports": {
     ".": "./index.js",
     "./autogen-dsl-docs.js": "./autogen-dsl-docs.js"
   },
   "dependencies": {
-    "@jb6/core": "1.250803.1"
+    "@jb6/core": "1.250807.1"
   },
   "repository": {
     "type": "git",

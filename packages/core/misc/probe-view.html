@@ -18,7 +18,7 @@ import '@jb6/core/misc/probe.js'
 async function run() {
     const projectRoot = await coreUtils.calcRepoRoot()
     const urlParams = new URLSearchParams(window.location.search);
-    const filePath = urlParams.get('filePath') || '/packages/react/tests/react-tests.js'
+    const filePath = urlParams.get('filePath') || '/jb6_packages/react/tests/react-tests.js'
     const fullFilePath = `${projectRoot}${filePath}`
     const path = urlParams.get('path') || 'reactTest.HelloWorld~impl~expectedResult'
     
@@ -78,6 +78,7 @@ function ErrorView({ error, path, filePath }) {
                 h('L:X', { className: 'h-8 w-8 mx-auto mb-2' })
             ),
             h('h3:text-lg font-semibold text-red-800', {}, 'Probe Error'),
+            h('a',{href: location.href}),
             h('div:text-gray-600 space-y-2', {},
                 h('div', {},
                     h('div:mb-1', {}, 'Path:'),

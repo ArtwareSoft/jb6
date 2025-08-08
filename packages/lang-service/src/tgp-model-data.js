@@ -1,9 +1,8 @@
 import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
-import '@jb6/core/misc/import-map-services.js'  // NEW: Import new services
+import '@jb6/core/misc/import-map-services.js'
 
-const { jb, astNode, asJbComp, logError, resolveWithImportMap, fetchByEnv, pathParent
-  , pathJoin, absPathToUrl, unique, splitDslType, logVsCode, calcImportData } = coreUtils
+const { jb, astNode, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -15,17 +14,19 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 // it is used by language services and wrapped by the class tgpModelForLangService
 
 export async function calcTgpModelData(dependencies) {
+  const { fetchByEnvHttpServer } = dependencies
   const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot } = await calcImportData(dependencies)
   const rootFilePaths = unique([...entryFiles, ...testFiles])
-  const codeMap = {}
-  const visited = {}  // urls seen
-
+  // crawl
+  const codeMap = {} , visited = {}
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
 
-  const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, typeRules: [], imports: Object.keys(codeMap), importMap, entryFiles, projectDir}
-  const {dsls, typeRules} = tgpModel
+  const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, imports: Object.keys(codeMap), importMap, entryFiles, projectDir}
+  logVsCode('calcTgpModelData before', dependencies, tgpModel)
 
-  // 2) Phase 1: find all `... = TgpType(...)`
+  const {dsls} = tgpModel
+
+  // Phase 1: find all `... = TgpType(...)`
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
@@ -65,7 +66,7 @@ export async function calcTgpModelData(dependencies) {
         .forEach(decl => parseCompDec({exportName: decl.id.name, decl: decl.init, url: filePath, src}))
   })
 
-  // 4) Phase 2b: exported components + direct compDef + typeRules in all files
+  // 4) Phase 2b: exported components + direct compDef
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
@@ -78,11 +79,12 @@ export async function calcTgpModelData(dependencies) {
     directDefs.forEach(decl => parseCompDec({decl, url, src}))
   })
 
-  logVsCode('tgp model data', tgpModel)
+  logVsCode('calcTgpModelData result', dependencies, tgpModel)
 
   return tgpModel
 
   function parseCompDec({exportName, decl, url, src}) {
+    if (!decl) return
     if ( decl.type !== 'CallExpression' || decl.callee.type !== 'Identifier' || !compDefs[decl.callee.name]) return
 	  const tgpType = decl.callee.name
 
@@ -112,7 +114,7 @@ export async function calcTgpModelData(dependencies) {
     let rUrl = ''
     try {
       rUrl = resolveWithImportMap(url, importMap, staticMappings) || url
-      const src = await fetchByEnv(rUrl, staticMappings)
+      const src = await fetchByEnv(rUrl, staticMappings, fetchByEnvHttpServer)
       codeMap[url] = src
 
       const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })

@@ -18,6 +18,7 @@ const tgpComp = CompDef({ // bootstraping
     {id: 'macroByValue', as: 'boolean'},
     {id: 'description', as: 'string'},
     {id: 'HeavyTest', as: 'boolean' },
+    {id: 'doNotRunInTests', as: 'boolean' },
     {id: 'circuit', as: 'string' },
     {id: 'params', type: 'param[]'},
     {id: 'impl', dynamicTypeFromParent: (parent, dsls) => dsls.tgp.comp[parent.$]?.dslType, mandatory: true},

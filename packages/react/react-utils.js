@@ -66,7 +66,7 @@ if (coreUtils.isNode) {
     const dom = new JSDOM(
       `<!DOCTYPE html><body style="height:100vh"></body>`,
       {
-        url: 'http://localhost:8083/packages/testing/tests.html',
+        url: '/jb6_packages/testing/tests.html',
         pretendToBeVisual: true,
         resources: 'usable',
         features: { ProcessExternalResources: false }
@@ -86,10 +86,10 @@ if (coreUtils.isNode) {
       if (globalThis.React && globalThis.ReactDOM) return Promise.resolve(globalThis.React)
       if (!reactPromise) {
         const urls = [ // todo - use /jb_reactlib prefix to allow working on browsers on other repos with @jb6 in node_modules
-          '/packages/react/lib/react.development.js',
-          '/packages/react/lib/react-dom.development.js'
+          '/jb6_packages/react/lib/react.development.js',
+          '/jb6_packages/react/lib/react-dom.development.js'
         ]
-        reactPromise = Promise.all([import('/packages/react/lib/tailwind-4.js'),
+        reactPromise = Promise.all([import('/jb6_packages/react/lib/tailwind-4.js'),
           ...urls.map(src => new Promise((resolve, reject) => {
             let s = document.head.querySelector(`script[src="${src}"]`)
             if (s) return resolve()
@@ -112,7 +112,7 @@ if (coreUtils.isNode) {
     const win = window
     await new Promise(resolve => {
       const s = win.document.createElement('script')
-      s.src   = '/packages/react/lib/react-dom-test-utils.development.js'
+      s.src   = '/jb6_packages/react/lib/react-dom-test-utils.development.js'
       s.onload = resolve
       win.document.head.appendChild(s)
     })

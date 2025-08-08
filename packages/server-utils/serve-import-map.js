@@ -1,17 +1,15 @@
 import path from 'path'
 import fs from 'fs/promises'
 import { coreUtils } from '@jb6/core'
-import '@jb6/core/misc/import-map-services.js'    // Keep old implementation available
-import '@jb6/core/misc/import-map-services.js'   // NEW: Import new services
+import '@jb6/core/misc/import-map-services.js'
 
-const { calcImportMap, getStaticServeConfig, calcRepoRoot } = coreUtils
+const { getStaticServeConfig, calcRepoRoot } = coreUtils
 
 export async function serveImportMap(app, {express}) {
-  // NEW IMPLEMENTATION using new service
   try {
     const repoRoot = await calcRepoRoot()
     const {importMap, staticMappings} = await getStaticServeConfig(repoRoot)
-    console.log('NEW: serving', staticMappings)
+    console.log('staticMappings', staticMappings)
     
     for (const {urlPath, diskPath} of staticMappings) {
       app.use(urlPath, async (req, res, next) => {
@@ -28,10 +26,6 @@ export async function serveImportMap(app, {express}) {
     
       app.use(urlPath, express.static(diskPath))
     }
-    // app.get('/import-map.json', (_req, res) => res.json(importMap))
-    // app.get('/staticMappings', async (req, res) => {
-    //   res.status(200).send(staticMappings)
-    // })
   } catch (error) {
     console.error('error:', error)    
   }

@@ -44,7 +44,7 @@ async function main() {
             await import('./jb-web-server.js')
         const queryParams = new URLSearchParams({modulePath, ...cliParams}).toString()
 
-        const url = `http://localhost:${port}/packages/testing/tests.html?${queryParams}`
+        const url = `http://localhost:${port}/jb6_packages/testing/tests.html?${queryParams}`
         console.log(`🎉 Test UI running at ${url}`)
         child.exec(`open ${url}`)      
     } else {

@@ -122,21 +122,23 @@ async function detectEnvironment(repoRoot) {
 async function getStaticConfig(repoRoot, environment) {
   try {
     const path = await import('path')
-    const { readFile, readdir, access } = await import('fs/promises')    
+    const { readdir } = await import('fs/promises')  
+    const repoName = environment  
     const pkgsDir = environment == 'jb6-monorepo' ? path.resolve(repoRoot, 'packages') : path.resolve(repoRoot, 'node_modules/@jb6')
     const entries = await readdir(pkgsDir, { withFileTypes: true })
-    const folders = entries.filter(e => e.isDirectory()).map(e => e.name)
+    const folders = entries.filter(e => e.isDirectory() || e.isSymbolicLink()).map(e => e.name)
     const imports = Object.fromEntries(folders.flatMap(f => [[`@jb6/${f}`,  `/jb6_packages/${f}/index.js`], [`@jb6/${f}/`, `/jb6_packages/${f}/`]]))
     const staticMappings = environment == 'jb6-monorepo' ? [
       { urlPath: '/packages', diskPath: pkgsDir },
       { urlPath: '/jb6_packages', diskPath: pkgsDir },
       { urlPath: '/hosts', diskPath: path.resolve(repoRoot, 'hosts') }
     ] : [
+      { urlPath: `/${repoName}`, diskPath: repoRoot },
       { urlPath: '/jb6_packages', diskPath: pkgsDir },
     ]
     return { importMap: { imports }, staticMappings, environment }
   } catch (error) {
-    return { importMap: { imports: {} }, staticMappings: [], environment, error: `Failed to configure ${environment}: ${error.message}` }
+    return { error: `Failed to configure ${environment}: ${error.message}` }
   }
 }
 
@@ -236,7 +238,7 @@ async function discoverFiles(staticMappings, environment, {repoRoot, projectDir}
     function categorizeFile(filePath) {
       const fileName = path.basename(filePath)
       const dirName = path.basename(path.dirname(filePath))
-      const isTestFile = fileName.match(/-tests?\.js$/) || fileName.match(/-spec\.js$/) || dirName === 'tests'
+      const isTestFile = fileName.match(/-tests?\.js$/) || dirName === 'tests' && fileName.match(/\.js$/)
       const isTesterFile = fileName.match(/-testers\.js$/)
       const isLlmGuideFile = fileName.match(/-llm-guide\.js$/) || dirName === 'llm-guide'
       
@@ -267,6 +269,7 @@ async function listRepoFiles(repoRoot) {
 }
 
 function resolveWithImportMap(specifier, importMap, staticMappings) {
+  if (specifier[0] == '/') return specifier
   const imports = importMap.imports
   if (!imports || !staticMappings) return undefined
   
@@ -284,10 +287,15 @@ function resolveWithImportMap(specifier, importMap, staticMappings) {
   return urlToBeServed
 }
 
-async function fetchByEnv(url, staticMappings = []) {
-  if (globalThis.window) {
-    const { absPathToUrl, logError } = coreUtils
-    const rUrl = absPathToUrl(url, staticMappings)
+function absPathToUrl(path, staticMappings = []) {
+  const servedEntry = staticMappings.find(x => x.diskPath != x.urlPath && path.indexOf(x.diskPath) == 0)
+  return servedEntry ? path.replace(servedEntry.diskPath, servedEntry.urlPath) : path
+}
+
+async function fetchByEnv(url, staticMappings = [], httpServer = '') {
+  if (!isNode) {
+    const { logError } = coreUtils
+    const rUrl = httpServer + absPathToUrl(url, staticMappings)
     const res = await fetch(rUrl)
     if (!res.ok) {
       logError(`fetch ${url} → ${res.status}`)

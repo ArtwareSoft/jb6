@@ -45,7 +45,6 @@ Test('staticServeConfigTest', {
 
 Test('calcImportDataTest', {
   params: [
-    {id: 'repo', type: 'repo', defaultValue: Jb6(), byName: true},
     {id: 'entryPointPaths', as: 'array'},
     {id: 'forDsls', as: 'string'},
     {id: 'transform', type: 'data', dynamic: true, defaultValue: '%%'},
@@ -53,8 +52,7 @@ Test('calcImportDataTest', {
   ],
   impl: dataTest({
     calculate: pipe(
-      Var('repo', '%$repo%'),
-      ({},{repo},{entryPointPaths,forDsls}) => calcImportData({entryPointPaths: entryPointPaths.map(path=>`${repo}/${path}`), forDsls }),
+      ({},{},{entryPointPaths,forDsls}) => calcImportData({entryPointPaths, forDsls }),
       '%$transform()%'
     ),
     expectedResult: '%$expectedResult()%',

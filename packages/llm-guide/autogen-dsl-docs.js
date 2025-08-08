@@ -1,4 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
+import '@jb6/core/misc/import-map-services.js'
 import '@jb6/llm-guide'
 import '@jb6/common'
 import '@jb6/core/misc/jb-cli.js'

@@ -125,7 +125,6 @@ function logError(err,logObj) {
   globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, callerStack, creatorStack)
   const errObj = { err , ...logObj, callerStack, creatorStack}
   //globalThis.process?.stderr.write(err)
-  logVsCode('error11')
   logVsCode('error', stripData(errObj))
   //jb.ext.spy?.log('error', errObj)
 }
@@ -285,31 +284,6 @@ function logVsCode(...args) {
     globalThis.jbVSCodeLog(...args)
 }
 
-async function fetchByEnv(url, staticMappings = []) {
-  if (globalThis.window) {
-    const rUrl = absPathToUrl(url, staticMappings)
-    const res = await fetch(rUrl)
-    if (!res.ok) {
-      absPathToUrl(url, staticMappings) // for debug
-      logError(`fetch ${url} → ${res.status}`)
-      return ''
-    } 
-    return await res.text()
-  }
-  const { readFile } = await import('fs/promises')
-  logVsCode(`fetch ${url}`)
-  try {
-    return await readFile(url, 'utf8')
-  } catch(e) {
-    logError(`fetch ${url} → ${e}`)
-    return ''
-  }
-}
-
-function absPathToUrl(path, staticMappings = []) {
-    const servedEntry = staticMappings.find(x => x.diskPath != x.urlPath && path.indexOf(x.diskPath) == 0)
-    return servedEntry ? path.replace(servedEntry.diskPath, servedEntry.urlPath) : path
-}
 
 const isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string'
 
@@ -396,7 +370,7 @@ function calcHash(str) {
 }
 
 Object.assign(jb.coreUtils, {
-  jb, RT_types, log, logError, logException, logVsCode, isNode, fetchByEnv, absPathToUrl,
+  jb, RT_types, log, logError, logException, logVsCode, isNode,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
