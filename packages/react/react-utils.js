@@ -12,7 +12,7 @@ function h(t, p = {}, ...c){
     c = [...c[0],...c.slice(1)]
 
   const className=[p.className,cls].filter(Boolean).join(' ').trim()
-  return React.createElement(tag,className ? {...p,className} : p,...c)
+  return reactUtils.createElement(tag,className ? {...p,className} : p,...c)
 }
 
 const toPascal = s => s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')
@@ -20,36 +20,28 @@ function L(iconName) {
   const icon = icons[toPascal(iconName)] || icons.ShieldQuestion
   return function LucideIcon(props) {
     const { size, width, height, color, stroke, strokeWidth, ...restProps } = props
-    return React.createElement('svg', {
+    return reactUtils.createElement('svg', {
         xmlns: 'http://www.w3.org/2000/svg', width: width || size || '24', height: height || size || '24', viewBox: '0 0 24 24', fill: 'none',
         stroke: stroke || color || 'currentColor', strokeWidth: strokeWidth || '2', strokeLinecap: 'round', strokeLinejoin: 'round', ...restProps },
-      icon.map((item, index) => React.createElement(item[0],{ key: index, ...item[1]}))
+      icon.map((item, index) => reactUtils.createElement(item[0],{ key: index, ...item[1]}))
     )
   }
 }
 
-let reactPromise, initReact, cleanDom = () => {}
+let initReact = () => {}
 if (coreUtils.isNode) {
-  initReact = async () => {
+  initReact = async () => { // node mean include tests
     globalThis.requestAnimationFrame = cb => setTimeout(cb, 0)
     globalThis.cancelAnimationFrame  = id => clearTimeout(id)
     globalThis.nodeTesting = true
-    const React    = (await import('react')).default
-    const ReactDOM = (await import('react-dom/client')).default
-    const { flushSync } = await import('react-dom')
-    const { Simulate }  = await import('react-dom/test-utils')
-    globalThis.React    = React
-    globalThis.ReactDOM = ReactDOM
-    globalThis.flushSync= flushSync
-    globalThis.Simulate = Simulate
-    globalThis.location = { hostname : 'localhost' }
-
-    const { useState, useEffect, useRef, useContext } = React
-    Object.assign(reactUtils, { useState, useEffect, useRef, useContext, ReactDOM })
+    const [React,ReactDomClient,ReactDom,TestingLib] =
+      await Promise.all([import('react'), import('react-dom/client'), import('react-dom'), import('@testing-library/user-event')].map(x=>x.default || x))
+  
+    Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, ...TestingLib })
 
     const origFetch = globalThis.fetch
     globalThis.fetch = async (url, opts) => {
-      return origFetch(full, opts)
+      return origFetch(url, opts)
     }
 
     globalThis.localStorage = {
@@ -58,7 +50,6 @@ if (coreUtils.isNode) {
       setItem(k,v)  { this.db[k] = v },
       removeItem(k) { delete this.db[k] }
     }
-    //_reactLoaded()
   }
 
   jb.reactUtils.initDom = async () => {
@@ -66,7 +57,7 @@ if (coreUtils.isNode) {
     const dom = new JSDOM(
       `<!DOCTYPE html><body style="height:100vh"></body>`,
       {
-        url: '/jb6_packages/testing/tests.html',
+        url: 'http://localhost',
         pretendToBeVisual: true,
         resources: 'usable',
         features: { ProcessExternalResources: false }
@@ -76,55 +67,38 @@ if (coreUtils.isNode) {
     win.matchMedia = () => ({})
     win.scrollTo     = () => {}
     await import('mutationobserver-shim')
-    ;['Image','Node','Element','HTMLElement','Document','MutationObserver','document','navigator1','location'].forEach(k => globalThis[k] = dom.window[k])
+    ;['Image','Node','Element','HTMLElement','Document','MutationObserver','document'].forEach(k => globalThis[k] = win[k])
+    ;['navigator','location'].forEach(k => Object.defineProperty(globalThis, k, { value: win[k], writable: true, configurable: true, enumerable: true }))
     reactUtils.registerMutObs(win)
     return win
   }
 } else { // browser
   initReact = async () => {
-    function waitForReact() {
-      if (globalThis.React && globalThis.ReactDOM) return Promise.resolve(globalThis.React)
-      if (!reactPromise) {
-        const urls = [ // todo - use /jb_reactlib prefix to allow working on browsers on other repos with @jb6 in node_modules
-          '/jb6_packages/react/lib/react.development.js',
-          '/jb6_packages/react/lib/react-dom.development.js'
-        ]
-        reactPromise = Promise.all([import('/jb6_packages/react/lib/tailwind-4.js'),
-          ...urls.map(src => new Promise((resolve, reject) => {
-            let s = document.head.querySelector(`script[src="${src}"]`)
-            if (s) return resolve()
-            s = document.createElement('script')
-            s.src = src
-            s.onload = resolve
-            s.onerror = (e) => reject(new Error(`Failed to load ${src}: ${e.message}`))
-            document.head.appendChild(s)
-        }))]).then(() => React)
-      }
-      return reactPromise
-    }
-    return waitForReact().then(React => {
-      const { useState, useEffect, useRef, useContext } = React
-      Object.assign(reactUtils, { useState, useEffect, useRef, useContext, ReactDOM: globalThis.ReactDOM })
-    })
-  }
+    const isLocalHost = typeof location !== 'undefined' && location.hostname === 'localhost'
+    const testMode = false && isLocalHost, devMode = isLocalHost
+    const devOrProd = devMode ? '?dev' : ''
 
+    if (typeof process === 'undefined')
+      globalThis.process = { env: { NODE_ENV: 'development' }, platform: 'browser', version: '', versions: {} }
+    if (!reactUtils.reactPromise)
+      reactUtils.reactPromise = (async () => {
+        const [_,React, ReactDomClient, ReactDom] = await Promise.all([
+          import(`/jb6_packages/react/lib/tailwind-4.js`),
+          import(`https://esm.sh/react@19${devOrProd}`),
+          import(`https://esm.sh/react-dom@19/client${devOrProd}`),
+          import(`https://esm.sh/react-dom@19${devOrProd}`)
+        ].map(x=>x.default || x))
+        const TestingLib = testMode ? (await import(`/jb6_packages/react/lib/user-event.${devOrProd}.mjs`).then(m => m.default || m)).default : {}
+        Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, ...TestingLib })
+      })()
+    return reactUtils.reactPromise
+  }
+  
   jb.reactUtils.initDom = async () => {
-    const win = window
-    await new Promise(resolve => {
-      const s = win.document.createElement('script')
-      s.src   = '/jb6_packages/react/lib/react-dom-test-utils.development.js'
-      s.onload = resolve
-      win.document.head.appendChild(s)
-    })
-    
+    const win = window    
     win.testing = true
     reactUtils.registerMutObs(win)
-    globalThis.flushSync = win.ReactDOM.flushSync
-    globalThis.Simulate = win.ReactTestUtils.Simulate
     return win
-  }
-  cleanDom = () => {
-    document.getElementById('test-simulation')?.remove()
   }
 }
 

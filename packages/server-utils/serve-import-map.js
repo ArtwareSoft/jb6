@@ -1,11 +1,16 @@
 import path from 'path'
 import fs from 'fs/promises'
-import { coreUtils } from '@jb6/core'
+import { coreUtils, jb } from '@jb6/core'
+import '@jb6/core/misc/jb-cli.js'
 import '@jb6/core/misc/import-map-services.js'
+import child from 'child_process'
 
-const { getStaticServeConfig, calcRepoRoot } = coreUtils
+const { getStaticServeConfig, calcRepoRoot, runNodeCli, runBashScript, } = coreUtils
 
-export async function serveImportMap(app, {express}) {
+jb.serverUtils = {serveImportMap, serveCli, serveGotoSource}
+export const { serverUtils } = jb
+
+async function serveImportMap(app, {express}) {
   try {
     const repoRoot = await calcRepoRoot()
     const {importMap, staticMappings} = await getStaticServeConfig(repoRoot)
@@ -29,6 +34,34 @@ export async function serveImportMap(app, {express}) {
   } catch (error) {
     console.error('error:', error)    
   }
+}
+ 
+function serveCli(app) {
+  app.post('/run-cli', async (req, res) => {
+    if (!req.body) {
+      res.status(200).json({ error: 'no body in req' })
+      return
+    }
+    const { script, ...options } = req.body
+    const result = await runNodeCli(script, options)
+    res.status(200).json({ result })
+  })
+
+  app.post('/run-bash', async (req, res) => {
+    const { script } = req.body
+    const result = await runBashScript(script)
+    res.status(200).json({ result })
+  })
+}
+
+function serveGotoSource(app) {
+  app.get('/gotoSource', (req, res) => {
+    const open_editor_cmd = process.env.open_editor_cmd || 'code -r -g '
+    const cmd = [open_editor_cmd,req.query.filePos].join(' ').replace(/jb6_packages/g,'packages')
+    console.log(cmd)
+    child.exec(cmd,{})
+    res.status(200).send('cmd')
+  })
 }
 
 

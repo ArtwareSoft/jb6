@@ -10,6 +10,12 @@
   "dependencies": {
     "@jb6/core": "1.250807.1"
   },
+  "devDependencies": {
+    "jsdom": "^26.1.0",
+    "mutationobserver-shim": "^0.3.7",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Artwaresoft/jb6.git",

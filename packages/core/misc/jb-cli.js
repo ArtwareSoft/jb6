@@ -79,19 +79,19 @@ async function runNodeCli(script, { projectDir: cwd} = {}) {
       child.on('close', code => {
         if (code !== 0) {
           const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
-          logException(error, 'error in run node cli', {cmd, ...options, cwd, stdout: out})
+          logException(error, 'error in run node cli', {cmd, cwd, stdout: out})
           return resolve({error, cmd, cwd})
         }
         try {
           const result = JSON.parse(out)
           resolve({result, cmd, cwd})
         } catch (e) {
-          resolve({error: e, cmd, ...options, cwd})    
+          resolve({error: e, cmd, cwd})    
         }
       })
     } catch(e) {
-      logException(e, 'error in run node cli', {cmd, ...options, cwd})
-      resolve({error: e, cmd, ...options, cwd})
+      logException(e, 'error in run node cli', {cmd, cwd})
+      resolve({error: e, cmd, cwd})
     }
   })
 }

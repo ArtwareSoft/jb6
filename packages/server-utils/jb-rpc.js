@@ -1,9 +1,12 @@
 import { jb, coreUtils } from '@jb6/core'
 import express from 'express'
 import cors from 'cors'
+import { serverUtils } from '@jb6/server-utils'
 const { compByFullId } = coreUtils
 
-export async function startDedicatedRpcServer({port = 3000, entryPoints = [], serverName = 'JB6 RPC Server'}) {
+Object.assign(serverUtils, {startDedicatedRpcServer, serveRpc})
+
+async function startDedicatedRpcServer({port = 3000, entryPoints = [], serverName = 'JB6 RPC Server'}) {
   await Promise.all(entryPoints.map(entryPoint=> import(entryPoint)))
   const app = express()
   app.use(cors({ origin: '*' }))
@@ -15,7 +18,7 @@ export async function startDedicatedRpcServer({port = 3000, entryPoints = [], se
   })
 }
 
-export async function serveRpc(app) {
+async function serveRpc(app) {
   app.post('/rpc', async (req, res) => {
       const { jsonrpc, method, params, id } = req.body
       console.log('serveRpc', {body: req.body, jsonrpc, method, params, id})

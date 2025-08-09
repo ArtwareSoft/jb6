@@ -1,3 +1,5 @@
+import { serverUtils } from '@jb6/server-utils'
+Object.assign(serverUtils, {runInWorker})
 
 export async function runInWorker(opts) { // { entryPoints, compName, args }
   const isNode = typeof process!=='undefined' && process.versions?.node

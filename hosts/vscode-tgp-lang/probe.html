@@ -24,7 +24,7 @@ VSCODE_HEADER
       const probeRes = PROBE_RES
       const { coreUtils } = await import('@jb6/core')
       const { reactUtils } = await import('@jb6/react')
-      const { h } = reactUtils
+      const { h, createRoot } = reactUtils
       console.log(h)
       try {
           debugger
@@ -34,7 +34,7 @@ VSCODE_HEADER
           const probeResultViewToShow = defaultProbeResultView
           console.log('probeResultViewToShow',probeResultViewToShow)
 
-          ReactDOM.createRoot(document.getElementById('show')).render(h(probeResultViewToShow,{probeRes}))
+          createRoot(document.getElementById('show')).render(h(probeResultViewToShow,{probeRes}))
       } catch (e) {
         console.error(e)
       }
