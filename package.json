@@ -1,7 +1,7 @@
 {
   "name": "jb6-monorepo",
   "private": true,
-  "version": "1.250807.1",
+  "version": "1.250810.1",
   "description": "JB6 core + plugins (pure-JS workspaces mono-repo)",
   "type": "module",
   "scripts": {
@@ -22,8 +22,6 @@
     "#jb6/*": "./packages/*"
   },
   "devDependencies": {
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/user-event": "^14.6.1",
     "globby": "^14.1.0"
   },
   "keywords": [],

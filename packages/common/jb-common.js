@@ -471,12 +471,12 @@ Data('className', {
 
 Boolean('isOfType', {
   params: [
-    {id: 'type', as: 'string', mandatory: true, description: 'e.g., string,boolean,array'},
+    {id: 'type', as: 'string', mandatory: true, options: 'string,boolean,array,object,null'},
     {id: 'obj', defaultValue: '%%'}
   ],
   impl: (ctx, {type, obj}) => {
     const val = calcValue(obj)
-    const objType = Array.isArray(val) ? 'array' : typeof val
+    const objType = val == null ? 'null' : Array.isArray(val) ? 'array' : typeof val
     return type.split(',').indexOf(objType) != -1
   }
 })

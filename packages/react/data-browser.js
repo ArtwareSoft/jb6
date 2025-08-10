@@ -1,67 +1,81 @@
-import { dsls} from '@jb6/core'
+import { coreUtils, dsls} from '@jb6/core'
 import { reactUtils } from '@jb6/react'
+import '@jb6/common'
+import '@jb6/core/misc/pretty-print.js'
 
 const { 
     tgp: { Const, TgpType, var: { Var } }, 
+    common: { Data,
+      data: { pipeline, join, prettyPrint, slice, list, replace},
+      boolean: {and,startsWith,contains,isOfType}
+    }
   } = dsls
   
 const { h, L, useState, useEffect, useRef, useContext } = reactUtils
+const { globalsOfType, Ctx } = coreUtils
+
 Object.assign(reactUtils,{DataBrowser})
 
-const contentTypePlugins = {
-  html: {
-    detect: (value) => typeof value === 'string' && value.trim().startsWith('<') && value.includes('>'),
-    summaryLine: (value) => `HTML (${value.length} chars)`,
-    text: (value) => value,
+const ContentTypeView = TgpType('content-type-view','react')
+
+const contentTypeView = ContentTypeView('contentTypeView', {
+  params: [
+    { id: 'detect', as: 'boolean', dynamic: true, byName: true },
+    { id: 'singleLine', as: 'string', dynamic: true },
+    { id: 'multiLine', as: 'string', dynamic: true, defaultValue: '%%' },
+    { id: 'reactComp', type: 'react-comp<react>' },
+    { id: 'priority', as: 'number', defaultValue: 10 },
+  ]
+})
+
+const cutLine = Data('cutLine', {
+  params: [
+    {id: 'length', defaultValue: 60}
+  ],
+  impl: join('', {
+    items: list(
+      slice(0, '%$length%'),
+      ({data},{},{length}) => data.length > length ? ` ... ${data.length-length} more` : ''
+    )
+  })
+})
+
+ContentTypeView('html', {
+  impl: contentTypeView({
+    detect: and(startsWith('<'), contains('>')),
+    singleLine: pipeline(replace('\n', '', { useRegex: true, regexFlags: 'g' }), cutLine()),
     reactComp: (value) => h('div:border rounded p-2 bg-gray-50', {},
       h('div:text-xs text-gray-600 mb-2', {}, 'HTML Preview:'),
       h('div:border rounded p-2 bg-white max-h-32 overflow-auto', {
         dangerouslySetInnerHTML: { __html: value }
       })
     )
-  },
-  
-  json: {
-    detect: (value) => typeof value === 'object' && value !== null,
-    summaryLine: (value) => Array.isArray(value) 
-      ? `Array[${value.length}]` 
-      : `Object{${Object.keys(value).length}}`,
-    text: (value) => JSON.stringify(value, null, 2),
-    reactComp: (value) => h('pre:bg-gray-900 text-green-400 p-2 rounded text-xs overflow-auto max-h-32', {}, 
-      JSON.stringify(value, null, 2))
-  },
-  
-  url: {
-    detect: (value) => typeof value === 'string' && /^https?:\/\//.test(value),
-    summaryLine: (value) => `URL: ${value.split('/')[2]}`,
-    text: (value) => value,
-    reactComp: (value) => h('a:text-blue-600 hover:underline', { 
-      href: value, 
-      target: '_blank',
-      rel: 'noopener noreferrer'
-    }, value)
-  },
-  
-  text: {
-    detect: (value) => typeof value === 'string',
-    summaryLine: (value) => value.length > 50 ? `${value.slice(0, 50)}...` : value,
-    text: (value) => value,
-    reactComp: (value) => h('div:whitespace-pre-wrap break-words', {}, value)
-  },
-  
-  primitive: {
-    detect: (value) => typeof value !== 'object' || value === null,
-    summaryLine: (value) => String(value),
-    text: (value) => String(value),
-    reactComp: (value) => h('span:font-mono', {}, String(value))
-  }
-}
+  })
+})
 
-function detectContentType(value) {
-  for (const [type, plugin] of Object.entries(contentTypePlugins)) {
-    if (plugin.detect(value)) return type
-  }
-  return 'primitive'
+ContentTypeView('json', {
+  impl: contentTypeView({
+    detect: isOfType('object'),
+    singleLine: pipeline(prettyPrint('%%', { singleLine: true }), cutLine()),
+    multiLine: prettyPrint('%%'),
+    reactComp: (value) => h('pre:bg-gray-900 text-green-400 p-2 rounded text-xs overflow-auto max-h-32', {}, 
+      coreUtils.prettyPrint(value))
+  })
+})
+
+ContentTypeView('text', {
+  impl: contentTypeView({
+    detect: isOfType('string'),
+    singleLine: pipeline(replace('\n', '\\n', { useRegex: true, regexFlags: 'g' }), cutLine()),
+    reactComp: (value) => h('div:whitespace-pre-wrap break-words', {}, value)
+  })
+})
+
+
+function detectContentTypeView(value) {
+  const view = globalsOfType(ContentTypeView).map(id=>dsls.react['content-type-view'][id].$run())
+    .filter(x=>x.detect(value)).sort((x,y) => x.priority - y.priority)[0] || dsls.react['content-type-view'].text.$run()
+  return view
 }
 
 function DataBrowser({ data, path = [], maxDepth = 3 }) {
@@ -89,13 +103,12 @@ function DataBrowser({ data, path = [], maxDepth = 3 }) {
   const renderValue = (value, currentPath, depth = 0) => {
     const pathKey = currentPath.join('.')
     const isExpanded = expandedPaths.has(pathKey)
-    const currentMode = viewModes.get(pathKey) || 'summaryLine'
-    const contentType = detectContentType(value)
-    const plugin = contentTypePlugins[contentType]
+    const currentMode = viewModes.get(pathKey) || 'singleLine'
+    const view = detectContentTypeView(value)
+    debugger
     
-    if (depth > maxDepth) {
+    if (depth > maxDepth)
       return h('span:text-gray-400 text-xs', {}, '...')
-    }
     
     // For objects and arrays, show expandable structure
     if (typeof value === 'object' && value !== null) {
@@ -125,30 +138,32 @@ function DataBrowser({ data, path = [], maxDepth = 3 }) {
       )
     }
     
-    // For primitive values, show with content type plugins
+    // For primitive values, show with content type views
+    const ctxToUse = new Ctx().setData(value)
+    debugger
     return h('div', {},
       h('div:flex items-center gap-2', {},
-        h('span:text-xs px-1 bg-gray-200 rounded', {}, contentType),
-        currentMode === 'summaryLine' && h('span:text-xs', {}, plugin.summaryLine(value)),
+        //h('span:text-xs px-1 bg-gray-200 rounded', {}, contentType),
+        currentMode === 'singleLine' && h('span:text-xs', {}, view.singleLine(ctxToUse)),
         h('div:flex gap-1', {},
-          ['summaryLine', 'text', 'reactComp'].map(mode =>
+          ['singleLine', 'multiLine', 'reactComp'].map(mode =>
             h('button:text-xs px-1 rounded', {
               key: mode,
               className: currentMode === mode 
                 ? 'bg-blue-600 text-white' 
                 : 'bg-gray-100 hover:bg-gray-200',
               onClick: () => setViewMode(currentPath, mode)
-            }, mode === 'summaryLine' ? 'sum' : mode === 'reactComp' ? 'comp' : mode)
+            }, mode === 'singleLine' ? 'sum' : mode === 'reactComp' ? 'comp' : mode)
           )
         )
       ),
       
-      currentMode === 'text' && h('div:mt-1 bg-gray-50 p-2 rounded text-xs font-mono whitespace-pre-wrap max-h-32 overflow-auto', {}, 
-        plugin.text(value)
+      currentMode === 'multiLine' && h('div:mt-1 bg-gray-50 p-2 rounded text-xs font-mono whitespace-pre-wrap max-h-32 overflow-auto', {}, 
+        view.multiLine(ctxToUse)
       ),
       
       currentMode === 'reactComp' && h('div:mt-1', {},
-        plugin.reactComp(value)
+        view.reactComp(value)
       )
     )
   }

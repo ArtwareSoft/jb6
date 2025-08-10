@@ -174,17 +174,18 @@ export const commands = {
 
         const config = vscodeNS.workspace.getConfiguration('jbart')
         const jbServerPort = config.get('jbServerPort') || 8083
-        const serverUrl = `http://localhost:${jbServerPort}/jb6_packages/core/misc/probe-view.html`
+        const probeViewPath = config.get('probeViewPath') || 'jb6_packages/core/misc/probe-view.html'
+
+        const probeViewUrl = `http://localhost:${jbServerPort}/${probeViewPath}`
         try {
-            const response = await fetch(serverUrl)
+            const response = await fetch(probeViewUrl)
             if (!response.ok)
-                showUserMessage('error', `localhost jb6 server on port ${jbServerPort} is down`)
+                showUserMessage('error', probeViewUrl)
         } catch (error) {
-            showUserMessage('error', `localhost jb6 server on port ${jbServerPort} is down`)
+            showUserMessage('error', probeViewUrl)
             return
         }
-        const probeUrl = `http://localhost:${jbServerPort}/jb6_packages/core/misc/probe-view.html`
-        const url = new URL(probeUrl)
+        const url = new URL(probeViewUrl)
         url.searchParams.set('path', path)
         url.searchParams.set('filePath', relativeFilePath)
         

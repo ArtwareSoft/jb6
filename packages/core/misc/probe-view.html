@@ -22,14 +22,21 @@ async function run() {
     const fullFilePath = `${projectRoot}${filePath}`
     const path = urlParams.get('path') || 'reactTest.HelloWorld~impl~expectedResult'
     
-    // Show loading state immediately
-    createRoot(document.getElementById('show')).render(h(LoadingView, { path, filePath }))
+    const render = (component) => createRoot(document.getElementById('show')).render(component)
+    render(h(LoadingView, { path, filePath }))
     
+    let result, error
     try {
-        const result = await coreUtils.runProbeCli(path, {entryPointPaths: fullFilePath})
-        createRoot(document.getElementById('show')).render(h(defaultProbeResultView,result))
-    } catch (error) {
-        createRoot(document.getElementById('show')).render(h(ErrorView, { error, path, filePath }))
+        result = await coreUtils.runProbeCli(path, {entryPointPaths: fullFilePath})
+        error = result.error || result.result?.error
+    } catch (e) {
+        error = e
+    }
+
+    if (error) {
+        render(h(ErrorView, { error: error.stderr || error, path, filePath }))
+    } else {
+        render(h(defaultProbeResultView, result))
     }
 }
 run()

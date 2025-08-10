@@ -4,7 +4,9 @@ import '@jb6/testing'
 const { asArray } = coreUtils
 
 Object.assign(jb.reactUtils, {registerMutObs})
-const { createRoot, initDom } = reactUtils
+Object.assign(reactUtils, { prettyPrintNode})
+const { createRoot, initDom, createElement } = reactUtils
+const { delay } = coreUtils
 const { 
   tgp: { TgpType },
   test: { Test, 
@@ -13,28 +15,33 @@ const {
   common: { Data }
 } = dsls
 
-const UIAction = TgpType('ui-action', 'test', { modifierId: 'UIAction' })
+const UiAction = TgpType('ui-action', 'test')
 
 Test('reactTest', {
     params: [
       {id: 'reactComp', type: 'react-comp<react>', dynamic: true },
       {id: 'expectedResult', type: 'boolean', dynamic: true},
+      {id: 'props', as: 'object' },
       {id: 'userActions', type: 'ui-action[]'}
     ],
     impl: dataTest({
-        calculate: async (ctx,{singleTest},{reactComp,userActions}) => { 
+        calculate: async (ctx,{singleTest},{reactComp,userActions,props}) => { 
           const win = await initDom()
           const testSimulation = win.document.createElement('div')
           testSimulation.id = 'test-simulation'
           const hasActions = asArray(userActions).length > 0
           if (singleTest || hasActions)
               win.document.body.appendChild(testSimulation)
-          createRoot(testSimulation).render(reactComp())
+
+          createRoot(testSimulation).render(createElement(reactComp, props))
 
           await win.waitForMutations()
           const ctxA = ctx.setVars({ win })
-          for (const a of asArray(userActions)) await a.exec(ctxA)
-          const res = prettyPrintNode(win.document.getElementById('test-simulation'))
+          for (const a of asArray(userActions)) {
+            await a.exec(ctxA)
+            await win.waitForMutations()
+          }
+          const res = prettyPrintNode(testSimulation)
           if (!singleTest)
             testSimulation.remove()
           return res
@@ -43,6 +50,119 @@ Test('reactTest', {
         timeout: 2000,
         includeTestRes: true
     })
+})
+
+UiAction('waitForMutations', {
+  params: [ { id:'timeout', as:'number' } ],
+  impl: ({},{timeout}) => ({ exec: ctx => ctx.vars.win.waitForMutations(timeout) })
+})
+
+UiAction('waitForSelector', {
+  params: [
+    { id: 'selector', as: 'string' },
+    { id: 'timeout', as: 'number', defaultValue: 2000 }
+  ],
+  impl: ({}, { selector, timeout }) => ({
+    async exec(ctx) {
+      const {win} = ctx.vars
+      return new Promise(resolve => {
+        const observer = new win.MutationObserver(check)
+        observer.observe(win.document, { childList: true, subtree: true })
+        const timer = setTimeout(() => { observer.disconnect(); resolve(null) }, timeout)
+        check()
+
+        function check() { 
+          const el = win.document.querySelector(selector)
+          if (el) { 
+            observer.disconnect()
+            clearTimeout(timer)
+            resolve(el) 
+          } 
+        }
+      })
+    }
+  })
+})
+
+UiAction('waitForText', {
+  params: [
+    { id: 'text', as: 'string' },
+    { id: 'timeout', as: 'number', defaultValue: 8000 }
+  ],
+  impl: ({}, { text, timeout }) => ({
+    async exec(ctx) {
+      const {win} = ctx.vars
+      return new Promise(resolve => {
+        const observer = new win.MutationObserver(check)
+        observer.observe(win.document, { childList: true, subtree: true })
+        const timer = setTimeout(() => { observer.disconnect(); resolve(null) }, timeout)
+        check()
+
+        function check() { 
+          const found = win.document.body.innerHTML.indexOf(text) != -1
+          if (found) { 
+            observer.disconnect()
+            clearTimeout(timer)
+            resolve() 
+          } 
+        }
+      })
+    }
+  })
+})
+
+UiAction('click', {
+  params: [
+    { id: 'buttonText', as: 'string' },
+  ],
+  impl: (ctx, { buttonText }) => ({
+    async exec(ctx) {
+      const { win } = ctx.vars
+      try {
+        const buttons = Array.from(win.document.querySelectorAll('button, .cursor-pointer'))
+        const button = buttonText ? buttons.find(button => button.innerHTML.indexOf(buttonText) != -1) : buttons[0]
+        if (!button) {
+          console.log(`can not find button ${buttonText}`,buttons)
+          return
+        }
+        console.log(`click: found button ${buttonText}`, button.outerHTML)
+        const event = new win.MouseEvent('click', { bubbles: true, cancelable: true })
+        button.dispatchEvent(event)
+      } catch (e) {
+        debugger
+        console.log(e)
+      }
+    }
+  })
+})
+
+UiAction('longPress', {
+  params: [
+    { id: 'buttonText', as: 'string' },
+    { id: 'timeToPress', as: 'number', defaultValue: 350, byName: true },
+  ],
+  impl: (ctx, { buttonText, timeToPress }) => ({
+    async exec(ctx) {
+      const { win } = ctx.vars
+      try {
+        const buttons = Array.from(win.document.querySelectorAll('button, .cursor-pointer'))
+        const button = buttonText ? buttons.find(button => button.innerHTML.indexOf(buttonText) != -1) : buttons[0]
+        if (!button) {
+          console.log(`can not find button ${buttonText}`,buttons)
+          return
+        }
+        console.log(`click: found button ${buttonText}`, button.outerHTML)
+        const event = new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0, buttons: Math.pow(2, 0), view: win })
+        button.dispatchEvent(event)
+        await delay(timeToPress)
+        const event2 = new win.MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 0, buttons: Math.pow(2, 0), view: win })
+        button.dispatchEvent(event2)
+      } catch (e) {
+        debugger
+        console.log(e)
+      }
+    }
+  })
 })
 
 function registerMutObs(win) {
@@ -118,7 +238,7 @@ function getPathFromRoot(node) {
     const parent = el.parentNode
     if (!parent || !parent.children) break
     const idx = Array.prototype.indexOf.call(parent.children, el) + 1
-    path.unshift(`${el.tagName.toLowerCase()}:nth-child(${idx})`)
+    el.tagName && path.unshift(`${el.tagName.toLowerCase()}:nth-child(${idx})`)
     el = parent
   }
   if (el && el.id === 'root') path.unshift('#root')
@@ -152,6 +272,5 @@ function prettyPrintNode(node, indent = 0) {
       }
     }
   })
-  return out.replace(/\n+$/, '\n')
+  return out.replace(/\n+$/, '\n').trim()
 }
-

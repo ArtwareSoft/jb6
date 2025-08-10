@@ -34,10 +34,10 @@ if (coreUtils.isNode) {
     globalThis.requestAnimationFrame = cb => setTimeout(cb, 0)
     globalThis.cancelAnimationFrame  = id => clearTimeout(id)
     globalThis.nodeTesting = true
-    const [React,ReactDomClient,ReactDom,TestingLib] =
-      await Promise.all([import('react'), import('react-dom/client'), import('react-dom'), import('@testing-library/user-event')].map(x=>x.default || x))
+    const [React,ReactDomClient,ReactDom] =
+      await Promise.all([import('react'), import('react-dom/client'), import('react-dom')].map(x=>x.default || x))
   
-    Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, ...TestingLib })
+    Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom })
 
     const origFetch = globalThis.fetch
     globalThis.fetch = async (url, opts) => {
@@ -75,8 +75,7 @@ if (coreUtils.isNode) {
 } else { // browser
   initReact = async () => {
     const isLocalHost = typeof location !== 'undefined' && location.hostname === 'localhost'
-    const testMode = false && isLocalHost, devMode = isLocalHost
-    const devOrProd = devMode ? '?dev' : ''
+    const devOrProd = isLocalHost ? '?dev' : ''
 
     if (typeof process === 'undefined')
       globalThis.process = { env: { NODE_ENV: 'development' }, platform: 'browser', version: '', versions: {} }
@@ -88,7 +87,7 @@ if (coreUtils.isNode) {
           import(`https://esm.sh/react-dom@19/client${devOrProd}`),
           import(`https://esm.sh/react-dom@19${devOrProd}`)
         ].map(x=>x.default || x))
-        const TestingLib = testMode ? (await import(`/jb6_packages/react/lib/user-event.${devOrProd}.mjs`).then(m => m.default || m)).default : {}
+        const TestingLib = {}
         Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, ...TestingLib })
       })()
     return reactUtils.reactPromise
@@ -103,3 +102,15 @@ if (coreUtils.isNode) {
 }
 
 await initReact()
+
+if (coreUtils.isNode) {
+  const cli = Object.fromEntries(process.argv.slice(2).filter(a=>a.startsWith('--')).map(a=>a.slice(2).split('=')))
+  cli.test && delay(1).then(() =>  // let the other modules finish their loading
+      runTests({
+        specificTest: cli.test,
+        notPattern:   cli.not,
+        pattern:      cli.pattern,
+        take:         cli.take
+      })
+    )
+}
