@@ -272,5 +272,5 @@ function prettyPrintNode(node, indent = 0) {
       }
     }
   })
-  return out.replace(/\n+$/, '\n').trim()
+  return out.replace(/\n+$/, '\n')
 }

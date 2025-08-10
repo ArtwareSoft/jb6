@@ -6,61 +6,34 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/search.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/brace-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/xml-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/indent-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/comment-fold.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/foldgutter.min.css">
 <style>
-.CodeMirror { height: 200px; font-size: 12px; border: 1px solid #ddd; }
-.splitter {
-    width: 8px;
-    background: #e5e7eb;
-    cursor: col-resize;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    user-select: none;
-}
-.splitter:hover {
-    background: #d1d5db;
-}
-.splitter::after {
-    content: '⋮⋮';
-    color: #9ca3af;
-    font-size: 12px;
-    line-height: 1;
-    letter-spacing: -2px;
-}
-.splitter.dragging {
-    background: #3b82f6;
-}
-.html-container {
-    display: flex;
-    height: 400px;
-    min-height: 200px;
-}
-.html-input-panel {
-    flex: 1;
-    min-width: 200px;
-    display: flex;
-    flex-direction: column;
-}
-.html-output-panel {
-    flex: 0 0 200px;
-    min-width: 100px;
-    display: flex;
-    flex-direction: column;
-}
+html, body { height: 100%; margin: 0; padding: 0; }
+.CodeMirror { height: 100%; font-size: 12px; border: 1px solid #ddd; }
 </style>
 </head>
 <body>
-  <div id="show"></div>
+  <div id="show" style="height: 100vh;"></div>
   <script type="module">
 import { coreUtils } from '@jb6/core'
 import { reactUtils } from '@jb6/react'
-const { h, L, useState, useEffect, useRef, createRoot } = reactUtils
-
+import '@jb6/react/tests/react-testers.js'
 import '@jb6/core/misc/import-map-services.js'
 import '@jb6/core/misc/probe.js'
 import '@jb6/core/misc/pretty-print.js'
+
+const { h, L, useState, useEffect, useRef, createRoot, prettyPrintNode } = reactUtils
 
 async function run() {
     const projectRoot = await coreUtils.calcRepoRoot()
@@ -156,7 +129,7 @@ function probeResultView(props) {
         setShowError(view === 'error')
     }
 
-    return h('div:w-full h-96 overflow-auto bg-white border rounded shadow-sm text-xs', {},
+    return h('div:w-full h-full flex flex-col overflow-auto bg-white border rounded shadow-sm text-xs', {},
         // Header with tabs
         h('div:sticky top-0 bg-white border-b px-3 py-2 flex items-center justify-between', {
             className: !probeRes.circuitRes.success ? 'bg-red-50 border-red-200' : ''
@@ -199,9 +172,11 @@ function probeResultView(props) {
         ).flat()),
 
         // Error display
-        (probeRes.errors.length > 0 || getTestFailures().length > 0) && h('div:bg-red-50 border-l-2 border-red-500 px-3 py-1 text-red-700', {},
+        (probeRes.errors.length > 0 || getTestFailures().length > 0) && 
+        h('div:bg-red-50 border-l-2 border-red-500 px-3 py-1 text-red-700', {},
             h('div:font-medium', {}, 'Errors'),
-            probeRes.errors.length > 0 && h('pre:text-xs overflow-auto mb-1', {}, JSON.stringify(probeRes.errors, null, 1)),
+            probeRes.errors.length > 0 && 
+            h('pre:text-xs overflow-auto mb-1', {}, JSON.stringify(probeRes.errors, null, 1)),
             ...getTestFailures().map((failure, i) => 
                 h('div:text-xs mb-1', { key: i },
                     h('span:font-medium', {}, failure.code + ': '),
@@ -211,10 +186,12 @@ function probeResultView(props) {
         ),
 
         // Content based on active view
-        getActiveView() === 'json' ? h('div:p-3', {},
+        getActiveView() === 'json' ? 
+        h('div:p-3', {},
             h('pre:bg-gray-900 text-green-400 p-2 rounded text-xs overflow-auto max-h-64', {}, 
                 JSON.stringify(probeRes, null, 2))
-        ) : getActiveView() === 'cmd' ? h('div:p-3', {},
+        ) : getActiveView() === 'cmd' ? 
+        h('div:p-3', {},
             h('div:mb-2 flex items-center justify-between', {},
                 h('span:font-medium text-purple-800', {}, `cd ${projectDir}`),
                 h('button:text-purple-600 hover:text-purple-800 text-xs px-2 py-1 border border-purple-300 rounded hover:bg-purple-50', {
@@ -222,17 +199,17 @@ function probeResultView(props) {
                 }, 'Copy')
             ),
             h('pre:bg-purple-50 border border-purple-200 p-2 rounded text-xs overflow-auto max-h-64 font-mono', {}, cmd)
-        ) : getActiveView() === 'error' ? h('div:p-3', {},
+        ) : getActiveView() === 'error' ? 
+        h('div:p-3', {},
             h('div:mb-2 font-medium text-red-800', {}, 'Error:'),
             h('pre:bg-red-50 border border-red-200 p-2 rounded text-xs overflow-auto max-h-64', {}, 
                 typeof error === 'string' ? error : JSON.stringify(error, null, 2))
-        ) : h('div:p-3 space-y-2', {},
+        ) : 
+        h('div:p-3 flex-1 flex flex-col overflow-auto', {},
             probeRes.result.length === 0 
                 ? h('div:text-gray-500 text-center py-4', {}, 'No results')
                 : probeRes.result.map((result, index) => 
-                    h('div:border rounded p-2', { key: index }, 
-                        h(CodeMirrorInputOutput, { key: index, ...result, index })
-                    )
+                    h(CodeMirrorInputOutput, { key: index, ...result, index })
                 )
         )
     )
@@ -241,17 +218,47 @@ function probeResultView(props) {
 function CodeMirrorInputOutput({ in: In, out, index }) {
     const inputRef = useRef()
     const outputRef = useRef()
-    const htmlPreviewRef = useRef()
+    const containerRef = useRef()
+    const [inputWidth, setInputWidth] = useState(50)
     
     // Detect if input data is HTML string
     const inputData = In.data || In
-    const isHtmlString = typeof inputData === 'string' && 
-        inputData.trim().startsWith('<') && 
-        inputData.includes('>')
+    const isHtmlString = typeof inputData === 'string' && inputData.trim().startsWith('<') && inputData.includes('>')
+    
+    const handleLayoutChange = (newInputWidth) => {
+        setInputWidth(newInputWidth)
+        setTimeout(() => {
+            const mainContainer = containerRef.current
+            if (!mainContainer) return
+            
+            const totalWidth = mainContainer.offsetWidth
+            const totalHeight = mainContainer.offsetHeight - 40 // Account for headers
+            const paddingAndBorder = 20 // Account for padding (p-2 = 8px each side) + border (1px each side) = ~20px total
+            const availableWidth = totalWidth - paddingAndBorder
+            const inputEditorWidth = availableWidth * newInputWidth / 100
+            const outputEditorWidth = availableWidth - inputEditorWidth
+            
+            if (inputRef.current?.codeMirrorInstance) {
+                inputRef.current.codeMirrorInstance.setSize(inputEditorWidth, totalHeight)
+                inputRef.current.codeMirrorInstance.refresh()
+            }
+            if (outputRef.current?.codeMirrorInstance) {
+                outputRef.current.codeMirrorInstance.setSize(outputEditorWidth, totalHeight)
+                outputRef.current.codeMirrorInstance.refresh()
+            }
+        }, 0)
+    }
     
     useEffect(() => {
         if (inputRef.current && !inputRef.current.codeMirrorInstance) {
-            const inputValue = coreUtils.prettyPrint(inputData)
+            let inputValue
+            if (isHtmlString) {
+                const tempDiv = document.createElement('div')
+                tempDiv.innerHTML = inputData                
+                inputValue = prettyPrintNode(tempDiv)
+            } else {
+                inputValue = coreUtils.prettyPrint(inputData)
+            }
             
             inputRef.current.codeMirrorInstance = CodeMirror(inputRef.current, {
                 value: inputValue,
@@ -259,13 +266,14 @@ function CodeMirrorInputOutput({ in: In, out, index }) {
                 readOnly: true,
                 lineNumbers: true,
                 foldGutter: true,
-                gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+                gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+                extraKeys: {
+                    "Ctrl-F": "findPersistent",
+                    "Cmd-F": "findPersistent",
+                    "Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); },
+                    "Cmd-Q": function(cm){ cm.foldCode(cm.getCursor()); }
+                }
             })
-        }
-        
-        // Set HTML preview if it's HTML string
-        if (isHtmlString && htmlPreviewRef.current) {
-            htmlPreviewRef.current.innerHTML = inputData
         }
         
         if (outputRef.current && !outputRef.current.codeMirrorInstance) {
@@ -279,72 +287,64 @@ function CodeMirrorInputOutput({ in: In, out, index }) {
                 readOnly: true,
                 lineNumbers: true,
                 foldGutter: true,
-                gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+                gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+                extraKeys: {
+                    "Ctrl-F": "findPersistent",
+                    "Cmd-F": "findPersistent",
+                    "Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); },
+                    "Cmd-Q": function(cm){ cm.foldCode(cm.getCursor()); }
+                }
             })
         }
+        
+        // Initial layout
+        handleLayoutChange(50)
     }, [In, out, isHtmlString, inputData])
     
-    if (isHtmlString) {
-        // HTML layout: 90% width for input, 10% for output
-        return h('div:flex gap-3', {},
-            // Input - HTML with preview
-            h('div:w-[90%]', {},
-                h('div:flex items-center gap-1 mb-1', {},
-                    h('span:font-medium text-gray-600', {}, 'HTML Input:')
-                ),
-                h('div:grid grid-cols-2 gap-2', {},
-                    // HTML source
-                    h('div', {},
-                        h('div:text-xs text-gray-500 mb-1', {}, 'Source'),
-                        h('div', { ref: inputRef })
-                    ),
-                    // HTML preview
-                    h('div', {},
-                        h('div:text-xs text-gray-500 mb-1', {}, 'Preview'),
-                        h('div:border rounded p-2 bg-white overflow-auto', {
-                            ref: htmlPreviewRef,
-                            style: { height: '200px' }
-                        })
-                    )
+    // Add resize handler for CodeMirror refresh
+    useEffect(() => {
+        const handleResize = () => {
+            // Recalculate and resize both editors
+            handleLayoutChange(inputWidth)
+        }
+        
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [inputWidth])
+    
+    // Unified layout for all cases
+    return h('div:flex flex-1 min-h-96 border rounded p-2 mb-2', { ref: containerRef },
+        h('div:flex flex-col', {},
+            h('div:flex items-center justify-center gap-1 mb-1 h-8', {},
+                h('span:font-medium text-gray-600', {}, 'Input:'),
+                h('div:flex gap-0.5', {},
+                    h('button:text-xs px-1 py-0 border rounded hover:bg-gray-50 text-gray-600 leading-none', {
+                        onClick: () => handleLayoutChange(20),
+                        title: 'Narrow input'
+                    }, '⟨'),
+                    h('button:text-xs px-1 py-0 border rounded hover:bg-gray-50 text-gray-600 leading-none', {
+                        onClick: () => handleLayoutChange(50),
+                        title: 'Equal split'
+                    }, '▣'),
+                    h('button:text-xs px-1 py-0 border rounded hover:bg-gray-50 text-gray-600 leading-none', {
+                        onClick: () => handleLayoutChange(80),
+                        title: 'Wide input'
+                    }, '⟩')
                 )
             ),
-            
-            // Output - smaller
-            h('div:w-[10%]', {},
-                h('div:flex items-center gap-1 mb-1', {},
-                    h('span:font-medium text-gray-600', {}, 'Out:'),
-                    out === true 
-                        ? h('L:Check', { className: 'text-green-600' })
-                        : out === false 
-                            ? h('L:X', { className: 'text-red-600' })
-                            : null
-                ),
-                h('div', { ref: outputRef })
-            )
-        )
-    }
-    
-    // Default layout: 50/50 split
-    return h('div:grid grid-cols-2 gap-3', {},
-        // Input
-        h('div', {},
-            h('div:flex items-center gap-1 mb-1', {},
-                h('span:font-medium text-gray-600', {}, 'In:')
-            ),
-            h('div', { ref: inputRef })
+            h('div:h-full', { ref: inputRef })
         ),
         
-        // Output  
-        h('div', {},
-            h('div:flex items-center gap-1 mb-1', {},
-                h('span:font-medium text-gray-600', {}, 'Out:'),
+        h('div:flex flex-col', {},
+            h('div:flex items-center justify-center gap-1 mb-1 h-8', {},
+                h('span:font-medium text-gray-600', {}, 'Output:'),
                 out === true 
-                    ? h('L:Check', { className: 'text-green-600' })
+                    ? h('L:Check', { className: 'text-green-600', size: 16 })
                     : out === false 
-                        ? h('L:X', { className: 'text-red-600' })
+                        ? h('L:X', { className: 'text-red-600', size: 16 })
                         : null
             ),
-            h('div', { ref: outputRef })
+            h('div:h-full', { ref: outputRef })
         )
     )
 }
