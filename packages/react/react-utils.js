@@ -37,12 +37,7 @@ if (coreUtils.isNode) {
     const [React,ReactDomClient,ReactDom] =
       await Promise.all([import('react'), import('react-dom/client'), import('react-dom')].map(x=>x.default || x))
   
-    Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom })
-
-    const origFetch = globalThis.fetch
-    globalThis.fetch = async (url, opts) => {
-      return origFetch(url, opts)
-    }
+    Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient })
 
     globalThis.localStorage = {
       db: {},
@@ -52,21 +47,17 @@ if (coreUtils.isNode) {
     }
   }
 
-  jb.reactUtils.initDom = async () => {
-    const [{ JSDOM }] = await Promise.all([import('jsdom')])
-    const dom = new JSDOM(
-      `<!DOCTYPE html><body style="height:100vh"></body>`,
-      {
-        url: 'http://localhost',
-        pretendToBeVisual: true,
-        resources: 'usable',
-        features: { ProcessExternalResources: false }
-      }
-    )
+  jb.reactUtils.initDom = async ({url = 'http://localhost', html = '<!DOCTYPE html><body style="height:100vh"></body>' } = {}) => {
+    const { JSDOM } = await import('jsdom')
+    const dom = new JSDOM(html, { url, pretendToBeVisual: true, resources: 'usable', features: { ProcessExternalResources: false } })
     const win = globalThis.window = dom.window
     win.matchMedia = () => ({})
     win.scrollTo     = () => {}
     await import('mutationobserver-shim')
+    win.Element.prototype.scrollTo = () => {}
+    win.Element.prototype.scrollIntoView = () => {}
+
+// Also mock scrollIntoView if needed
     ;['Image','Node','Element','HTMLElement','Document','MutationObserver','document'].forEach(k => globalThis[k] = win[k])
     ;['navigator','location'].forEach(k => Object.defineProperty(globalThis, k, { value: win[k], writable: true, configurable: true, enumerable: true }))
     reactUtils.registerMutObs(win)
@@ -88,7 +79,7 @@ if (coreUtils.isNode) {
           import(`https://esm.sh/react-dom@19${devOrProd}`)
         ].map(x=>x.default || x))
         const TestingLib = {}
-        Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, ...TestingLib })
+        Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, ...TestingLib, React, ReactDOM: ReactDomClient  })
       })()
     return reactUtils.reactPromise
   }

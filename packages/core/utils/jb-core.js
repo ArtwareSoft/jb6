@@ -155,7 +155,9 @@ class Ctx {
         return vars.reduce((ctx,{name,val},i) => ctx.setVars({[name]: runInnerPathForVar(val, i, ctx)}), this )        
     }
     dataObj(out,vars,input) { 
-        //    this.probe && jb.probe.record(this,out,input||out,vars)
+        if (this.jbCtx.probe)
+            this.jbCtx.probe.record(this, null, input, this.vars)
+    
         return {data: out, vars: vars || this.vars} 
     }
 }

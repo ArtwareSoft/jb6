@@ -148,9 +148,11 @@ class Probe {
 
     // called from jb_run
     record(ctx,out,data,vars) {
-        const {probe, path } = ctx.jbCtx
-        if (!probe.active) return
-        if (probe.probePath.split('~')[0] != path.split('~')[0]) return
+        const {probe, path : _path } = ctx.jbCtx
+        if (!probe.active || typeof out == 'function') return
+        const creatorPath = ctx.jbCtx.creatorStack?.[1] || ''
+        const path = [_path,creatorPath].find(p=>probe.probePath.split('~')[0] == p.split('~')[0])
+        //if (!path) return
         probe.visits[path] = probe.visits[path] || 0
         probe.visits[path]++
         if (probe.probePath.indexOf(path) != 0) return
@@ -171,7 +173,7 @@ class Probe {
         //     //throw 'out of time';
         // }
         probe.records[path] = probe.records[path] || []
-        const found = probe.records[path].find(x=>compareArrays(x.in.data,_ctx.data))
+        const found = probe.probePath != path && probe.records[path].find(x=>compareArrays(x.in.data,_ctx.data))
         if (found)
             found.counter++
         else

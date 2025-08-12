@@ -3,8 +3,8 @@ import { reactUtils } from '@jb6/react'
 import '@jb6/testing'
 const { asArray } = coreUtils
 
-Object.assign(jb.reactUtils, {registerMutObs})
-Object.assign(reactUtils, { prettyPrintNode})
+Object.assign(reactUtils, {registerMutObs, prettyPrintNode})
+
 const { createRoot, initDom, createElement } = reactUtils
 const { delay } = coreUtils
 const { 

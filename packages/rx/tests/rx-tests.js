@@ -101,7 +101,7 @@ Test('rxTest.rawPipeInsidePipe', {
 })
 
 Test('rxTest.TakeWhile', {
-  impl: dataTest(pipe(rx.pipe(interval(1), rx.takeWhile('%%<2')), join(',')), equals('0,1'))
+  impl: dataTest(pipe(rx.pipe(interval(1), rx.takeWhile('%%<2'), rx.map('%%')), join(',')), equals('0,1'))
 })
 
 // Test('rxTest.ActionPulls', {
