@@ -73,7 +73,7 @@ async function runNodeCli(script, { projectDir: cwd} = {}) {
   return new Promise(resolve => {
     let out = '', err = ''
     try {
-      const child = spawn('/bin/node', ['--input-type=module', '-e', scriptToRun], {cwd, encoding: 'utf8'})
+      const child = spawn(process.execPath, ['--input-type=module', '-e', scriptToRun], {cwd, encoding: 'utf8'})
       child.stdout.on('data', d => out += d)
       child.stderr.on('data', d => err += d)
       child.on('close', code => {

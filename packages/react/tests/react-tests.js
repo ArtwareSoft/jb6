@@ -27,13 +27,22 @@ Test('reactTest.buttonClick', {
   })
 })
 
+// Test('reactTest.err', {
+//   impl: reactTest(() => h('div'), contains('Clicked!'), {
+//     userActions: [
+//       waitForSelector('aaaaaaaaaaaaaaaaaaaaaa'),
+//       click()
+//     ]
+//   })
+// })
+
 Test('reactTest.longPress', {
   impl: reactTest({
     reactComp: () => {
       const [text, setText] = useState('LongPress me')
       const timeoutRef = useRef(null)
       
-      const start = () => timeoutRef.current = setTimeout(() => setText('LongPress!'), 300)
+      const start = () => timeoutRef.current = setTimeout(() => setText('LongPress!'), 20)
       const stop = () => { 
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current)
@@ -46,6 +55,7 @@ Test('reactTest.longPress', {
       }, h('div',{}, h('div',{}, text)))
     },
     expectedResult: contains('LongPress!'),
-    userActions: longPress('LongPress me', { timeToPress: 350 })
+    userActions: longPress('LongPress me', { timeToPress: 30 })
   })
 })
+

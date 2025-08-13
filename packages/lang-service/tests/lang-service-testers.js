@@ -63,7 +63,7 @@ Data('calcCompTextAndCursor', {
 
 Test('completionOptionsTest', {
   params: [
-    {id: 'compText', as: 'string', description: 'use __ for completion points'},
+    {id: 'compText', as: 'text', description: 'use __ for completion points'},
     {id: 'expectedSelections', as: 'array', description: 'label a selection that should exist in the menu. one for each point'},
     {id: 'filePath', as: 'string'},
     {id: 'dsl', as: 'string'}

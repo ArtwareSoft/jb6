@@ -16,7 +16,7 @@ const {
 } = dsls
 
 const UiAction = TgpType('ui-action', 'test')
-
+const start = Date.now()
 Test('reactTest', {
     params: [
       {id: 'reactComp', type: 'react-comp<react>', dynamic: true },
@@ -34,12 +34,11 @@ Test('reactTest', {
               win.document.body.appendChild(testSimulation)
 
           createRoot(testSimulation).render(createElement(reactComp, props))
-
-          await win.waitForMutations()
+          await win.waitForMutations(10)
           const ctxA = ctx.setVars({ win })
           for (const a of asArray(userActions)) {
             await a.exec(ctxA)
-            await win.waitForMutations()
+            await win.waitForMutations(50)
           }
           const res = prettyPrintNode(testSimulation)
           if (!singleTest)

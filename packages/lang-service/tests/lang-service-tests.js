@@ -30,6 +30,19 @@ Test('completionTest.param', {
 //   impl: completionOptionsTest('autoGen1(__)', ['p1'])
 // })
 
+Test('completionTest.lastItemInArray', {
+  impl: completionOptionsTest({
+    compText: `reactTest(() => {}, contains('Clicked!'), {
+    userActions: [
+      waitForSelector('aaaaaaaaaaaaaaaaaaaaaa'),__
+__    click()__
+__  ]
+  })`,
+    expectedSelections: ['click','click','click','click'],
+    filePath: 'packages/react/tests/react-tests.js'
+  })
+})
+
 Test('completionTest.pt', {
   impl: completionOptionsTest({
     compText: `uiTest(group(__text('__hello world'), __text('2'__)__), __contains('hello world','2'))`,
