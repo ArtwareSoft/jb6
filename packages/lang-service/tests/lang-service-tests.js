@@ -34,11 +34,11 @@ Test('completionTest.lastItemInArray', {
   impl: completionOptionsTest({
     compText: `reactTest(() => {}, contains('Clicked!'), {
     userActions: [
-      waitForSelector('aaaaaaaaaaaaaaaaaaaaaa'),__
-__    click()__
-__  ]
+      waitForSelector('aaaaaaaaaaaaaaaaaaaaaa'),
+      click()__
+__    ]
   })`,
-    expectedSelections: ['click','click','click','click'],
+    expectedSelections: ['click','click'],
     filePath: 'packages/react/tests/react-tests.js'
   })
 })

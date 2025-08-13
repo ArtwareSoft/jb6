@@ -31,7 +31,8 @@ Test('reactTest.buttonClick', {
 //   impl: reactTest(() => h('div'), contains('Clicked!'), {
 //     userActions: [
 //       waitForSelector('aaaaaaaaaaaaaaaaaaaaaa'),
-//       click()
+//       click(),
+//       waitForText()
 //     ]
 //   })
 // })

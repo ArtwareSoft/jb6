@@ -2,7 +2,7 @@
   "name": "jb6-tgp-lang",
   "displayName": "jb6 TGP Language",
   "description": "TGP language service and probe activation",
-  "version": "2508.12.1",
+  "version": "2508.13.1",
   "publisher": "artwaresoft",
   "license": "MIT",
   "engines": {
