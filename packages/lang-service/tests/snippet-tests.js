@@ -31,7 +31,7 @@ Test('snippet.typeError', {
 
 Test('snippet.ns', {
   impl: snippetTest({
-    compText: `pipeline(asIs([{a: 1},{a: 1}, {a:2}]), splitByPivot('a'), enrichGroupProps(group.count('aCounter')))`,
+    profileText: `pipeline(asIs([{a: 1},{a: 1}, {a:2}]), splitByPivot('a'), enrichGroupProps(group.count('aCounter')))`,
     expectedResult: equals('%result/0/aCounter%', 2),
     entryPointPaths: '%$JB6_REPO_ROOT%/packages/common/common-tests.js'
   })
@@ -39,7 +39,7 @@ Test('snippet.ns', {
 
 Test('snippet.probe', {
   HeavyTest: true,
-  impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/in/data/a%'))
+  impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/a%'))
 })
 
 Test('snippet.entryPointPaths', {

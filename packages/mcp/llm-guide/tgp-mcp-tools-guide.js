@@ -11,35 +11,6 @@ const {
   } 
 } = dsls
 
-Doclet('mcpToolsOverview', {
-  impl: principle('critical', 'Use the right MCP tool for each development task: explore → test → implement', {
-    rationale: 'TGP MCP tools enable systematic development workflows that prevent bugs and ensure quality',
-    guidance: [
-      solution({
-        code: `// CORE MCP TOOLS:
-// Exploration
-jb6_mcp:dslDocs({dsl: "common", repoRoot: "/path/to/repo"})        // Get component docs
-jb6_mcp:getFilesContent({filesPaths: "file1.js,file2.js", repoRoot: "/path/to/repo"})
-
-// Testing  
-jb6_mcp:runSnippet({compText: "count('%$data%')", filePath: "test.js", repoRoot: "/path/to/repo"})
-
-// Implementation
-jb6_mcp:appendToFile({content: "new content", filePath: "file.js", repoRoot: "/path/to/repo"})
-jb6_mcp:replaceComponent({oldCompText: "old", newCompText: "new", filePath: "file.js", repoRoot: "/path/to/repo"})
-jb6_mcp:overrideFileContent({newContent: "entire file", filePath: "file.js", repoRoot: "/path/to/repo"})`,
-        points: [
-          explanation('Always explore existing components before implementing new ones'),
-          explanation('Test component behavior with runSnippet before making changes'),
-          syntax('repoRoot', 'absolute path to repository root'),
-          syntax('filePath', 'relative path from repoRoot'),
-          whenToUse('this workflow for any development task from debugging to new features')
-        ]
-      })
-    ]
-  })
-})
-
 Doclet('toolSelection', {
   impl: principle({
     importance: 'critical',
@@ -52,13 +23,6 @@ Doclet('toolSelection', {
 // ✅ Adding new components safely
 jb6_mcp:appendToFile({
   content: "Data('newComponent', {impl: 'new functionality'})",
-  filePath: "packages/common/my-file.js"
-})
-
-// ✅ Modifying existing components precisely  
-jb6_mcp:replaceComponent({
-  oldCompText: "filter('%status% == \\"old\\"')",
-  newCompText: "filter('%status% == \\"new\\"')",
   filePath: "packages/common/my-file.js"
 })
 
@@ -102,7 +66,7 @@ Doclet('testingAndDebugging', {
 
 // Step 1: Test component behavior
 jb6_mcp:runSnippet({
-  compText: "pipeline('%$people%', filter('%age% < 30'), count())",
+  profileText: "pipeline('%$people%', filter('%age% < 30'), count())",
   setupCode: "Const('people', [{name: 'John', age: 25}, {name: 'Jane', age: 35}])",
   filePath: "packages/common/test.js",
   repoRoot: "%$REPO_ROOT%"
@@ -110,7 +74,7 @@ jb6_mcp:runSnippet({
 
 // Step 2: Debug with probes if needed
 jb6_mcp:runSnippet({
-  compText: "pipeline('%$people%', filter('%age% < 30'), __)",  // __ shows data here
+  profileText: "pipeline('%$people%', filter('%age% < 30'), __)",  // __ shows data here
   filePath: "packages/common/test.js",
   repoRoot: "%$REPO_ROOT%"  
 })

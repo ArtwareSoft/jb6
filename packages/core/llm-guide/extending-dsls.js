@@ -263,7 +263,7 @@ step({
             executionRule: 'If unclear about additive patterns, run design examples',
             executionFallback: {
               $: 'tool<mcp>runSnippet',
-              compText: 'pipeline(\'%$sessionLogs%\', filter(\'%topic% == "DSL extension"\'), \'%issues%\')',
+              profileText: 'pipeline(\'%$sessionLogs%\', filter(\'%topic% == "DSL extension"\'), \'%issues%\')',
               filePath: 'packages/core/llm-guide/extending-dsls.js',
               repoRoot: '%$REPO_ROOT%'
             },
@@ -363,7 +363,7 @@ step({
     answerFile: 'answers/pipeline-basics.js',
     executionFallback: {
       $: 'tool<mcp>runSnippet',
-      compText: 'pipeline(\'%$data%\', count())'
+      profileText: 'pipeline(\'%$data%\', count())'
     }
   })
 })`,

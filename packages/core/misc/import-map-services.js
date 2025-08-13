@@ -43,8 +43,9 @@ async function calcJb6RepoRoot() {
     debugger
   }
 
+  const { readFile } = await import('fs/promises')
   const path = await import('path')
-  const repoRoot = calcRepoRoot()
+  const repoRoot = await calcRepoRoot()
   const pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
   return pkg.name == 'jb6-monorepo' ? repoRoot: `${repoRoot}/node_modules/@jb6`
 }
@@ -124,7 +125,7 @@ function createErrorResult(error, entryFiles = [], environment = 'unknown') {
 
 async function detectEnvironment(repoRoot) {
   try {
-    const { readFile, access } = await import('fs/promises')
+    const { readFile } = await import('fs/promises')
     const path = await import('path')
     const pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
     return pkg.name

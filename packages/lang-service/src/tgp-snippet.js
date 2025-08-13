@@ -6,12 +6,12 @@ const { calcProfileActionMap } = langServiceUtils
 const { unique, calcTgpModelData, runCliInContext,pathJoin,pathParent } = coreUtils
 Object.assign(coreUtils,{runSnippetCli})
 
-async function runSnippetCli({compText: _compText, forDsls, forRepo, entryPointPaths, setupCode = '' } = {}) {
+async function runSnippetCli({profileText, forDsls, forRepo, entryPointPaths, setupCode = '' } = {}) {
     const dependencies = {forDsls, entryPointPaths, forRepo }
     const tgpModel = await calcTgpModelData(dependencies)
     const {entryFiles, projectDir } = tgpModel
     if (tgpModel.error) return { error: tgpModel.error }
-    const origCompText = (_compText[0]||'').match(/[A-Z]/) ? _compText : `Data('noName',{impl: ${_compText}})`    
+    const origCompText = (profileText[0]||'').match(/[A-Z]/) ? profileText : `Data('noName',{impl: ${profileText}})`    
     const isProbeMode = origCompText.split('__').length > 1
         
     let compText = origCompText, parts
@@ -26,7 +26,7 @@ async function runSnippetCli({compText: _compText, forDsls, forRepo, entryPointP
     if (error)
       return { error, compText, isProbeMode, origCompText }
     if (!comp.id)
-      return { error : 'runSnippet: compText must be wrapped with compDef of its type. e.g. Test("my comp", {impl: dataTest(...)}) ' }
+      return { error : 'runSnippet: profileText must be prefixed with type<dsl>. e.g. test<test>dataTest(...)' }
     const dslsSection = calcDslsSection([comp])
     const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
 

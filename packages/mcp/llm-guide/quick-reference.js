@@ -36,7 +36,7 @@ jb6_mcp:getFilesContent({
 
 // Test single component snippet
 jb6_mcp:runSnippet({
-  compText: "pipeline('%$data%', filter('%active%'), count())",
+  profileText: "pipeline('%$data%', filter('%active%'), count())",
   setupCode: "Const('data', [{active: true}, {active: false}])",
   filePath: "packages/common/test.js",
   repoRoot: "%$REPO_ROOT%"
@@ -44,7 +44,7 @@ jb6_mcp:runSnippet({
 
 // Debug with probe markers
 jb6_mcp:runSnippet({
-  compText: "pipeline('%$data%', filter('%active%'), __)",  // __ shows data at this point
+  profileText: "pipeline('%$data%', filter('%active%'), __)",  // __ shows data at this point
   setupCode: "Const('data', [{active: true}])",
   filePath: "packages/common/test.js", 
   repoRoot: "%$REPO_ROOT%"
@@ -52,7 +52,7 @@ jb6_mcp:runSnippet({
 
 // Test multiple variations in parallel
 jb6_mcp:runSnippets({
-  compTexts: [
+  profileTexts: [
     "filter('%active% == true')",
     "filter('%active% == false')", 
     "filter('%status% == \"ready\"')"
@@ -68,15 +68,15 @@ jb6_mcp:runSnippets({
 jb6_mcp:replaceComponent({
   filePath: "packages/common/my-components.js",
   repoRoot: "%$REPO_ROOT%",
-  oldCompText: "filter('%age% > 30')",
-  newCompText: "filter('%age% < 30')"
+  oldprofileText: "filter('%age% > 30')",
+  newprofileText: "filter('%age% < 30')"
 })
 
 // Add new component to file
 jb6_mcp:addComponent({
   filePath: "packages/common/my-components.js",
   repoRoot: "%$REPO_ROOT%", 
-  newCompText: "Data('newHelper', { impl: '%$input%' })"
+  newprofileText: "Data('newHelper', { impl: '%$input%' })"
 })
 
 // Replace entire file content
@@ -97,7 +97,7 @@ jb6_mcp:evalJs({
           syntax('jb6_mcp:toolName', 'All TGP MCP tools use this prefix pattern'),
           syntax('repoRoot', 'Always absolute path to repository root'),
           syntax('filePath', 'Always relative path from repoRoot'), 
-          syntax('compText', 'TGP component expression to execute'),
+          syntax('profileText', 'TGP component expression to execute'),
           syntax('setupCode', 'Context setup like Const() definitions'),
           syntax('__', 'Probe marker shows intermediate data at that point'),
           whenToUse('Use exploration tools first, then testing, then modification for safe development')
@@ -133,7 +133,7 @@ jb6_mcp:getFilesContent({
 // === PATTERN 2: Testing New Component Logic ===
 // 1. Test basic functionality
 jb6_mcp:runSnippet({
-  compText: "myNewComponent('%$testData%')",
+  profileText: "myNewComponent('%$testData%')",
   setupCode: "Const('testData', {id: 1, name: 'test'})",
   filePath: "packages/common/test.js",
   repoRoot: "%$REPO_ROOT%"
@@ -141,7 +141,7 @@ jb6_mcp:runSnippet({
 
 // 2. Debug step by step with probes
 jb6_mcp:runSnippet({
-  compText: "pipeline('%$testData%', transform(), __)",
+  profileText: "pipeline('%$testData%', transform(), __)",
   setupCode: "Const('testData', [1, 2, 3])",
   filePath: "packages/common/test.js",
   repoRoot: "%$REPO_ROOT%"
@@ -149,7 +149,7 @@ jb6_mcp:runSnippet({
 
 // 3. Test edge cases in parallel
 jb6_mcp:runSnippets({
-  compTexts: [
+  profileTexts: [
     "myComponent([])",           // empty array
     "myComponent([1])",         // single item  
     "myComponent([1,2,3,4,5])", // multiple items
@@ -168,7 +168,7 @@ jb6_mcp:getFilesContent({
 
 // 2. Test new implementation
 jb6_mcp:runSnippet({
-  compText: "newImprovedComponent('%$sampleData%')",
+  profileText: "newImprovedComponent('%$sampleData%')",
   setupCode: "Const('sampleData', {test: 'data'})",
   filePath: "packages/common/target-component.js",
   repoRoot: "%$REPO_ROOT%"
@@ -178,13 +178,13 @@ jb6_mcp:runSnippet({
 jb6_mcp:replaceComponent({
   filePath: "packages/common/target-component.js",
   repoRoot: "%$REPO_ROOT%",
-  oldCompText: "Data('oldComponent', { impl: '...' })",
-  newCompText: "Data('newImprovedComponent', { impl: '...' })"
+  oldprofileText: "Data('oldComponent', { impl: '...' })",
+  newprofileText: "Data('newImprovedComponent', { impl: '...' })"
 })
 
 // 4. Verify integration works
 jb6_mcp:runSnippet({
-  compText: "testIntegrationWorkflow('%$realData%')",
+  profileText: "testIntegrationWorkflow('%$realData%')",
   filePath: "packages/common/target-component.js", 
   repoRoot: "%$REPO_ROOT%"
 })
@@ -195,7 +195,7 @@ jb6_mcp:dslDocs({ dsl: "common", repoRoot: "%$REPO_ROOT%" })
 
 // 2. Create and test components
 jb6_mcp:runSnippets({
-  compTexts: [
+  profileTexts: [
     "helper1('%$data%')",
     "helper2('%$data%')", 
     "mainComponent(helper1('%$data%'), helper2('%$data%'))"
@@ -246,7 +246,7 @@ jb6_mcp:getFilesContent({
 // Problem: Missing imports or wrong file context
 // Solution: Check file context and setup
 jb6_mcp:runSnippet({
-  compText: "pipeline('%$data%', count())",     // This component needs imports
+  profileText: "pipeline('%$data%', count())",     // This component needs imports
   filePath: "packages/common/context-file.js", // ✅ File with proper imports
   setupCode: "import '@jb6/common'",          // ✅ Ensure imports available
   repoRoot: "%$REPO_ROOT%"
@@ -259,13 +259,13 @@ jb6_mcp:getFilesContent({
   filesPaths: "packages/common/target.js",
   repoRoot: "%$REPO_ROOT%"
 })
-// Then copy exact text for oldCompText parameter
+// Then copy exact text for oldprofileText parameter
 
 // ❌ Setup data not available in component
 // Problem: Variable not defined in setupCode
 // Solution: Proper Const definition
 jb6_mcp:runSnippet({
-  compText: "count('%$myData%')",
+  profileText: "count('%$myData%')",
   setupCode: "Const('myData', [1, 2, 3])",  // ✅ Define variable first
   filePath: "packages/common/test.js",
   repoRoot: "%$REPO_ROOT%"
@@ -275,7 +275,7 @@ jb6_mcp:runSnippet({
 
 // Step 1: Check if data is available
 jb6_mcp:runSnippet({
-  compText: "%$myVariable%",  // Just the variable
+  profileText: "%$myVariable%",  // Just the variable
   setupCode: "Const('myVariable', 'test')",
   filePath: "packages/common/debug.js",
   repoRoot: "%$REPO_ROOT%"
@@ -283,7 +283,7 @@ jb6_mcp:runSnippet({
 
 // Step 2: Test each operation separately  
 jb6_mcp:runSnippet({
-  compText: "filter('%active% == true')",  // Just the filter
+  profileText: "filter('%active% == true')",  // Just the filter
   setupCode: "const testItem = {active: true}",
   filePath: "packages/common/debug.js",
   repoRoot: "%$REPO_ROOT%"
@@ -291,7 +291,7 @@ jb6_mcp:runSnippet({
 
 // Step 3: Combine with probe markers
 jb6_mcp:runSnippet({
-  compText: "pipeline('%$data%', filter('%active%'), __)",
+  profileText: "pipeline('%$data%', filter('%active%'), __)",
   setupCode: "Const('data', [{active: true}, {active: false}])",
   filePath: "packages/common/debug.js", 
   repoRoot: "%$REPO_ROOT%"
@@ -299,7 +299,7 @@ jb6_mcp:runSnippet({
 
 // Step 4: Test full pipeline
 jb6_mcp:runSnippet({
-  compText: "pipeline('%$data%', filter('%active%'), count())",
+  profileText: "pipeline('%$data%', filter('%active%'), count())",
   setupCode: "Const('data', [{active: true}, {active: false}])",
   filePath: "packages/common/debug.js",
   repoRoot: "%$REPO_ROOT%"

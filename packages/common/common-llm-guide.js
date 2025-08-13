@@ -352,7 +352,7 @@ Doclet('learnCommonDsl', {
             })
           ],
           mcpTool: runSnippet({
-            compText: `pipeline('%$people%', '%name%')`,
+            profileText: `pipeline('%$people%', '%name%')`,
             setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
             filePath: 'packages/common/common-tests.js',
             repoRoot: '%$REPO_ROOT%'
@@ -381,7 +381,7 @@ Doclet('learnCommonDsl', {
             })
           ],
           mcpTool: runSnippet({
-            compText: `pipeline('%$people%', filter('%age% < 30'), '%name%')`,
+            profileText: `pipeline('%$people%', filter('%age% < 30'), '%name%')`,
             setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
             filePath: 'packages/common/common-tests.js',
             repoRoot: '%$REPO_ROOT%'
@@ -400,7 +400,7 @@ Doclet('learnCommonDsl', {
           details: 'Practice counting, joining, and basic grouping operations',
           validation: [],
           mcpTool: runSnippet({
-            compText: `pipeline('%$people%', filter('%age% < 30'), '%name%', join())`,
+            profileText: `pipeline('%$people%', filter('%age% < 30'), '%name%', join())`,
             setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
             filePath: 'packages/common/common-tests.js',
             repoRoot: '%$REPO_ROOT%'
@@ -426,7 +426,7 @@ Doclet('learnCommonDsl', {
             })
           ],
           mcpTool: runSnippet({
-            compText: `pipeline('%$sales%', splitByPivot('region'), enrichGroupProps(group.count(), group.sum('amount')))`,
+            profileText: `pipeline('%$sales%', splitByPivot('region'), enrichGroupProps(group.count(), group.sum('amount')))`,
             setupCode: `Const('sales', [{region: 'North', amount: 100}, {region: 'South', amount: 200}, {region: 'North', amount: 150}])`,
             filePath: 'packages/common/common-tests.js',
             repoRoot: '%$REPO_ROOT%'
@@ -446,7 +446,7 @@ Doclet('learnCommonDsl', {
           details: 'Learn to use probe cursor to inspect data at any point in pipeline execution',
           validation: [],
           mcpTool: runSnippet({
-            compText: `pipeline('%$people%', filter('%age% < 30'), __, '%name%', join())`,
+            profileText: `pipeline('%$people%', filter('%age% < 30'), __, '%name%', join())`,
             setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
             filePath: 'packages/common/common-tests.js',
             repoRoot: '%$REPO_ROOT%',
