@@ -33,7 +33,7 @@ Test('snippet.ns', {
   impl: snippetTest({
     compText: `pipeline(asIs([{a: 1},{a: 1}, {a:2}]), splitByPivot('a'), enrichGroupProps(group.count('aCounter')))`,
     expectedResult: equals('%result/0/aCounter%', 2),
-    entryPointPaths: '/home/shaiby/projects/jb6/packages/common/common-tests.js'
+    entryPointPaths: '%$JB6_REPO_ROOT%/packages/common/common-tests.js'
   })
 })
 
@@ -44,12 +44,12 @@ Test('snippet.probe', {
 
 Test('snippet.entryPointPaths', {
   impl: snippetTest(`pipeline('hello')`, equals('hello', '%result%'), {
-    entryPointPaths: '/home/shaiby/projects/jb6/packages/common/aggregators.js'
+    entryPointPaths: '%$JB6_REPO_ROOT%/packages/common/aggregators.js'
   })
 })
 
 Test('snippet.llmApiTests', {
   impl: snippetTest(`Prompt('p',{impl:user('hello')})`, equals('hello', '%result/content%'), {
-    entryPointPaths: '/home/shaiby/projects/jb6/packages/llm-api/tests/llm-api-tests.js'
+    entryPointPaths: '%$JB6_REPO_ROOT%/packages/llm-api/tests/llm-api-tests.js'
   })
 })

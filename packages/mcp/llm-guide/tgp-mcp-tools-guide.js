@@ -105,14 +105,14 @@ jb6_mcp:runSnippet({
   compText: "pipeline('%$people%', filter('%age% < 30'), count())",
   setupCode: "Const('people', [{name: 'John', age: 25}, {name: 'Jane', age: 35}])",
   filePath: "packages/common/test.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // Step 2: Debug with probes if needed
 jb6_mcp:runSnippet({
   compText: "pipeline('%$people%', filter('%age% < 30'), __)",  // __ shows data here
   filePath: "packages/common/test.js",
-  repoRoot: "/home/shaiby/projects/jb6"  
+  repoRoot: "%$REPO_ROOT%"  
 })
 
 // Step 3: Implement after testing confirms behavior

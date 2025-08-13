@@ -8,7 +8,7 @@ const { isNode, logException, pathJoin, unique } = coreUtils
 jb.importMapCache = {
   fileContext: {}
 }
-Object.assign(coreUtils, { getStaticServeConfig, calcImportData, resolveWithImportMap, fetchByEnv, calcRepoRoot })
+Object.assign(coreUtils, { getStaticServeConfig, calcImportData, resolveWithImportMap, fetchByEnv, calcRepoRoot, calcJb6RepoRoot })
 
 let _repoRoot
 async function calcRepoRoot() {
@@ -33,6 +33,20 @@ async function calcRepoRoot() {
   if (jb.coreRegistry.repoRoot)
     return jb.coreRegistry.repoRoot
   return _repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
+}
+
+async function calcJb6RepoRoot() {
+  try {
+    return JSON.parse(globalThis.document.head.querySelector('[type="importmap"]').innerText).staticMappings
+      .find(x=>x.urlPath == '/jb6_packages').diskPath.split('/').slice(0,-1).join('/')
+  } catch(e) {
+    debugger
+  }
+
+  const path = await import('path')
+  const repoRoot = calcRepoRoot()
+  const pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'))
+  return pkg.name == 'jb6-monorepo' ? repoRoot: `${repoRoot}/node_modules/@jb6`
 }
 
 async function discoverDslEntryPoints(forDsls) {
@@ -136,7 +150,7 @@ async function getStaticConfig(repoRoot, environment) {
       { urlPath: `/${repoName}`, diskPath: repoRoot },
       { urlPath: '/jb6_packages', diskPath: pkgsDir },
     ]
-    return { importMap: { imports }, staticMappings, environment }
+    return { importMap: { imports, staticMappings }, staticMappings, environment }
   } catch (error) {
     return { error: `Failed to configure ${environment}: ${error.message}` }
   }

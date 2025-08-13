@@ -24,7 +24,7 @@ Doclet('learnCommonDsl.version1.original', {
     
     solution({
       code: `// Step 1: Foundational Knowledge - The Big Picture
-dslDocs({ dsl: 'common', repoRoot: '/home/shaiby/projects/jb6' })`,
+dslDocs({ dsl: 'common', repoRoot: '%$REPO_ROOT%' })`,
       points: [
         explanation('Start with a high-level overview. This command loads the full context of the "common" DSL, including its TGP model, component sources, and all associated LLM guide documents.'),
         syntax('dslDocs', 'The primary tool for exploring a DSL. It provides the most complete context for learning.'),
@@ -35,7 +35,7 @@ dslDocs({ dsl: 'common', repoRoot: '/home/shaiby/projects/jb6' })`,
     solution({
       code: `// Step 2: Code-Level Understanding - Implementation and Examples
 getFilesContent({
-  repoRoot: '/home/shaiby/projects/jb6',
+  repoRoot: '%$REPO_ROOT%',
   filesPaths: [
     'packages/common/group-by.js',
     'packages/common/common-tests.js',
@@ -75,7 +75,7 @@ Doclet('learnCommonDsl.version2.enhanced', {
     
     solution({
       code: `// Step 1: Foundational Knowledge - The Big Picture
-dslDocs({ dsl: 'common', repoRoot: '/home/shaiby/projects/jb6' })`,
+dslDocs({ dsl: 'common', repoRoot: '%$REPO_ROOT%' })`,
       points: [
         explanation('Start with a high-level overview. This command loads the full context of the "common" DSL, including its TGP model, component sources, and all associated LLM guide documents.'),
         syntax('dslDocs', 'The primary tool for exploring a DSL. It provides the most complete context for learning.'),
@@ -86,7 +86,7 @@ dslDocs({ dsl: 'common', repoRoot: '/home/shaiby/projects/jb6' })`,
     solution({
       code: `// Step 2: Code-Level Understanding - Implementation and Examples
 getFilesContent({
-  repoRoot: '/home/shaiby/projects/jb6',
+  repoRoot: '%$REPO_ROOT%',
   filesPaths: [
     'packages/common/group-by.js',
     'packages/common/common-tests.js', 

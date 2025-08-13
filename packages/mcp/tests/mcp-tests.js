@@ -32,7 +32,7 @@ Test('mcpTest.tgpModel', {
   HeavyTest: true,
   impl: mcpToolTest({
     tool: 'tgpModel',
-    args: asIs({repoRoot: '/home/shaiby/projects/jb6', forDsls: 'common'}),
+    args: asIs({repoRoot: '%$REPO_ROOT%', forDsls: 'common'}),
     expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
   })
 })
@@ -41,7 +41,7 @@ Test('mcpTest.bookletsContent', {
   HeavyTest: true,
   impl: mcpToolTest({
     tool: 'bookletsContentTool',
-    args: asIs({repoRoot: '/home/shaiby/projects/jb6', booklets: 'tgpPrimer'}),
+    args: asIs({repoRoot: '%$REPO_ROOT%', booklets: 'tgpPrimer'}),
     expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
   })
 })

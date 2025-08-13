@@ -9,6 +9,7 @@ const { langService } = ns
 const { tgpEditorHost, tgpModelForLangService, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
 
 const { 
+  tgp: { var: { Var }},
   test: { Test, 
     test: { dataTest }
   }, 
@@ -19,8 +20,10 @@ jb.langServiceTestRegistry = {
   uniqueNameCounter: 0,
 }
 
+const JB6_REPO_ROOT = await coreUtils.calcJb6RepoRoot()
+
 async function filePathForLangServiceTest(filePath) {
-  const repoRoot = '/home/shaiby/projects/jb6' // await coreUtils.calcRepoRoot()
+  const repoRoot = await coreUtils.calcRepoRoot()
   const filePathToUse = filePath || 'hosts/test-project/a-tests.js'
   return `${repoRoot}/${filePathToUse}`
 }
@@ -220,8 +223,9 @@ Test('snippetTest', {
     {id: 'packages', as: 'array'}
   ],
   impl: dataTest({
-    calculate: async ({},{},args) => {
-      const entryPointPaths = await args.entryPointPaths()
+    vars: Var('JB6_REPO_ROOT', () => JB6_REPO_ROOT),
+    calculate: async (ctx,{},args) => {
+      const entryPointPaths = await args.entryPointPaths(ctx)
       const res = await runSnippetCli({...args, entryPointPaths, compText: args.compText.profile })
       return res?.result || res.error
     },

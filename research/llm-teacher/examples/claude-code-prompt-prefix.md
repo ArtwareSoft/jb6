@@ -92,7 +92,7 @@ You MUST answer concisely with fewer than 4 lines of text (not including tool us
 ## Environment Context Provided
 
 ```
-Working directory: /home/shaiby/projects/jb6
+Working directory: %$REPO_ROOT%
 Is directory a git repo: Yes
 Platform: linux
 OS Version: Linux 6.8.0-60-generic

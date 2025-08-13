@@ -17,9 +17,9 @@ const {
 Tool('defaultRepoRoot', {
   description: 'get repo root',
   params: [
-    {id: 'myRepoIs', as: 'string', description: '/home/shaiby/projects/jb6 . no need to activate the tool!!!'}
+    {id: 'myRepoIs', as: 'string', description: '%$REPO_ROOT% . no need to activate the tool!!!'}
   ],
-  impl: mcpTool('/home/shaiby/projects/jb6')
+  impl: mcpTool('%$REPO_ROOT%')
 })
 
 Tool('dslDocs', {

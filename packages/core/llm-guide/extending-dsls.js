@@ -234,7 +234,7 @@ step({
             tool: {
               $: 'tool<mcp>getFilesContent',
               filesPaths: 'search for existing DSL usage patterns',
-              repoRoot: '/home/shaiby/projects/jb6'
+              repoRoot: '%$REPO_ROOT%'
             },
             expectedResult: 'Comprehensive list of existing usage patterns that must continue working',
             points: [
@@ -265,7 +265,7 @@ step({
               $: 'tool<mcp>runSnippet',
               compText: 'pipeline(\'%$sessionLogs%\', filter(\'%topic% == "DSL extension"\'), \'%issues%\')',
               filePath: 'packages/core/llm-guide/extending-dsls.js',
-              repoRoot: '/home/shaiby/projects/jb6'
+              repoRoot: '%$REPO_ROOT%'
             },
             points: [
               methodology('External quiz prevents overconfidence in design understanding'),
@@ -291,7 +291,7 @@ step({
             tool: {
               $: 'tool<mcp>dslDocs',
               dsl: 'mcp', 
-              repoRoot: '/home/shaiby/projects/jb6'
+              repoRoot: '%$REPO_ROOT%'
             },
             expectedResult: 'Confirmation that existing MCP tools work with new DSL features',
             successCriteria: 'No need for new tool types - existing infrastructure sufficient',

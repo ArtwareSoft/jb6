@@ -143,7 +143,7 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
 
             actionMap.push({ action: `propInfo!${path}`, from: ast.start, to: ast.start+1 })
             actionMap.push({ action: `prependPT!${path}`, from: ast.start+1, to: ast.start+1, source: 'array' })
-            actionMap.push({ action: `appendPT!${path}`, from: ast.elements.slice(-1)[0].end, to: ast.end })
+            actionMap.push({ action: `appendPT!${path}`, from: ast.elements.slice(-1)[0]?.end || ast.end-1, to: ast.end })
             delimiters.forEach((dl,i) => actionMap.push({ action: `insertPT!${path}~${i}`, from: dl.start, to: dl.end }))
             actionMap.push({ action: `end!${path}`, from: ast.end-1, to: ast.end-1 })
             prof[primitivesAst] && prof.forEach((val,i) => calcActionMap(val,`${path}~${i}`, prof[primitivesAst][i] || val[astNode]))

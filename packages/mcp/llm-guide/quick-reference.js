@@ -22,14 +22,14 @@ Doclet('mcpToolsQuickReference', {
 
 // Get TGP model for file context
 jb6_mcp:tgpModel({
-  repoRoot: "/home/shaiby/projects/jb6",
+  repoRoot: "%$REPO_ROOT%",
   filePath: "packages/common/components.js"  // optional - gets repo model if omitted
 })
 
 // Read file contents  
 jb6_mcp:getFilesContent({
   filesPaths: "packages/common/jb-common.js,packages/ui/ui-core.js",  // comma-separated
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // === TESTING TOOLS ===
@@ -39,7 +39,7 @@ jb6_mcp:runSnippet({
   compText: "pipeline('%$data%', filter('%active%'), count())",
   setupCode: "Const('data', [{active: true}, {active: false}])",
   filePath: "packages/common/test.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // Debug with probe markers
@@ -47,7 +47,7 @@ jb6_mcp:runSnippet({
   compText: "pipeline('%$data%', filter('%active%'), __)",  // __ shows data at this point
   setupCode: "Const('data', [{active: true}])",
   filePath: "packages/common/test.js", 
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // Test multiple variations in parallel
@@ -59,7 +59,7 @@ jb6_mcp:runSnippets({
   ],
   setupCode: "Const('data', [{active: true, status: 'ready'}])",
   filePath: "packages/common/test.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // === MODIFICATION TOOLS ===
@@ -67,7 +67,7 @@ jb6_mcp:runSnippets({
 // Replace specific component
 jb6_mcp:replaceComponent({
   filePath: "packages/common/my-components.js",
-  repoRoot: "/home/shaiby/projects/jb6",
+  repoRoot: "%$REPO_ROOT%",
   oldCompText: "filter('%age% > 30')",
   newCompText: "filter('%age% < 30')"
 })
@@ -75,14 +75,14 @@ jb6_mcp:replaceComponent({
 // Add new component to file
 jb6_mcp:addComponent({
   filePath: "packages/common/my-components.js",
-  repoRoot: "/home/shaiby/projects/jb6", 
+  repoRoot: "%$REPO_ROOT%", 
   newCompText: "Data('newHelper', { impl: '%$input%' })"
 })
 
 // Replace entire file content
 jb6_mcp:overrideFileContent({
   filePath: "packages/common/new-module.js",
-  repoRoot: "/home/shaiby/projects/jb6",
+  repoRoot: "%$REPO_ROOT%",
   newContent: "import { dsls } from '@jb6/core'\\n\\n// New module content"
 })
 
@@ -116,18 +116,18 @@ Doclet('commonWorkflowPatterns', {
       solution({
         code: `// === PATTERN 1: Understanding New DSL ===
 // 1. Get DSL overview
-jb6_mcp:dslDocs({ dsl: "ui", repoRoot: "/home/shaiby/projects/jb6" })
+jb6_mcp:dslDocs({ dsl: "ui", repoRoot: "%$REPO_ROOT%" })
 
 // 2. See what's available in context  
 jb6_mcp:tgpModel({ 
-  repoRoot: "/home/shaiby/projects/jb6",
+  repoRoot: "%$REPO_ROOT%",
   filePath: "packages/ui/my-component.js" 
 })
 
 // 3. Read examples from existing code
 jb6_mcp:getFilesContent({
   filesPaths: "packages/ui/ui-core.js,packages/ui/examples.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // === PATTERN 2: Testing New Component Logic ===
@@ -136,7 +136,7 @@ jb6_mcp:runSnippet({
   compText: "myNewComponent('%$testData%')",
   setupCode: "Const('testData', {id: 1, name: 'test'})",
   filePath: "packages/common/test.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // 2. Debug step by step with probes
@@ -144,7 +144,7 @@ jb6_mcp:runSnippet({
   compText: "pipeline('%$testData%', transform(), __)",
   setupCode: "Const('testData', [1, 2, 3])",
   filePath: "packages/common/test.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // 3. Test edge cases in parallel
@@ -156,14 +156,14 @@ jb6_mcp:runSnippets({
     "myComponent(null)"         // null input
   ],
   filePath: "packages/common/test.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // === PATTERN 3: Safe Component Refactoring ===
 // 1. Understand current implementation
 jb6_mcp:getFilesContent({
   filesPaths: "packages/common/target-component.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // 2. Test new implementation
@@ -171,13 +171,13 @@ jb6_mcp:runSnippet({
   compText: "newImprovedComponent('%$sampleData%')",
   setupCode: "Const('sampleData', {test: 'data'})",
   filePath: "packages/common/target-component.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // 3. Replace old with new
 jb6_mcp:replaceComponent({
   filePath: "packages/common/target-component.js",
-  repoRoot: "/home/shaiby/projects/jb6",
+  repoRoot: "%$REPO_ROOT%",
   oldCompText: "Data('oldComponent', { impl: '...' })",
   newCompText: "Data('newImprovedComponent', { impl: '...' })"
 })
@@ -186,12 +186,12 @@ jb6_mcp:replaceComponent({
 jb6_mcp:runSnippet({
   compText: "testIntegrationWorkflow('%$realData%')",
   filePath: "packages/common/target-component.js", 
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // === PATTERN 4: Creating New Module ===
 // 1. Check what already exists
-jb6_mcp:dslDocs({ dsl: "common", repoRoot: "/home/shaiby/projects/jb6" })
+jb6_mcp:dslDocs({ dsl: "common", repoRoot: "%$REPO_ROOT%" })
 
 // 2. Create and test components
 jb6_mcp:runSnippets({
@@ -202,13 +202,13 @@ jb6_mcp:runSnippets({
   ],
   setupCode: "Const('data', {sample: 'test'})",
   filePath: "packages/common/new-module.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // 3. Create the actual file
 jb6_mcp:overrideFileContent({
   filePath: "packages/common/new-module.js",
-  repoRoot: "/home/shaiby/projects/jb6",
+  repoRoot: "%$REPO_ROOT%",
   newContent: "import { dsls } from '@jb6/core'\\n\\n// Complete module with tested components"
 })`,
         points: [
@@ -237,7 +237,7 @@ Doclet('troubleshootingGuide', {
 // Solution: Check path patterns
 jb6_mcp:getFilesContent({
   filesPaths: "packages/common/file.js",  // ✅ Relative to repoRoot
-  repoRoot: "/home/shaiby/projects/jb6"   // ✅ Absolute path
+  repoRoot: "%$REPO_ROOT%"   // ✅ Absolute path
 })
 // NOT: filesPaths: "/full/absolute/path"  // ❌
 // NOT: repoRoot: "relative/path"          // ❌
@@ -249,7 +249,7 @@ jb6_mcp:runSnippet({
   compText: "pipeline('%$data%', count())",     // This component needs imports
   filePath: "packages/common/context-file.js", // ✅ File with proper imports
   setupCode: "import '@jb6/common'",          // ✅ Ensure imports available
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // ❌ "Old component text not found" in replaceComponent
@@ -257,7 +257,7 @@ jb6_mcp:runSnippet({
 // Solution: Get exact text first
 jb6_mcp:getFilesContent({
   filesPaths: "packages/common/target.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 // Then copy exact text for oldCompText parameter
 
@@ -268,7 +268,7 @@ jb6_mcp:runSnippet({
   compText: "count('%$myData%')",
   setupCode: "Const('myData', [1, 2, 3])",  // ✅ Define variable first
   filePath: "packages/common/test.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // === DEBUGGING WORKFLOW ===
@@ -278,7 +278,7 @@ jb6_mcp:runSnippet({
   compText: "%$myVariable%",  // Just the variable
   setupCode: "Const('myVariable', 'test')",
   filePath: "packages/common/debug.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // Step 2: Test each operation separately  
@@ -286,7 +286,7 @@ jb6_mcp:runSnippet({
   compText: "filter('%active% == true')",  // Just the filter
   setupCode: "const testItem = {active: true}",
   filePath: "packages/common/debug.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // Step 3: Combine with probe markers
@@ -294,7 +294,7 @@ jb6_mcp:runSnippet({
   compText: "pipeline('%$data%', filter('%active%'), __)",
   setupCode: "Const('data', [{active: true}, {active: false}])",
   filePath: "packages/common/debug.js", 
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })
 
 // Step 4: Test full pipeline
@@ -302,7 +302,7 @@ jb6_mcp:runSnippet({
   compText: "pipeline('%$data%', filter('%active%'), count())",
   setupCode: "Const('data', [{active: true}, {active: false}])",
   filePath: "packages/common/debug.js",
-  repoRoot: "/home/shaiby/projects/jb6"
+  repoRoot: "%$REPO_ROOT%"
 })`,
         points: [
           explanation('Most issues stem from incorrect paths, missing context, or exact text matching'),

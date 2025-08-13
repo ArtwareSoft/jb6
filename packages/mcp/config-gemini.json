@@ -3,7 +3,7 @@
     "jb_mcp": {
       "command": "/usr/bin/node",
       "args": [ "packages/mcp/index.js", "--start" ],
-      "cwd": "/home/shaiby/projects/jb6"
+      "cwd": "%$REPO_ROOT%"
     }
   },
   "selectedAuthType": "gemini-api-key",

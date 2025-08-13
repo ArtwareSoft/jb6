@@ -306,7 +306,7 @@ Doclet('learnCommonDsl', {
               scrambledAnswer: '==QZjJXdvNHIhRXYkBSemlmclZHIvRHIncCIuVnU'
             })
           ],
-          mcpTool: getFilesContent('packages/core/llm-guide/how-to-use-snippet-and-probe.js', '/home/shaiby/projects/jb6'),
+          mcpTool: getFilesContent('packages/core/llm-guide/how-to-use-snippet-and-probe.js', '%$REPO_ROOT%'),
           points: [
             explanation('Snippet and probe are your primary learning instruments - master these before learning DSL'),
             methodology('Always verify data source first, then build incrementally with probes'),
@@ -333,7 +333,7 @@ Doclet('learnCommonDsl', {
               scrambledAnswer: 'u9Wa0NWYgwibhVGbv9mYgwSY0FGZ'
             })
           ],
-          mcpTool: dslDocs('common', '/home/shaiby/projects/jb6'),
+          mcpTool: dslDocs('common', '%$REPO_ROOT%'),
           points: [
             explanation('Understanding DSL organization prevents confusion when looking for specific components'),
             methodology('Always start with the big picture before diving into details'),
@@ -355,7 +355,7 @@ Doclet('learnCommonDsl', {
             compText: `pipeline('%$people%', '%name%')`,
             setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
             filePath: 'packages/common/common-tests.js',
-            repoRoot: '/home/shaiby/projects/jb6'
+            repoRoot: '%$REPO_ROOT%'
           }),
           points: [
             explanation('Pipeline creates data flow - source flows through operations to produce result'),
@@ -384,7 +384,7 @@ Doclet('learnCommonDsl', {
             compText: `pipeline('%$people%', filter('%age% < 30'), '%name%')`,
             setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
             filePath: 'packages/common/common-tests.js',
-            repoRoot: '/home/shaiby/projects/jb6'
+            repoRoot: '%$REPO_ROOT%'
           }),
           points: [
             explanation('Filter selects items based on conditions - only matching items continue through pipeline'),
@@ -403,7 +403,7 @@ Doclet('learnCommonDsl', {
             compText: `pipeline('%$people%', filter('%age% < 30'), '%name%', join())`,
             setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
             filePath: 'packages/common/common-tests.js',
-            repoRoot: '/home/shaiby/projects/jb6'
+            repoRoot: '%$REPO_ROOT%'
           }),
           points: [
             explanation('Aggregations reduce collections to single values or transformed structures'),
@@ -429,7 +429,7 @@ Doclet('learnCommonDsl', {
             compText: `pipeline('%$sales%', splitByPivot('region'), enrichGroupProps(group.count(), group.sum('amount')))`,
             setupCode: `Const('sales', [{region: 'North', amount: 100}, {region: 'South', amount: 200}, {region: 'North', amount: 150}])`,
             filePath: 'packages/common/common-tests.js',
-            repoRoot: '/home/shaiby/projects/jb6'
+            repoRoot: '%$REPO_ROOT%'
           }),
           points: [
             explanation('GroupBy operations enable analytical data processing - the foundation of reporting'),
@@ -449,7 +449,7 @@ Doclet('learnCommonDsl', {
             compText: `pipeline('%$people%', filter('%age% < 30'), __, '%name%', join())`,
             setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
             filePath: 'packages/common/common-tests.js',
-            repoRoot: '/home/shaiby/projects/jb6',
+            repoRoot: '%$REPO_ROOT%',
           }),
           points: [
             explanation('Probe (__) reveals data at any point - your debugging superpower'),
