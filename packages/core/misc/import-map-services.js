@@ -3,7 +3,7 @@ import '../utils/core-utils.js'
 import './jb-cli.js'
 
 const { coreUtils } = jb
-const { isNode, logException, pathJoin, unique } = coreUtils
+const { isNode, logException, pathJoin,pathParent, unique } = coreUtils
 
 jb.importMapCache = {
   fileContext: {}
@@ -37,8 +37,8 @@ async function calcRepoRoot() {
 
 async function calcJb6RepoRoot() {
   try {
-    return JSON.parse(globalThis.document.head.querySelector('[type="importmap"]').innerText).staticMappings
-      .find(x=>x.urlPath == '/jb6_packages').diskPath.split('/').slice(0,-1).join('/')
+    return pathParent(JSON.parse(globalThis.document.head.querySelector('[type="importmap"]').innerText).staticMappings
+      .find(x=>x.urlPath == '/jb6_packages').diskPath)
   } catch(e) {
     debugger
   }
