@@ -84,6 +84,8 @@ function deltaFileContent(compText, newCompText, compPos) {
 
 function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
+    if (!topComp)
+        return { text: compText, comp: topComp, actionMap: [], error: 'syntax error' }
     try {
         resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp, tgpPath: topComp?.id})
     } catch (error) {

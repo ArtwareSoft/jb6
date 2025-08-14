@@ -1,8 +1,9 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
 import '@jb6/llm-guide/autogen-dsl-docs.js'
+import '@jb6/core/misc/import-map-services.js'
 
-const { pathJoin } = coreUtils
+const { pathJoin, calcRepoRoot } = coreUtils
   
 const {
     common: { Data,
@@ -19,7 +20,7 @@ Tool('defaultRepoRoot', {
   params: [
     {id: 'myRepoIs', as: 'string', description: '%$REPO_ROOT% . no need to activate the tool!!!'}
   ],
-  impl: mcpTool('%$REPO_ROOT%')
+  impl: mcpTool(() => calcRepoRoot())
 })
 
 Tool('dslDocs', {
@@ -44,16 +45,14 @@ Tool('runSnippet', {
   description: 'Execute TGP component snippets in context. Essential for testing component behavior, debugging data flow, and validating logic before implementation.',
   params: [
     {id: 'profileText', as: 'string', asIs: true, mandatory: true, description: `profile text to execute (e.g., "pipeline('%$data%', filter('%active%'), count())")`},
-    {id: 'setupCode', as: 'string', description: `Helper components or JavaScript code to set up context (e.g., "Const('data', [{active: true}])")`},
-    {id: 'entryPointJsFile', as: 'string', mandatory: true, description: 'Relative file path for import context (e.g., "packages/common/test.js")'},
-    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
+    {id: 'setupCode', as: 'string', description: `Helper components or imports (e.g., "Const('data', [{active: true}])") or const { h, L, useState, useEffect, useRef, useContext, reactUtils } = await import('@jb6/react')`},
+    {id: 'repoRoot', as: 'string', mandatory: true, description: 'absolute path to repository root'},
   ],
   impl: mcpTool({
     text: async (ctx, {}, args) => {
       try {
         await import('@jb6/lang-service')
-        const snippetArgs = { ...args, filePath: pathJoin(args.repoRoot, args.entryPointJsFile) }
-        return coreUtils.runSnippetCli(snippetArgs)
+        return coreUtils.runSnippetCli(args)
       } catch (error) {
         return `Error running snippet: ${error.message}`
       }
@@ -62,57 +61,6 @@ Tool('runSnippet', {
   })
 })
   
-Tool('runSnippets', {
-  description: 'run multiple comp snippets in parallel. Useful for running a batch of Test or Data snippets.',
-  params: [
-    {id: 'profileTexts', type: 'data<common>[]', dynamic: true, mandatory: true, description: `JSON array of component text strings to execute. Example: ["'%$data%'", "pipeline('%$data%', count())", "filter('%active%')"]`},
-    {id: 'entryPointJsFile', as: 'string', mandatory: true, description: 'Relative file path for import context (e.g., "packages/common/test.js"). it may contain all the setup code you need'},
-    {id: 'setupCode', as: 'string', description: `Shared setup code executed before all snippets. Use for Const() definitions, imports, or helper functions. Example: "Const('data', [{active: true, id: 1}])"`},
-    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'}
-  ],
-  impl: mcpTool({
-    text: async (ctx,{}, { profileTexts, setupCode, entryPointJsFile: filePath, repoRoot }) => {
-      try {
-        await import('@jb6/lang-service')
-        const snippetArgsBase = { setupCode, filePath: pathJoin(repoRoot, filePath) }
-        
-        // Enhanced parameter validation and error handling
-        let profileTextsProfiles
-        if (!profileTexts || !profileTexts.profile) throw new Error('profileTexts parameter is required and must contain a profile')
-        
-        profileTextsProfiles = typeof profileTexts.profile === 'string' ? JSON.parse(profileTexts.profile) : profileTexts.profile
-          
-        if (!Array.isArray(profileTextsProfiles)) throw new Error(`profileTexts must be an array. Received: ${typeof profileTextsProfiles}. Expected format: ["snippet1", "snippet2", ...]`)              
-        if (profileTextsProfiles.length === 0) throw new Error('profileTexts array cannot be empty. Provide at least one snippet to execute.')
-        
-        profileTextsProfiles.forEach((snippet, index) => {
-          if (typeof snippet !== 'string') throw new Error(`Snippet at index ${index} must be a string. Received: ${typeof snippet} - "${snippet}"`)
-          if (snippet.trim() === '') throw new Error(`Snippet at index ${index} cannot be empty`)        
-        })
-        // Enhanced execution with better error context
-        const results = await Promise.all(
-          profileTextsProfiles.map(async (profileText, index) => {
-            try {
-              const snippetArgs = { ...snippetArgsBase, profileText }
-              const result = await coreUtils.runSnippetCli(snippetArgs)
-              return `Snippet ${index + 1}: ${profileText} ===\n${JSON.stringify(result, null, 2)}`
-            } catch (error) {
-              return `Snippet ${index + 1}: ${profileText} ===\nERROR: ${error.message}\n\nDebugging tips:\n- Check syntax: ${profileText}\n- Verify variables exist in setupCode\n- Ensure component is properly imported`
-            }
-          })
-        )
-        
-        const successCount = results.filter(r => !r.includes('ERROR:')).length
-        const errorCount = profileTextsProfiles.length - successCount
-        return `Batch Execution Summary: ${successCount} succeeded, ${errorCount} failed\n\n${results.join('\n\n')}` 
-      } catch (error) {
-        return `Error runSnippets: ${error.message}\nCommon causes:\n- Invalid profileTexts format (must be JSON array)`
-      }
-    },
-    repoRoot: '%$repoRoot%',
-  })
-})
-
 Tool('scrambleText', {
   description: 'Hide/reveal learning content for predict-then-verify methodology. Encodes text to prevent accidental answer viewing during quiz preparation.',
   params: [

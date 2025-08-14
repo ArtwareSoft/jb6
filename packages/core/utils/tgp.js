@@ -3,7 +3,7 @@ import './core-utils.js'
 const { coreUtils } = jb
 const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError } = coreUtils
 
-Object.assign(coreUtils, { globalsOfType, ptsOfType })
+Object.assign(coreUtils, { globalsOfType, ptsOfType, toCapitalType })
 
 const CompDef = comp => jbCompProxy(new jbComp(resolveProfileTop(comp)))
 
@@ -68,9 +68,13 @@ const forwardProxy = (dsl,type,id) => new Proxy(() => 0, {
     }})
 })
 
+function toCapitalType(type) {
+  return type.replace(/-(.)/g, (_, letter) => letter.toUpperCase()).replace(/^./, c => c.toUpperCase())
+}
+
 function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
   const {ns, dsls, nsRepo} = tgpModel
-  const capitalLetterId = extraCompProps?.modifierId || type.replace(/-(.)/g, (_, letter) => letter.toUpperCase()).replace(/^./, c => c.toUpperCase())
+  const capitalLetterId = extraCompProps?.modifierId || toCapitalType(type)
   const dslType = `${type}<${dsl}>`
   const tgpType = (arg0,arg1) => {
     let [id,comp] = ['',null]

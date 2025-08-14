@@ -2,7 +2,7 @@ import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
 
-const { jb, astNode, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData } = coreUtils
+const { jb, astNode, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData, calcRepoRoot } = coreUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
@@ -15,13 +15,15 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 
 export async function calcTgpModelData(dependencies) {
   const { fetchByEnvHttpServer } = dependencies
+  if (dependencies.forDsls == 'test' && !dependencies.entryPointsPaths)
+    dependencies.forRepo = await calcRepoRoot()
   const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot } = await calcImportData(dependencies)
   const rootFilePaths = unique([...entryFiles, ...testFiles])
   // crawl
   const codeMap = {} , visited = {}
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
 
-  const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, imports: Object.keys(codeMap), importMap, entryFiles, projectDir}
+  const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, imports: Object.keys(codeMap), importMap, entryFiles, testFiles, projectDir}
   logVsCode('calcTgpModelData before', dependencies, tgpModel)
 
   const {dsls} = tgpModel

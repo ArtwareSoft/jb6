@@ -15,25 +15,19 @@ const {
 } = dsls
 
 Test('snippet.Data', {
-  HeavyTest: true,
   impl: snippetTest(`pipeline('hello')`, equals('hello', '%result%'))
-})
-
-Test('snippet.exp', {
-  HeavyTest: true,
-  impl: snippetTest(`'hello'`, equals('hello', '%result%'))
 })
 
 Test('snippet.typeError', {
   HeavyTest: true,
-  impl: snippetTest(`Test({impl: dataTest('hey', pipeline())})`, contains('boolean', { allText: '%syntaxError%' }))
+  impl: snippetTest(`dataTest('hey', pipeline())`, contains('can not find comp pipeline', { allText: '%syntaxError%' }))
 })
 
 Test('snippet.ns', {
+  HeavyTest: true,
   impl: snippetTest({
     profileText: `pipeline(asIs([{a: 1},{a: 1}, {a:2}]), splitByPivot('a'), enrichGroupProps(group.count('aCounter')))`,
     expectedResult: equals('%result/0/aCounter%', 2),
-    entryPointPaths: '%$JB6_REPO_ROOT%/packages/common/common-tests.js'
   })
 })
 
@@ -42,14 +36,35 @@ Test('snippet.probe', {
   impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/a%'))
 })
 
-Test('snippet.entryPointPaths', {
-  impl: snippetTest(`pipeline('hello')`, equals('hello', '%result%'), {
-    entryPointPaths: '%$JB6_REPO_ROOT%/packages/common/aggregators.js'
+Test('snippet.prompt', {
+  HeavyTest: true,
+  impl: snippetTest(`user('hello')`, equals('hello', '%result/content%'), {
   })
 })
 
-Test('snippet.llmApiTests', {
-  impl: snippetTest(`Prompt('p',{impl:user('hello')})`, equals('hello', '%result/content%'), {
-    entryPointPaths: '%$JB6_REPO_ROOT%/packages/llm-api/tests/llm-api-tests.js'
+Test('snippet.runTest', {
+  HeavyTest: true,
+  impl: snippetTest('completionTest.param1()', '%result/success%')
+})
+
+Test('snippet.runFullTest', {
+  HeavyTest: true,
+  impl: snippetTest({
+    profileText: `dataTest('hey', equals('hey'))`,
+    expectedResult: '%result/success%'
+  })
+})
+
+Test('snippet.runReactTest', {
+  HeavyTest: true,
+  impl: snippetTest({
+    profileText: `reactTest(() => {
+    const [text, setText] = useState('Click me')
+    return h('button', { onClick: () => setText('Clicked!') }, text)
+  }, contains('Clicked!'), {
+    userActions: click('Click me')
+  })`,
+    expectedResult: '%result/success%',
+    setupCode: `const { h, L, useState, useEffect, useRef, useContext, reactUtils } = await import('@jb6/react')`
   })
 })

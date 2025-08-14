@@ -2,16 +2,24 @@ import { coreUtils, dsls } from '@jb6/core'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
 import '@jb6/core/misc/import-map-services.js'
 const { calcProfileActionMap } = langServiceUtils
+import { parse } from '../lib/acorn-loose.mjs'
 
-const { unique, calcTgpModelData, runCliInContext,pathJoin,pathParent } = coreUtils
+const { unique, calcTgpModelData, runCliInContext,pathJoin,toCapitalType, calcRepoRoot, discoverDslEntryPoints } = coreUtils
 Object.assign(coreUtils,{runSnippetCli})
 
-async function runSnippetCli({profileText, forDsls, forRepo, entryPointPaths, setupCode = '' } = {}) {
-    const dependencies = {forDsls, entryPointPaths, forRepo }
-    const tgpModel = await calcTgpModelData(dependencies)
-    const {entryFiles, projectDir } = tgpModel
+async function runSnippetCli({profileText, setupCode = '' } = {}) {
+    const tgpModel = await calcTgpModelData({forRepo: await calcRepoRoot() })
     if (tgpModel.error) return { error: tgpModel.error }
-    const origCompText = (profileText[0]||'').match(/[A-Z]/) ? profileText : `Data('noName',{impl: ${profileText}})`    
+    const { projectDir } = tgpModel
+    const compNames = compNamesInProfile(profileText)
+    const comps = Object.values(tgpModel.dsls).flatMap(type=>Object.values(type)).filter(x=>typeof x == 'object').flatMap(x=>Object.values(x))
+      .filter(x => compNames.includes(x.id))
+    // const notFound = compNames.filter(id => !comps.find(comp => comp.id === id))
+    // if (notFound.length > 0)
+    //   return { error: `can not find comp for profile ${notFound.join(', ')}` }
+    const { type } = comps.find(c=> c.id === compNames[0])
+  
+    const origCompText = `${toCapitalType(type)}('noName',{impl: ${profileText}})`    
     const isProbeMode = origCompText.split('__').length > 1
         
     let compText = origCompText, parts
@@ -26,20 +34,18 @@ async function runSnippetCli({profileText, forDsls, forRepo, entryPointPaths, se
     if (error)
       return { error, compText, isProbeMode, origCompText }
     if (!comp.id)
-      return { error : 'runSnippet: profileText must be prefixed with type<dsl>. e.g. test<test>dataTest(...)' }
+      return { error : 'runSnippet: profileText must be prefixed with type<dsl>. e.g. test<test>:dataTest(...)' }
     const dslsSection = calcDslsSection([comp])
     const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
 
-    const indexFileName = pathJoin(projectDir,'index.js')  
-    const imports = entryFiles.map(f=>`\tawait import('${f}')`).join('\n')
-    //const imports = unique([entryPointPath, ...packages]).filter(Boolean).map(f=>`\tawait import('${f}')`).join('\n')
+    const dsls = unique(comps.map(c=>c.dsl))
+    const dslsEntryPoints = await discoverDslEntryPoints(dsls)
+    const entryFiles = unique(comps.map(c=>c.$location.path))
+    const imports = [...dslsEntryPoints,...entryFiles].map(f=>`\tawait import('${f}')`).join('\n')
     const script = `
 import { jb, dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/core/misc/probe.js'
       ;(async () => {
-        try {
-          await import('${indexFileName}') // not guaranteed to have index.js in the directory
-        } catch(e) {}
         ${imports}
 
         ${dslsSection}
@@ -106,5 +112,26 @@ function calcDslsSection(comps) {
         if (node.$$) _items.push(node.$$.match(/([^<]+)<([^>]+)>(.+)/).slice(1))
         if (typeof node == 'object') Object.values(node).filter(x=>x).forEach(x=>calcItems(x))
     }
+}
+
+function compNamesInProfile(profileText) {
+  const visitedNodes = new Set()
+  const result = []
+  search(parse(profileText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0])
+  return result
+
+  function search(node) {
+    if (typeof node != 'object' || visitedNodes.has(node)) return
+    visitedNodes.add(node)
+
+    if (node.callee)
+      result.push(nameFromCallee(node.callee))
+    Object.values(node).filter(Boolean).forEach(n => search(n))
+  }
+
+  function nameFromCallee(callee) {
+    if (callee.name) return callee.name
+    return nameFromCallee(callee.object) + '.' + callee.property.name
+  }
 }
 

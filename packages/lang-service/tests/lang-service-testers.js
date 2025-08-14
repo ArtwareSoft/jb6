@@ -219,14 +219,12 @@ Test('snippetTest', {
     {id: 'profileText', as: 'text', asIs: true},
     {id: 'expectedResult', type: 'boolean', as: 'boolean', dynamic: true},
     {id: 'probe', type: 'boolean', as: 'boolean'},
-    {id: 'entryPointPaths', dynamic: true, defaultValue: () => filePathForLangServiceTest()},
+    {id: 'setupCode', as: 'text', asIs: true},
     {id: 'packages', as: 'array'}
   ],
   impl: dataTest({
-    vars: Var('JB6_REPO_ROOT', () => JB6_REPO_ROOT),
     calculate: async (ctx,{},args) => {
-      const entryPointPaths = await args.entryPointPaths(ctx)
-      const res = await runSnippetCli({...args, entryPointPaths })
+      const res = await runSnippetCli(args)
       return res?.result || res.error
     },
     expectedResult: '%$expectedResult()%',

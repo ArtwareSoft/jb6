@@ -3,12 +3,12 @@ import '../utils/core-utils.js'
 import './jb-cli.js'
 
 const { coreUtils } = jb
-const { isNode, logException, pathJoin,pathParent, unique } = coreUtils
+const { isNode, logException, pathJoin,pathParent, unique, asArray } = coreUtils
 
 jb.importMapCache = {
   fileContext: {}
 }
-Object.assign(coreUtils, { getStaticServeConfig, calcImportData, resolveWithImportMap, fetchByEnv, calcRepoRoot, calcJb6RepoRoot })
+Object.assign(coreUtils, { getStaticServeConfig, calcImportData, resolveWithImportMap, fetchByEnv, calcRepoRoot, calcJb6RepoRoot, discoverDslEntryPoints })
 
 let _repoRoot
 async function calcRepoRoot() {
@@ -51,6 +51,18 @@ async function calcJb6RepoRoot() {
 }
 
 async function discoverDslEntryPoints(forDsls) {
+  if (!isNode) {
+    const script = `import { coreUtils } from '@jb6/core'
+import '@jb6/core/misc/import-map-services.js'
+;(async()=>{
+try {
+  const result = await coreUtils.discoverDslEntryPoints(${JSON.stringify(forDsls)})
+  process.stdout.write(JSON.stringify(result,null,2))
+} catch (e) { console.error(e) }
+})()`
+      const res = await coreUtils.runNodeCliViaJbWebServer(script)
+      return res.result
+  }
   try {
     const path = await import('path')
     const dsls = Array.isArray(forDsls) ? forDsls : (forDsls||'').split(',').map(x=>x.trim()).filter(Boolean)
@@ -158,48 +170,31 @@ async function getStaticConfig(repoRoot, environment) {
 }
 
 async function normalizeToValidEntryPoints({entryPointPaths, forDsls}) {
-  let entryPoints = []
-  if (Array.isArray(entryPointPaths)) entryPoints = entryPointPaths
-  else if (typeof entryPointPaths === 'string') entryPoints = [entryPointPaths]
-  else if (forDsls) {
-    const dslEntryPoints = await discoverDslEntryPoints(forDsls)
-    if (dslEntryPoints.error) return { error: dslEntryPoints.error }
-    entryPoints = dslEntryPoints
-  } else return { error: 'Must provide either entryPointPaths or forDsls option' }
-  
-  const { access, stat } = await import('fs/promises')
+  const dslEntryPoints = forDsls ? await discoverDslEntryPoints(forDsls) : []
+  const entryPoints = [...asArray(entryPointPaths),...dslEntryPoints]
+
+  const { stat } = await import('fs/promises')
+  const path = await import('path')
+
   const validEntryPoints = []
   for (const entryPointPath of entryPoints) {
-    try {
-      await access(entryPointPath)
-      const stats = await stat(entryPointPath)
-      if (stats.isDirectory()) {
-        const mainEntry = await findMainEntryInDirectory(entryPointPath)
-        if (mainEntry) validEntryPoints.push(mainEntry)
-      } else validEntryPoints.push(entryPointPath)
-    } catch (error) {
-      console.warn(`Warning: Entry point not accessible: ${entryPointPath}`)
-    }
+      if (await exists(entryPointPath)) {
+        if ((await stat(entryPointPath)).isDirectory()) {
+          const indexJs = path.join(entryPointPath, 'index.js')
+          if (await exists(indexJs))
+            validEntryPoints.push(indexJs);
+        } else {
+          validEntryPoints.push(entryPointPath)
+        }
+      } else {
+        console.warn(`Warning: Entry point not accessible: ${entryPointPath}`)
+      }
   }
   return validEntryPoints
 }
 
-async function findMainEntryInDirectory(dirPath) {
-  const path = await import('path')
-  const { access } = await import('fs/promises')  
-  for (const candidate of ['index.js', 'main.js']) {
-    try {
-      await access(path.join(dirPath, candidate))
-      return path.join(dirPath, candidate)
-    } catch (error) {}
-  }
-  return null
-}
-
 async function calcRepoRootAndProjectDir(filePath) {
   const path = await import('path')
-  const { access } = await import('fs/promises')
-  const exists = async (p) => access(p).then(() => true, () => false)
   let currentDir = path.dirname(filePath), repoRoot = null, projectDir = null
   while (currentDir !== '/' && currentDir !== '.') {
     if (!repoRoot && await exists(path.join(currentDir, '.git'))) repoRoot = currentDir
@@ -327,4 +322,9 @@ async function fetchByEnv(url, staticMappings = [], httpServer = '') {
     logError(`fetch ${url} → ${e}`)
     return ''
   }
+}
+
+async function exists(path) {
+  const { access } = await import('fs/promises')
+  return access(path).then(() => true, () => false)
 }
