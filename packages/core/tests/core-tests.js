@@ -267,3 +267,14 @@ Test('prettyPrintTest.comp', {
 })`))
   })
 })
+
+const asIsParam = Data({
+  params: [
+    {id: 'param', as: 'string', asIs: true}
+  ],
+  impl: (ctx,{param}) => param
+})
+
+Test('expTest.asIsParam', {
+  impl: dataTest(asIsParam('%%'), contains('%'))
+})

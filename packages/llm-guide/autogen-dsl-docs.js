@@ -55,10 +55,12 @@ const tgpModel = Data('tgpModel', {
     const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
     try {
       const res = await coreUtils.calcTgpModelData({forRepo: repoRoot }) // await coreUtils.calcTgpModelData({forDsls})
-      const {dsls} = deepMapValues(res,minifyComp,filter)
+      const {dsls: _dsls} = deepMapValues(res,minifyComp,filter)
       const filterDsls = Array.isArray(forDsls) ? forDsls : (forDsls||'').split(',').map(x=>x.trim()).filter(Boolean)
-      const result = forDsls ? Object.fromEntries(filterDsls.map(dsl=>[dsl,dsls[dsl]])) : dsls
-      return result
+      const dsls = forDsls ? Object.fromEntries(filterDsls.map(dsl=>[dsl,_dsls[dsl]])) : _dsls
+      const tests = Object.fromEntries(Object.entries(_dsls.test.test)               .filter(e =>filterDsls.find(dsl=>(e[1]?.location || '').indexOf(dsl) != -1)))
+      const booklets = Object.fromEntries(Object.entries(_dsls['llm-guide'].booklet).filter(e =>filterDsls.find(dsl=>(e[1]?.location || '').indexOf(dsl) != -1)))
+      return {dsls, tests, booklets}
     } catch (error) {
       return `Error calculating TGP model: ${error.message}`
     }

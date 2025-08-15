@@ -187,6 +187,7 @@ class paramRunner {
         this.path = `${compFullPath}~params~${_param.id}`
     }
     resolve(profile, creatorCtx, settings) {
+        if (this.asIs == true) return toRTType(this, profile[this.id])
         const doResolve = ctxToUse => {
             const innerProfile = ctxToUse.jbCtx.profile
             const value = innerProfile == null && this.defaultValue == null ? null 

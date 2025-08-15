@@ -21,12 +21,15 @@ Test('mcpToolTest', {
     ],
     impl: dataTest({
         calculate: async (ctx,{},{tool,args}) => { 
-            debugger
             const repoRoot = await calcRepoRoot()
 
             const req  = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":tool,arguments: args}}
-            const script = `echo '${JSON.stringify(req)}' | node ${repoRoot}/packages/mcp/index.js --start --cwd=${repoRoot}`
+            const reqJSON = JSON.stringify(req)
+            const script = `node ${repoRoot}/packages/mcp/index.js --start --cwd=${repoRoot} <<'__JSON__'
+${reqJSON}
+__JSON__`
             const res = await runBashScript(script)
+            debugger
             return res
         },
         expectedResult: '%$expectedResult()%',

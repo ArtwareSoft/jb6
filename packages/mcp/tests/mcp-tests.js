@@ -40,7 +40,7 @@ Test('mcpTest.tgpModel', {
 
 Test('autoGenTest.tgpModel', {
   HeavyTest: true,
-  impl: dataTest(tgpModel('common', { includeLocation: true }), contains('items', { allText: json.stringify('%common/data/min%') }))
+  impl: dataTest(tgpModel('common', { includeLocation: true }), contains('items', { allText: json.stringify('%dsls/common/data/min%') }))
 })
 
 Test('mcpTest.bookletsContent', {
@@ -51,3 +51,16 @@ Test('mcpTest.bookletsContent', {
     expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
   })
 })
+
+Test('mcpTest.snippet.pipeline', {
+  HeavyTest: true,
+  impl: mcpToolTest({
+    tool: 'runSnippet',
+    args: asIs({
+        profileText: `pipeline('%$people%', '%name%')`,
+        setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`
+    }),
+    expectedResult: contains('Homer', { allText: '%stdout/result/content/text%'} )
+  })
+})
+

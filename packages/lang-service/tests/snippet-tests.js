@@ -13,6 +13,7 @@ const {
     prop: { prop },
   },
 } = dsls
+const { json }  = ns
 
 Test('snippet.Data', {
   HeavyTest: true,
@@ -72,5 +73,12 @@ Test('snippet.runReactTest', {
   })`,
     expectedResult: '%result/success%',
     setupCode: `const { h, L, useState, useEffect, useRef, useContext, reactUtils } = await import('@jb6/react')`
+  })
+})
+
+Test('snippet.pipeline', {
+  HeavyTest: true,
+  impl: snippetTest(`pipeline('%$people%', '%name%')`, contains('Homer', { allText: json.stringify() }), {
+    setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`
   })
 })
