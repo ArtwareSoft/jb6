@@ -38,10 +38,10 @@ Test('mcpTest.tgpModel', {
   })
 })
 
-// Test('autoGenTest.tgpModel', {
-//   HeavyTest: true,
-//   impl: dataTest(tgpModel('allButTests'), contains('items', { allText: json.stringify('%dsls/common/data/min%') }))
-// })
+Test('autoGenTest.tgpModel', {
+  HeavyTest: true,
+  impl: dataTest(tgpModel('test', { includeLocation: true }), contains('items', { allText: json.stringify('%common/data/min%') }))
+})
 
 Test('mcpTest.bookletsContent', {
   HeavyTest: true,

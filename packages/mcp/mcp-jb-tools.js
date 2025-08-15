@@ -36,9 +36,10 @@ Tool('tgpModelForAllDsls', {
 Tool('tgpModel', {
   description: 'get TGP (Type-generic component-profile) model relevant for dsls',
   params: [
-    {id: 'forDsls', as: 'string', defaultValue: 'common'}
+    {id: 'forDsls', as: 'string', defaultValue: 'common', description: 'comma separated e.g. test,llm-guide,common' },
+    {id: 'includeLocation', as: 'boolean', byName: true}
   ],
-  impl: mcpTool(tgpModel('%$forDsls%'))
+  impl: mcpTool(tgpModel('%$forDsls%', { includeLocation: '%$includeLocation%' }))
 })
 
 Tool('runSnippet', {

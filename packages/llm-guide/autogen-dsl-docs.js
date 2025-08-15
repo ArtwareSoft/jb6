@@ -48,19 +48,17 @@ const bookletsContent = Data('bookletsContent', {
 
 const tgpModel = Data('tgpModel', {
   params: [
-    {id: 'forDsls', as: 'string', mandatory: true, description: 'e.g: common,llm-api or allButTests'},
+    {id: 'forDsls', as: 'string', mandatory: true, description: 'e.g: llm-guide,test,common,llm-api'},
+    {id: 'includeLocation', as: 'boolean', byName: true}
   ],
-  impl: async (ctx, { forDsls }) => {
+  impl: async (ctx, { forDsls, includeLocation }) => {
     const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
     try {
-      if (forDsls == 'allButTests') {
-        const res = await coreUtils.calcTgpModelData({forRepo: repoRoot })
-        const {dsls} = deepMapValues(res,minifyComp,filter)
-        return {dsls}  
-      }
-      const res = await coreUtils.calcTgpModelData({forDsls})
-      const {dsls, ns} = deepMapValues(res,minifyComp,filter)
-      return {dsls,ns}
+      const res = await coreUtils.calcTgpModelData({forRepo: repoRoot }) // await coreUtils.calcTgpModelData({forDsls})
+      const {dsls} = deepMapValues(res,minifyComp,filter)
+      const filterDsls = Array.isArray(forDsls) ? forDsls : (forDsls||'').split(',').map(x=>x.trim()).filter(Boolean)
+      const result = forDsls ? Object.fromEntries(filterDsls.map(dsl=>[dsl,dsls[dsl]])) : dsls
+      return result
     } catch (error) {
       return `Error calculating TGP model: ${error.message}`
     }
@@ -68,6 +66,7 @@ const tgpModel = Data('tgpModel', {
     function filter(obj, key, parent,path) {
       return (key == 'ns' && !path || key[0] == key[0]?.toUpperCase() && path.split('~').length == 3 || obj?.$location) 
     }
+
 
     function minifyComp(obj, key,parent,path) {
       if (key == 'ns' && !path)
@@ -77,10 +76,11 @@ const tgpModel = Data('tgpModel', {
 
       const {description,params} = obj
       const res = {}
+      if (includeLocation) res.location = obj.$location ? `${obj.$location.path.replace(repoRoot,'').replace('/packages/','')}:${obj.$location.line}-${obj.$location.to?.line}` : ''
       if (description) res.description = description
       if (params?.length > 0)
         res.params = params.map(p=>{
-          const resP = omitProps(p,['$location','dsl','$dslType'])
+          const resP = omitProps(p,['dsl','$dslType'])
           if (resP.type == 'data<common>') delete resP.type
           return resP
       })

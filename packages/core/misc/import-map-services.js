@@ -177,7 +177,7 @@ try {
 }
 
 function createErrorResult(error, entryFiles = [], environment = 'unknown') {
-  return { environment, entryFiles, error }
+  return { environment, entryFiles, error, testFiles: [], llmGuideFiles: [] }
 }
 
 async function detectEnvironment(repoRoot) {
