@@ -9,10 +9,12 @@ const { rxUtils } = jb
 const { log, logError, isPromise, calcPath } = coreUtils
 const {
   tgp: { TgpType, var: { Var } },
-  common: { Data, Action, Boolean, ReactiveSource,ReactiveOperator,
-    action: { runActions},
+  rx: { ReactiveSource,ReactiveOperator,
     'reactive-source' : { interval, subjectSource, merge, mergeConcat },
-    'reactive-operator' : {},
+    'reactive-operator' : {}
+  },
+  common: { Data, Action, Boolean, 
+    action: { runActions},
     data: { pipeline, filter, join, property, obj, delay, asIs, pipe, list, split }, 
     Boolean: { contains, equals, and },
     Prop: { prop }

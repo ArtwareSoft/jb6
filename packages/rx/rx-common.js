@@ -3,12 +3,12 @@ import { coreUtils, dsls, ns, jb } from '@jb6/core'
 const { toArray, logError } = coreUtils
 const {
   tgp: { TgpType },
-  common: { Data, Action, Boolean, ReactiveOperator, ReactiveSource,
-    action: { writeValue }, 
+  rx: { ReactiveOperator, ReactiveSource },
+  common: { Data, Action, Boolean, 
   },  
 } = dsls
 
-const Subject = TgpType('subject', 'common')
+const Subject = TgpType('subject', 'rx')
 
 
 ReactiveSource('interval', {

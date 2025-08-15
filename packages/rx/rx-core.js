@@ -3,12 +3,10 @@ import { coreUtils, dsls, ns } from '@jb6/core'
 const { toArray, jb, logError, isPromise, isCallbag, log } = coreUtils
 const {
   tgp: { TgpType, any: { If } },
-  common: { Data, Action, Boolean , ReactiveOperator, ReactiveSource,
-    action: { writeValue }, 
-  },  
+  rx: { ReactiveOperator, ReactiveSource },
 } = dsls
 
-const ReactiveFlow = TgpType('reactive-flow', 'common')
+const ReactiveFlow = TgpType('reactive-flow', 'rx')
 
 ReactiveFlow('rx.flow', {
   moreTypes: 'action<common>',

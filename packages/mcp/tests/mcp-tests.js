@@ -40,7 +40,7 @@ Test('mcpTest.tgpModel', {
 
 Test('autoGenTest.tgpModel', {
   HeavyTest: true,
-  impl: dataTest(tgpModel('test', { includeLocation: true }), contains('items', { allText: json.stringify('%common/data/min%') }))
+  impl: dataTest(tgpModel('common', { includeLocation: true }), contains('items', { allText: json.stringify('%common/data/min%') }))
 })
 
 Test('mcpTest.bookletsContent', {

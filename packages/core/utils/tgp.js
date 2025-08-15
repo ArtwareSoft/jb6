@@ -153,8 +153,8 @@ const Data = TgpType('data','common')
 const Action = TgpType('action','common')
 
 TgpType('boolean','common')
-TgpType('reactive-source','common') // callbag api
-TgpType('reactive-operator','common') // callbag api
+TgpType('reactive-source','rx') // callbag api
+TgpType('reactive-operator','rx') // callbag api
 
 function DefComponents(items,def) { items.split(',').forEach(item=>def(item)) } // 'templateParam' must be used as param name
 

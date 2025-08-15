@@ -3,13 +3,12 @@ import { coreUtils, dsls, ns, jb } from '@jb6/core'
 const { log, logError, isPromise, calcPath } = coreUtils
 const {
   tgp: { TgpType, any: {If } },
-  common: { Data, Action, Boolean, ReactiveOperator, ReactiveSource,
-    action: { writeValue }, 
-  },  
+  rx: { ReactiveOperator, ReactiveSource,
+  },
 } = dsls
 const { rx } = ns
 
-const ReactiveSink = TgpType('reactive-sink', 'common')
+const ReactiveSink = TgpType('reactive-sink', 'rx')
 
 ReactiveOperator('rx.innerPipe',{
   description: 'composite operator, inner reactive pipeline without source',

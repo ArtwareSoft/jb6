@@ -3,9 +3,9 @@ import { dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
 
 const { 
-  common: { Data, ReactiveSource, ReactiveOperator,
-  },
-  tgp: { TgpType, DefComponents },
+  rx: { ReactiveSource, ReactiveOperator },
+  common: { Data },
+  tgp: { TgpType },
 } = dsls
 const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript, waitForInnerElements } = coreUtils
 
@@ -216,7 +216,7 @@ Data('llm.completions', {
     {id: 'notifyUsage', type: 'action<common>', dynamic: true}
   ],
   impl: (ctx, args) => {
-    const $ = dsls.common['reactive-source']['llm.completionsRx'][coreUtils.asJbComp]
+    const $ = dsls.rx['reactive-source']['llm.completionsRx'][coreUtils.asJbComp]
     const profile = ctx.jbCtx.profile = { ... ctx.jbCtx.profile, $ }
     const source = ctx.run(profile)
     return new Promise(resolve => {
