@@ -68,7 +68,7 @@ import '@jb6/packages/core/tests/package-service-testers.js'
 ;(async()=>{
 try {
   const result = await coreUtils.createMockRepo(${JSON.stringify(args)})
-  process.stdout.write(JSON.stringify(result,null,2))
+  await coreUtils.writeToStdout(result)
 } catch (e) { console.error(e) }
 })()`
     const res = await coreUtils.runNodeCliViaJbWebServer(script)

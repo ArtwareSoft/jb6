@@ -22,9 +22,9 @@ async function calcRepoRoot() {
     import '@jb6/core/misc/import-map-services.js'
     try {
       const result = await coreUtils.calcRepoRoot()
-      process.stdout.write(JSON.stringify(result,null,2))
+      await coreUtils.writeToStdout(result)
     } catch (e) {
-      process.stdout.write(JSON.stringify(e,null,2))
+      await coreUtils.writeToStdout(e.message || e)
     }`
     const res = await coreUtils.runNodeCliViaJbWebServer(script)
     return _repoRoot = res.result
@@ -32,7 +32,52 @@ async function calcRepoRoot() {
   const { execSync } = await import('child_process')
   if (jb.coreRegistry.repoRoot)
     return jb.coreRegistry.repoRoot
-  return _repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
+    
+  // Try git command first
+  try {
+    return _repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
+  } catch (gitError) {
+    // If git command fails (wrong working directory), try to determine from current script location
+    const path = await import('path')
+    const { fileURLToPath } = await import('url')
+    
+    // Get the directory of this script
+    let currentDir = path.dirname(fileURLToPath(import.meta.url))
+    
+    // Walk up the directory tree looking for .git or package.json with name "jb6-monorepo"
+    while (currentDir !== '/' && currentDir !== '.') {
+      try {
+        const { access, readFile } = await import('fs/promises')
+        
+        // Check for .git directory
+        try {
+          await access(path.join(currentDir, '.git'))
+          return _repoRoot = currentDir
+        } catch (e) {
+          // .git not found, continue
+        }
+        
+        // Check for package.json with jb6-monorepo
+        try {
+          const packageJson = JSON.parse(await readFile(path.join(currentDir, 'package.json'), 'utf8'))
+          if (packageJson.name === 'jb6-monorepo') {
+            return _repoRoot = currentDir
+          }
+        } catch (e) {
+          // package.json not found or invalid, continue
+        }
+      } catch (e) {
+        // Continue walking up
+      }
+      
+      const parentDir = path.dirname(currentDir)
+      if (parentDir === currentDir) break
+      currentDir = parentDir
+    }
+    
+    // If all else fails, throw the original git error
+    throw gitError
+  }
 }
 
 async function calcJb6RepoRoot() {
@@ -57,7 +102,7 @@ import '@jb6/core/misc/import-map-services.js'
 ;(async()=>{
 try {
   const result = await coreUtils.discoverDslEntryPoints(${JSON.stringify(forDsls)})
-  process.stdout.write(JSON.stringify(result,null,2))
+  await coreUtils.writeToStdout(result)
 } catch (e) { console.error(e) }
 })()`
       const res = await coreUtils.runNodeCliViaJbWebServer(script)
@@ -86,7 +131,7 @@ import '@jb6/core/misc/import-map-services.js'
 ;(async()=>{
 try {
   const result = await coreUtils.getStaticServeConfig('${repoRoot}')
-  process.stdout.write(JSON.stringify(result,null,2))
+  await coreUtils.writeToStdout(result)
 } catch (e) { console.error(e) }
 })()`
     const res = await coreUtils.runNodeCliViaJbWebServer(script)
@@ -107,7 +152,7 @@ import '@jb6/core/misc/import-map-services.js'
 ;(async()=>{
 try {
   const result = await coreUtils.calcImportData(${JSON.stringify(dependencies)})
-  process.stdout.write(JSON.stringify(result,null,2))
+  await coreUtils.writeToStdout(result)
 } catch (e) { console.error(e) }
 })()`
     const res = await coreUtils.runNodeCliViaJbWebServer(script)

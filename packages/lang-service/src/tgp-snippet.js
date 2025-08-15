@@ -8,18 +8,19 @@ const { unique, calcTgpModelData, runCliInContext,pathJoin,toCapitalType, calcRe
 Object.assign(coreUtils,{runSnippetCli})
 
 async function runSnippetCli({profileText, setupCode = '' } = {}) {
-    const tgpModel = await calcTgpModelData({forRepo: await calcRepoRoot() })
+    const repoRoot = await calcRepoRoot()
+    const tgpModel = await calcTgpModelData({forRepo: repoRoot }) // getting a full model
     if (tgpModel.error) return { error: tgpModel.error }
-    const { projectDir } = tgpModel
+    const projectDir  = tgpModel.projectDir || repoRoot
     const compNames = compNamesInProfile(profileText)
     const comps = Object.values(tgpModel.dsls).flatMap(type=>Object.values(type)).filter(x=>typeof x == 'object').flatMap(x=>Object.values(x))
       .filter(x => compNames.includes(x.id))
     // const notFound = compNames.filter(id => !comps.find(comp => comp.id === id))
     // if (notFound.length > 0)
     //   return { error: `can not find comp for profile ${notFound.join(', ')}` }
-    const { type } = comps.find(c=> c.id === compNames[0])
-  
-    const origCompText = `${toCapitalType(type)}('noName',{impl: ${profileText}})`    
+    const { type } = comps.find(c=> c.id === compNames[0]) || { type: 'data' }
+    const profText = comps.length ? profileText : JSON.stringify(profileText) 
+    const origCompText = `${toCapitalType(type)}('noName',{impl: ${profText}})`    
     const isProbeMode = origCompText.split('__').length > 1
         
     let compText = origCompText, parts
@@ -43,6 +44,7 @@ async function runSnippetCli({profileText, setupCode = '' } = {}) {
     const entryFiles = unique(comps.map(c=>c.$location.path))
     const imports = [...dslsEntryPoints,...entryFiles].map(f=>`\tawait import('${f}')`).join('\n')
     const script = `
+    // dir: ${projectDir}
 import { jb, dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/core/misc/probe.js'
       ;(async () => {
@@ -55,15 +57,14 @@ import '@jb6/core/misc/probe.js'
           ${compText}
           if (${isProbeMode}) {
               const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath || '')})
-              process.stdout.write(JSON.stringify(result, null, 2))
+              await coreUtils.writeToStdout(result)
           } else {
               const result = await ${compPath}.$run()
-              process.stdout.write(JSON.stringify({result: coreUtils.stripData(result)}, null, 2))
+              await coreUtils.writeToStdout({result: coreUtils.stripData(result)})
           }
         } catch (e) {
-          process.stdout.write(JSON.stringify(coreUtils.stripData(e), null, 2))
+          await coreUtils.writeToStdout(coreUtils.stripData(e))
         }
-        process.exit(0)
       })()
     `
 

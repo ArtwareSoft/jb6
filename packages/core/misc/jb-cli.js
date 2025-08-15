@@ -73,7 +73,7 @@ async function runNodeCli(script, { projectDir: cwd} = {}) {
   return new Promise(resolve => {
     let out = '', err = ''
     try {
-      const child = spawn(process.execPath, ['--input-type=module', '-e', scriptToRun], {cwd, encoding: 'utf8'})
+      const child = spawn(process.execPath, ['--input-type=module', '-e', scriptToRun], {cwd })
       child.stdout.on('data', d => out += d)
       child.stderr.on('data', d => err += d)
       child.on('close', code => {
@@ -86,7 +86,7 @@ async function runNodeCli(script, { projectDir: cwd} = {}) {
           const result = JSON.parse(out)
           resolve({result, cmd, cwd})
         } catch (e) {
-          resolve({error: e, cmd, cwd})    
+          resolve({error: e.message || e, cmd, cwd, text: out})    
         }
       })
     } catch(e) {

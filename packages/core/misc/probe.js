@@ -20,7 +20,8 @@ async function runProbeCli(probePath, dependencies) {
     const {entryFiles, testFiles, projectDir } = await coreUtils.calcImportData(dependencies)
     const imports = unique([...entryFiles, ...testFiles]).map(f=>`\timport '${f}'`).join('\n')
     const script = `
-      import { jb, dsls } from '@jb6/core'
+      import { writeFile } from 'fs/promises'
+      import { jb, dsls, coreUtils } from '@jb6/core'
       import '@jb6/testing'
       import '@jb6/core/misc/probe.js'
 ${imports}
@@ -28,11 +29,10 @@ ${imports}
         try {
           ${extraCode || ''}
           const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath)})
-          process.stdout.write(JSON.stringify(result, null, 2))
+          await coreUtils.writeToStdout(result)
         } catch (e) {
           console.error(e)
         }
-        process.exit(0)
       })()
     `
 

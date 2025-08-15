@@ -82,13 +82,9 @@ Tool('mcpTool', {
   description: 'wrap text as mcp result',
   params: [
     {id: 'text', dynamic: true},
-    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
-    {id: 'maxLength', as: 'number', defaultValue: 20000}
+    {id: 'maxLength', as: 'number', defaultValue: 20000, byName: true}
   ],
   impl: typeAdapter('data<common>', pipe(
-    Var('dummy', ({},{},{repoRoot}) => {
-      jb.coreRegistry.repoRoot = repoRoot
-    }),
     '%$text()%',
     squeezeText('%%', '%$maxLength%'),
     ({data}) => ({ content: [{ type: 'text', text: data }], isError: data.indexOf('Error') == 0 }),

@@ -8,11 +8,12 @@ const {
     test: { dataTest, mcpToolTest }
   },
   common: { Data, Action, Boolean,
-    data: { pipeline, asIs }, 
+    data: { pipeline, asIs, tgpModel }, 
     boolean: { equals, contains, notContains, and, not },
     prop: { prop },
   },
 } = dsls
+const { json } = ns
 
 Test('mcpTest.scrambleText', {
   HeavyTest: true,
@@ -32,16 +33,21 @@ Test('mcpTest.tgpModel', {
   HeavyTest: true,
   impl: mcpToolTest({
     tool: 'tgpModel',
-    args: asIs({repoRoot: '%$REPO_ROOT%', forDsls: 'common'}),
+    args: asIs({forDsls: 'common'}),
     expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
   })
 })
+
+// Test('autoGenTest.tgpModel', {
+//   HeavyTest: true,
+//   impl: dataTest(tgpModel('allButTests'), contains('items', { allText: json.stringify('%dsls/common/data/min%') }))
+// })
 
 Test('mcpTest.bookletsContent', {
   HeavyTest: true,
   impl: mcpToolTest({
     tool: 'bookletsContentTool',
-    args: asIs({repoRoot: '%$REPO_ROOT%', booklets: 'tgpPrimer'}),
+    args: asIs({booklets: 'tgpPrimer'}),
     expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
   })
 })

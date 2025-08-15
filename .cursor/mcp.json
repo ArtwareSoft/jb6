@@ -4,8 +4,8 @@
       "type": "stdio",
       "command": "/usr/bin/node",
       "args": [
-        "%$REPO_ROOT%/packages/mcp/index.js", "--start"
-      ]   
+        "/home/shaiby/projects/jb6/packages/mcp/index.js", "--start", "--cwd=/home/shaiby/projects/jb6"
+      ]
     }
   }
 }

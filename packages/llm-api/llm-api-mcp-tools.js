@@ -18,10 +18,9 @@ Tool('bookletsContentTool', {
   description: 'the content of a booklet, which is the content of a list of doclets',
   params: [
     {id: 'booklets', as: 'text', description: 'comma delimited names'},
-    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
     {id: 'maxLength', as: 'number', defaultValue: 20000}
   ],
-  impl: mcpTool(bookletsContent('%$booklets%'), '%$repoRoot%', { maxLength: '%$maxLength%' })
+  impl: mcpTool(bookletsContent('%$booklets%'), { maxLength: '%$maxLength%' })
 })
 
 // Tool('askExternalLLmWithBooklet', {

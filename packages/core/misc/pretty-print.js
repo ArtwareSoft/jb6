@@ -221,7 +221,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
         {token: content, action: `asIs!${path}`}, {token: ')', action: `end!${path}`}]
       return props[path] = {tokens, len: content.length + 6, indentWithParent: true }
     }
-    if (path.match(/([0-9]+)~defaultValue$/)) {
+    if (resolvedParams && path.match(/([0-9]+)~defaultValue$/)) {
       const index = path.match(/([0-9]+)~defaultValue$/)[1]
       const resolvedParam = resolvedParams[index]
       const topComp = compByFullId(path.split('~')[0], tgpModel)

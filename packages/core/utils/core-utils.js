@@ -369,10 +369,17 @@ function calcHash(str) {
   return hash
 }
 
+async function writeToStdout(result) {
+  const { once } = await import('events')
+  if (!process.stdout.write(JSON.stringify(result, null, 2))) await once(process.stdout, 'drain')
+  process.stdout.end()
+  await once(process.stdout, 'finish')
+}
+
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logVsCode, isNode,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, estimateTokens, pathJoin, pathParent, calcHash
+  calcValue, stripData, estimateTokens, pathJoin, pathParent, calcHash, writeToStdout
 })

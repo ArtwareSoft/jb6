@@ -15,30 +15,30 @@ const {
      }
 } = dsls
 
-Tool('defaultRepoRoot', {
+Tool('repoRoot', {
   description: 'get repo root',
-  params: [
-    {id: 'myRepoIs', as: 'string', description: '%$REPO_ROOT% . no need to activate the tool!!!'}
-  ],
-  impl: mcpTool(() => calcRepoRoot())
+  impl: mcpTool(() => jb.coreRegistry.repoRoot)
 })
 
 Tool('dslDocs', {
   description: 'get TGP (Type-generic component-profile) model relevant for dsls',
   params: [
-    {id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo. look at defaultRepoRoot to get it'},
     {id: 'dsls', as: 'string', defaultValue: 'common,llm-guide', description: 'Comma-separated other options: rx,llm-api,testing'}
   ],
-  impl: mcpTool(dslDocs('%$dsls%'), '%$repoRoot%')
+  impl: mcpTool(dslDocs('%$dsls%'))
+})
+
+Tool('tgpModelForAllDsls', {
+  description: 'get TGP (Type-generic component-profile) for all dsls in repo',
+  impl: mcpTool(tgpModel('allButTests'), { maxLength: 100000 })
 })
 
 Tool('tgpModel', {
-  description: 'get TGP (Type-generic component-profile) model relevant for imports and exports of path',
+  description: 'get TGP (Type-generic component-profile) model relevant for dsls',
   params: [
-    {id: 'repoRoot', as: 'string', mandatory: true, description: 'filePath of the relevant repo of the project. when exist use top mono repo. look at defaultRepoRoot to get it'},
-    {id: 'forDsls', as: 'string', defaultValue: 'packages/common/common-tests.js', description: 'relative starting point to filter the model. when not exist, return the model of common and testing'}
+    {id: 'forDsls', as: 'string', defaultValue: 'common'}
   ],
-  impl: mcpTool(tgpModel('%$forDsls%','%$repoRoot%'), '%$repoRoot%')
+  impl: mcpTool(tgpModel('%$forDsls%'))
 })
 
 Tool('runSnippet', {
@@ -46,7 +46,6 @@ Tool('runSnippet', {
   params: [
     {id: 'profileText', as: 'string', asIs: true, mandatory: true, description: `profile text to execute (e.g., "pipeline('%$data%', filter('%active%'), count())")`},
     {id: 'setupCode', as: 'string', description: `Helper components or imports (e.g., "Const('data', [{active: true}])") or const { h, L, useState, useEffect, useRef, useContext, reactUtils } = await import('@jb6/react')`},
-    {id: 'repoRoot', as: 'string', mandatory: true, description: 'absolute path to repository root'},
   ],
   impl: mcpTool({
     text: async (ctx, {}, args) => {
@@ -56,8 +55,7 @@ Tool('runSnippet', {
       } catch (error) {
         return `Error running snippet: ${error.message}`
       }
-    },
-    repoRoot: '%$repoRoot%'
+    }
   })
 })
   
@@ -71,5 +69,5 @@ Tool('scrambleText', {
     ({data}, {}, { unscramble }) => unscramble.toLowerCase() == 'true' ? atob(data.split('').reverse().join('')) : btoa(data).split('').reverse().join(''),
     join('##\n')
   ))
- })
+})
 

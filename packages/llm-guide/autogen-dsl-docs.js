@@ -11,26 +11,20 @@ const {
   },
   tgp: { TgpType, any: {}, var: {Var } },
 } = dsls
-const { calcImportData, calcTgpModelData, logError, fetchByEnv, deepMapValues, omitProps} = coreUtils
-
-const calcRepoRoot = Data('calcRepoRoot', {
-  impl: () => coreUtils.calcRepoRoot()
-})
+const { calcImportData, calcTgpModelData, logError, fetchByEnv, deepMapValues, omitProps, calcRepoRoot} = coreUtils
 
 Data('filesContent', {
   impl: pipe(
-    Var('repoRoot', calcRepoRoot(), { async: true }),
-    bash(`for f in $(echo '%$fileNames%' | tr ',' ' '); do printf "==> %s <==\n" "$f"; cat "%$repoRoot%/$f"; done`)
+    bash(`for f in $(echo '%$fileNames%' | tr ',' ' '); do printf "==> %s <==\n" "$f"; cat "${jb.coreRegistry.repoRoot}/$f"; done`)
   )
 })
 
 const bookletsContent = Data('bookletsContent', {
   params: [
-    {id: 'booklets', as: 'text', description: 'comma delimited names'},
-    {id: 'repoRoot', as: 'string', dynamic: true, defaultValue: calcRepoRoot() }
+    {id: 'booklets', as: 'text', description: 'comma delimited names'}
   ],
-  impl: async (ctx, {booklets, repoRoot: _repoRoot}) => {
-      const repoRoot = await _repoRoot()
+  impl: async (ctx, {booklets, }) => {
+      const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
       const { llmGuideFiles, staticMappings } = await calcImportData({forRepo: repoRoot})
       const tgpModel = await calcTgpModelData({entryPointPaths: llmGuideFiles})
       const notFound = booklets.split(',').filter(d=>!tgpModel.dsls['llm-guide'].booklet[d]).join(', ')
@@ -54,12 +48,17 @@ const bookletsContent = Data('bookletsContent', {
 
 const tgpModel = Data('tgpModel', {
   params: [
-    {id: 'forDsls', as: 'string', mandatory: true},
-    {id: 'repoRoot', as: 'string', dynamic: true, defaultValue: calcRepoRoot() }
+    {id: 'forDsls', as: 'string', mandatory: true, description: 'e.g: common,llm-api or allButTests'},
   ],
-  impl: async (ctx, { forDsls, repoRoot }) => {
+  impl: async (ctx, { forDsls }) => {
+    const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
     try {
-      const res = await coreUtils.calcTgpModelData({forDsls, forRepo: forDsls ? null : await repoRoot})
+      if (forDsls == 'allButTests') {
+        const res = await coreUtils.calcTgpModelData({forRepo: repoRoot })
+        const {dsls} = deepMapValues(res,minifyComp,filter)
+        return {dsls}  
+      }
+      const res = await coreUtils.calcTgpModelData({forDsls})
       const {dsls, ns} = deepMapValues(res,minifyComp,filter)
       return {dsls,ns}
     } catch (error) {
@@ -67,7 +66,7 @@ const tgpModel = Data('tgpModel', {
     }
 
     function filter(obj, key, parent,path) {
-      return (key == 'ns' && !path || key[0] == key[0]?.toUpperCase() && path.split('~').length == 3 || obj.$location) 
+      return (key == 'ns' && !path || key[0] == key[0]?.toUpperCase() && path.split('~').length == 3 || obj?.$location) 
     }
 
     function minifyComp(obj, key,parent,path) {
@@ -94,11 +93,10 @@ Data('dslDocs', {
   description: 'get TGP (Type-generic component-profile) model relevant for dsls',
   params: [
     {id: 'dsl', as: 'string', defaultValue: 'common', options: 'common,rx,llm-api,testing'},
-    {id: 'repoRoot', as: 'string', dynamic: true, defaultValue: calcRepoRoot()}
   ],
   impl: pipe(
-    Var('tgpModel', tgpModel('%$dsl%', '%$repoRoot()%'), { async: true }),
-    Var('booklet', bookletsContent('%$dsl%', '%$repoRoot()%'), { async: true }),
+    Var('tgpModel', tgpModel('%$dsl%'), { async: true }),
+    Var('booklet', bookletsContent('%$dsl%'), { async: true }),
     ({},{tgpModel, booklet}) => ({tgpModel,booklet})
   )
 })

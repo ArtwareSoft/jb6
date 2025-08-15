@@ -15,7 +15,13 @@ const {
 } = dsls
 
 Test('snippet.Data', {
+  HeavyTest: true,
   impl: snippetTest(`pipeline('hello')`, equals('hello', '%result%'))
+})
+
+Test('snippet.expression', {
+  HeavyTest: true,
+  impl: snippetTest('hello', equals('hello', '%result%'))
 })
 
 Test('snippet.typeError', {
