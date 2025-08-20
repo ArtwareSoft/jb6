@@ -108,7 +108,7 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
     const actionMap = []
 
     calcActionMap(topComp, compId, topComp[astNode])
-    const path = expectedPath || actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to)
+    const path = expectedPath || actionMap.filter(e => e.from == inCompOffset && inCompOffset == e.to || e.from <= inCompOffset && inCompOffset < e.to)
         .map(x => x.action.split('!').pop())
         .reduce((longest, current) => current.length > longest.length ? current : longest, '');
 

@@ -25,9 +25,7 @@ async function runSnippetCli({profileText, setupCode = '' } = {}) {
         
     let compText = origCompText, parts
     if (isProbeMode) {
-      parts = origCompText.split('__')
-      if (parts.length === 2)
-        parts[0] = parts[0].replace(/,\s*$/, '')
+      parts = origCompText.replace(/,\s*__\s*,/g,',__').split('__')
       compText = parts.join('')
     }
     
@@ -70,7 +68,7 @@ import '@jb6/core/misc/probe.js'
 
     try {
       const result = await runCliInContext(script, {projectDir})
-      return result
+      return result.result
     } catch (error) {
       return { error, script, probePath }
     }

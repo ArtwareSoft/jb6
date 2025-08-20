@@ -51,6 +51,18 @@ Test('reactTest', {
     })
 })
 
+UiAction('actions', {
+  params: [ 
+    { id:'actions', type: 'ui-action[]', composite: true } 
+  ],
+  impl: ({},{actions}) => ({
+    async exec(ctx) {
+      for (const a of actions)
+        await a.exec(ctx)
+    }
+  })
+})
+
 UiAction('waitForMutations', {
   params: [ { id:'timeout', as:'number' } ],
   impl: ({},{timeout}) => ({ exec: ctx => ctx.vars.win.waitForMutations(timeout) })
@@ -98,7 +110,7 @@ UiAction('waitForText', {
         check()
 
         function check() { 
-          const found = win.document.body.innerHTML.indexOf(text) != -1
+          const found = win.document.body.outerHTML.indexOf(text) != -1
           if (found) { 
             observer.disconnect()
             clearTimeout(timer)
@@ -119,7 +131,7 @@ UiAction('click', {
       const { win } = ctx.vars
       try {
         const buttons = Array.from(win.document.querySelectorAll('button, .cursor-pointer'))
-        const button = buttonText ? buttons.find(button => button.innerHTML.indexOf(buttonText) != -1) : buttons[0]
+        const button = buttonText ? buttons.find(button => button.outerHTML.indexOf(buttonText) != -1) : buttons[0]
         if (!button) {
           console.log(`can not find button ${buttonText}`,buttons)
           return
@@ -145,7 +157,7 @@ UiAction('longPress', {
       const { win } = ctx.vars
       try {
         const buttons = Array.from(win.document.querySelectorAll('button, .cursor-pointer'))
-        const button = buttonText ? buttons.find(button => button.innerHTML.indexOf(buttonText) != -1) : buttons[0]
+        const button = buttonText ? buttons.find(button => button.outerHTML.indexOf(buttonText) != -1) : buttons[0]
         if (!button) {
           console.log(`can not find button ${buttonText}`,buttons)
           return

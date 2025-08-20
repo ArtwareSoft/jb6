@@ -23,7 +23,7 @@ const bookletsContent = Data('bookletsContent', {
   params: [
     {id: 'booklets', as: 'text', description: 'comma delimited names'}
   ],
-  impl: async (ctx, {booklets, }) => {
+  impl: async (ctx, {booklets }) => {
       const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
       const { llmGuideFiles, staticMappings } = await calcImportData({forRepo: repoRoot})
       const tgpModel = await calcTgpModelData({entryPointPaths: llmGuideFiles})
@@ -49,9 +49,8 @@ const bookletsContent = Data('bookletsContent', {
 const tgpModel = Data('tgpModel', {
   params: [
     {id: 'forDsls', as: 'string', mandatory: true, description: 'e.g: llm-guide,test,common,llm-api'},
-    {id: 'includeLocation', as: 'boolean', byName: true}
   ],
-  impl: async (ctx, { forDsls, includeLocation }) => {
+  impl: async (ctx, { forDsls }) => {
     const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
     try {
       const res = await coreUtils.calcTgpModelData({forRepo: repoRoot }) // await coreUtils.calcTgpModelData({forDsls})
@@ -77,8 +76,7 @@ const tgpModel = Data('tgpModel', {
         return 'compDef'
 
       const {description,params} = obj
-      const res = {}
-      if (includeLocation) res.location = obj.$location ? `${obj.$location.path.replace(repoRoot,'').replace('/packages/','')}:${obj.$location.line}-${obj.$location.to?.line}` : ''
+      const res = { location: obj.$location ? `${obj.$location.path.replace(repoRoot,'').replace('/packages/','')}:${obj.$location.line}-${obj.$location.to?.line}` : ''}
       if (description) res.description = description
       if (params?.length > 0)
         res.params = params.map(p=>{
@@ -101,20 +99,4 @@ Data('dslDocs', {
     Var('booklet', bookletsContent('%$dsl%'), { async: true }),
     ({},{tgpModel, booklet}) => ({tgpModel,booklet})
   )
-})
-
-Data('squeezeText', {
-  description: 'squeeze text by deleting parts in the middle',
-  params: [
-    {id: 'text', defaultValue: '%%' },
-    {id: 'maxLength', as: 'number', defaultValue: 20000},
-    {id: 'keepPrefixSize', as: 'number', defaultValue: 1000 },
-  ],
-  impl: async (ctx, {text: _text, maxLength, keepPrefixSize}) => {
-    const text = await Promise.resolve(_text).then(x=>x||'').then(x=>typeof x == 'object' ? JSON.stringify(x) : x)
-    return (text.length > maxLength) ? [text.slice(0,keepPrefixSize),
-      `===text was originally ${text.length}. sorry, we had to squeeze it to ${maxLength} chars. ${text.length - maxLength} missing chars here====`,
-      text.slice(text.length-maxLength+keepPrefixSize)
-    ].join('') : text
-  }
 })

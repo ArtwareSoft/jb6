@@ -17,12 +17,28 @@ const { json }  = ns
 
 Test('snippet.Data', {
   HeavyTest: true,
-  impl: snippetTest(`pipeline('hello')`, equals('hello', '%result%'))
+  impl: snippetTest(`pipeline('hello')`, equals('hello'))
+})
+
+Test('snippet.rx', {
+  HeavyTest: true,
+  impl: snippetTest({
+    profileText: `pipe(
+  rx.pipe(
+    rx.data(list('h', 'he', 'hel', 'hell', 'hello', 'hello w', 'hello wo', 'hello wor', 'hello worl', 'hello world')),
+    rx.debounceTime(1),
+    rx.map('Search: %%'),
+    rx.distinctUntilChanged(),
+  ),
+  join(',')
+)`,
+    expectedResult: equals('Search: h,Search: he,Search: hel,Search: hell,Search: hello,Search: hello w,Search: hello wo,Search: hello wor,Search: hello worl,Search: hello world')
+  })
 })
 
 Test('snippet.expression', {
   HeavyTest: true,
-  impl: snippetTest('hello', equals('hello', '%result%'))
+  impl: snippetTest('hello', equals('hello'))
 })
 
 Test('snippet.typeError', {
@@ -34,31 +50,31 @@ Test('snippet.ns', {
   HeavyTest: true,
   impl: snippetTest({
     profileText: `pipeline(asIs([{a: 1},{a: 1}, {a:2}]), splitByPivot('a'), enrichGroupProps(group.count('aCounter')))`,
-    expectedResult: equals('%result/0/aCounter%', 2),
+    expectedResult: equals('%0/aCounter%', 2),
   })
 })
 
 Test('snippet.probe', {
   HeavyTest: true,
-  impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%result/0/a%'))
+  impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%0/in/data/a%'))
 })
 
 Test('snippet.prompt', {
   HeavyTest: true,
-  impl: snippetTest(`user('hello')`, equals('hello', '%result/content%'), {
+  impl: snippetTest(`user('hello')`, equals('hello', '%content%'), {
   })
 })
 
 Test('snippet.runTest', {
   HeavyTest: true,
-  impl: snippetTest('completionTest.param1()', '%result/success%')
+  impl: snippetTest('completionTest.param1()', '%success%')
 })
 
 Test('snippet.runFullTest', {
   HeavyTest: true,
   impl: snippetTest({
     profileText: `dataTest('hey', equals('hey'))`,
-    expectedResult: '%result/success%'
+    expectedResult: '%success%'
   })
 })
 
@@ -71,7 +87,7 @@ Test('snippet.runReactTest', {
   }, contains('Clicked!'), {
     userActions: click('Click me')
   })`,
-    expectedResult: '%result/success%',
+    expectedResult: '%success%',
     setupCode: `const { h, L, useState, useEffect, useRef, useContext, reactUtils } = await import('@jb6/react')`
   })
 })

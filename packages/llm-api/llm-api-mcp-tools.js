@@ -1,5 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
-import '@jb6/llm-api/skills.js'
+import './skills.js1'
 import '@jb6/mcp'
 const { 
   tgp: { TgpType, any: { typeAdapter } },
@@ -14,14 +14,6 @@ const {
   }
 } = dsls
 
-Tool('bookletsContentTool', {
-  description: 'the content of a booklet, which is the content of a list of doclets',
-  params: [
-    {id: 'booklets', as: 'text', description: 'comma delimited names'},
-    {id: 'maxLength', as: 'number', defaultValue: 20000}
-  ],
-  impl: mcpTool(bookletsContent('%$booklets%'), { maxLength: '%$maxLength%' })
-})
 
 // Tool('askExternalLLmWithBooklet', {
 //   params: [

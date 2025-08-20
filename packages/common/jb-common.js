@@ -350,6 +350,15 @@ Boolean('between', {
   impl: (ctx, { from, to, val }) => val >= from && val <= to
 })
 
+Boolean('greaterThan', {
+  params: [
+    { id: 'than', as: 'number', mandatory: true, description: 'threshold value to compare against' },
+    { id: 'orEquals', as: 'boolean', type: 'boolean<common>', defaultValue: false, description: 'include equals in comparison' },
+    { id: 'val', as: 'number', defaultValue: '%%', description: 'value to check' }
+  ],
+  impl: (ctx, { than, val, orEquals }) => orEquals ? val >= than : val > than
+})
+
 Boolean('isNull', {
   description: 'is null or undefined',
   params: [

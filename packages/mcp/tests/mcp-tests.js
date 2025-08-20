@@ -1,6 +1,5 @@
 import { dsls, ns } from '@jb6/core'
 import './mcp-testers.js'
-import '@jb6/llm-api/llm-api-mcp-tools.js'
 
 const {
   tgp: { Const},
@@ -8,7 +7,7 @@ const {
     test: { dataTest, mcpToolTest }
   },
   common: { Data, Action, Boolean,
-    data: { pipeline, asIs, tgpModel }, 
+    data: { pipe, pipeline, asIs, tgpModel, keys, join, filter }, 
     boolean: { equals, contains, notContains, and, not },
     prop: { prop },
   },
@@ -18,29 +17,57 @@ const { json } = ns
 Test('mcpTest.scrambleText', {
   HeavyTest: true,
   impl: mcpToolTest('scrambleText', asIs({texts: 'hello world##test text'}), {
-    expectedResult: equals('=QGby92dg8GbsVGa##\n0hXZ0BCdzVGd', '%stdout/result/content/text%')
+    expectedResult: equals('=QGby92dg8GbsVGa##\n0hXZ0BCdzVGd')
   })
 })
 
-Test('mcpTest.resultArrayBug', {
+Test('genieMcpTest.scrambleText', {
   HeavyTest: true,
   impl: mcpToolTest('scrambleText', asIs({texts: 'hello world##test text'}), {
-    expectedResult: ({data}) => !Array.isArray(data.stdout.result)
+    repoRoot: '/home/shaiby/projects/Genie',
+    expectedResult: equals('=QGby92dg8GbsVGa##\n0hXZ0BCdzVGd')
+  })
+})
+
+Test('genieMcpTest.tgpModel', {
+  HeavyTest: true,
+  impl: mcpToolTest({
+    tool: 'tgpModel',
+    repoRoot: '/home/shaiby/projects/Genie',
+    args: asIs({forDsls: 'common'}),
+    expectedResult: contains('common')
+  })
+})
+
+Test('genieMcpTest.snippet', {
+  HeavyTest: true,
+  impl: mcpToolTest({
+    tool: 'runSnippet',
+    repoRoot: '/home/shaiby/projects/Genie',
+    args: asIs({
+        profileText: `pipeline('%$people%', '%name%')`,
+        setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`
+    }),
+    expectedResult: contains('Homer')
   })
 })
 
 Test('mcpTest.tgpModel', {
   HeavyTest: true,
-  impl: mcpToolTest({
-    tool: 'tgpModel',
-    args: asIs({forDsls: 'common'}),
-    expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
-  })
+  impl: mcpToolTest('tgpModel', asIs({forDsls: 'common'}), { expectedResult: contains('common') })
 })
 
-Test('autoGenTest.tgpModel', {
+// Test('autoGenTest.allBooklets', {
+//   HeavyTest: true,
+//   impl: dataTest({
+//     calculate: pipe(tgpModel('llm-guide'), '%dsls/llm-guide/booklet%', keys(), filter('%% != booklet'), join()),
+//     expectedResult: contains('commonDslQuizzes')
+//   })
+// })
+
+Test('mcpTest.listBooklets', {
   HeavyTest: true,
-  impl: dataTest(tgpModel('common', { includeLocation: true }), contains('items', { allText: json.stringify('%dsls/common/data/min%') }))
+  impl: mcpToolTest('listBooklets', asIs(), { expectedResult: contains('commonDslQuizzes') })
 })
 
 Test('mcpTest.bookletsContent', {
@@ -48,11 +75,11 @@ Test('mcpTest.bookletsContent', {
   impl: mcpToolTest({
     tool: 'bookletsContentTool',
     args: asIs({booklets: 'tgpPrimer'}),
-    expectedResult: contains('secondParamAsArray', { allText: '%stdout/result/content/text%' })
+    expectedResult: contains('secondParamAsArray')
   })
 })
 
-Test('mcpTest.snippet.pipeline', {
+Test('mcpTest.snippet', {
   HeavyTest: true,
   impl: mcpToolTest({
     tool: 'runSnippet',
@@ -60,7 +87,7 @@ Test('mcpTest.snippet.pipeline', {
         profileText: `pipeline('%$people%', '%name%')`,
         setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`
     }),
-    expectedResult: contains('Homer', { allText: '%stdout/result/content/text%'} )
+    expectedResult: contains('Homer')
   })
 })
 

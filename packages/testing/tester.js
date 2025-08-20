@@ -151,7 +151,8 @@ const printFail = line => {
   lastLineLength = 0
 }
 
-export async function runTests({specificTest,show,pattern,notPattern,take,repo,showOnly,includeHeavy}={}) {
+export async function runTests({specificTest,show,pattern,notPattern,take,repo,showOnly,includeHeavy,action}={}) {
+    showOnly = showOnly || action
     specificTest = specificTest && decodeURIComponent(specificTest).split('>').pop()
 
     let tests = globalsOfType(Test)
@@ -189,7 +190,20 @@ export async function runTests({specificTest,show,pattern,notPattern,take,repo,s
         const runningMsg = `${counter}: ${testID} started`
 
         let res
-        if (!showOnly) {
+        if (showOnly) {
+            res = await runTest(testID, { fullTestId, singleTest })
+            if (action) {
+                const actionId = action.split(':')[0]
+                const actionParam = action.slice(actionId.length+1)
+                const actionProxy = dsls.test['ui-action'][actionId]
+                if (actionProxy) {
+                    const ctx = new Ctx().setVars({win: globalThis})
+                    await actionProxy.$run(actionParam).exec(ctx)
+                } else {
+                    logError(`can not find ui-action ${actionId}`)
+                }
+            }
+        } else if (!showOnly) {
             !isNode && (document.getElementById('progress').innerHTML = runningMsg)
             printLive(runningMsg)
             res = await runTest(testID, { fullTestId, singleTest })

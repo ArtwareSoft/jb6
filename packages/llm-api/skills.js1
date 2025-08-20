@@ -1,5 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
-import '@jb6/llm-guide/autogen-dsl-docs.js'
+import '@jb6/llm-guide/guide-generator.js'
 import '@jb6/llm-api'
 import '@jb6/common'
 

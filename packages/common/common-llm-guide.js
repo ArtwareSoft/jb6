@@ -9,9 +9,11 @@ const {
   'llm-guide': { Doclet, Booklet,
     doclet: { howTo },
     booklet: { booklet },
-    guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax }, 
+    guidance: { solution, doNot, bestPractice, mechanismUnderTheHood, illegalSyntax, proceduralSolution, buildQuiz }, 
     explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology },
-    problemStatement: {problem}
+    problemStatement: {problem},
+    validation: { multipleChoiceQuiz, predictResultQuiz, explainConceptQuiz },
+    step: { step }
   },
   mcp: { 
     Tool,
@@ -251,228 +253,308 @@ Doclet('variableUsage', {
   )
 })
 
-Doclet('learnCommonDsl', {
-  description: 'Master common DSL through structured learning with validation checkpoints',
-  impl: howTo(
-    problem({
-      statement: 'Learn common DSL systematically through hands-on practice and self-validation',
-      intro: 'The common DSL is the foundation of data processing in TGP. This structured learning path builds competency through progressive steps with quiz validation at each checkpoint.'
-    }),
-    proceduralSolution('Progressive Common DSL Mastery', {
-      usefulPoints: [
-        explanation('HOW TO USE THIS LEARNING SYSTEM WITH TURN BATCHING:'),
-        methodology('BATCH PREPARATION PHASE:'),
-        methodology('1. Read ALL steps and validation quizzes FIRST - get complete overview'),
-        methodology('2. Prepare prediction document: Write down ALL quiz predictions at once'),
-        methodology('3. Group MCP tools by logical batches (e.g., steps 1-3, steps 4-6, steps 7+)'),
-        methodology('4. Plan verification sequence: Know which tools to run in which order'),
-        methodology('BATCH EXECUTION PHASE:'),
-        methodology('5. Execute entire MCP tool batch in single turn (runSnippets for multiple tests)'),
-        methodology('6. Compare ALL batch results with predictions simultaneously'),
-        methodology('7. Document insights and gaps for entire batch before next turn'),
-        methodology('8. Use scrambleText batch for all quiz answers in one operation'),
-        methodology('BATCH OPTIMIZATION STRATEGIES:'),
-        methodology('9. Use runSnippets() instead of individual runSnippet() calls'),
-        methodology('10. Combine related validation quizzes into single prediction session'),
-        methodology('11. Group probe debugging: test multiple scenarios in one batch'),
-        methodology('12. Prepare comprehensive setupCode once for multiple tests'),
-        performance('Batching maximizes learning per turn while maintaining predict-then-verify methodology'),
-        performance('Single turn can validate multiple concepts simultaneously')
-      ],
-      steps: [
-        step({
-          action: 'Master runSnippet and probe debugging - your primary learning tools',
-          purpose: 'These are the instruments you use to learn everything else - master them first',
-          details: 'Read the comprehensive guide on snippet execution and probe debugging methodology',
-          validation: [
-            multipleChoiceQuiz({
-              question: 'How do you properly place a probe inside a variable expression?',
-              options: [`'%$people%__'`,`'%$people/__%'`,`'%$people%,__'`,`probe('%$people%')`],
-              scrambledAnswer: '=cyJ'
-            }),
-            predictResultQuiz({
-              scenario: `Which shows data AFTER filtering: pipeline('%$people%', filter('%age% < 30'), __) or pipeline('%$people%', __, filter('%age% < 30'))?`,
-              context: 'Understanding probe cursor position',
-              scrambledAnswer: '==AdpBSZy9mZlJGIu9Wa0FmclB3bgUGa0BiclRnZhBSY0FGZgM3dvh2cgUmYvJHcg0CIl52bgQ3cylmR'
-            }),
-            explainConceptQuiz({
-              prompt: 'Describe the 4-step debugging workflow using snippets and probes',
-              scrambledKeyPoints: 'u9Wa0V3YlhXZgwWYulmZgwyZulGd0FWby9mZgQ3clRHIsMXZi9mcwBCa0l2dgMnbvlGdhJXZw9GI0NXZ0BCLlNmc192cgEGdhRGI5ZWayVmd',
-              scrambledScoringCriteria: '=Q3cylmZg42bpRXYjlmZpJXZ2BSZjJXdvNHIsAXZ0NHIoNWYlBCdhBSZi9mcwBCLn5WakxWa1JGIsFGduVWblJ3YulGIu9Wa05WZtBCdzVXT'
-            }),
-            predictResultQuiz({
-              scenario: `You run pipeline('%$people%', '%fullName%', count()) and get an error. What's your FIRST debugging step?`,
-              context: 'Systematic debugging approach',
-              scrambledAnswer: '==QZjJXdvNHIhRXYkBSemlmclZHIvRHIncCIuVnU'
-            })
-          ],
-          mcpTool: getFilesContent('packages/core/llm-guide/how-to-use-snippet-and-probe.js', '%$REPO_ROOT%'),
-          points: [
-            explanation('Snippet and probe are your primary learning instruments - master these before learning DSL'),
-            methodology('Always verify data source first, then build incrementally with probes'),
-            syntax('probe as cursor (__)', 'place exactly where you want to inspect data flow'),
-            performance('Systematic debugging prevents errors and builds understanding'),
-            comparison('guessing and checking', {
-              advantage: 'methodical approach saves time and builds expertise'
-            })
-          ]
-        }),
-        step({
-          action: 'Understand the DSL landscape and component organization',
-          purpose: 'Get comprehensive context before diving into specific components',
-          details: 'Load the complete common DSL documentation including TGP model, component definitions, and usage patterns',
-          validation: [
-            explainConceptQuiz({
-              prompt: 'What is a TGP type and how does it enable safe component composition?',
-              scrambledKeyPoints: '=cmbpRXdvJHI05WZu9Gct92YgwibvlGdpN3bw12bjBCTTRULzN3byNGIskHdlZWYzBSZwlHdgwibvlGdhpXauF2Zy9GIulWYt9GZ',
-              scrambledScoringCriteria: 'zVGb1JHIu9Wa0l2cvBXbvNGIk5WYgwyc0lmZl5WZiBSe0VmZhNHIs42bpRXYjlmZpN3chx2YgUGc5RHIulWYsBHelBCdzVXT'
-            }),
-            multipleChoiceQuiz({
-              question: 'What are the main TGP types in the common DSL?',
-              options: ['data, boolean, action','pipeline, filter, count','source, transform, aggregate','input, process, output'],
-              scrambledAnswer: 'u9Wa0NWYgwibhVGbv9mYgwSY0FGZ'
-            })
-          ],
-          mcpTool: dslDocs('common', '%$REPO_ROOT%'),
-          points: [
-            explanation('Understanding DSL organization prevents confusion when looking for specific components'),
-            methodology('Always start with the big picture before diving into details'),
-            performance('dslDocs provides complete context - component definitions, tests, and relationships')
-          ]
-        }),
-        step({
-          action: 'Master pipeline fundamentals through hands-on practice',
-          purpose: 'Pipeline is the core pattern - all other operations build on this foundation',
-          details: 'Practice basic pipeline operations: property extraction, simple transformations, and data flow',
-          validation: [
-            predictResultQuiz({
-              scenario: `pipeline([{name: 'Alice', dept: 'Engineering'}, {name: 'Bob', dept: 'Sales'}], '%dept%')`,
-              context: 'Array of employee objects with name and dept properties',
-              scrambledAnswer: 'ddyclxWYTdCIscyZulmclVmbpdmbFdyW'
-            })
-          ],
-          mcpTool: runSnippet({
-            profileText: `pipeline('%$people%', '%name%')`,
-            setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
-            filePath: 'packages/common/common-tests.js',
-            repoRoot: '%$REPO_ROOT%'
-          }),
-          points: [
-            explanation('Pipeline creates data flow - source flows through operations to produce result'),
-            syntax('pipeline(source, operator1, operator2, ...)', 'chains operations left to right'),
-            whenToUse('Any time you need to transform or process data'),
-            performance('Foundation pattern for all data operations in common DSL')
-          ]
-        }),
-        step({
-          action: 'Learn filtering and conditional operations',
-          purpose: 'Filtering is essential for data selection and conditional processing',
-          details: 'Practice filter operations with expressions and boolean components',
-          validation: [
-            predictResultQuiz({
-              scenario: `pipeline('%$employees%', filter('%salary% > 50000'), count())`,
-              context: 'employees = [{name: "A", salary: 60000}, {name: "B", salary: 40000}, {name: "C", salary: 70000}]',
-              scrambledAnswer: '==gM'
-            }),
-            multipleChoiceQuiz({
-              question: 'How do you combine multiple filter conditions?',
-              options: ['filter("%age% < 30 && %dept% == Sales")','filter(and("%age% < 30", "%dept% == Sales"))','filter("%age% < 30").filter("%dept% == Sales")','Both B and C are correct'],
-              scrambledAnswer: '0NWZyJ3bjBSZyFGIDBCZuFGICBCa09mQ'
-            })
-          ],
-          mcpTool: runSnippet({
-            profileText: `pipeline('%$people%', filter('%age% < 30'), '%name%')`,
-            setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
-            filePath: 'packages/common/common-tests.js',
-            repoRoot: '%$REPO_ROOT%'
-          }),
-          points: [
-            explanation('Filter selects items based on conditions - only matching items continue through pipeline'),
-            syntax('filter("expression")', 'uses string expressions for conditions'),
-            syntax('filter(boolean_component)', 'can use boolean<common> components like and(), or()'),
-            methodology('Chain multiple filters OR use boolean components for complex conditions'),
-            performance('Filter early in pipelines to reduce data processing in later operations')
-          ]
-        }),
-        step({
-          action: 'Master aggregation operations (count, join, groupBy)',
-          purpose: 'Aggregations transform collections into summary data - essential for analytics',
-          details: 'Practice counting, joining, and basic grouping operations',
-          validation: [],
-          mcpTool: runSnippet({
-            profileText: `pipeline('%$people%', filter('%age% < 30'), '%name%', join())`,
-            setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
-            filePath: 'packages/common/common-tests.js',
-            repoRoot: '%$REPO_ROOT%'
-          }),
-          points: [
-            explanation('Aggregations reduce collections to single values or transformed structures'),
-            syntax('count()', 'returns number of items'),
-            syntax('join(separator)', 'concatenates strings with separator (default comma)'),
-            syntax('splitByPivot(property)', 'groups items by property values'),
-            whenToUse('count for totals, join for display, groupBy for analysis'),
-            performance('Aggregations are final operations - they end the data flow')
-          ]
-        }),
-        step({
-          action: 'Learn advanced groupBy operations for data analytics',
-          purpose: 'GroupBy is the most powerful common DSL feature for analytical data processing',
-          details: 'Master splitByPivot and enrichGroupProps for complex data analysis',
-          validation: [
-            predictResultQuiz({
-              scenario: `pipeline('%$orders%', splitByPivot('status'), enrichGroupProps(group.count()))`,
-              context: 'orders = [{status: "pending"}, {status: "complete"}, {status: "pending"}]',
-              scrambledAnswer: 'd1XMgoDduV3bjBCLiUGdlxGct92YiAiOzVHdhR3c7BCL9JDI6Qnb192YgwiIn5Wak5WZwJCI6MXd0FGdzt3W'
-            })
-          ],
-          mcpTool: runSnippet({
-            profileText: `pipeline('%$sales%', splitByPivot('region'), enrichGroupProps(group.count(), group.sum('amount')))`,
-            setupCode: `Const('sales', [{region: 'North', amount: 100}, {region: 'South', amount: 200}, {region: 'North', amount: 150}])`,
-            filePath: 'packages/common/common-tests.js',
-            repoRoot: '%$REPO_ROOT%'
-          }),
-          points: [
-            explanation('GroupBy operations enable analytical data processing - the foundation of reporting'),
-            syntax('splitByPivot(property)', 'creates groups based on unique values of property'),
-            syntax('enrichGroupProps(group.count(), group.sum(prop))', 'adds calculated fields to each group'),
-            methodology('Build groupBy in layers: split into groups, then enrich with calculations'),
-            performance('Essential for dashboard data, reports, and analytical summaries'),
-            comparison('manual JavaScript grouping', { advantage: 'declarative, reusable, more maintainable' })
-          ]
-        }),
-        step({
-          action: 'Master debugging with probe (__) for understanding data flow',
-          purpose: 'Debugging skills are essential for developing and troubleshooting complex pipelines',
-          details: 'Learn to use probe cursor to inspect data at any point in pipeline execution',
-          validation: [],
-          mcpTool: runSnippet({
-            profileText: `pipeline('%$people%', filter('%age% < 30'), __, '%name%', join())`,
-            setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
-            filePath: 'packages/common/common-tests.js',
-            repoRoot: '%$REPO_ROOT%',
-          }),
-          points: [
-            explanation('Probe (__) reveals data at any point - your debugging superpower'),
-            syntax('__', 'place anywhere in pipeline to inspect data flow'),
-            methodology('Use systematically: verify input, test each operation, confirm output'),
-            whenToUse('debugging complex pipelines, learning new operations, validating data transformations'),
-            performance('Probe shows execution metadata, timing, and component visits')
-          ]
-        })
-      ],
-      summaryPoints: [
-        explanation('This systematic predict-then-verify methodology prevents passive learning'),
-        explanation('Procedural learning builds competency systematically - each step enables the next'),
-        evidence('Quiz validation ensures genuine understanding before progressing'),
-        methodology('Use scrambleText to check quiz answers without seeing them during learning'),
-        performance('This structured approach reduces learning time and increases retention')
-      ]
-    })
-  )
+Doclet('learningMethodologyQuiz', {
+  description: 'Quiz: Predict-then-verify learning methodology',
+  impl: howTo(problem('Validate understanding of systematic learning methodology'), {
+    testLlmUnderstanding: [
+      multipleChoiceQuiz({
+        question: 'What is the correct order for the predict-then-verify methodology?',
+        options: ['Read question, check answer, make prediction','Make prediction, read question, check answer','Read question, make prediction, check answer','Check answer, make prediction, read question'],
+        scrambledAnswer: 'IXZ3NnbhByajVGajBCLu9Wa0NWakVmcwBSZrFWbgwibvlGdzVWdxBCZhVmUgozQ'
+      }),
+      explainConceptQuiz({
+        prompt: 'Why *For LLM* is active prediction more effective than passive reading for learning? use internet search if you do not know the answer',
+        scrambledKeyPoints: '==gbvlGdwJ3bzJWYgUmdpN3chBHIzV3cyVmdgcmbpRmbhR3cyVGZuVHIm9GIu9Wa0FWdsFmdlBCbhNWa0lmcjByclxmYh5WZgQmbhBCL0J3bmZWZgg2Z19mcoRHIn5Wak92YuVGI5J3btVWbgIXZn52byR3cgMXZ0FWZyNGIsMHchdGIldGZlx2dv52agMHbhVmdlJHIsU2YpR3YhJHcgwWY2VWayRXZyBycldWYn5WZgwyZul2czV2YvJHcgUmdpRXaud2bjBiclBXZlRGIzV2Yy9mZg42bpR3YpRWZyBHIlZXa0NWQ',
+      }),
+      multipleChoiceQuiz({
+        question: 'When should you use scrambleText in the learning process?',
+        options: ['Before making any predictions','After making predictions to check answers','Instead of making predictions','Only for final verification'],
+        scrambledAnswer: 'Mncld3cuFGIrNWZoNGIvRHIz52bpR3YpRWZyBHIn5WarFWbgIXZ0ZWQgojQ'
+      }),
+      explainConceptQuiz({
+        prompt: 'Describe the benefit *for LLM* of batching MCP tool calls during learning. use internet search if you do not know the answer',
+        scrambledKeyPoints: '==gLn5WayVGa0F2Zg42bpRXYtJ3bm5WagM2bo1CZhBibhhGdgIXZoRXYyByZulmbuFGbwBCajJXYlNXZyByYpRXYtVGdzl3cgMXZnFmc192YuVGIk5WYgwSZnF2c1BSZjJXdvNXZyByclpXatlGdw9GIsMXZpJXZ1FHIkVGdhxWZyBycz9mcjFGI0hXZ052bjBiclRHdlJGIz5WahRnbpFWbgwCZhVGayVmdvByZul2Y1RWZyBSeiBSej5WZpNWamZWZgMXZ29mcw1WagMHbsF2Ygw2bvRHIQNUTgcmbph2Y0FmQ',
+      })
+    ]
+  })
+})
+
+Doclet('snippetDebuggingQuiz', {
+  description: 'Quiz: Master runSnippet and probe debugging fundamentals',
+  impl: howTo(problem('Validate understanding of runSnippet and probe debugging tools'), {
+    testLlmUnderstanding: [
+      multipleChoiceQuiz({
+        question: 'How do you properly place a probe inside a pipeline to inspect data after filtering?',
+        options: [`pipeline('%$people%', filter('%age% < 30'), __, '%name%')`,`pipeline('%$people%', filter('%age% < 30'), __'%name%')`, 'both'],
+        scrambledAnswer: '=4ydvxmZgEGdhRGI0NWZwNnbpByb0BibvlGdhN2bsBSZtF2cgUGa0BCdhBSZi9mcwBSZoRHIlNWYsBHIzVGehRnb5NHIoR3biBybzByXfxCIvRHIs81XsAyc0JXZ252bjBCdhhGdgg2Y0FGcgEGIzdSZyVGaUBiLwVGdzBSZulGblBXawBSYgQ3buBCLu9Wa0l2cvBHIy92cyV3YgMXag81XgU2c1F2YlJGIrJ3b3BCa09mQ'
+      }),
+      predictResultQuiz({
+        scenario: `What does this probe show: pipeline('%$people%', filter('%age% < 30'), __ '%name%')?`,
+        context: `Const('people', [{name: "Homer", age: 42}, {name: "Bart", age: 12}, {name: "Lisa", age: 10}])`,
+        scrambledAnswer: '==QX9BTMgoTZnFGIsISYzlGTiAiOl1WYutHIs0nMxAiOldWYgwiI0JXYCJCI6UWbh52ebBiOwMDIyVGZuVHIlxGcvVGcgQWZyVGdslmZgY2bgkXYyJXQ'
+      }),
+      explainConceptQuiz({
+        prompt: 'Describe the 4-step systematic debugging workflow using runSnippet and probe',
+        scrambledKeyPoints: '==gbvlGd1x2bzBSemlmclZHIvRHIzVmYvJHcggGdpdHI0NXZ01SZyBCZuFGIlV3czlGI4lmRg4CNg42bpRXYj9Gbg0WZsJ2byBHI5ZWa05WZklGIvRHIzRHb1NXZyBSZi9mcwBSZ6lHbh5WQg4yMgMHdul2bwBCbhNWa0lmcjBCdhByclJ2byBHIlNWYsBFIuIDIlV3czlGIlNWdk9mcwVmcg8GdgQXZwBXauNHIuVnUg4SM',
+        scrambledScoringCriteria: 'l1YgwWa05WZnByYulmZgM3dvh2cgQXYjl2YulGIsFGduVWblJ3YulGIu9Wa05WZtBCdzVGdgwibvlGdhJXZgE2Yy9Gcg42bpRXYjlmcp5WYyVmdgUGZy'
+      }),
+      predictResultQuiz({
+        scenario: `You run pipeline('%$people%', '%fullName%', count()) and get an error. What's your FIRST debugging step?`,
+        context: 'Systematic debugging approach',
+        scrambledAnswer: 'pkCK05WdvNGIscyJgwyXfBCLncCKl5WasVGcpBHI6U2YyV3bzBSY0FGZgQXYgUmYvJHcgU2YhxGU'
+      })
+    ]
+  })
+})
+
+Doclet('dslLandscapeQuiz', {
+  description: 'Quiz: Understanding DSL organization and TGP types',
+  impl: howTo(problem('Validate understanding of common DSL structure and component organization'), {
+    testLlmUnderstanding: [
+      multipleChoiceQuiz({
+        question: 'What are the three main TGP types in the common DSL?',
+        options: ['data, boolean, action','pipeline, filter, count','source, transform, aggregate','input, process, output'],
+        scrambledAnswer: 'u9Wa0NWYgwibhVGbv9mYgwSY0FGZ'
+      }),
+      explainConceptQuiz({
+        prompt: 'What is a TGP type and how does it enable safe component composition?',
+        scrambledKeyPoints: '=MXZulGblBXawBibpBiclhGdld2b0BCZlR3Yl5mbvNGIlJGIuF2YgMHduVmbvBXbvNGIlxmYpRXYw12bjBSes52bgcmbpJXdz5WZgknYg42bpRXaz9Gct92YgUmZhNXLlBXe0ByZulGbiFmblBCLzRnbl52bw12bjBicvZGIzR3YhJHdu92YgQXdwRXdv9Cd1BnbpBSZulmZlRGIzVGc5RHIQdEV',
+        scrambledScoringCriteria: 'uUWbpRnb1JHIuFGa0BiclhGdhJHIl1Wa0Bibnl2clRGI0FGIzVGajRXYtNXatBSZwlHdgcmbph2Y0F2YgknYg42bpRXaz9Gct92YgUmZhNHIzVGbiFmblBSe0VmZhNHIlBXe0BycphGVg4yc5FmcyFGIhRXYkBCa0l2dgsmcvdHIpgCduV3bjBCZuFGIpgiclRHbpZGIltWasBycu9Wa0FmclB3bg4jbv1WbvNGPhRXYkBSZslGa3BCLzRnbl52bw12bjByZul2Y1R2byBXLuFWZs92biBSZ2lWZjVmcgkHbu9GIpgicvBCZuFGIpgCZuFGIltWasBycu9Wa0FmclB3bg4WYlx2bvJGI0FGa0ByclJXdz5WZgUGc5RHI+42bt12bjxjbhVGbv9mYgEGIsUGbw1WY4VGIy9mRg4yclBXe0BSY0FGZgUGbilGdhBXbvNGIlRWa29mcwBCZuFGI0NWZwhXZgMHduVmbvBXbvNGI0FGa0ByZulGdhRWasFmdgknYgMncvJnclBSZtlGduVncgMHduVmdlJHcgQXSg4yc5F2dgwWdmdmbp5WYl1GIulGIkVmbpJWbvNGIlJGI5xmbvBibhNGIzRnbl52bw12bjByclJXdz5WZgQXYoRHItVGdzl3cgUGc5RHIjlGduFWblNHIhBycpBSZwlHdgkSZslmZvJHctQnbl52bw12bjByYpJXZuV2ZtUGc5RFKgA1RUBSQ'
+      }),
+      multipleChoiceQuiz({
+        question: 'Which tool provides complete DSL context including component definitions, tests, and relationships?',
+        options: ['runSnippet()','dslDocs()','tgpModel()','getFilesContent()'],
+        scrambledAnswer: '==QKowWZk9WTwdGdgozQ'
+      })
+    ]
+  })
+})
+
+Doclet('pipelineFundamentalsQuiz', {
+  description: 'Quiz: Pipeline operations and data flow understanding',
+  impl: howTo(problem('Validate understanding of pipeline fundamentals and data flow'), {
+    testLlmUnderstanding: [
+      predictResultQuiz({
+        scenario: `pipeline([{name: 'Alice', dept: 'Engineering'}, {name: 'Bob', dept: 'Sales'}], '%dept%')`,
+        context: 'Array of employee objects with name and dept properties',
+        scrambledAnswer: 'dJyclxWYTJCIsIyZulmclVmbpdmbFJyW'
+      }),
+      predictResultQuiz({
+        scenario: `pipeline('%$people%', '%name%')`,
+        context: `Const('people', [{name: "Homer", age: 42}, {name: "Bart", age: 12}, {name: "Lisa", age: 10}])`,
+        scrambledAnswer: '==QXiE2cpxkIgwiI0JXYCJCIsIicl12bIJyW'
+      }),
+      explainConceptQuiz({
+        prompt: 'How does data flow through a pipeline with multiple operations?',
+        scrambledKeyPoints: 'tN3chVGZl9GMgUmc192cgEGdhRGI5ZWayVmdz9GI0NXZ0BCLn5WakNHI0V2ZgcXZuVmdvdHIhRXYkByeulmZpJ3YvRHI',
+        scrambledScoringCriteria: 'y9GIulWYsBSZyFGdz9GI0NXZ0BCLgsFmclZXZmJCL5RHIsUGchRGI5ZWayVmdz9GI0NXZ0BCLlNmc192cgEGdhRGI5ZWayVmd'
+      }),
+      multipleChoiceQuiz({
+        question: 'What happens to data as it flows through a pipeline?',
+        options: ['Data is copied at each step','Data is transformed by each operation in sequence','All operations run in parallel','Data is stored in variables between steps'],
+        scrambledAnswer: 'ddyclxWYg0CInwSa4VWZuFWat52YlJ3cgUGc5RHIsMXZi9mcwBSZzJXdvNHIhRXYkBSemlmclZHI'
+      })
+    ]
+  })
+})
+
+Doclet('filteringOperationsQuiz', {
+  description: 'Quiz: Filtering expressions and boolean components',
+  impl: howTo(problem('Validate understanding of filtering operations and conditional logic'), {
+    testLlmUnderstanding: [
+      predictResultQuiz({
+        scenario: `pipeline('%$employees%', filter('%salary% > 50000'), count())`,
+        context: `Const('employees', [{name: "A", salary: 60000}, {name: "B", salary: 40000}, {name: "C", salary: 70000}])`,
+        scrambledAnswer: '==gM'
+      }),
+      multipleChoiceQuiz({
+        question: 'How do you combine multiple filter conditions?',
+        options: ['filter("%age% < 30 && %dept% == Sales")','filter(and("%age% < 30", "%dept% == Sales"))','pipeline(filter("%age% < 30"), filter("%dept% == Sales"))','Both B and C are correct'],
+        scrambledAnswer: '0NWZyJ3bjBSZyFGICBCa09mQ'
+      }),
+      predictResultQuiz({
+        scenario: `pipeline('%$people%', filter('%age% < 30'), '%name%')`,
+        context: `Const('people', [{name: "Homer", age: 42}, {name: "Bart", age: 12}, {name: "Lisa", age: 10}])`,
+        scrambledAnswer: '==QXiE2cpxkIgwiI0JXYCJyW'
+      }),
+      explainConceptQuiz({
+        prompt: 'Why should you filter early in pipelines rather than late?',
+        scrambledKeyPoints: '=U2ZhNXdgkncv1WZtBCZuFGIlNmbh1mcvZmclBHIn5Wa29mcw1Wagwycu9Wa0FmclB3bgQnblVXclNnY1NHIy9mZgUWb1x2b2BSY0FGZgU2Y1RWZyByb0Bycl5WasVGcpBHIulGI5xmchVGIyVGdslmR',
+        scrambledScoringCriteria: 'y9GIulWYsBSZyFGdz9GI0NXZ0BCLn5WakNHI0V2ZgcXZuVmdvdHIhRXYkByeulmZpJ3YvRHI0V2ZgcXZuVmdvdHI'
+      })
+    ]
+  })
+})
+
+Doclet('aggregationOperationsQuiz', {
+  description: 'Quiz: Count, join, and basic aggregation operations',
+  impl: howTo(problem('Validate understanding of aggregation operations and their usage'), {
+    testLlmUnderstanding: [
+      predictResultQuiz({
+        scenario: `pipeline('%$people%', filter('%age% < 30'), '%name%', join())`,
+        context: `Const('people', [{name: "Homer", age: 42}, {name: "Bart", age: 12}, {name: "Lisa", age: 10}])`,
+        scrambledAnswer: 'QXiE2cpxkIgwiL0VWayVGZu52alZCIsISYq5mdpNGdh1CIuMDIsFGduVWblJ3YulGIyFmYlRGZuVEI'
+      }),
+      predictResultQuiz({
+        scenario: `pipeline('%$people%', '%name% (%age%)', join(' | '))`,
+        context: `Const('people', [{name: "Homer", age: 42}, {name: "Bart", age: 12}])`,
+        scrambledAnswer: 'lVGbpJCI6MXdvlGIpgyJulmZ19GMgcCIq9WazJCI6cHdpd2bsh2YgoDIq9WazJCIhRXYkBSemlmclZHI'
+      }),
+      multipleChoiceQuiz({
+        question: 'What happens when you use count() in the middle of a pipeline vs at the end?',
+        options: ['No difference - count() works the same anywhere','count() in middle returns array length, at end returns final count','count() in middle ends the pipeline, at end processes all items','count() in middle counts items, at end counts characters'],
+        scrambledAnswer: 'ddyclxWYg0CInwSa4VWZuFWat52YlJ3cgUGc5RHIlNmc192cgEGdhRGI5ZWayVmdgUGdpN3bw12YgE2Yy9GcgUmcvBHI'
+      }),
+      explainConceptQuiz({
+        prompt: 'Why are aggregations called "final operations" in pipelines?',
+        scrambledKeyPoints: 'z1WZ0lGIsFWdklmdpRmbpByczV2YvJHcg8GdgkHdpxWaiFGIzdSZulGblBXawBSZoRHIn5Wak5WZgwyclVHbhZHIlx2Zul2cg8GdulGIzlXYyJXYg0mcvZ2cuFmc0BSelhGdgU2c1F2YlJGIz52bpRXYyVGcvBCbh5WamBSZyFGIz52bpRXYnVmcndWQ',
+        scrambledScoringCriteria: 'l1YgwWa05WZnByYulmZgM3dvh2cgQXYjl2YulGIsFGduVWblJ3YulGIu9Wa05WZtBCdzVGdgwibvlGdhJXZgE2Yy9Gcg42bpRXYjlmcp5WYyVmd'
+      })
+    ]
+  })
+})
+
+Doclet('advancedGroupByQuiz', {
+  description: 'Quiz: splitByPivot and enrichGroupProps for analytics',
+  impl: howTo(problem('Validate understanding of advanced groupBy operations for data analysis'), {
+    testLlmUnderstanding: [
+      predictResultQuiz({
+        scenario: `pipeline('%$orders%', splitByPivot('status'), enrichGroupProps(group.count()))`,
+        context: `Const('orders', [{status: "pending"}, {status: "complete"}, {status: "pending"}])`,
+        scrambledAnswer: 'dd1XMgoDduV3bjBCLiUGdlxGct92YiAiOzVHdhR3c7BCL9JDI6Qnb192YgwiIn5Wak5WZwJCI6MXd0FGdzt3W'
+      }),
+      predictResultQuiz({
+        scenario: `pipeline('%$sales%', splitByPivot('region'), enrichGroupProps(group.count(), group.sum('amount')))`,
+        context: `Const('sales', [{region: "North", amount: 100}, {region: "South", amount: 200}, {region: "North", amount: 150}])`,
+        scrambledAnswer: 'gUGchRGI5ZWayVmdgUGdpd2bsh2YgE2Yy9GcgUmcvBHI0V2ZgcXZuVmdvdHIhRXYkByeulmZpJ3YvRHI0V2ZgwWa05WZnByYulmZgM3dvh2YgM3dvh2Y'
+      }),
+      explainConceptQuiz({
+        prompt: 'How do you add multiple calculated fields to groups in one enrichGroupProps operation?',
+        scrambledKeyPoints: 'gUGc5RHI0N3bINnMgoDduV3bjBCLn5WakNHIsUGchRGI5ZWayVmdz9GI0NXZ0BCLn5WakNHI0V2ZgcXZuVmdvdHIhRXYkByeulmZpJ3YvRHI',
+        scrambledScoringCriteria: 'l2cgQmbhBCcpdmbpdHdhR3c7BCL5RHIk5WYgwyJuVGZuVmciBielx2Yy9GcgUGchRGI5ZWayVmdz9GI0NXZ0BCLn5WakNHI0V2ZgcXZuVmdvdHI'
+      }),
+      multipleChoiceQuiz({
+        question: 'What is the correct order for groupBy operations?',
+        options: ['enrichGroupProps first, then splitByPivot','splitByPivot first, then enrichGroupProps','Order does not matter','Use them separately, never together'],
+        scrambledAnswer: 'ddyclxWYg0CInwSKo9WazJCI6MHdpd2bsh2YgE2Yy9GcgUmcvBHI0V2ZgcXZuVmdvdHIhRXYkByeulmZpJ3YvRHI'
+      })
+    ]
+  })
+})
+
+Doclet('buildComplexPipelineQuiz', {
+  description: 'Quiz: Build complex pipelines from business requirements using groupBy, filtering, and aggregation',
+  impl: howTo({
+    problem: problem('Challenge users to construct sophisticated pipelines from scratch, integrating multiple DSL concepts'),
+    guidance: [],
+    testLlmUnderstanding: [
+      buildQuiz({
+        requirements: `Build a sales analysis pipeline that:
+        1. Takes sales data with fields: region, amount, status
+        2. Filters for sales > $500
+        3. Groups by region
+        4. Adds count and sum for each region
+        5. Keeps only regions with more than 2 sales
+        6. Formats as "Region has X sales worth $Y"
+        7. Joins with " | " separator`,
+        context: `Const('sales', [
+          {region: "North", amount: 600, status: "completed"},
+          {region: "South", amount: 300, status: "completed"},
+          {region: "North", amount: 800, status: "completed"},
+          {region: "East", amount: 700, status: "completed"},
+          {region: "North", amount: 400, status: "pending"},
+          {region: "East", amount: 900, status: "completed"}
+        ])`,
+        scrambledSolution: '==QKpcCI8ByJo4WavpGIscCJggGdy92dgMXZsF2cgAychhGInACLpciMg4DIngiclRHbpZGIskSKnQnb19WbhdCKtV3cuAXdvJ3ZgwSKoQnb192YuAXdvJ3ZoMHcvJHUwV3bydEajlmcuVGIskyJu9WanVmcngCdvZXaQlnQ0lGbwNHIskyJwATNg4DIngiclRHbpZGIscyJoUmbpxWZwlGc',
+        scrambledHint: '=4WavpGIk5WYgQXYtJ3bmBSesxWYulmZgwycwV3bydGIyVGdslmZg4WZoRHIsMnbvlGdhdWZyd2ZhBCa0l2dgg2YpJnblBiblhGdgwCc19mcnBiblhGdgwSej5WZpNWamZWZgI3bmBCdzJXamBiclRHbpZGI6IXZi1WZtVmU'
+      }),
+      buildQuiz({
+        requirements: `Build an employee analysis pipeline:
+        1. Filter for active employees only (%active% == true)
+        2. Group by department  
+        3. Calculate count and maximum salary per department
+        4. Sort departments by max salary (highest first)
+        5. Take top 3 departments only
+        6. Format as "Department: X people, max salary $Y"`,
+        context: `Const('employees', [
+          {department: "Engineering", salary: 120000, active: true},
+          {department: "Sales", salary: 80000, active: true},
+          {department: "Engineering", salary: 95000, active: false},
+          {department: "Marketing", salary: 70000, active: true},
+          {department: "Engineering", salary: 110000, active: true},
+          {department: "Sales", salary: 85000, active: true}
+        ])`,
+        scrambledSolution: '==QKnQCI5JXYsF2cggXYtBCLlxGcvVGcgAiOnACLpMDK0NncpZGIskCKlNnclZXZyBCLpcSeyFGbhNFeh12JoQncvNHIskSKnknchxWYzdCK4FWbuAXdvJ3ZgwSKoQnb192YuAXdvJ3ZoMHcvJHUwV3bydEajlmcuVGIskyJ05WZtRnchBXZkdCK09mdpBVeCRXasB3cgwSKnUWdyRHI90DIngiclRHbpZGIscyJoUmbpxWZwlGc',
+        scrambledHint: '=MHdsV3clJHIn5Wa0lWbpxGIk5WYgwyckxWZpZGIkVGdhxWdjxWYjBSeiByZulGdy92cgwycu9Wa0FmclB3bgknQwV3bydGI6QXdvJWYgsmbphGV'
+      }),
+      buildQuiz({
+        requirements: `Create an advanced order analysis pipeline:
+        1. Filter for completed orders from 2024 onwards using and() logic
+        2. Group by month
+        3. Calculate count, total revenue, and customer list per month
+        4. Keep only months with revenue > $10,000
+        5. Sort by revenue (highest first)
+        6. Return the grouped data objects (no string formatting)`,
+        context: `Const('orders', [
+          {month: "Jan", status: "completed", date: "2024-01-15", total: 5000, customer: "A"},
+          {month: "Jan", status: "completed", date: "2024-01-20", total: 8000, customer: "B"},
+          {month: "Feb", status: "completed", date: "2024-02-10", total: 12000, customer: "C"},
+          {month: "Jan", status: "pending", date: "2024-01-25", total: 3000, customer: "D"}
+        ])`,
+        scrambledSolution: '==QKpgSZzJXZ2VmcgwSKn0WdzdCK0J3bzBCLpcCMwADMxAiPgcCKyVGdslmZgwSKpcycyVWbvR3c1N2JgwyJyVWbvR3c1N2Jo4WavpmLwV3bydGIskyJsFGdvR3Jo0Wdz5Cc19mcnBCLpgCduV3bj5Cc19mcnhycw9mcQBXdvJ3RoNWay5WZgwSKngGdu9WbngCdvZXaQlnQ0lGbwNHIskSKnISMw0SMw0CNyAjMiAiPgcCIsciIkVGdlxGct92YiASP9AyJoQmbhhiclRHbpZGIscyJoUmbpxWZwlGc',
+        scrambledHint: '==wZulWbh5GI5RnclB3byBHIy9mZgIXZ0VWbhJXYwByJzF2Jg4WYgMHZlVmbgkCKul2bq5Cc19mcnBiclJWbl1WZyBCLz52bpRXak52bjBSZsBXa0xWdtBicvZGIpgCZuFGIlNXV'
+      }),
+      buildQuiz({
+        requirements: `Build a product category analysis pipeline:
+        1. Filter products under $100
+        2. Group by category
+        3. Get count and list of product names per category (use proper group.join syntax)
+        4. Keep categories with 3+ products
+        5. Sort by count (ascending order)
+        6. Format as "Category: product1,product2,product3"`,
+        context: `Const('products', [
+          {category: "Electronics", price: 50, name: "Mouse"},
+          {category: "Books", price: 20, name: "Novel"},
+          {category: "Electronics", price: 80, name: "Keyboard"},
+          {category: "Electronics", price: 120, name: "Monitor"},
+          {category: "Books", price: 15, name: "Guide"},
+          {category: "Books", price: 25, name: "Manual"},
+          {category: "Clothing", price: 30, name: "Shirt"}
+        ])`,
+        scrambledSolution: '==QKnAiOnACLpcCduV3bjdCK0J3bzBCLpcyMg0jPgcCKyVGdslmZgwSKpcycl1WYOR3Y1R2byB3JgwyJl1WYudCKul2bq5Cc19mcnBCLpgCduV3bj5Cc19mcnhycw9mcQBXdvJ3RoNWay5WZgwSKnkncvdWZ0F2YngCdvZXaQlnQ0lGbwNHIskyJwATMgwDIngiclRHbpZGIscyJoUmbpxWZwlGc'
+      }),
+      buildQuiz({
+        requirements: `Performance optimization challenge - Build the MOST EFFICIENT pipeline:
+        1. Large dataset of 10,000+ sales records
+        2. Only interested in "electronics" category  
+        3. Group by sales representative
+        4. Calculate count and total amount for each rep
+        5. Keep reps with 10+ sales
+        6. Sort by total revenue (highest first)
+        
+        CRITICAL: Optimize for performance with large datasets`,
+        context: 'Large dataset with fields: category, rep, amount, date',
+        scrambledSolution: '=kSKoU2cyVmdlJHIskyJtV3cngCdy92cgwSKnATMg0jPgcCKyVGdslmZgwSKpcCduV3btF2Jo0Wdz5Cc19mcnBCLpgCduV3bj5Cc19mcnhycw9mcQBXdvJ3RoNWay5WZgwSKnAXZydCK09mdpBVeCRXasB3cgwSKnIycjlmbvJHdjVGblJCI90DIngiclRHbpZGIscyJoUmbpxWZwlGc',
+        scrambledHint: 'hRXYkByczVGbgM3clN2byBHIvRHIn5WawV3bydGIFJ1TGVkQgkncvdWZ0F2YgI3bmBiclRHbpZGIzlXY3xWQgESesJXYlBiclRHbpZEI6QHanl2culGI5V2S'
+      }),
+      explainConceptQuiz({
+        prompt: 'What are the key principles for building efficient groupBy pipelines? Explain the optimal operation sequence and why order matters.',
+        scrambledKeyPoints: '==QKl1WYudCK09mdpBVeCRXasB3cgknctlmY1R2bsBSZuFGI09mdtl2JpcCZhVWZyJGI5RnclRHIhRXYkBSemlmclZHI09mdpBVe0VGdhRWZyBCL5F2cuVGcn5WZ0BHI09WZ252bm5WSgE2Yy9GcgUmcvBHI6cmbpJWZ05WZgk3YuhWa05WZgI3YlJGI5NmblhGdgEGdhRGI',
+        scrambledScoringCriteria: 'Filter early for performance, proper sequence (filter→group→enrich→filter→sort), understanding of data flow, performance considerations for large datasets'
+      }),
+      explainConceptQuiz({
+        prompt: 'Explain the difference between filtering before vs after groupBy operations. When should you use each approach?',
+        scrambledKeyPoints: '=4WavpGIk5WYgUGchRGI5ZWayVmdgUGdpd2bsBSZyFGdz9GI0NXZ0BCLu9Wa0FGdhJXZgUGdpN3bw12YgE2Yy9GcgUmcvBHI6cmcl5WZpR3YsBiclRHbpZGI6UGdld2bkBCdhhGdgUGbllmZgM3clN2byBHI0V2ZgcXZuVmdvdHIhRXYkBSeul2Y1RWZyBi',
+        scrambledScoringCriteria: 'Understanding of performance implications, correct use cases for each approach, data volume considerations, logical vs performance filtering'
+      })
+    ]
+  })
+})
+
+Booklet('commonDslQuizzes', {
+  impl: booklet('learningMethodologyQuiz,snippetDebuggingQuiz,dslLandscapeQuiz,pipelineFundamentalsQuiz,filteringOperationsQuiz,aggregationOperationsQuiz,advancedGroupByQuiz,buildComplexPipelineQuiz')
 })
 
 Booklet('commonDslBooklet', {
-  impl: booklet(
-    'countUnder30,complexFilter,formatAndJoin,nestedPipeline,variableUsage,learnCommonDsl'
-  )
+  impl: booklet('countUnder30,complexFilter,formatAndJoin,nestedPipeline,variableUsage')
 })

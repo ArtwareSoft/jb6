@@ -1,19 +1,36 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
-import '@jb6/llm-guide/autogen-dsl-docs.js'
+import '@jb6/llm-guide/guide-generator.js'
 import '@jb6/core/misc/import-map-services.js'
 
-const { pathJoin, calcRepoRoot } = coreUtils
-  
 const {
     common: { Data,
-       data: { pipeline, split, join, first, list, dslDocs, tgpModel }
+       data: { pipeline, split, first, list, dslDocs, tgpModel, bookletsContent, pipe, keys,filter, join }
     },
     tgp: { any: { typeAdapter }},
     mcp: { Tool, 
       tool: { mcpTool }
      }
 } = dsls
+
+Tool('setupInfo', {
+  description: 'setUpInfo of the mcp server',
+  impl: mcpTool(() => `repoRoot: ${jb.coreRegistry.repoRoot}, jb6Root: ${jb.coreRegistry.jb6Root}`)
+})
+
+Tool('listBooklets', {
+  description: 'names of all booklets',
+  impl: mcpTool(pipe(tgpModel('llm-guide'), '%dsls/llm-guide/booklet%', keys(), filter('%% != booklet'), join()))
+})
+
+Tool('bookletsContentTool', {
+  description: 'the content of a booklet, which is the content of a list of doclets',
+  params: [
+    {id: 'booklets', as: 'text', description: 'comma delimited names'},
+    {id: 'maxLength', as: 'number', defaultValue: 20000}
+  ],
+  impl: mcpTool(bookletsContent('%$booklets%'), { maxLength: '%$maxLength%' })
+})
 
 Tool('repoRoot', {
   description: 'get repo root',
@@ -28,18 +45,12 @@ Tool('dslDocs', {
   impl: mcpTool(dslDocs('%$dsls%'))
 })
 
-Tool('tgpModelForAllDsls', {
-  description: 'get TGP (Type-generic component-profile) for all dsls in repo',
-  impl: mcpTool(tgpModel('allButTests'), { maxLength: 100000 })
-})
-
 Tool('tgpModel', {
   description: 'get TGP (Type-generic component-profile) model relevant for dsls',
   params: [
     {id: 'forDsls', as: 'string', defaultValue: 'common', description: 'comma separated e.g. test,llm-guide,common' },
-    {id: 'includeLocation', as: 'boolean', byName: true}
   ],
-  impl: mcpTool(tgpModel('%$forDsls%', { includeLocation: '%$includeLocation%' }))
+  impl: mcpTool(tgpModel('%$forDsls%'))
 })
 
 Tool('runSnippet', {

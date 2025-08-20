@@ -160,7 +160,7 @@ ReactiveOperator('rx.flatMap',{
   }
 })
 
-ReactiveOperator('rx.concatMap',{
+ReactiveOperator('rx.concatMap', {
   category: 'operator,combine',
   params: [
     {id: 'source', type: 'reactive-source', dynamic: true, mandatory: true, description: 'keeps the order of the results, can return array, promise or callbag'},
@@ -197,6 +197,39 @@ ReactiveOperator('rx.take',{
   impl: (ctx, {count}) => jb.rxUtils.take(count(), ctx)
 })
 
+ReactiveOperator('rx.splitToBuffers',{
+  params: [
+    {id: 'count', as: 'number', dynamic: true, mandatory: true}
+  ],
+  impl: (ctx, {count: countF}) => source => (start, sink) => {
+    const count = countF(ctx)
+    if (start !== 0) return
+    let sourceTalkback, buffer = []
+    function talkback(t, d) {
+      if (t === 2)
+        sourceTalkback(t, d)
+    }
+    source(0, function take(t, d) {
+      if (t === 0) {
+        sourceTalkback = d
+        sink(0, talkback) // sink will talkback directly to our source
+      } else if (t === 1 && d) {
+          buffer.push(d)
+          if (buffer.length >= count) {
+            sink(t, ctx.dataObj({buff: buffer.map(x=>x.data)}, buffer.pop().vars))
+            buffer = []
+          }
+      } else if (t === 2) {
+        if (buffer.length) {
+          sink(1, ctx.dataObj({buff: buffer.map(x=>x.data)}, buffer.pop().vars))
+          buffer = []
+        }       
+        sink(t, d)
+      }
+    })
+  }
+})
+
 ReactiveOperator('rx.last',{
   category: 'filter',
   impl: () => jb.rxUtils.last()
@@ -214,6 +247,15 @@ ReactiveOperator('rx.var',{
       sink(t, t === 1 ? d && {data: d.data, vars: {...d.vars, [name()]: value(d)}} : d)
     })
   })
+})
+
+ReactiveOperator('rx.asyncVar',{
+  description: 'define an immutable variable that can be used later in the pipe',
+  params: [
+    {id: 'name', as: 'string', dynamic: true, mandatory: true, description: 'if empty, does nothing'},
+    {id: 'value', dynamic: true, defaultValue: '%%', mandatory: true}
+  ],
+  impl: rx.innerPipe(rx.mapPromise('%$value()%'), rx.var('%$name()%'))
 })
 
 ReactiveOperator('rx.log',{
@@ -234,6 +276,17 @@ ReactiveOperator('rx.consoleLog',{
 })
 
 jb.rxUtils = {
+  pipe(...cbs) {
+    if (!cbs[0])
+      logError('rx.pipe, no reactive source for pipe',{source: cbs[0]})
+    return cbs.slice(1).reduce((res,cb) => {
+      const pipe = cb(res)
+      if (!pipe) debugger
+      pipe.ctx = cb.ctx
+      Object.defineProperty(pipe, 'name',{value: 'register ' + cb.name})
+      return pipe
+    }, cbs[0])
+  },
   fromIter: iter => (start, sink) => {
       if (start !== 0) return
       const iterator = typeof Symbol !== 'undefined' && iter[Symbol.iterator] ? iter[Symbol.iterator]() : iter
@@ -273,7 +326,7 @@ jb.rxUtils = {
           sink(t, d)
         } else if (t === 1) {
           if (condition(d)) sink(t, d)
-          else talkback(1)
+          else talkback(1) // get next
         }
         else sink(t, d)
       })

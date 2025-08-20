@@ -1,12 +1,11 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
-import '@jb6/llm-guide/autogen-dsl-docs.js'
 
 const { ptsOfType, globalsOfType, asJbComp } = coreUtils
 const { 
     tgp: { TgpType, any: {typeAdapter}, var: {Var} },
-    common: {
-      data: { pipeline, squeezeText, pipe, first}
+    common: { Data,
+      data: { pipeline, pipe, first}
     }
 } = dsls
   
@@ -77,6 +76,22 @@ export async function startMcpServer() {
     const transport = new StdioServerTransport()
     await mcpServer.connect(transport)
 }
+
+const squeezeText = Data('squeezeText', {
+  description: 'squeeze text by deleting parts in the middle',
+  params: [
+    {id: 'text', defaultValue: '%%'},
+    {id: 'maxLength', as: 'number', defaultValue: 20000},
+    {id: 'keepPrefixSize', as: 'number', defaultValue: 1000}
+  ],
+  impl: async (ctx, {text: _text, maxLength, keepPrefixSize}) => {
+    const text = await Promise.resolve(_text).then(x=>x||'').then(x=>typeof x == 'object' ? JSON.stringify(x) : x)
+    return (text.length > maxLength) ? [text.slice(0,keepPrefixSize),
+      `===text was originally ${text.length}. sorry, we had to squeeze it to ${maxLength} chars. ${text.length - maxLength} missing chars here====`,
+      text.slice(text.length-maxLength+keepPrefixSize)
+    ].join('') : text
+  }
+})
 
 Tool('mcpTool', {
   description: 'wrap text as mcp result',

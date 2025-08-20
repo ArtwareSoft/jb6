@@ -57,7 +57,7 @@ ReactiveOperator('rx.resource', {
 })
 
 ReactiveOperator('rx.reduce',{
-  description: 'incrementally aggregates/accumulates data in a variable, e.g. count, concat, max, etc',
+  description: 'scan. incrementally aggregates/accumulates data in a variable, e.g. count, concat, max, etc',
   params: [
     {id: 'varName', as: 'string', mandatory: true, description: 'the result is accumulated in this var', templateValue: 'acc'},
     {id: 'initialValue', dynamic: true, description: 'receives first value as input', mandatory: true},
@@ -152,6 +152,27 @@ ReactiveOperator('rx.replay',{
     {id: 'itemsToKeep', as: 'number', description: 'empty for unlimited'}
   ],
   impl: (ctx, {itemsToKeep}) => jb.rxUtils.replay(itemsToKeep)
+})
+
+
+const QueueHandler = TgpType('queue-handler', 'rx')
+const QueueSystemImpl = TgpType('queue-system-impl', 'rx')
+
+ReactiveOperator('linearQueueSystem',{
+  params: [
+    {id: 'inputQueue', type: 'queue-handler' },
+    {id: 'innerQueueHandlers', type: 'queue-handler[]' },
+    {id: 'talkBackQueue', type: 'queue-handler' },
+    {id: 'outputQueue', type: 'subject' },
+    {id: 'queueSystemImpl', type: 'queue-system-impl' },
+  ],
+})
+
+QueueHandler('queueHandler', {
+  params: [
+    {id: 'inputQueue', type: 'subject' },
+    {id: 'operator', type: 'reactive-operator' },
+  ],
 })
 
 function addDebugInfo(f,ctx) { f.ctx = ctx; return f}

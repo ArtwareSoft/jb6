@@ -4,7 +4,7 @@ import './react-testers.js'
 
 const { 
   test: { Test, 
-      'ui-action': { click, longPress },
+      'ui-action': { click, longPress, actions },
       test: { dataTest, reactTest }
   }, 
   common: { Data, Action, Boolean,
@@ -19,11 +19,23 @@ Test('reactTest.helloWorld', {
 })
 
 Test('reactTest.buttonClick', {
-  impl: reactTest(() => {
+  impl: reactTest({
+    reactComp: () => {
     const [text, setText] = useState('Click me')
     return h('button', { onClick: () => setText('Clicked!') }, text)
-  }, contains('Clicked!'), {
-    userActions: click('Click me')
+  },
+    expectedResult: contains('Clicked!'),
+    userActions: actions(click('Click me'))
+  })
+})
+
+Test('reactTest.buttonForClick', {
+  impl: reactTest({
+    reactComp: () => {
+    const [text, setText] = useState('Click me')
+    return h('button', { onClick: () => setText('Clicked!') }, text)
+  },
+    expectedResult: contains('Clicked!'),
   })
 })
 

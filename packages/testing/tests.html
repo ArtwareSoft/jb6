@@ -22,7 +22,7 @@
     const params = {
       specificTest: urlQuery('test'),
       notPattern:    urlQuery('not'),
-      ...Object.fromEntries(['pattern','take','includeHeavy'].map(x => [x, urlQuery(x) || urlQuery(x) != null]))
+      ...Object.fromEntries(['pattern','take','includeHeavy','showOnly','action'].map(x => [x, urlQuery(x) || urlQuery(x) != null]))
     }
 
     spy.initSpyByUrl()

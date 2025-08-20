@@ -82,6 +82,50 @@ Test('rxTest.toArray.active', {
   impl: dataTest(pipe(rx.pipe(interval(1), rx.take(4)), join(',')), equals('0,1,2,3'))
 })
 
+Test('rxTest.usePreviousData', {
+  impl: dataTest({
+    calculate: rx.pipe(rx.pipe(
+      interval(1),
+      rx.take(3),
+      rx.resource('enrichedPrevItem', obj()),
+      rx.concatMap(rx.pipe(
+        rx.data('%%'),
+        rx.asyncVar('enrichedDelayedItem', delay(1, '-%%-')),
+        rx.var('curAndPrev', '(%$enrichedPrevItem.data% , %%)'),
+        rx.map('%$curAndPrev%'),
+        rx.do(({},{enrichedPrevItem, enrichedDelayedItem}) => enrichedPrevItem.data = enrichedDelayedItem),
+      ))
+    )),
+    expectedResult: equals(['( , -0-)','(-0- , -1-)','(-1- , -2-)'])
+  })
+})
+
+Test('rxTest.usePreviousBuffersData', {
+  impl: dataTest({
+    calculate: rx.pipe(rx.pipe(
+      interval(1),
+      rx.take(10),
+      rx.splitToBuffers(3),
+      rx.resource('enrichedPrevItem', obj()),
+      rx.concatMap(rx.pipe(
+        rx.data('%%'),
+        rx.asyncVar('enrichedDelayedItem', delay(1, '--%buff[0]% to %buff[2]%--')),
+        rx.var('curAndPrev', '(%$enrichedPrevItem.data% , %%)'),
+        rx.map('%$curAndPrev%'),
+        rx.do(({},{enrichedPrevItem, enrichedDelayedItem}) => enrichedPrevItem.data = enrichedDelayedItem),
+      ))
+    )),
+    expectedResult: equals(['( , --0 to 2--)','(--0 to 2-- , --3 to 5--)','(--3 to 5-- , --6 to 8--)','(--6 to 8-- , --9 to --)'])
+  })
+})
+
+Test('rxTest.splitToBuffers', {
+  impl: dataTest({
+    calculate: rx.pipe(rx.pipe(interval(1), rx.take(10), rx.splitToBuffers(3)), rx.map('%%')),
+    expectedResult: equals([{buff: [0,1,2]}, {buff: [3,4,5]}, {buff: [6,7,8]}, {buff: [9]}])
+  })
+})
+
 Test('rxTest.pipeInsidePipeWithConcatMap', {
   impl: dataTest({
     calculate: () => {
@@ -159,12 +203,20 @@ Test('rxTest.var', {
         rx.take('4'),
         rx.var('origin'),
         rx.map('-%%-'),
+        rx.log('test 1'),
         rx.map('%$a%;%%;%$origin%'),
         rx.last()
       ),
       join(',')
     ),
     expectedResult: equals('hello;-3-;3')
+  })
+})
+
+Test('rxTest.asynVar', {
+  impl: dataTest({
+    calculate: rx.pipe(interval(1), rx.take(3), rx.asyncVar('origin', delay(2, '%%')), rx.map('-%%-'), rx.map('%%;%$origin%')),
+    expectedResult: equals(['-0-;0','-1-;1','-2-;2'])
   })
 })
 

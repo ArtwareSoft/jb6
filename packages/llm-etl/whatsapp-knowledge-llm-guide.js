@@ -36,7 +36,7 @@ Doclet('whatsappToKnowledge', {
   impl: howTo(
     problem({
       statement: 'Transform WhatsApp chat exports into searchable knowledge base',
-      intro: 'WhatsApp groups contain valuable discussions and decisions buried in chronological message streams. This use case demonstrates how to extract meaningful conversation threads, enrich them with context, and build a searchable knowledge base using LLM-ETL components.'
+      intro: 'WhatsApp discussions contain valuable discussions and decisions buried in chronological message streams. This use case demonstrates how to extract meaningful conversation threads, enrich them with context, and build a searchable knowledge base using LLM-ETL components.'
     }),
     proceduralSolution('WhatsApp Messages to Semantic Knowledge Base', {
       steps: [
@@ -60,7 +60,7 @@ Doclet('whatsappToKnowledge', {
           ]
         }),
         step({
-          action: 'Enrich conversation groups with semantic properties',
+          action: 'Enrich conversation discussions with semantic properties',
           purpose: 'Add searchable metadata and summaries to each conversation',
           details: 'Extract topics, participants, decisions, action items',
           points: [
@@ -68,7 +68,7 @@ Doclet('whatsappToKnowledge', {
             impact('Enables powerful search and knowledge retrieval')
           ]
         }),
-        step('merge whatup groups'),
+        step('merge whatup discussions'),
         step('Generate embeddings and build search index', 'Enable semantic search across all conversations', {
           details: 'Create vector embeddings for similarity search',
           points: [
@@ -80,7 +80,7 @@ Doclet('whatsappToKnowledge', {
       summaryPoints: [
         explanation('This pipeline transforms unstructured chat into structured knowledge'),
         impact('Makes historical discussions searchable and actionable'),
-        methodology('this process is per whatup group. if you have many groups, add a merge step'),
+        methodology('this process is per whatup group. if you have many discussions, add a merge step'),
         evidence('Organizations report 70% reduction in repeated discussions')
       ]
     })
@@ -90,7 +90,7 @@ Doclet('whatsappToKnowledge', {
 Doclet('conversationSegmentation', {
   impl: howTo(
     problem({
-      statement: 'Segment continuous message stream into meaningful conversation groups',
+      statement: 'Segment continuous message stream into meaningful conversation discussions',
       intro: 'The first challenge is identifying where one discussion ends and another begins. This requires understanding both temporal patterns and semantic coherence.'
     }),
     solution({
@@ -144,7 +144,7 @@ pipeline(
 )`,
       points: [
         explanation('LLM analyzes semantic coherence and conversation flow'),
-        syntax('sliding window', 'analyze overlapping message groups'),
+        syntax('sliding window', 'analyze overlapping message discussions'),
         syntax('detection criteria', 'multiple signals for conversation boundaries'),
         methodology('Combine multiple indicators for robust segmentation'),
         whenToUse('when temporal segmentation alone is insufficient'),
@@ -198,13 +198,13 @@ pipeline(
 Doclet('conversationEnrichment', {
   impl: howTo(
     problem({
-      statement: 'Enrich conversation groups with semantic properties for searchability',
+      statement: 'Enrich conversation discussions with semantic properties for searchability',
       intro: 'Once conversations are segmented, we need to extract meaningful metadata that enables powerful search and knowledge retrieval.'
     }),
     solution({
       code: `// Comprehensive conversation enrichment
 pipeline(
-  '%$conversationGroups%',
+  '%$conversationdiscussions%',
   llmEnrich.conversation({
     extract: obj(
       // Basic metadata
@@ -268,7 +268,7 @@ llmEnrich.tags({
 })`,
       points: [
         explanation('Multi-faceted tagging enables flexible search'),
-        syntax('tag sets', 'organize tags into semantic groups'),
+        syntax('tag sets', 'organize tags into semantic discussions'),
         syntax('auto-suggest', 'LLM identifies new tag candidates'),
         whenToUse('building browsable knowledge taxonomies'),
         methodology('balance between predefined and emergent tags')
@@ -536,11 +536,11 @@ function scoreConversationQuality(enrichedConvo) {
 
 Spec('whatsappSemanticSearch', {
   impl: specification({
-    introduction: 'Enable semantic search over WhatsApp conversation groups to quickly find relevant messages and discussions. Focus on small conversation clusters (3-5 messages, up to 30 messages) where related topics are discussed.',
+    introduction: 'Enable semantic search over WhatsApp conversation discussions to quickly find relevant messages and discussions. Focus on small conversation clusters (3-5 messages, up to 30 messages) where related topics are discussed.',
     
     useCases: [
       useCase({
-        goal: 'Provide intelligent search and retrieval over conversation groups',
+        goal: 'Provide intelligent search and retrieval over conversation discussions',
         importance: 'critical',
         relevantActors: [
           endUser({
@@ -561,7 +561,7 @@ Spec('whatsappSemanticSearch', {
             ]
           })
         ],
-        flow: 'User submits natural language search query, system searches conversation groups using semantic similarity, returns ranked conversation threads with context, shows original message sequence',
+        flow: 'User submits natural language search query, system searches conversation discussions using semantic similarity, returns ranked conversation threads with context, shows original message sequence',
         exampleScenarios: [
           realClientStory({
           context: 'Israeli indie hackers WhatsApp group with entrepreneurs, developers, and business people sharing insights, tools, and experiences',

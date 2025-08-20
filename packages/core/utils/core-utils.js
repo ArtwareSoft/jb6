@@ -370,8 +370,13 @@ function calcHash(str) {
 }
 
 async function writeToStdout(result) {
+  const res = JSON.stringify(result, null, 2)
+  const writeRes = process.stdout.write(res)
+  if (res.length < 40000)
+    process.exit(0)
   const { once } = await import('events')
-  if (!process.stdout.write(JSON.stringify(result, null, 2))) await once(process.stdout, 'drain')
+  if (!writeRes)
+    await once(process.stdout, 'drain')
   process.stdout.end()
   await once(process.stdout, 'finish')
 }

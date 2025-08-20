@@ -1,16 +1,15 @@
 {
   "name": "@jb6/llm-api",
-  "version": "1.250812.1",
+  "version": "1.250820.1",
   "type": "module",
   "exports": {
     ".": "./index.js",
-    "./skills.js": "./skills.js",
-    "./llm-api-mcp-tools.js": "./llm-api-mcp-tools.js",
+    "./*.js": "./*.js",
     "./tests/*.js": "./tests/*.js"
   },
   "dependencies": {
-    "@jb6/core": "1.250812.1",
-    "@jb6/lang-service": "1.250812.1"
+    "@jb6/core": "1.250820.1",
+    "@jb6/lang-service": "1.250820.1"
   },
   "repository": {
     "type": "git",

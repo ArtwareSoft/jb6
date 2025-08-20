@@ -265,6 +265,16 @@ Validation('explainConceptQuiz', {
   ]
 })
 
+Validation('buildQuiz', {
+  description: 'Challenge to build complete solution from business requirements',
+  params: [
+    {id: 'requirements', as: 'text', mandatory: true, description: 'Business requirements to implement'},
+    {id: 'context', as: 'text', description: 'Data structure, setup code, or environment context'},
+    {id: 'scrambledSolution', as: 'string', mandatory: true, description: 'Complete working solution (scrambled)'},
+    {id: 'scrambledHint', as: 'string', description: 'Optional hint about approach or key concepts (scrambled)'}
+  ]
+})
+
 Booklet('booklet', {
   params: [
     {id: 'doclets', as: 'string', description: 'comma delimited names of doclets', madatory: true},

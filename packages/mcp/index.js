@@ -1,4 +1,5 @@
 import { coreUtils } from '@jb6/core'
+import '@jb6/core/misc/import-map-services.js'
 import { startMcpServer } from './mcp-utils.js'
 import './mcp-jb-tools.js'
 import './mcp-fs-tools.js'
@@ -6,6 +7,8 @@ import './mcp-fs-tools.js'
 
 //console.error('Starting jb6 MCP server script...')
 if (coreUtils.isNode) {
+    const path = await import('path')
+
     process.on('SIGINT', () => {
         console.error('Received SIGINT, shutting down...')
         process.exit(0)
@@ -21,23 +24,16 @@ if (coreUtils.isNode) {
     })
     const args = process.argv.slice(2)
     if (args[0] == '--start') {
-        const cwd = args[1]
-        if (cwd && cwd.startsWith('--cwd='))
-            jb.coreRegistry.repoRoot = cwd.split('--cwd=').pop()
-        //console.error('Starting jb6 MCP server...')
-        ;(async function f() {
-            try {
-                await import('@jb6/llm-api/llm-api-mcp-tools.js')
-            } catch(e) {
-                debugger
-            }
-            try {
-                  
-                await startMcpServer()
-            } catch(error) {
-                console.error("jb6 Server error:", error)
-                process.exit(1)
-            }
-        })()
+        const repoRoot = args[1]
+        if (repoRoot && repoRoot.startsWith('--repoRoot='))
+            jb.coreRegistry.repoRoot = path.resolve(repoRoot.split('--repoRoot=').pop())
+        jb.coreRegistry.jb6Root = await coreUtils.calcJb6RepoRoot()
+
+        try {                  
+            await startMcpServer()
+        } catch(error) {
+            console.error("jb6 Server error:", error)
+            process.exit(1)
+        }
     }
 }

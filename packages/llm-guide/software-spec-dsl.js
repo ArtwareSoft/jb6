@@ -1,16 +1,18 @@
 import { dsls } from '@jb6/core'
 import './llm-guide-dsl.js'
 
-const Spec = TgpType('spec', 'llm-guide')
 const UseCase = TgpType('use-case', 'llm-guide')
+const Requirement = TgpType('requirement', 'llm-guide')
 const Actor = TgpType('actor', 'llm-guide')
 const ActorFeature = TgpType('actor-feature', 'llm-guide')
 const Scenario = TgpType('scenario', 'llm-guide')
+const Diagram = TgpType('diagram', 'llm-guide')
 
-Spec('specification', {
+Doclet('specification', {
   params: [
     {id: 'introduction', as: 'text'},
-    {id: 'useCases', type: 'use-case[]', mandatory: true},
+    {id: 'useCases', type: 'use-case[]'},
+    {id: 'requirements', type: 'requirement[]'},
     {id: 'dataSamples', type: 'dataSample[]'},
     {id: 'expectedOutputs', type: 'dataSample[]'}
   ]
@@ -22,6 +24,23 @@ Actor('endUser', {
     {id: 'features', type: 'actor-feature' },
   ]
 })
+
+Requirement('functional', {
+  params: [ {id: 'req', as: 'text' } ]
+})
+
+Requirement('nonFunctional', {
+  params: [ {id: 'req', as: 'text' } ]
+})
+
+Requirement('systemConstraint', {
+  params: [ {id: 'req', as: 'text' } ]
+})
+
+Requirement('qualityAttribute', {
+  params: [ {id: 'req', as: 'text' } ]
+})
+
 
 Actor('admin', {
   params: [
@@ -81,5 +100,29 @@ Scenario('realClientStory', {
     {id: 'dataSamples'},
     {id: 'webSiteUrl', as: 'string'},
     {id: 'crmId'}
+  ]
+})
+
+Doclet('TopLevelDesign', {
+  params: [
+    {id: 'forSpec', type: 'doclet'},
+    {id: 'scenario', as: 'text'},
+    {id: 'diagrams', type: 'diagram[]'},
+  ]
+})
+
+Diagram('dataFlowDiagrams', {
+  description: 'from: rx/llm-guide/rx-visual-declarative-thinking-llm-guide.js /rx/llm-guide/rx-diagram-enhancement-llm-guide.js and ',
+  params: [
+    {id: 'explain', as: 'text'},
+    {id: 'diagram', as: 'text'}
+  ]
+})
+
+Diagram('mirableDiagrams', {
+  description: 'from: rx/llm-guide/rx-visual-declarative-thinking-llm-guide.js /rx/llm-guide/rx-diagram-enhancement-llm-guide.js and ',
+  params: [
+    {id: 'explain', as: 'text'},
+    {id: 'diagram', as: 'text'}
   ]
 })

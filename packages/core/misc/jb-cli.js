@@ -68,7 +68,7 @@ async function runBashScript(script) {
 
 async function runNodeCli(script, { projectDir: cwd} = {}) {
   const {spawn} = await import('child_process')
-  const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
+  const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
   const scriptToRun = `console.log = () => {};\n${script}`
   return new Promise(resolve => {
     let out = '', err = ''
