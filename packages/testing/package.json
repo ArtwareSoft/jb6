@@ -1,6 +1,6 @@
 {
   "name": "@jb6/testing",
-  "version": "1.250820.1",
+  "version": "1.250822.0",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -9,16 +9,16 @@
   },
   "scripts": {},
   "dependencies": {
-    "@jb6/core": "1.250820.1",
-    "@jb6/common": "1.250820.1",
-    "@jb6/server-utils": "1.250820.1",
-    "@jb6/llm-guide": "1.250820.1",
+    "@jb6/core": "1.250822.0",
+    "@jb6/common": "1.250822.0",
+    "@jb6/server-utils": "1.250822.0",
+    "@jb6/llm-guide": "1.250822.0",
     "express": "^4.18.2",
     "open": "^8.4.0",
     "dotenv": "^16.1.0"
   },
   "devDependencies": {
-    "@jb6/react": "1.250820.1"
+    "@jb6/react": "1.250822.0"
   },
   "repository": {
     "type": "git",

@@ -4,84 +4,110 @@ import '@jb6/core/misc/import-map-services.js'
 const { calcProfileActionMap } = langServiceUtils
 import { parse } from '../lib/acorn-loose.mjs'
 
-const { unique, calcTgpModelData, runCliInContext,pathJoin,toCapitalType, calcRepoRoot, discoverDslEntryPoints } = coreUtils
-Object.assign(coreUtils,{runSnippetCli})
+const { unique, calcTgpModelData, runCliInContext,pathJoin,toCapitalType, calcRepoRoot, discoverDslEntryPoints, isNode, absPathToImportUrl } = coreUtils
+Object.assign(coreUtils,{runSnippetCli, runSnippet})
 
-async function runSnippetCli({profileText, setupCode = '' } = {}) {
-    const repoRoot = await calcRepoRoot()
-    const tgpModel = await calcTgpModelData({forRepo: repoRoot }) // getting a full model
-    if (tgpModel.error) return { error: tgpModel.error }
-    const projectDir  = tgpModel.projectDir || repoRoot
-    const compNames = compNamesInProfile(profileText)
-    const comps = Object.values(tgpModel.dsls).flatMap(type=>Object.values(type)).filter(x=>typeof x == 'object').flatMap(x=>Object.values(x))
-      .filter(x => compNames.includes(x.id))
-    // const notFound = compNames.filter(id => !comps.find(comp => comp.id === id))
-    // if (notFound.length > 0)
-    //   return { error: `can not find comp for profile ${notFound.join(', ')}` }
-    const { type } = comps.find(c=> c.id === compNames[0]) || { type: 'data' }
-    const profText = comps.length ? profileText : JSON.stringify(profileText) 
-    const origCompText = `${toCapitalType(type)}('noName',{impl: ${profText}})`    
-    const isProbeMode = origCompText.split('__').length > 1
-        
-    let compText = origCompText, parts
-    if (isProbeMode) {
-      parts = origCompText.replace(/,\s*__\s*,/g,',__').split('__')
-      compText = parts.join('')
-    }
-    
-    const {dslTypeId, path: probePath, comp, error} = parseProfile({compText, tgpModel, inCompOffset : parts?.[0].length})
-    if (error)
-      return { error, compText, isProbeMode, origCompText }
-    if (!comp.id)
-      return { error : 'runSnippet: profileText must be prefixed with type<dsl>. e.g. test<test>:dataTest(...)' }
-    const dslsSection = calcDslsSection([comp])
-    const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
+async function calcSnippetScript({profileText, setupCode = '', forBrowser } = {}) {
+  const repoRoot = await calcRepoRoot()
+  const tgpModel = await calcTgpModelData({forRepo: repoRoot }) // getting a full model
+  if (tgpModel.error) return { error: tgpModel.error }
+  const projectDir  = tgpModel.projectDir || repoRoot
+  const compNames = compNamesInProfile(profileText)
+  const comps = Object.values(tgpModel.dsls).flatMap(type=>Object.values(type)).filter(x=>typeof x == 'object').flatMap(x=>Object.values(x))
+    .filter(x => compNames.includes(x.id))
+  const { type } = comps.find(c=> c.id === compNames[0]) || { type: 'data' }
+  const profText = comps.length ? profileText : JSON.stringify(profileText) 
+  const origCompText = `${toCapitalType(type)}('noName',{impl: ${profText}})`    
+  const isProbeMode = origCompText.split('__').length > 1
+      
+  let compText = origCompText, parts
+  if (isProbeMode) {
+    parts = origCompText.replace(/,\s*__\s*,/g,',__').split('__')
+    compText = parts.join('')
+  }
+  
+  const {dslTypeId, path: probePath, comp, error} = parseProfile({compText, tgpModel, inCompOffset : parts?.[0].length})
+  if (error)
+    return { error, compText, isProbeMode, origCompText }
+  if (!comp.id)
+    return { error : 'runSnippet: profileText must be prefixed with type<dsl>. e.g. test<test>:dataTest(...)' }
+  const dslsSection = calcDslsSection([comp])
+  const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
 
-    const dsls = unique(comps.map(c=>c.dsl))
-    const dslsEntryPoints = await discoverDslEntryPoints(dsls)
-    const entryFiles = unique(comps.map(c=>c.$location.path))
-    const imports = [...dslsEntryPoints,...entryFiles].map(f=>`\tawait import('${f}')`).join('\n')
-    const script = `
-    // dir: ${projectDir}
+  const dsls = unique(comps.map(c=>c.dsl))
+  const dslsEntryPoints = await discoverDslEntryPoints(dsls)
+  const entryFiles = unique(comps.map(c=>c.$location.path))
+  const imports = [...dslsEntryPoints,...entryFiles].map(f=>forBrowser ? absPathToImportUrl(f, tgpModel.importMap) : f).map(f=>`\tawait import('${f}')`).join('\n')
+  const ecmScript = `
+  // dir: ${projectDir}
 import { jb, dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/core/misc/probe.js'
-      ;(async () => {
-        ${imports}
+export async function calc() {
+  ${imports}
 
-        ${dslsSection}
+  ${dslsSection}
 
-        try {
-          ${setupCode}
-          ${compText}
-          if (${isProbeMode}) {
-              const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath || '')})
-              await coreUtils.writeToStdout(result)
-          } else {
-              const result = await ${compPath}.$run()
-              await coreUtils.writeToStdout({result: coreUtils.stripData(result)})
-          }
-        } catch (e) {
-          await coreUtils.writeToStdout(coreUtils.stripData(e))
-        }
-      })()
-    `
+  try {
+    ${setupCode}
+    ${compText}
+    if (${isProbeMode}) {
+        return jb.coreUtils.runProbe(${JSON.stringify(probePath || '')})
+    } else {
+        const result = await ${compPath}.$run()
+        return {result: coreUtils.stripData(result)}
+    }
+  } catch (e) {
+    return coreUtils.stripData(e)
+  }
+}
+`
 
+  return { ecmScript, projectDir}
+
+  function parseProfile({compText,tgpModel,inCompOffset}) {
     try {
-      const result = await runCliInContext(script, {projectDir})
+      return calcProfileActionMap(compText, {tgpType: 'comp<tgp>', tgpModel, inCompOffset})
+    } catch(error) {
+      return { error }
+    }
+  }
+}
+
+async function runSnippetCli(args) { // {profileText, setupCode = '' }
+    const res = await calcSnippetScript(args)
+    const { ecmScript, projectDir, error } = res
+    if (error)
+      return res
+    try {
+      const toRun = `${ecmScript}\n await coreUtils.writeToStdout(await calc())`
+      const result = await runCliInContext(toRun, {projectDir})
       return result.result
     } catch (error) {
-      return { error, script, probePath }
-    }
-
-    function parseProfile({compText,tgpModel,inCompOffset}) {
-      try {
-        return calcProfileActionMap(compText, {tgpType: 'comp<tgp>', tgpModel, inCompOffset})
-      } catch(error) {
-        return { error }
-      }
+      return { error, ecmScript, projectDir }
     }
 }
 
+async function runSnippet(args) {
+  // if (!isNode)
+  //   return {error: 'snippets can only run in node js'}
+  const res = await calcSnippetScript({...args, forBrowser: !isNode})
+  const { ecmScript, projectDir, error } = res
+  if (error)
+    return res
+  const namedScript = `${ecmScript}\n//# sourceURL=snippet-${args.profileText.slice(0,20).replace(/\s/g,'_')}:runSnippet.js`
+  const blob = new Blob([namedScript], { type: 'text/javascript' })
+  let scriptUrl
+  try {
+    scriptUrl = URL.createObjectURL(blob)
+    const mod = await import(scriptUrl)
+    const result = await mod.calc()
+    return result
+  } catch (error) {
+    return { error: { name: error?.name, message: error?.message, stack: error?.stack }, script: ecmScript }
+  } finally {
+    if (scriptUrl) URL.revokeObjectURL(scriptUrl)
+  }
+}
 
 function calcDslsSection(comps) {
     const _items = [['data', 'common', 'asIs']] // should be const

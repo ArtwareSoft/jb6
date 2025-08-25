@@ -27,7 +27,13 @@ if (coreUtils.isNode) {
         const repoRoot = args[1]
         if (repoRoot && repoRoot.startsWith('--repoRoot='))
             jb.coreRegistry.repoRoot = path.resolve(repoRoot.split('--repoRoot=').pop())
+        else 
+            jb.coreRegistry.repoRoot = await coreUtils.calcRepoRoot()
         jb.coreRegistry.jb6Root = await coreUtils.calcJb6RepoRoot()
+        const extraMcp = `${jb.coreRegistry.repoRoot}/.jb6/mcp.js`
+
+        if (await exists(extraMcp))
+            await import(extraMcp)
 
         try {                  
             await startMcpServer()
@@ -36,4 +42,9 @@ if (coreUtils.isNode) {
             process.exit(1)
         }
     }
+}
+
+async function exists(path) {
+  const { access } = await import('fs/promises')
+  return access(path).then(() => true, () => false)
 }

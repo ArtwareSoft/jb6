@@ -1,3 +1,4 @@
+import '../jq/jq-tests.js'
 import '../core/tests/core-tests.js'
 import '../core/tests/probe-tests.js'
 import '../core/tests/import-map-tests.js'

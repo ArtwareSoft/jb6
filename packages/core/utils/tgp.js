@@ -127,7 +127,7 @@ MetaParam('param', {
     {id: 'id', as: 'string', mandatory: true},
     {id: 'type', as: 'string', description: 'type or type<dsl> e.g. control,control[],control<ui>'},
     {id: 'description', as: 'string'},
-    {id: 'as', as: 'string', options: 'string,text,textAsIs,number,boolean,ref,single,array'},
+    {id: 'as', as: 'string', options: 'string,text,number,boolean,ref,single,array'},
     {id: 'dynamic', as: 'boolean' },
     {id: 'mandatory', as: 'boolean' },
     {id: 'composite', as: 'boolean' },
@@ -137,6 +137,8 @@ MetaParam('param', {
     {id: 'dynamicTypeFromParent', as: 'string'},
     {id: 'secondParamAsArray', as: 'boolean'},
     {id: 'newLinesInCode', as: 'boolean'},
+    {id: 'importance', as: 'text'},
+    {id: 'guidance', as: 'text'},
   ]
 })
 

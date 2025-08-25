@@ -44,7 +44,7 @@ Test('importMapTest.genie', {
 Test('importMapTest.genie_tests', {
   impl: calcImportDataTest({
     repo: Genie(),
-    entryPointPaths: '/home/shaiby/projects/Genie/tests/basic-tests.js',
+    entryPointPaths: '/home/shaiby/projects/Genie/public/tests/basic-tests.js',
     transform: list(
       '%environment%',
       '%staticMappings/diskPath%',

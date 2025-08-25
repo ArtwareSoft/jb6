@@ -8,7 +8,7 @@ const { isNode, logException, pathJoin,pathParent, unique, asArray } = coreUtils
 jb.importMapCache = {
   fileContext: {}
 }
-Object.assign(coreUtils, { getStaticServeConfig, calcImportData, resolveWithImportMap, fetchByEnv, calcRepoRoot, calcJb6RepoRoot, discoverDslEntryPoints })
+Object.assign(coreUtils, { getStaticServeConfig, calcImportData, resolveWithImportMap, fetchByEnv, calcRepoRoot, calcJb6RepoRoot, discoverDslEntryPoints, absPathToImportUrl })
 
 const ignoreDirs = [ 'node_modules', '3rd-party', '.git'] 
 async function calcRepoRoot() {
@@ -31,11 +31,14 @@ async function calcRepoRoot() {
     return jb.coreRegistry.repoRoot = res.result
   }
   const { execSync } = await import('child_process')
-  if (jb.coreRegistry.repoRoot)
-    return jb.coreRegistry.repoRoot
-    
+  const { fileURLToPath } = await import('url')
+  const path = await import('path')
+  debugger
+  const __filename = path.resolve(fileURLToPath(import.meta.url))
+  const cwd = __filename.indexOf('node_modules') == -1 ? '.' : __filename.split('/node_modules')[0]
+
   try {
-    return jb.coreRegistry.repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
+    return jb.coreRegistry.repoRoot = execSync('git rev-parse --show-toplevel', { cwd, encoding: 'utf8' }).trim()
   } catch (gitError) {}
 }
 
@@ -330,6 +333,21 @@ function resolveWithImportMap(specifier, importMap, staticMappings) {
 function absPathToUrl(path, staticMappings = []) {
   const servedEntry = staticMappings.find(x => x.diskPath != x.urlPath && path.indexOf(x.diskPath) == 0)
   return servedEntry ? path.replace(servedEntry.diskPath, servedEntry.urlPath) : path
+}
+
+function absPathToImportUrl(path, importMap) {
+  if (path.startsWith('@')) return path
+  if (path == './') return
+  const { staticMappings, imports } = importMap
+  const absPaths = staticMappings.filter(x => x.diskPath != x.urlPath && path.indexOf(x.diskPath) == 0)
+    .map(servedEntry => path.replace(servedEntry.diskPath, servedEntry.urlPath))
+  let res = absPaths.map(path=>Object.entries(imports).find(e=>e[1] == path)).filter(Boolean).map(e=>e[0])[0]
+  if (!res && path) {
+    const pathIsDir = path.slice(-1)[0] == '/'
+    const suffix = pathIsDir ? path.split('/').slice(-2)[0] + '/' : path.split('/').pop()
+    res = absPathToImportUrl(pathParent(path)+'/', importMap) + suffix
+  }
+  return res
 }
 
 async function fetchByEnv(url, staticMappings = [], httpServer = '') {

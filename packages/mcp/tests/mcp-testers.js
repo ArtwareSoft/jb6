@@ -14,21 +14,23 @@ const {
 } = dsls
 
 Test('mcpToolTest', {
-    params: [
-      {id: 'tool', as: 'string' },
-      {id: 'args', as: 'object'},
-      {id: 'repoRoot', as: 'string' },
-      {id: 'expectedResult', type: 'boolean', dynamic: true},
-    ],
-    impl: dataTest({
-        calculate: async (ctx,{},{tool,args, repoRoot: repoRootParam}) => { 
+  params: [
+    {id: 'tool', as: 'string'},
+    {id: 'args', as: 'object'},
+    {id: 'repoRoot', as: 'string'},
+    {id: 'importMapsInCli', as: 'string'},
+    {id: 'expectedResult', type: 'boolean', dynamic: true}
+  ],
+  impl: dataTest({
+    calculate: async (ctx,{},{tool,args, repoRoot: repoRootParam, importMapsInCli}) => { 
             const repoRoot = repoRootParam || await calcRepoRoot()
             await calcJb6RepoRoot()
             const jb6PackagesRoot = repoRootParam ? `${repoRootParam}/node_modules/@jb6` : `${jb.coreRegistry.repoRoot}/packages`
 
             const req  = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":tool,arguments: args}}
             const reqJSON = JSON.stringify(req)
-            const script = `cd ${repoRoot} && node ${jb6PackagesRoot}/mcp/index.js --start --repoRoot=. <<'__JSON__'
+            const importPart = importMapsInCli ? `--import ${importMapsInCli}` : '' //./public/tests/register.js`
+            const script = `cd ${repoRoot} && node ${importPart} ${jb6PackagesRoot}/mcp/index.js --start --repoRoot=. <<'__JSON__'
 ${reqJSON}
 __JSON__`
             const res = await runBashScript(script)
@@ -43,8 +45,8 @@ __JSON__`
               return { testFailure: 'error in mcp res'}
             return mcpRes
         },
-        expectedResult: '%$expectedResult()%',
-        timeout: 2000,
-        includeTestRes: true
-      })
+    expectedResult: '%$expectedResult()%',
+    timeout: 2000,
+    includeTestRes: true
+  })
 })

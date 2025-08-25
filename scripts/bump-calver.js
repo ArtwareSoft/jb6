@@ -11,7 +11,7 @@ import { globby } from 'globby'
 
 async function main() {
   // 1. build the version string
-  const [ major = "1", patch = "1" ] = process.argv.slice(2)
+  const [ major = "1", patch = "0" ] = process.argv.slice(2)
   const now = new Date()
   const YY = String(now.getFullYear()).slice(2)
   const MM = String(now.getMonth()+1).padStart(2, "0")

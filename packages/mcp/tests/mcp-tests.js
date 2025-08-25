@@ -25,6 +25,7 @@ Test('genieMcpTest.scrambleText', {
   HeavyTest: true,
   impl: mcpToolTest('scrambleText', asIs({texts: 'hello world##test text'}), {
     repoRoot: '/home/shaiby/projects/Genie',
+    importMapsInCli: './public/tests/register.js',
     expectedResult: equals('=QGby92dg8GbsVGa##\n0hXZ0BCdzVGd')
   })
 })
@@ -34,6 +35,7 @@ Test('genieMcpTest.tgpModel', {
   impl: mcpToolTest({
     tool: 'tgpModel',
     repoRoot: '/home/shaiby/projects/Genie',
+    importMapsInCli: './public/tests/register.js',
     args: asIs({forDsls: 'common'}),
     expectedResult: contains('common')
   })
@@ -44,6 +46,7 @@ Test('genieMcpTest.snippet', {
   impl: mcpToolTest({
     tool: 'runSnippet',
     repoRoot: '/home/shaiby/projects/Genie',
+    importMapsInCli: './public/tests/register.js',
     args: asIs({
         profileText: `pipeline('%$people%', '%name%')`,
         setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`

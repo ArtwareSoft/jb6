@@ -1,18 +1,18 @@
 {
-  "name": "@jb6/rx",
+  "name": "@jb6/jq",
   "version": "1.250822.0",
   "type": "module",
   "exports": {
     ".": "./index.js",
-    "./rx-common.js": "./rx-common.js",
-    "./rx-misc.js": "./rx-misc.js"
+    "./*.js": "./*.js"
   },
+  "scripts": {},
   "dependencies": {
     "@jb6/core": "1.250822.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Artwaresoft/jb6.git",
-    "directory": "packages/rx"
+    "directory": "packages/jq"
   }
 }

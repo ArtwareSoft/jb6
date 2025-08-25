@@ -92,16 +92,18 @@ if (coreUtils.isNode) {
   }
 }
 
-await initReact()
+await (async () => initReact())()
 
 if (coreUtils.isNode) {
   const cli = Object.fromEntries(process.argv.slice(2).filter(a=>a.startsWith('--')).map(a=>a.slice(2).split('=')))
-  cli.test && delay(1).then(() =>  // let the other modules finish their loading
-      runTests({
-        specificTest: cli.test,
-        notPattern:   cli.not,
-        pattern:      cli.pattern,
-        take:         cli.take
-      })
-    )
+  globalThis.runNodeTests = () => {
+    cli.test && delay(1).then(() =>  // let the other modules finish their loading
+        runTests({
+          specificTest: cli.test,
+          notPattern:   cli.not,
+          pattern:      cli.pattern,
+          take:         cli.take
+        })
+      )
+  }
 }

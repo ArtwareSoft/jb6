@@ -3,7 +3,7 @@ import '@jb6/common'
 import { spy } from './spy.js'
 
 const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfType, unique, isNode } = coreUtils
-
+jb.testingUtils = {runTest, runTests}
 jb.testingRepository = {}
 
 const { 
@@ -76,15 +76,25 @@ Test('dataTest', {
 globalThis.spy = spy
 globalThis.jb = jb
 
-export async function runTest(testID, {fullTestId, singleTest} = {}) {
+export async function runTest(testID, {fullTestId, singleTest, action} = {}) {
     !singleTest && await cleanBeforeRun()
     const jbComp = Test[testID][asJbComp]
     log('start test',{testID})
     let res = null
     const start = Date.now()
     try {
-        const ctx = new Ctx().setVars({ testID, fullTestId,singleTest })
+        const ctx = new Ctx().setVars({ testID, fullTestId,singleTest, win: globalThis })
         res = await jbComp.runProfile({}, ctx)
+        if (action) {
+            const actionId = action.split(':')[0]
+            const actionParam = action.slice(actionId.length+1)
+            const actionProxy = dsls.test['ui-action'][actionId]
+            if (actionProxy) {
+                await actionProxy.$run(actionParam).exec(ctx)
+            } else {
+                logError(`can not find ui-action ${actionId}`)
+            }
+        }
     } catch (e) {
         res = { success: false, reason: e}
     }
@@ -192,17 +202,6 @@ export async function runTests({specificTest,show,pattern,notPattern,take,repo,s
         let res
         if (showOnly) {
             res = await runTest(testID, { fullTestId, singleTest })
-            if (action) {
-                const actionId = action.split(':')[0]
-                const actionParam = action.slice(actionId.length+1)
-                const actionProxy = dsls.test['ui-action'][actionId]
-                if (actionProxy) {
-                    const ctx = new Ctx().setVars({win: globalThis})
-                    await actionProxy.$run(actionParam).exec(ctx)
-                } else {
-                    logError(`can not find ui-action ${actionId}`)
-                }
-            }
         } else if (!showOnly) {
             !isNode && (document.getElementById('progress').innerHTML = runningMsg)
             printLive(runningMsg)
