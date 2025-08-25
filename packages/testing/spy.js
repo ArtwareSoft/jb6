@@ -21,7 +21,8 @@ export function initSpy({spyParam: _spyParam}) {
 }
 
 function initSpyByUrl() {
-    return initSpy({spyParam : new URLSearchParams(globalThis.location.href).get('spy') })
+    let { spy } = Object.fromEntries([...new URLSearchParams(location.search),...new URLSearchParams(location.hash.replace(/^#/, '?'))])
+    return initSpy({spyParam : spy })
 }
 
 const memoryUsage = () => globalThis.performance?.memory?.usedJSHeapSize
