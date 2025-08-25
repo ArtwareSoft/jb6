@@ -2223,6 +2223,23 @@ const functions = {
        r.sort((a, b) => compareValues(a.key, b.key))
        yield r.map(a => a.value)
    }, {params: [{mode: 'defer'}]}),
+   'group_by/1': Object.assign(function*(input, conf, args) {
+       if (nameType(input) != 'array')
+           throw 'can only group arrays, not ' + nameType(input)
+       let key = args[0]
+       let groups = new Map()
+       
+       for (let item of input) {
+           let keyValue = key.apply(item, conf).next().value
+           let keyStr = JSON.stringify(keyValue)
+           if (!groups.has(keyStr)) {
+               groups.set(keyStr, [])
+           }
+           groups.get(keyStr).push(item)
+       }
+       
+       yield Array.from(groups.values())
+   }, {params: [{mode: 'defer'}]}),
    'explode/0': function*(input, conf) {
        if (nameType(input) != 'string')
            throw 'can only explode string, not ' + nameType(input)
