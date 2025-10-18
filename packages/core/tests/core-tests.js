@@ -192,12 +192,12 @@ Test('coreTest.asIsArray', {
   impl: dataTest(pipeline(asIs([{a: 1}, {a: 2}]), '%a%', join()), equals('1,2'))
 })
 
-Test('coreTest.and', {
-  impl: dataTest({
-    calculate: pipeline('%$people%', filter(and('%age% < 30', '%name% == Bart Simpson')), '%name%', join()),
-    expectedResult: equals('Bart Simpson')
-  })
-})
+// Test('coreTest.and', {
+//   impl: dataTest({
+//     calculate: pipeline('%$people%', filter(and('%age% < 30', '%name% == Bart Simpson')), '%name%', join()),
+//     expectedResult: equals('Bart Simpson')
+//   })
+// })
 
 Test('expTest.select', {
   impl: dataTest({

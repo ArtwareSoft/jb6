@@ -27,15 +27,18 @@ const bookletsContent = Data('bookletsContent', {
       const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
       const { llmGuideFiles, staticMappings } = await calcImportData({forRepo: repoRoot})
       const tgpModel = await calcTgpModelData({entryPointPaths: llmGuideFiles})
-      const notFound = booklets.split(',').filter(d=>!tgpModel.dsls['llm-guide'].booklet[d]).join(', ')
+      const llmGuideDsl = tgpModel.dsls['llm-guide']
+      if (!llmGuideDsl) return ''
+
+      const notFound = booklets.split(',').filter(d=>!llmGuideDsl.booklet[d]).join(', ')
       notFound && logError(`includeBooklet can not find booklet ${notFound}`)
-      const bookletsText = await Promise.all(booklets.split(',').map(b=>tgpModel.dsls['llm-guide'].booklet[b]).filter(Boolean).map(async bookletCmp=>{
+      const bookletsText = await Promise.all(booklets.split(',').map(b=>llmGuideDsl.booklet[b]).filter(Boolean).map(async bookletCmp=>{
         const loc = bookletCmp.$location
         const src = await fetchByEnv(loc.path, staticMappings)
         const doclets = src.split('\n').slice(loc.line, loc.to.line).join('').match(/booklet\(([^)]*)\)/)[1].split(',').map(x=>x.trim()).map(x=>x.replace("'",'')).filter(Boolean)
-        const notFound = doclets.filter(d=>!tgpModel.dsls['llm-guide'].doclet[d]).join(', ')
+        const notFound = doclets.filter(d=>!llmGuideDsl.doclet[d]).join(', ')
         notFound && logError(`includeBooklet can not find doclet ${notFound}`)
-        const docs = await Promise.all(doclets.map(d=>tgpModel.dsls['llm-guide'].doclet[d]).filter(Boolean).map(async cmp=>{
+        const docs = await Promise.all(doclets.map(d=>llmGuideDsl.doclet[d]).filter(Boolean).map(async cmp=>{
           const loc = cmp.$location
           const src = await fetchByEnv(loc.path, staticMappings)
           return src.split('\n').slice(loc.line, loc.to.line).join('\n')
@@ -58,7 +61,7 @@ const tgpModel = Data('tgpModel', {
       const filterDsls = Array.isArray(forDsls) ? forDsls : (forDsls||'').split(',').map(x=>x.trim()).filter(Boolean)
       const dsls = forDsls ? Object.fromEntries(filterDsls.map(dsl=>[dsl,_dsls[dsl]])) : _dsls
       const tests = Object.fromEntries(Object.entries(_dsls.test.test)               .filter(e =>filterDsls.find(dsl=>(e[1]?.location || '').indexOf(dsl) != -1)))
-      const booklets = Object.fromEntries(Object.entries(_dsls['llm-guide'].booklet).filter(e =>filterDsls.find(dsl=>(e[1]?.location || '').indexOf(dsl) != -1)))
+      const booklets = Object.fromEntries(Object.entries(_dsls['llm-guide']?.booklet || {}).filter(e =>filterDsls.find(dsl=>(e[1]?.location || '').indexOf(dsl) != -1)))
       return {dsls, tests, booklets}
     } catch (error) {
       return `Error calculating TGP model: ${error.message}`

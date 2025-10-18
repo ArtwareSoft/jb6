@@ -505,6 +505,15 @@ Test('rxTest.doPromiseActiveSource', {
 //   })
 // })
 
+// Test('rxTest.subjectReplay', {
+//   impl: dataTest({
+//     vars: Var('subj', rx.subject({ replay: true })),
+//     calculate: rx.pipe(subjectSource('%$subj%')),
+//     expectedResult: equals('1'),
+//     runBefore: runActions(subject.notify('%$subj%', '1'), subject.complete('%$subj%'))
+//   })
+// })
+
 Test('rxTest.throwPromiseRejection', {
   impl: dataTest({
     calculate: rx.pipe(rx.promise(() => new Promise((res,rej) => coreUtils.delay(1,rej('err')))), rx.catchError(), rx.map('%%1')),

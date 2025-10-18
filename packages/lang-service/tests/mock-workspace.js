@@ -1,8 +1,6 @@
 import { jb, coreUtils } from '@jb6/core'
 const { log } = coreUtils
 
-const { lineColToOffset, closestComp } = jb.langServiceUtils
-
 jb.workspaceRegistry = {
     activeUri: null, 
     openDocs: {},
@@ -16,6 +14,7 @@ function activeDoc() { return openDocs[jb.workspaceRegistry.activeUri] }
 jb.ext.tgpTextEditor = { host: {
         type: 'jbWorkspace',
         async applyEdit(edit,{docUri, ctx} = {}) {
+            const { lineColToOffset } = jb.langServiceUtils
             const _docUri = docUri || activeUri()
             const docText = openDocs[_docUri].text
             const from = lineColToOffset(docText, edit.range.start)
@@ -38,7 +37,7 @@ jb.ext.tgpTextEditor = { host: {
         },
         compTextAndCursor() {
             const doc = activeDoc()
-            return closestComp(doc.text, doc.selection.start.line, doc.selection.start.col, activeUri())                
+            return jb.langServiceUtils.closestComp(doc.text, doc.selection.start.line, doc.selection.start.col, activeUri())                
         },
         async execCommand(cmd) {
             //console.log('exec command', cmd)
@@ -54,6 +53,7 @@ jb.ext.tgpTextEditor = { host: {
             jb.workspaceRegistry.activeUri = uri
         },
         async getTextAtSelection() {
+            const { lineColToOffset } = jb.langServiceUtils
             const selection = activeDoc().selection
             const docText = activeDoc().text
             const from = lineColToOffset(docText, selection.start)

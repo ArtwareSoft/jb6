@@ -66,7 +66,7 @@ if (coreUtils.isNode) {
 } else { // browser
   initReact = async () => {
     const isLocalHost = typeof location !== 'undefined' && location.hostname === 'localhost'
-    const devOrProd = isLocalHost ? '?dev' : ''
+    const devOrProd = isLocalHost ? '?dev' : '' //'development' : 'production'
 
     if (typeof process === 'undefined')
       globalThis.process = { env: { NODE_ENV: 'development' }, platform: 'browser', version: '', versions: {} }
@@ -74,6 +74,9 @@ if (coreUtils.isNode) {
       reactUtils.reactPromise = (async () => {
         const [_,React, ReactDomClient, ReactDom] = await Promise.all([
           import(`/jb6_packages/react/lib/tailwind-4.js`),
+          // import(`/jb6_packages/react/lib/react-19.${devOrProd}.js`),
+          // import(`/jb6_packages/react/lib/react-dom-client-19.${devOrProd}.js`),
+          //import(`/jb6_packages/react/lib/react-dom-19.${devOrProd}.js`)
           import(`https://esm.sh/react@19${devOrProd}`),
           import(`https://esm.sh/react-dom@19/client${devOrProd}`),
           import(`https://esm.sh/react-dom@19${devOrProd}`)

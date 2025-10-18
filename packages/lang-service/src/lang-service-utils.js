@@ -288,6 +288,8 @@ ${compText}
     const base = exp.slice(0,-1-tail.length) + '%'
 
     const probeCtx = new Ctx(probeRes.result?.[0]?.in || {})
+    if (probeRes.error)
+        return [valueOption('#error', probeRes.error)]
     const visits = probeRes.visits?.[probeRes.probePath]
     const circuitCmpId = probeRes.circuitCmpId.split('>').pop()
 

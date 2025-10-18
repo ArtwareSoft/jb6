@@ -84,8 +84,15 @@ npm install
 
 echo "📦 Building VSIX…"
 npx vsce package
-VSIX_FILE=$(ls *.vsix)
-echo " → Created $VSIX_FILE"
+
+#!/usr/bin/env bash
+set -euo pipefail
+shopt -s nullglob
+vsix=( *.vsix )
+((${#vsix[@]})) || { echo "No .vsix files found" >&2; exit 1; }
+echo " → Created ${vsix[*]}"
+mkdir -p "$HOME/projects/Genie/.jb6"
+cp -- "${vsix[@]}" "$HOME/projects/Genie/.jb6/"
 
 popd > /dev/null
 

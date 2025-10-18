@@ -36,6 +36,8 @@ import '@jb6/core/misc/pretty-print.js'
 const { h, L, useState, useEffect, useRef, createRoot, prettyPrintNode } = reactUtils
 
 async function run() {
+    const { importMapsInCli } = JB_IMPORT_MAP
+    jb.coreRegistry.importMapsInCli = importMapsInCli
     const projectRoot = await coreUtils.calcRepoRoot()
     const urlParams = new URLSearchParams(window.location.search);
     const filePath = urlParams.get('filePath') || '/jb6_packages/react/tests/react-tests.js'

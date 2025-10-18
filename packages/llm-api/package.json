@@ -1,6 +1,6 @@
 {
   "name": "@jb6/llm-api",
-  "version": "1.250825.1",
+  "version": "1.251018.0",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -8,8 +8,8 @@
     "./tests/*.js": "./tests/*.js"
   },
   "dependencies": {
-    "@jb6/core": "1.250825.1",
-    "@jb6/lang-service": "1.250825.1"
+    "@jb6/core": "1.251018.0",
+    "@jb6/lang-service": "1.251018.0"
   },
   "repository": {
     "type": "git",

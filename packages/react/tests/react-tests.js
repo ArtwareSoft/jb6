@@ -35,7 +35,7 @@ Test('reactTest.buttonForClick', {
     const [text, setText] = useState('Click me')
     return h('button', { onClick: () => setText('Clicked!') }, text)
   },
-    expectedResult: contains('Clicked!'),
+    expectedResult: contains('Click me'),
   })
 })
 

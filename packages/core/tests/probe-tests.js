@@ -86,3 +86,15 @@ Test('probeCliTest.findTestFiles', {
     timeout: 2000
   })
 })
+
+Test('genieTest.probeCliForSampleApplet', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: async () => {
+      const entryPointPaths = '/home/shaiby/projects/Genie/public/applets/sampleApplet/sampleApplet-tests.js'
+      return runProbeCli('test<test>sampleAppletTest~impl~expectedResult',{entryPointPaths})  
+    },
+    expectedResult: '%probeRes/circuitRes/success%',
+    timeout: 2000
+  })
+})

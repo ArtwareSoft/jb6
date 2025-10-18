@@ -98,3 +98,12 @@ Test('snippet.pipeline', {
     setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`
   })
 })
+
+Test('genieTest.snippet.jb', {
+  HeavyTest: true,
+  impl: snippetTest(`pipeline('%$people%', '%name%')`, contains('Homer', { allText: json.stringify() }), {
+    setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
+    repoRoot: '/home/shaiby/projects/Genie',
+    fetchByEnvHttpServer: 'http://localhost:3000'
+  })
+})

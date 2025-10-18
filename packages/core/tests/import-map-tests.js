@@ -17,7 +17,7 @@ const { json } = ns
 Test('importMapTest.jb6Monorepo', {
   impl: staticServeConfigTest({
     transform: list(
-      '%environment%',
+      '%repoRootName%',
       '%staticMappings/diskPath%',
       pipeline('%importMap/imports%', property('@jb6/common'))
     ),
@@ -27,46 +27,61 @@ Test('importMapTest.jb6Monorepo', {
   })
 })
 
-Test('importMapTest.genie', {
+Test('genieTest.staticServeConfigTest', {
+  HeavyTest: true,
   impl: staticServeConfigTest({
     repo: Genie(),
-    transform: list(
-      '%environment%',
-      '%staticMappings/diskPath%',
-      pipeline('%importMap/imports%', property('@jb6/common'))
-    ),
-    expectedResult: contains('genie','/home/shaiby/projects/Genie/node_modules/@jb6', '/jb6_packages/common/index.js', {
+    transform: list('%repoRootName%', '%staticMappings/diskPath%', pipeline('%importMap/imports%')),
+    expectedResult: contains('genie', '/home/shaiby/projects/Genie/public/3rd-party/@jb6', '@wonder', {
       allText: json.stringify()
     })
   })
 })
 
-Test('importMapTest.genie_tests', {
-  impl: calcImportDataTest({
-    repo: Genie(),
-    entryPointPaths: '/home/shaiby/projects/Genie/public/tests/basic-tests.js',
-    transform: list(
-      '%environment%',
-      '%staticMappings/diskPath%',
-      '%importMap/imports%'
-    ),
-    expectedResult: contains('genie', '/home/shaiby/projects/Genie/node_modules/@jb6', '/jb6_packages/common/index.js', {
+Test('genieTest.importMap', {
+  HeavyTest: true,
+  impl: calcImportDataTest('/home/shaiby/projects/Genie/public/tests/basic-tests.js', {
+    transform: list('%repoRootName%','%staticMappings/diskPath%','%importMap/imports%'),
+    expectedResult: contains('genie', '/home/shaiby/projects/Genie/public/3rd-party/@jb6', '/jb6_packages/common/index.js', {
       allText: json.stringify()
     })
   })
 })
 
-Test('importMapTest.genie_tests.calcTgpModelData', {
-  doNotRunInTests: true,
+Test('genieTest.calcTgpModelData', {
+  HeavyTest: true,
   impl: dataTest({
     calculate: async () => {
       const {coreUtils} = await import('@jb6/core')
       await import('@jb6/lang-service')
       return coreUtils.calcTgpModelData({
-        entryPointPaths: '/home/shaiby/projects/Genie/tests/basic-tests.js', fetchByEnvHttpServer: 'http://localhost:3000'})
+        entryPointPaths: '/home/shaiby/projects/Genie/public/applets/sampleApplet/index.js', fetchByEnvHttpServer: 'http://localhost:3000'})
     },
-    expectedResult: contains('/home/shaiby/projects/Genie/node_modules/@jb6', '/jb6_packages/common/index.js', {
+    expectedResult: contains('/home/shaiby/projects/Genie/public/3rd-party/@jb6', '/jb6_packages/common/index.js', {
       allText: json.stringify()
     })
+  })
+})
+
+Test('genieTest.nodejs.calcTgpModelData', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: async () => {
+      if (!coreUtils.isNode) {
+        const script = `
+              const {coreUtils} = await import('@jb6/core')
+      await import('@jb6/lang-service')
+      const result = await coreUtils.calcTgpModelData({ entryPointPaths: '/home/shaiby/projects/Genie/public/applets/sampleApplet/index.js', fetchByEnvHttpServer: 'http://localhost:3000'})
+        await coreUtils.writeToStdout(result)
+        `
+        const res = await coreUtils.runNodeCliViaJbWebServer(script, {projectDir: '/home/shaiby/projects/Genie', importMapsInCli: '/home/shaiby/projects/Genie/public/core/nodejs-importmap.js' })
+        return res
+      }
+    },
+    expectedResult: contains({
+      text: ['/home/shaiby/projects/Genie/public/3rd-party/@jb6','/jb6_packages/common/index.js','bsg-tests'],
+      allText: json.stringify()
+    }),
+    timeout: 1000
   })
 })

@@ -17,27 +17,26 @@ Object.assign(coreUtils, {runProbe, runProbeCli})
 
 async function runProbeCli(probePath, dependencies) {
     const { extraCode } = dependencies
-    const {entryFiles, testFiles, projectDir } = await coreUtils.calcImportData(dependencies)
-    const imports = unique([...entryFiles, ...testFiles]).map(f=>`\timport '${f}'`).join('\n')
+    const {entryFiles, testFiles, projectDir, importMap } = await coreUtils.calcImportData(dependencies)
+    const imports = unique([...entryFiles, ...testFiles])
     const script = `
       import { writeFile } from 'fs/promises'
       import { jb, dsls, coreUtils } from '@jb6/core'
       import '@jb6/testing'
       import '@jb6/core/misc/probe.js'
-${imports}
-      ;(async () => {
-        try {
-          ${extraCode || ''}
-          const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath)})
-          await coreUtils.writeToStdout(result)
-        } catch (e) {
-          console.error(e)
-        }
-      })()
+      const imports = ${JSON.stringify(imports)}
+      try {
+        ${extraCode || ''}
+        await Promise.all(imports.map(f => import(f))) //.catch(e => console.error(f, e.message) )))
+        const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath)})
+        await coreUtils.writeToStdout(result)
+      } catch (e) {
+        await coreUtils.writeToStdout({error: e.message})
+        console.error(e)
+      }
     `
-
     try {
-      const { result, error, cmd } = await coreUtils.runCliInContext(script, {projectDir})
+      const { result, error, cmd } = await coreUtils.runCliInContext(script, {projectDir, importMapsInCli: importMap.importMapsInCli})
       return { probeRes: result, error, cmd, projectDir }
     } catch (error) {
       debugger

@@ -3,7 +3,7 @@ import '@jb6/core/misc/jb-cli.js'
 import '@jb6/core/misc/import-map-services.js'
 import '@jb6/testing'
 import '@jb6/mcp'
-const { runBashScript, calcRepoRoot, calcJb6RepoRoot } = coreUtils
+const { runBashScript, calcRepoRoot, calcJb6RepoRootAndImportMapsInCli } = coreUtils
 
 const { 
   tgp: { TgpType },
@@ -18,14 +18,15 @@ Test('mcpToolTest', {
     {id: 'tool', as: 'string'},
     {id: 'args', as: 'object'},
     {id: 'repoRoot', as: 'string'},
+    {id: 'jb6PackagesRoot', as: 'string'},
     {id: 'importMapsInCli', as: 'string'},
     {id: 'expectedResult', type: 'boolean', dynamic: true}
   ],
   impl: dataTest({
-    calculate: async (ctx,{},{tool,args, repoRoot: repoRootParam, importMapsInCli}) => { 
+    calculate: async (ctx,{},{tool,args, repoRoot: repoRootParam, jb6PackagesRoot: jb6PackagesRootParam, importMapsInCli}) => { 
             const repoRoot = repoRootParam || await calcRepoRoot()
-            await calcJb6RepoRoot()
-            const jb6PackagesRoot = repoRootParam ? `${repoRootParam}/node_modules/@jb6` : `${jb.coreRegistry.repoRoot}/packages`
+            
+            const jb6PackagesRoot = jb6PackagesRootParam || `${jb.coreRegistry.repoRoot}/packages`
 
             const req  = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":tool,arguments: args}}
             const reqJSON = JSON.stringify(req)

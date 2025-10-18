@@ -1,12 +1,13 @@
 import '@jb6/testing'
-import { langServiceUtils } from '@jb6/lang-service'
+import '@jb6/lang-service'
+
 import { ns, dsls, coreUtils } from '@jb6/core'
 import './mock-workspace.js'
 import '@jb6/core/misc/import-map-services.js'
 
 const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, runSnippet, runSnippetCli, prettyPrint } = coreUtils
 const { langService } = ns
-const { tgpEditorHost, tgpModelForLangService, offsetToLineCol, applyCompChange, calcProfileActionMap} = langServiceUtils 
+const { tgpEditorHost, tgpModelForLangService, offsetToLineCol, applyCompChange, calcProfileActionMap} = jb.langServiceUtils 
 
 const { 
   tgp: { var: { Var }},
@@ -20,7 +21,7 @@ jb.langServiceTestRegistry = {
   uniqueNameCounter: 0,
 }
 
-const JB6_REPO_ROOT = await coreUtils.calcJb6RepoRoot()
+await coreUtils.calcJb6RepoRootAndImportMapsInCli()
 
 async function filePathForLangServiceTest(filePath) {
   const repoRoot = await coreUtils.calcRepoRoot()
@@ -220,7 +221,8 @@ Test('snippetTest', {
     {id: 'expectedResult', type: 'boolean', as: 'boolean', dynamic: true},
     {id: 'runInCli', type: 'boolean', as: 'boolean'},
     {id: 'setupCode', as: 'text', asIs: true},
-    {id: 'packages', as: 'array'}
+    {id: 'repoRoot', as: 'string'},
+    {id: 'fetchByEnvHttpServer', as : 'string' }
   ],
   impl: dataTest({
     calculate: async (ctx,{},args) => {

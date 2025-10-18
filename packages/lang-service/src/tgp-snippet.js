@@ -7,9 +7,12 @@ import { parse } from '../lib/acorn-loose.mjs'
 const { unique, calcTgpModelData, runCliInContext,pathJoin,toCapitalType, calcRepoRoot, discoverDslEntryPoints, isNode, absPathToImportUrl } = coreUtils
 Object.assign(coreUtils,{runSnippetCli, runSnippet})
 
-async function calcSnippetScript({profileText, setupCode = '', forBrowser } = {}) {
-  const repoRoot = await calcRepoRoot()
-  const tgpModel = await calcTgpModelData({forRepo: repoRoot }) // getting a full model
+async function calcSnippetScript({profileText, setupCode = '', forBrowser, repoRoot: repoRootParam, fetchByEnvHttpServer } = {}) {
+  // fetchByEnvHttpServer for genieTest
+  const repoRoot = repoRootParam || await calcRepoRoot()
+  const tgpModel = await calcTgpModelData({forRepo: repoRoot, fetchByEnvHttpServer }) // getting a full model
+  const { importMap, staticMappings } = tgpModel
+
   if (tgpModel.error) return { error: tgpModel.error }
   const projectDir  = tgpModel.projectDir || repoRoot
   const compNames = compNamesInProfile(profileText)
@@ -34,16 +37,15 @@ async function calcSnippetScript({profileText, setupCode = '', forBrowser } = {}
   const dslsSection = calcDslsSection([comp])
   const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
 
-  const dsls = unique(comps.map(c=>c.dsl))
-  const dslsEntryPoints = await discoverDslEntryPoints(dsls)
+  const dslsEntryPoints = await discoverDslEntryPoints({ forDsls: unique(comps.map(c=>c.dsl)), repoRoot})   // repoRoot for genieTest
   const entryFiles = unique(comps.map(c=>c.$location.path))
-  const imports = [...dslsEntryPoints,...entryFiles].map(f=>forBrowser ? absPathToImportUrl(f, tgpModel.importMap) : f).map(f=>`\tawait import('${f}')`).join('\n')
+  const importsStr = [...dslsEntryPoints,...entryFiles].map(f=>forBrowser ? absPathToImportUrl(f, importMap.imports, staticMappings) : f).map(f=>`\tawait import('${f}')`).join('\n')
   const ecmScript = `
   // dir: ${projectDir}
 import { jb, dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/core/misc/probe.js'
 export async function calc() {
-  ${imports}
+  ${importsStr}
 
   ${dslsSection}
 
@@ -62,7 +64,7 @@ export async function calc() {
 }
 `
 
-  return { ecmScript, projectDir}
+  return { ecmScript, projectDir, importMapsInCli: importMap.importMapsInCli}
 
   function parseProfile({compText,tgpModel,inCompOffset}) {
     try {
@@ -75,23 +77,21 @@ export async function calc() {
 
 async function runSnippetCli(args) { // {profileText, setupCode = '' }
     const res = await calcSnippetScript(args)
-    const { ecmScript, projectDir, error } = res
+    const { ecmScript, projectDir, importMapsInCli, error } = res
     if (error)
       return res
     try {
       const toRun = `${ecmScript}\n await coreUtils.writeToStdout(await calc())`
-      const result = await runCliInContext(toRun, {projectDir})
+      const result = await runCliInContext(toRun, {projectDir, importMapsInCli})
       return result.result
     } catch (error) {
-      return { error, ecmScript, projectDir }
+      return { error, ecmScript, projectDir, importMapsInCli }
     }
 }
 
 async function runSnippet(args) {
-  // if (!isNode)
-  //   return {error: 'snippets can only run in node js'}
   const res = await calcSnippetScript({...args, forBrowser: !isNode})
-  const { ecmScript, projectDir, error } = res
+  const { ecmScript, error } = res
   if (error)
     return res
   const namedScript = `${ecmScript}\n//# sourceURL=snippet-${args.profileText.slice(0,20).replace(/\s/g,'_')}:runSnippet.js`

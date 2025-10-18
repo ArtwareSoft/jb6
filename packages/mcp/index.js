@@ -29,7 +29,7 @@ if (coreUtils.isNode) {
             jb.coreRegistry.repoRoot = path.resolve(repoRoot.split('--repoRoot=').pop())
         else 
             jb.coreRegistry.repoRoot = await coreUtils.calcRepoRoot()
-        jb.coreRegistry.jb6Root = await coreUtils.calcJb6RepoRoot()
+        await coreUtils.calcJb6RepoRootAndImportMapsInCli()
         const extraMcp = `${jb.coreRegistry.repoRoot}/.jb6/mcp.js`
 
         if (await exists(extraMcp))

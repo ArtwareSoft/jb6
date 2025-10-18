@@ -66,27 +66,31 @@ async function runBashScript(script) {
   })
 }
 
-async function runNodeCli(script, { projectDir: cwd} = {}) {
+async function runNodeCli(script, options = {}) {
   const {spawn} = await import('child_process')
-  const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
+  options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
+  const importParts = options.importMapsInCli ? ['--import',options.importMapsInCli] : []
+
+  const cmd = `node --inspect-brk --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
+  const cwd = options.projectDir
   const scriptToRun = `console.log = () => {};\n${script}`
   return new Promise(resolve => {
     let out = '', err = ''
     try {
-      const child = spawn(process.execPath, ['--input-type=module', '-e', scriptToRun], {cwd })
+      const child = spawn(process.execPath, ['--input-type=module', ...importParts, '-e', scriptToRun], {cwd })
       child.stdout.on('data', d => out += d)
       child.stderr.on('data', d => err += d)
       child.on('close', code => {
         if (code !== 0) {
           const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
           logException(error, 'error in run node cli', {cmd, cwd, stdout: out})
-          return resolve({error, cmd, cwd})
+          return resolve({error, cmd, cwd, code})
         }
         try {
           const result = JSON.parse(out)
           resolve({result, cmd, cwd})
         } catch (e) {
-          resolve({error: e.message || e, cmd, cwd, text: out})    
+          resolve({err: 'json parse error', error: e.message || e, cmd, cwd, textToParse: out})    
         }
       })
     } catch(e) {
@@ -99,7 +103,10 @@ async function runNodeCli(script, { projectDir: cwd} = {}) {
 async function runNodeCliViaJbWebServer(script, options = {}) {
   try { 
     const expressUrl = options.expressUrl || ''
-    const cmd = `node --inspect-brk --input-type=module -e "${script.replace(/"/g, '\\"')}"`
+    
+    options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
+    const importParts = options.importMapsInCli ? ['--import',options.importMapsInCli] : []
+    const cmd = `node --inspect-brk --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
     const res = await fetch(`${expressUrl}/run-cli`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
