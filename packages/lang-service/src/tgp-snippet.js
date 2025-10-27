@@ -81,7 +81,7 @@ async function runSnippetCli(args) { // {profileText, setupCode = '' }
     if (error)
       return res
     try {
-      const toRun = `${ecmScript}\n await coreUtils.writeToStdout(await calc())`
+      const toRun = `${ecmScript}\n await coreUtils.writeServiceResult(await calc())`
       const result = await runCliInContext(toRun, {projectDir, importMapsInCli})
       return result.result
     } catch (error) {

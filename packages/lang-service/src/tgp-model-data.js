@@ -13,18 +13,18 @@ Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
 
-export async function calcTgpModelData(dependencies) {
-  const { fetchByEnvHttpServer } = dependencies
-  if (dependencies.forDsls == 'test' && !dependencies.entryPointsPaths)
-    dependencies.forRepo = await calcRepoRoot()
-  const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot, llmGuideFiles } = await calcImportData(dependencies)
+export async function calcTgpModelData(resources) {
+  const { fetchByEnvHttpServer } = resources
+  if (resources.forDsls == 'test' && !resources.entryPointsPaths)
+    resources.forRepo = await calcRepoRoot()
+  const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot, llmGuideFiles } = await calcImportData(resources)
   const rootFilePaths = unique([...entryFiles, ...testFiles, ...llmGuideFiles])
   // crawl
   const codeMap = {} , visited = {}
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
 
   const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, files: Object.keys(codeMap), importMap, entryFiles, testFiles, projectDir, staticMappings}
-  logVsCode('calcTgpModelData before', dependencies, tgpModel)
+  logVsCode('calcTgpModelData before', resources, tgpModel)
 
   const {dsls} = tgpModel
 
@@ -50,7 +50,7 @@ export async function calcTgpModelData(dependencies) {
   })
 
   if (!dsls.tgp) {
-    const error = `calcTgpModelData: error for dependencies ${JSON.stringify({dependencies, importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot})}`
+    const error = `calcTgpModelData: error for resources ${JSON.stringify({resources, importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot})}`
     logError(error)
     return { tgpModel, error }
   }
@@ -81,7 +81,7 @@ export async function calcTgpModelData(dependencies) {
     directDefs.forEach(decl => parseCompDec({decl, url, src}))
   })
 
-  logVsCode('calcTgpModelData result', dependencies, tgpModel)
+  logVsCode('calcTgpModelData result', resources, tgpModel)
 
   return tgpModel
 

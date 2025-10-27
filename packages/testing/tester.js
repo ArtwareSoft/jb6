@@ -3,7 +3,7 @@ import '@jb6/common'
 import { spy } from './spy.js'
 
 const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfType, unique, isNode } = coreUtils
-jb.testingUtils = {runTest, runTests}
+jb.testingUtils = {runTest, runTests, runTestCli, runTestVm, runTestInVm}
 jb.testingRepository = {}
 
 const { 
@@ -76,14 +76,81 @@ Test('dataTest', {
 globalThis.spy = spy
 globalThis.jb = jb
 
-export async function runTest(testID, {fullTestId, singleTest, action} = {}) {
+async function runTestCli(testID, resources) {
+    const {entryFiles, testFiles, projectDir, importMap } = await coreUtils.calcImportData(resources)
+    const imports = unique([...entryFiles, ...testFiles])
+    const script = `
+      import { jb, dsls, coreUtils } from '@jb6/core'
+      import '@jb6/testing'
+      const imports = ${JSON.stringify(imports)}
+      try {
+        await Promise.all(imports.map(f => import(f))) //.catch(e => console.error(f, e.message) )))
+        const result = await jb.testingUtils.runTest('${testID}', {singleTest: true})
+        await coreUtils.writeServiceResult(result)
+      } catch (e) {
+        await coreUtils.writeServiceResult({error: e.message})
+        console.error(e)
+      }
+    `
+    try {
+      const { result, error, cmd } = await coreUtils.runCliInContext(script, {projectDir, importMapsInCli: importMap.importMapsInCli})
+      return { result, error, cmd, projectDir }
+    } catch (error) {
+      debugger
+      return { error, projectDir}
+    }
+}
+
+async function runTestVm(testID, resources) {
+    if (!isNode) {
+        const script = `import { jb, coreUtils } from '@jb6/core'
+    import '@jb6/testing/tester.js'
+    ;(async()=>{
+    try {
+      const result = await jb.testingUtils.runTestVm('${testID}', ${JSON.stringify(resources)})
+      await coreUtils.writeServiceResult(result || '')
+    } catch (e) { console.error(e) }
+    })()`
+          const res = await coreUtils.runNodeCliViaJbWebServer(script)
+          return res.result
+      }
+      await import ('@jb6/core/misc/jb-vm.js')
+      const testVm = await coreUtils.getOrCreateVm({resources})
+      try {
+        const resPromise = testVm.evalScript(`jb.testingUtils.runTestInVm('${testID}')`)
+        const result = await resPromise
+        //await testVm.runHttpRequest(runTestScript, null, {json: out => result = out })
+        return result
+      } catch (e) {
+        console.error(e)
+      }
+}
+
+async function runTestInVm(testID, httpReqId) {
+    const jbComp = Test[testID][asJbComp]
+    let res = {}
+    const start = Date.now()
+    try {
+        console.log(1)
+        const ctx = new Ctx().setVars({ testID, singleTest: true, httpReqId })
+        console.log(ctx)
+        res = await jbComp.runProfile({}, ctx)
+        console.log('test res', res)
+    } catch (e) {
+        res = { success: false, reason: e}
+    }
+    res.duration = Date.now() - start
+    return res
+}
+
+export async function runTest(testID, {fullTestId, singleTest, action, httpReqId} = {}) {
     !singleTest && await cleanBeforeRun()
     const jbComp = Test[testID][asJbComp]
     log('start test',{testID})
     let res = null
     const start = Date.now()
     try {
-        const ctx = new Ctx().setVars({ testID, fullTestId,singleTest, win: globalThis })
+        const ctx = new Ctx().setVars({ testID, fullTestId,singleTest, httpReqId, win1: globalThis })
         res = await jbComp.runProfile({}, ctx)
         if (action) {
             const actionId = action.split(':')[0]

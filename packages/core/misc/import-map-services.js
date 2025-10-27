@@ -23,9 +23,9 @@ async function calcRepoRoot(options) {
     import '@jb6/core/misc/import-map-services.js'
     try {
       const result = await coreUtils.calcRepoRoot()
-      await coreUtils.writeToStdout(result)
+      await coreUtils.writeServiceResult(result)
     } catch (e) {
-      await coreUtils.writeToStdout(e.message || e)
+      await coreUtils.writeServiceResult(e.message || e)
     }`
     const res = await coreUtils.runNodeCliViaJbWebServer(script,options)
     return jb.coreRegistry.repoRoot = res.result
@@ -70,7 +70,7 @@ import '@jb6/core/misc/import-map-services.js'
 ;(async()=>{
 try {
   const result = await coreUtils.discoverDslEntryPoints(${JSON.stringify({forDsls, repoRoot})})
-  await coreUtils.writeToStdout(result)
+  await coreUtils.writeServiceResult(result)
 } catch (e) { console.error(e) }
 })()`
       const res = await coreUtils.runNodeCliViaJbWebServer(script)
@@ -128,7 +128,7 @@ import '@jb6/core/misc/import-map-services.js'
 ;(async()=>{
 try {
   const result = await coreUtils.getStaticServeConfig('${repoRoot}')
-  await coreUtils.writeToStdout(result)
+  await coreUtils.writeServiceResult(result)
 } catch (e) { console.error(e) }
 })()`
     const res = await coreUtils.runNodeCliViaJbWebServer(script)
@@ -138,9 +138,9 @@ try {
   return await getStaticConfig(repoRoot, pkgJson)
 }
 
-async function calcImportData(dependencies = {}) {
-  const {entryPointPaths, forRepo, forDsls} = dependencies
-  const cacheKey = JSON.stringify(dependencies)
+async function calcImportData(resources = {}) {
+  const {entryPointPaths, forRepo, forDsls} = resources
+  const cacheKey = JSON.stringify(resources)
   if (jb.importMapCache.fileContext[cacheKey]) return jb.importMapCache.fileContext[cacheKey]
   
   if (!isNode) {
@@ -148,8 +148,8 @@ async function calcImportData(dependencies = {}) {
 import '@jb6/core/misc/import-map-services.js'
 ;(async()=>{
 try {
-  const result = await coreUtils.calcImportData(${JSON.stringify(dependencies)})
-  await coreUtils.writeToStdout(result)
+  const result = await coreUtils.calcImportData(${JSON.stringify(resources)})
+  await coreUtils.writeServiceResult(result)
 } catch (e) { console.error(e) }
 })()`
     const res = await coreUtils.runNodeCliViaJbWebServer(script)

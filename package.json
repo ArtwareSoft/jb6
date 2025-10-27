@@ -7,7 +7,7 @@
   "scripts": {
     "test": "node packages/testing/run-tests-cli.js all",
     "test-via-web": "start http://localhost:8083/packages/testing/tests.html",
-    "local": "node packages/testing/jb-web-server.js",
+    "local": "node --experimental-vm-modules packages/testing/jb-web-server.js",
     "jb6:bumpVer": "node scripts/bump-calver.js",
     "jb6:publish": "bash scripts/publish.sh",
     "bumpPub": "npm run jb6:bumpVer && npm run jb6:publish",
@@ -22,9 +22,15 @@
     "#jb6/*": "./packages/*"
   },
   "devDependencies": {
-    "globby": "^14.1.0"
+    "esbuild": "^0.25.11",
+    "globby": "^14.1.0",
+    "lucide": "^0.546.0",
+    "tailwindcss": "^4.1.15"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "array-flatten": "^3.0.0"
+  }
 }

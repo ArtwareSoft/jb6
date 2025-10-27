@@ -14,8 +14,9 @@
   "devDependencies": {
     "jsdom": "^26.1.0",
     "mutationobserver-shim": "^0.3.7",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "scheduler": "^0.27.0"
   },
   "repository": {
     "type": "git",

@@ -15,9 +15,9 @@ jb.probeRepository = {
 }
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
-async function runProbeCli(probePath, dependencies) {
-    const { extraCode } = dependencies
-    const {entryFiles, testFiles, projectDir, importMap } = await coreUtils.calcImportData(dependencies)
+async function runProbeCli(probePath, resources) {
+    const { extraCode } = resources
+    const {entryFiles, testFiles, projectDir, importMap } = await coreUtils.calcImportData(resources)
     const imports = unique([...entryFiles, ...testFiles])
     const script = `
       import { writeFile } from 'fs/promises'
@@ -29,9 +29,9 @@ async function runProbeCli(probePath, dependencies) {
         ${extraCode || ''}
         await Promise.all(imports.map(f => import(f))) //.catch(e => console.error(f, e.message) )))
         const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath)})
-        await coreUtils.writeToStdout(result)
+        await coreUtils.writeServiceResult(result)
       } catch (e) {
-        await coreUtils.writeToStdout({error: e.message})
+        await coreUtils.writeServiceResult({error: e.message})
         console.error(e)
       }
     `

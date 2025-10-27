@@ -29,6 +29,32 @@ Test('reactTest.buttonClick', {
   })
 })
 
+Test('reactTest.cli', {
+  impl: dataTest({
+    calculate: async () => {
+    const result = await jb.testingUtils.runTestCli('reactTest.buttonClick', {entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`})
+    return result?.result?.testRes
+  },
+    expectedResult: contains('Clicked!'),
+    timeout: 2000
+  })
+})
+
+Test('reactTest.vm', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: async () => {
+    const results = await Promise.all([
+      jb.testingUtils.runTestVm('reactTest.buttonClick', { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`,JSDOM: true }),
+      jb.testingUtils.runTestVm('reactTest.buttonClick', { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`, JSDOM: true })
+   ])
+    return results.map(r=> r?.testRes).join(',')
+  },
+    expectedResult: contains('Clicked!','Clicked!'),
+    timeout: 2000
+  })
+})
+
 Test('reactTest.buttonForClick', {
   impl: reactTest({
     reactComp: () => {

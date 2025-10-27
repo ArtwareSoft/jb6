@@ -1,6 +1,5 @@
 import { jb, coreUtils } from '@jb6/core'
-import { icons } from './lib/lucide-04.js'
-export const reactUtils = jb.reactUtils = { h, L }
+export const reactUtils = jb.reactUtils = { h, L, loadLucid05 }
 
 function h(t, p = {}, ...c){
   let [tag,cls]= typeof t==="string" ? t.split(/:(.+)/) : [t]
@@ -16,8 +15,9 @@ function h(t, p = {}, ...c){
 }
 
 const toPascal = s => s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')
+const unknow = [["path",{"d":"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"}],["path",{"d":"M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"}],["path",{"d":"M12 17h.01"}]]
 function L(iconName) {
-  const icon = icons[toPascal(iconName)] || icons.ShieldQuestion
+  const icon = jb.reactUtils.icons && jb.reactUtils.icons[toPascal(iconName)] || unknow
   return function LucideIcon(props) {
     const { size, width, height, color, stroke, strokeWidth, ...restProps } = props
     return reactUtils.createElement('svg', {
@@ -28,16 +28,33 @@ function L(iconName) {
   }
 }
 
+function loadLucid05() {
+  return jb.reactUtils.icons = import('./lib/lucide-0.5.mjs')
+}
+
+console.log('react-utils')
+
 let initReact = () => {}
-if (coreUtils.isNode) {
-  initReact = async () => { // node mean include tests
+if (!globalThis.window) {
+  initReact = async () => {
+    console.log('initReact node')
+    const cli = Object.fromEntries(process.argv.slice(2).filter(a=>a.startsWith('--')).map(a=>a.slice(2).split('=')))
+    const url = globalThis.jsDomUrl || cli.url || 'http://localhost'
+    const html = globalThis.html || '<!DOCTYPE html><body></body>'
+    const JSDOM = globalThis.JSDOM || (await import('jsdom')).JSDOM
+    const dom = new JSDOM(html, { url, pretendToBeVisual: true, resources: 'usable', features: { ProcessExternalResources: false } })
+    const win = globalThis.window = dom.window
+    const isLocalHost = win.location.hostname === 'localhost'
+
+    await import('./lib/mutationobserver.min.js')
+
+    win.matchMedia = () => ({})
+    win.scrollTo     = () => {}
+    win.Element.prototype.scrollTo = () => {}
+    win.Element.prototype.scrollIntoView = () => {}
     globalThis.requestAnimationFrame = cb => setTimeout(cb, 0)
     globalThis.cancelAnimationFrame  = id => clearTimeout(id)
     globalThis.nodeTesting = true
-    const [React,ReactDomClient,ReactDom] =
-      await Promise.all([import('react'), import('react-dom/client'), import('react-dom')].map(x=>x.default || x))
-  
-    Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient })
 
     globalThis.localStorage = {
       db: {},
@@ -45,54 +62,30 @@ if (coreUtils.isNode) {
       setItem(k,v)  { this.db[k] = v },
       removeItem(k) { delete this.db[k] }
     }
-  }
-
-  jb.reactUtils.initDom = async ({url = 'http://localhost', html = '<!DOCTYPE html><body style="height:100vh"></body>' } = {}) => {
-    const { JSDOM } = await import('jsdom')
-    const dom = new JSDOM(html, { url, pretendToBeVisual: true, resources: 'usable', features: { ProcessExternalResources: false } })
-    const win = globalThis.window = dom.window
-    win.matchMedia = () => ({})
-    win.scrollTo     = () => {}
-    await import('mutationobserver-shim')
-    win.Element.prototype.scrollTo = () => {}
-    win.Element.prototype.scrollIntoView = () => {}
 
 // Also mock scrollIntoView if needed
     ;['Image','Node','Element','HTMLElement','Document','MutationObserver','document'].forEach(k => globalThis[k] = win[k])
     ;['navigator','location'].forEach(k => Object.defineProperty(globalThis, k, { value: win[k], writable: true, configurable: true, enumerable: true }))
-    reactUtils.registerMutObs(win)
-    return win
+    const ver = isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
+    const {React,ReactDomClient,ReactDom} = await import(`./lib/react-all-${ver}.mjs`)
+    Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient })
   }
 } else { // browser
   initReact = async () => {
-    const isLocalHost = typeof location !== 'undefined' && location.hostname === 'localhost'
-    const devOrProd = isLocalHost ? '?dev' : '' //'development' : 'production'
+    console.log('initReact browser')
+    const isLocalHost = false // typeof location !== 'undefined' && location.hostname === 'localhost'
+    const ver = isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
 
     if (typeof process === 'undefined')
       globalThis.process = { env: { NODE_ENV: 'development' }, platform: 'browser', version: '', versions: {} }
     if (!reactUtils.reactPromise)
       reactUtils.reactPromise = (async () => {
-        const [_,React, ReactDomClient, ReactDom] = await Promise.all([
-          import(`/jb6_packages/react/lib/tailwind-4.js`),
-          // import(`/jb6_packages/react/lib/react-19.${devOrProd}.js`),
-          // import(`/jb6_packages/react/lib/react-dom-client-19.${devOrProd}.js`),
-          //import(`/jb6_packages/react/lib/react-dom-19.${devOrProd}.js`)
-          import(`https://esm.sh/react@19${devOrProd}`),
-          import(`https://esm.sh/react-dom@19/client${devOrProd}`),
-          import(`https://esm.sh/react-dom@19${devOrProd}`)
-        ].map(x=>x.default || x))
-        const TestingLib = {}
-        Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, ...TestingLib, React, ReactDOM: ReactDomClient  })
+        const { React, ReactDomClient, ReactDom } = await import(`./lib/react-all-${ver}.mjs`)
+        await import('./lib/tailwindcss-4.1.15.mjs')
+        Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient  })
       })()
     return reactUtils.reactPromise
-  }
-  
-  jb.reactUtils.initDom = async () => {
-    const win = window    
-    win.testing = true
-    reactUtils.registerMutObs(win)
-    return win
-  }
+  }  
 }
 
 await (async () => initReact())()

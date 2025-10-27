@@ -2,10 +2,11 @@ import path from 'path'
 import fs from 'fs/promises'
 import { coreUtils, jb } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
+//import '@jb6/core/misc/jb-vm.js'
 import '@jb6/core/misc/import-map-services.js'
 import child from 'child_process'
 
-const { getStaticServeConfig, calcRepoRoot, runNodeCli, runBashScript, } = coreUtils
+const { getStaticServeConfig, calcRepoRoot, runNodeCli, runBashScript, calcHash, getOrCreateVm} = coreUtils
 
 jb.serverUtils = {serveImportMap, serveCli, serveGotoSource}
 export const { serverUtils } = jb
@@ -45,6 +46,21 @@ function serveCli(app) {
     const { script, ...options } = req.body
     const result = await runNodeCli(script, options)
     res.status(200).json({ result })
+  })
+
+  app.post('/run-on-vm', async (req, res) => {
+    if (!req.body) {
+      res.status(200).json({ error: 'no body in req' })
+      return
+    }
+    const repoRoot = await calcRepoRoot()
+    const { script, ...options } = req.body
+
+    const vmId = calcHash(script) // creates a separated vm for each req
+    const vm = getOrCreateVm({vmId, resources: {...options, forRepo: repoRoot}})
+    const result = await vm.runHttpRequest(script, req, res)  
+    if (result)
+      res.status(200).json({ result })
   })
 
   app.post('/run-bash', async (req, res) => {

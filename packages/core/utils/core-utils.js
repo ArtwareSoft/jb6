@@ -132,7 +132,7 @@ function logError(err,logObj) {
 function logException(e,err,logObj) {
   globalThis.window && globalThis.console.log('%c Exception: ','color: red', err, e, logObj)
   const errObj = { message: e.message, err, stack: e.stack||'', ...logObj, e}
-  globalThis.process?.stderr.write(`${err}\n${e}`)
+  globalThis.process?.stderr?.write(`${err}\n${e}`)
   logVsCode('exception', stripData(errObj))
   jb.ext.spy?.log('exception error', errObj)
 }
@@ -369,7 +369,12 @@ function calcHash(str) {
   return hash
 }
 
-async function writeToStdout(result) {
+async function writeServiceResult(result,_httpReqId) {
+  const httpReqId = _httpReqId || globalThis.httpReqId
+  if (httpReqId) {
+    httpRequests[httpReqId].res.json(result)
+    return
+  }
   const res = JSON.stringify(result, null, 2)
   const writeRes = process.stdout.write(res)
   if (res.length < 40000)
@@ -386,5 +391,5 @@ Object.assign(jb.coreUtils, {
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, estimateTokens, pathJoin, pathParent, calcHash, writeToStdout
+  calcValue, stripData, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult
 })

@@ -1,11 +1,10 @@
 import { dsls, ns, coreUtils, jb } from '@jb6/core'
 import { reactUtils } from '@jb6/react' 
 import '@jb6/testing'
-const { asArray } = coreUtils
+const { asArray, logError } = coreUtils
 
 Object.assign(reactUtils, {registerMutObs, prettyPrintNode})
 
-const { createRoot, initDom, createElement } = reactUtils
 const { delay } = coreUtils
 const { 
   tgp: { TgpType },
@@ -26,14 +25,19 @@ Test('reactTest', {
     ],
     impl: dataTest({
         calculate: async (ctx,{singleTest},{reactComp,userActions,props}) => { 
-          const win = await initDom()
+          const win = globalThis.window
+          if (!win)
+            return {error: 'reactTest: no global window' }
+
+          win.testing = true
+          reactUtils.registerMutObs(win)
           const testSimulation = win.document.createElement('div')
           testSimulation.id = 'test-simulation'
           const hasActions = asArray(userActions).length > 0
           if (singleTest || hasActions)
               win.document.body.appendChild(testSimulation)
 
-          createRoot(testSimulation).render(createElement(reactComp, props))
+          reactUtils.createRoot(testSimulation).render(reactUtils.createElement(reactComp, props))
           await win.waitForMutations(10)
           const ctxA = ctx.setVars({ win })
           for (const a of asArray(userActions)) {
@@ -192,8 +196,8 @@ function registerMutObs(win) {
         path: getPathFromRoot(m.target),
         attributeName: m.attributeName,
         oldValue: m.oldValue,
-        added: [...m.addedNodes].map(nodeToJSON),
-        removed: [...m.removedNodes].map(nodeToJSON)
+        added: [...m.addedNodes].map(n => nodeToJSON(n,win)),
+        removed: [...m.removedNodes].map(n => nodeToJSON(n,win))
       })
     })
     clearTimeout(timer)
@@ -229,8 +233,8 @@ function registerMutObs(win) {
   })
 }
 
-function nodeToJSON(node) {
-  if (node.nodeType === Node.TEXT_NODE) {
+function nodeToJSON(node, win) {
+  if (node.nodeType === win.Node.TEXT_NODE) {
     return { type: 'text', text: node.textContent }
   }
   return {
