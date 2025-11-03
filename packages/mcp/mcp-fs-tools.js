@@ -17,7 +17,7 @@ const getFilesContent = Data('getFilesContent', {
   params: [
     {id: 'filesPaths', as: 'string', mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")'},
   ],
-  impl: async (ctx, { filesPaths}) => {
+  impl: async (ctx, {}, { filesPaths}) => {
       const repoRoot = jb.coreRegistry.repoRoot
       try {
         const { readFileSync } = await import('fs')
@@ -44,7 +44,7 @@ Action('saveToFile', {
     {id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where timestamp will be added'},
     {id: 'content', as: 'string', asIs: true, mandatory: true, description: 'Content to add to the file'},
   ],
-  impl: async (ctx, {filePath, content}) => {
+  impl: async (ctx, {}, {filePath, content}) => {
     try {
       const { writeFileSync } = await import('fs')
       const { join } = await import('path')
@@ -127,7 +127,7 @@ Tool('saveToFile', {
     {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
     {id: 'content', as: 'string', dynamic: true, mandatory: true, description: 'Content to add to the file'},
   ],
-  impl: async (ctx, args) => {
+  impl: async (ctx, {}, args) => {
     try {
       const { writeFileSync } = await import('fs')
       const { join } = await import('path')
@@ -154,7 +154,7 @@ Tool('listRepoFiles', {
   params: [
     { id: 'includeHidden', as: 'boolean', defaultValue: true, description: 'Whether to include hidden files (starting with .)' }
   ],
-  impl: async (ctx, { includeHidden }) => {
+  impl: async (ctx, {}, { includeHidden }) => {
     try {
       const repoRoot = jb.coreRegistry.repoRoot
       const { readdirSync, statSync, readFileSync } = await import('fs')
@@ -293,7 +293,7 @@ const createDirectoryStructure = Tool('createDirectoryStructure', {
     { id: 'dirPath', as: 'string', mandatory: true, description: 'Relative path within repo where to create the structure' },
     { id: 'structure', as: 'object', mandatory: true, description: 'JSON describing directory structure. Objects are directories, strings are file contents.' }
   ],
-  impl: async (ctx, {dirPath, structure}) => {
+  impl: async (ctx, {}, {dirPath, structure}) => {
     const repoRoot = jb.coreRegistry.repoRoot
     try {
       const { mkdirSync, writeFileSync } = await import('fs')

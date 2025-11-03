@@ -9,7 +9,7 @@ Aggregator('aggregate', {
   params: [
     {id: 'aggregator', type: 'data', mandatory: true, dynamic: true}
   ],
-  impl: ({},{ aggregator} ) => aggregator()
+  impl: ({}, {}, {aggregator}) => aggregator()
 })
 
 Aggregator('objFromProperties', {
@@ -17,7 +17,7 @@ Aggregator('objFromProperties', {
   params: [
     {id: 'properties', defaultValue: '%%', as: 'array'}
   ],
-  impl: ({},{ properties} ) => Object.fromEntries(properties.map(({id,val}) => [id,val]))
+  impl: ({}, {}, {properties}) => Object.fromEntries(properties.map(({id,val}) => [id,val]))
 })
 
 Aggregator('objFromEntries', {
@@ -25,7 +25,7 @@ Aggregator('objFromEntries', {
   params: [
     {id: 'entries', defaultValue: '%%', as: 'array'}
   ],
-  impl: ({},{entries}) => Object.fromEntries(entries)
+  impl: ({}, {}, {entries}) => Object.fromEntries(entries)
 })
 
 Aggregator('unique', {
@@ -33,7 +33,7 @@ Aggregator('unique', {
     {id: 'id', as: 'string', dynamic: true, defaultValue: '%%'},
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: (ctx,{id,items}) => {
+  impl: (ctx, {}, {id,items}) => {
 		const _idFunc = id.profile == '%%' ? x=>x : x => id(ctx.setData(x))
 		return unique(items,_idFunc)
 	}
@@ -43,21 +43,21 @@ Aggregator('max', {
   params: [
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: (ctx,{items}) => Math.max.apply(0,items)
+  impl: (ctx, {}, {items}) => Math.max.apply(0,items)
 })
 
 Aggregator('min', {
   params: [
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: (ctx,{items}) => Math.min.apply(0,items)
+  impl: (ctx, {}, {items}) => Math.min.apply(0,items)
 })
 
 Aggregator('sum', {
   params: [
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: (ctx,{items}) => items.reduce((acc,item) => +item+acc, 0)
+  impl: (ctx, {}, {items}) => items.reduce((acc,item) => +item+acc, 0)
 })
 
 Aggregator('sort', {
@@ -66,7 +66,7 @@ Aggregator('sort', {
     {id: 'lexical', as: 'boolean', type: 'boolean'},
     {id: 'ascending', as: 'boolean', type: 'boolean'}
   ],
-  impl: ({data},{prop,lexical,ascending}) => {
+  impl: ({data}, {}, {prop,lexical,ascending}) => {
     if (!data || ! Array.isArray(data)) return null;
     let sortFunc
     const firstData = data[0] //jb.entries(data[0]||{})[0][1]
@@ -84,7 +84,7 @@ Aggregator('last', {
   params: [
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: ({},{items}) => items.slice(-1)[0]
+  impl: ({}, {}, {items}) => items.slice(-1)[0]
 })
 
 Aggregator('count', {
@@ -92,14 +92,14 @@ Aggregator('count', {
   params: [
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: ({},{items}) => items.length
+  impl: ({}, {}, {items}) => items.length
 })
 
 Aggregator('reverse', {
   params: [
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: ({},{items}) => items.slice(0).reverse()
+  impl: ({}, {}, {items}) => items.slice(0).reverse()
 })
 
 Aggregator('sample', {
@@ -107,7 +107,7 @@ Aggregator('sample', {
     {id: 'size', as: 'number', defaultValue: 300},
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: ({},size,{items}) =>	items.filter((x,i)=>i % (Math.floor(items.length/size) ||1) == 0)
+  impl: ({}, {}, {size, items}) =>	items.filter((x,i)=>i % (Math.floor(items.length/size) ||1) == 0)
 })
 
 Data('addProp', {
@@ -118,7 +118,7 @@ Data('addProp', {
     {id: 'type', as: 'string', options: 'string,number,boolean,object,array,asIs', defaultValue: 'asIs'},
     {id: 'obj', byName: true, defaultValue: '%%'}
   ],
-  impl: (ctx,{name,val,type,obj}) => ({...obj, [name]: RT_types[type](val())})
+  impl: (ctx, {}, {name,val,type,obj}) => ({...obj, [name]: RT_types[type](val())})
 })
 
 Data('removeProps', {
@@ -127,5 +127,5 @@ Data('removeProps', {
     {id: 'names', type: 'data[]', mandatory: true},
     {id: 'obj', byName: true, defaultValue: '%%'}
   ],
-  impl: (ctx,{names,obj}) => names.reduce((obj,name) => { const{ [name]: _, ...rest } = obj; return rest }, obj)
+  impl: (ctx, {}, {names,obj}) => names.reduce((obj,name) => { const{ [name]: _, ...rest } = obj; return rest }, obj)
 })

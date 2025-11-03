@@ -15,31 +15,31 @@ const none = NotificationMechanism.forward('none')
 
 Sharing('globalUserOnly', {
   description: 'no one but the user can see the content, including the system. single global file',
-  impl: () => ({ singleWriter: true, readVisibility: 'globalUserOnly'})
+  impl: ({}, {}) => ({ singleWriter: true, readVisibility: 'globalUserOnly'})
 })
 
 Sharing('roomUserOnly', {
   description: 'no one but the user can see the content, including the system. instance per room',
-  impl: () => ({ singleWriter: true, readVisibility: 'roomUserOnly'})
+  impl: ({}, {}) => ({ singleWriter: true, readVisibility: 'roomUserOnly'})
 })
 
 Sharing('friends', {
   description: 'anyone who knows the user id can see the content, including all participants in user`s rooms',
-  impl: () => ({ singleWriter: true, readVisibility: 'friends'})
+  impl: ({}, {}) => ({ singleWriter: true, readVisibility: 'friends'})
 })
 
 Sharing('roomReadOnly', {
-  impl: () => ({ singleWriter: true, readVisibility: 'roomReadOnly'})
+  impl: ({}, {}) => ({ singleWriter: true, readVisibility: 'roomReadOnly'})
 })
 
 Sharing('systemAccessible', {
   description: 'only the user and the system can see the content. E.g, user notification keys',
-  impl: () => ({ singleWriter: true, readVisibility: 'systemAccessible'})
+  impl: ({}, {}) => ({ singleWriter: true, readVisibility: 'systemAccessible'})
 })
 
 Sharing('publicGlobal', {
   description: 'single global file, accessible to anyone who knows its name',
-  impl: () => ({ singleWriter: true, readVisibility: 'publicGlobal'})
+  impl: ({}, {}) => ({ singleWriter: true, readVisibility: 'publicGlobal'})
 })
 
 Sharing('collaborative', {
@@ -48,7 +48,7 @@ Sharing('collaborative', {
     {id: 'dataWriteMethod', as: 'string', options: 'appendOnly,reWriteWithRefine', mandatory: true, defaultValue: 'reWriteWithRefine'},
     {id: 'activityDetection', type: 'activity-detection', defaultValue: fileBased()}
   ],
-  impl: (ctx, {activityDetection, dataWriteMethod}) => {
+  impl: (ctx, {}, {activityDetection, dataWriteMethod}) => {
     return {
       singleWriter: false, 
       readVisibility: 'collaborative',
@@ -88,7 +88,7 @@ ActivityDetection('fileBased', {
     {id: 'aloneTimeThreshold', as: 'number', defaultValue: 300000}, // 5 minutes to be considered alone
     {id: 'idleStopThreshold', as: 'number', defaultValue: 1800000} // 30 minutes - stop polling
   ],
-  impl: (ctx, {pollingStrategy, notificationMechanism, aloneTimeThreshold, idleStopThreshold}) => {
+  impl: (ctx, {}, {pollingStrategy, notificationMechanism, aloneTimeThreshold, idleStopThreshold}) => {
     
     // Activity tracking state
     let myLastActivity = Date.now()
@@ -300,7 +300,7 @@ ActivityDetection('pushNotifications', {
     {id: 'fallbackToPolling', as: 'boolean', defaultValue: true},
     {id: 'pollingInterval', as: 'number', defaultValue: 5000} // Slower polling as backup
   ],
-  impl: (ctx, {pushServerUrl, fallbackToPolling, pollingInterval}) => {
+  impl: (ctx, {}, {pushServerUrl, fallbackToPolling, pollingInterval}) => {
     
     let lastExternalActivity = -1
     let myLastActivity = Date.now()
@@ -361,7 +361,7 @@ ActivityDetection('pushNotifications', {
 // =============================================================================
 
 NotificationMechanism('none', {
-  impl: () => ({
+  impl: ({}, {}) => ({
     notifyOthers: async () => {}, // No-op
     getStats: () => ({type: 'none', sent: 0, failed: 0})
   })
@@ -372,7 +372,7 @@ NotificationMechanism('pushNotifications', {
     {id: 'serverUrl', as: 'string', mandatory: true},
     {id: 'timeout', as: 'number', defaultValue: 5000}
   ],
-  impl: (ctx, {serverUrl, timeout}) => {
+  impl: (ctx, {}, {serverUrl, timeout}) => {
     let sentCount = 0
     let failedCount = 0
     
@@ -424,7 +424,7 @@ NotificationMechanism('webhook', {
     {id: 'secret', as: 'string', description: 'Optional webhook secret for authentication'},
     {id: 'retries', as: 'number', defaultValue: 2}
   ],
-  impl: (ctx, {webhookUrl, secret, retries}) => {
+  impl: (ctx, {}, {webhookUrl, secret, retries}) => {
     let sentCount = 0
     let failedCount = 0
     
@@ -489,7 +489,7 @@ PollingStrategy('adaptive', {
     {id: 'activityWindow', as: 'number', defaultValue: 300000, description: 'Time window to analyze activity (5 min)'},
     {id: 'adaptationRate', as: 'number', defaultValue: 0.1, description: 'How quickly to adapt (0.1 = gradual)'}
   ],
-  impl: (ctx, {baseInterval, maxInterval, minInterval, activityWindow, adaptationRate}) => {
+  impl: (ctx, {}, {baseInterval, maxInterval, minInterval, activityWindow, adaptationRate}) => {
     
     let currentInterval = baseInterval
     let activityHistory = []

@@ -384,7 +384,7 @@ Data('pipeline', {
     {id: 'source', type: 'data', dynamic: true, mandatory: true, composite: true },
     {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true}
   ],
-  impl: (ctx, { operators, source } ) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
+  impl: (ctx, {}, { operators, source }) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
 })
 
 // Usage:
@@ -420,7 +420,7 @@ Doclet('primerSummaryA5', {
       {id: 'source', type: 'data', dynamic: true, mandatory: true },
       {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true}
     ],
-    impl: (ctx, {source, operators}) => { /* js code */ }
+    impl: (ctx, {}, {source, operators}) => { /* js code */ }
   })`,
         points: p('secondParamAsArray: all args after first become operators array')
       }),

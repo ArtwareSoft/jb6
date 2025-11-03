@@ -84,7 +84,7 @@ const squeezeText = Data('squeezeText', {
     {id: 'maxLength', as: 'number', defaultValue: 20000},
     {id: 'keepPrefixSize', as: 'number', defaultValue: 1000}
   ],
-  impl: async (ctx, {text: _text, maxLength, keepPrefixSize}) => {
+  impl: async (ctx, {}, {text: _text, maxLength, keepPrefixSize}) => {
     const text = await Promise.resolve(_text).then(x=>x||'').then(x=>typeof x == 'object' ? JSON.stringify(x) : x)
     return (text.length > maxLength) ? [text.slice(0,keepPrefixSize),
       `===text was originally ${text.length}. sorry, we had to squeeze it to ${maxLength} chars. ${text.length - maxLength} missing chars here====`,

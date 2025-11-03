@@ -63,7 +63,7 @@ Doclet('countUnder30', {
   params: [
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: ({},{items}) => items.length
+  impl: ({}, {}, {items}) => items.length
 })`,
       explain: 'notice the "items" param that allows using the count as function or operator inside the pipeline with the %% as default value'
     })
@@ -106,7 +106,7 @@ Doclet('joinNames', {
     {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
     {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map operators'}
   ],
-  impl: (ctx, { operators, source } ) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
+  impl: (ctx, {}, { operators, source }) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
 })
 
 function runAsAggregator(ctx, arg, index, dataArray, profile) {
@@ -178,7 +178,7 @@ Doclet('complexFilter', {
         params: [
           {id: 'filter', type: 'boolean', as: 'boolean', dynamic: true, mandatory: true}
         ],
-        impl: (ctx, {filter}) => toArray(ctx.data).filter(item => filter(ctx.setData(item)))
+        impl: (ctx, {}, {filter}) => toArray(ctx.data).filter(item => filter(ctx.setData(item)))
       })`,
       explain: 'filter is aggregator operator the filters array of items'
     })

@@ -59,7 +59,7 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
             comp.impl.compFunc = true
         res = run(comp.impl, ctx.setJbCtx(ctx.jbCtx.newComp(comp,compArgs)), settings)
     } else if (typeof profile == 'function' && profile.compFunc)
-        res = profile(ctx, jbCtx.args)
+        res = profile(ctx, ctx.vars, jbCtx.args)
     else if (typeof profile == 'function')
         res = profile(ctx, ctx.vars, jbCtx.args)
     else if (profile && typeof profile == 'object' && openObj)

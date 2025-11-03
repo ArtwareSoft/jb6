@@ -16,7 +16,7 @@ Data('prettyPrint', {
     {id: 'noMacros', as: 'boolean', type: 'boolean'},
     {id: 'type', as: 'string'}
   ],
-  impl: (ctx,{profile}) => prettyPrint(calcValue(profile),{ ...ctx.jbCtx.args })
+  impl: (ctx, {}, {profile}) => prettyPrint(calcValue(profile),{ ...ctx.jbCtx.args })
 })
 
 const emptyLineWithSpaces = Array.from(new Array(200)).map(_=>' ').join('')

@@ -207,7 +207,7 @@ Data('pipeline', {                               // CompDef - defines pipeline c
     {id: 'source', type: 'data', mandatory: true},
     {id: 'operators', type: 'data[]', mandatory: true, secondParamAsArray: true}
   ],
-  impl: (ctx, {source, operators}) => {
+  impl: (ctx, {}, {source, operators}) => {
     return operators.reduce((data, op) => op(ctx.setData(data)), source())
   }
 })

@@ -126,7 +126,7 @@ getFilesContent({
     mechanismUnderTheHood({
       snippet: `// GroupBy implementation pattern:
 Aggregator('splitByPivot', {
-  impl: (ctx, {pivot, items}) => {
+  impl: (ctx, {}, {pivot, items}) => {
     const keys = unique(items.map(item=>item[pivot]))
     const groups = Object.fromEntries(keys.map(key=> [key,[]]))
     items.forEach(item => groups[item[pivot]].push(item))

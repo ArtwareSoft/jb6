@@ -17,11 +17,11 @@ const {
 const Repo = TgpType('repo','test')
 
 const Jb6 = Repo('Jb6', {
-  impl: () => calcRepoRoot()
+  impl: ({}, {}) => calcRepoRoot()
 })
 
 const Genie = Repo('Genie', {
-  impl: () => '/home/shaiby/projects/Genie'
+  impl: ({}, {}) => '/home/shaiby/projects/Genie'
 })
 
 Test('staticServeConfigTest', {

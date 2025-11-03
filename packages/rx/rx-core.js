@@ -17,7 +17,7 @@ ReactiveFlow('rx.flow', {
     {id: 'onError', type: 'action', dynamic: true},
     {id: 'onComplete', type: 'action', dynamic: true}
   ],
-  impl: (ctx,{source, sink, onError, onComplete}) => source(jb.rxUtils.subscribe(ctx2 => sink(ctx2), ctx2 => onError(ctx2), ctx2 => onComplete(ctx2)))
+  impl: (ctx, {}, {source, sink, onError, onComplete}) => source(jb.rxUtils.subscribe(ctx2 => sink(ctx2), ctx2 => onError(ctx2), ctx2 => onComplete(ctx2)))
 })
 const { rx } = ns
 
@@ -29,7 +29,7 @@ ReactiveSource('rx.pipe', {
     {id: 'source', type: 'reactive-source', dynamic: true, mandatory: true, templateValue: '', composite: true },
     {id: 'elems', type: 'reactive-operator[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
-  impl: (ctx, {source, elems}) => {
+  impl: (ctx, {}, {source, elems}) => {
       const cbs = [source(ctx), ...elems(ctx).filter(x=>x)]
       if (!cbs[0])
         logError('rx.pipe, no reactive source for pipe',{source, ctx})
@@ -47,7 +47,7 @@ ReactiveSource('rx.data', {
   params: [
     {id: 'Data', mandatory: true}
   ],
-  impl: (ctx, {Data}) => jb.rxUtils.map(x => ctx.dataObj(x))(jb.rxUtils.fromIter(toArray(Data)))
+  impl: (ctx, {}, {Data}) => jb.rxUtils.map(x => ctx.dataObj(x))(jb.rxUtils.fromIter(toArray(Data)))
 })
 
 ReactiveSource('merge', {
@@ -56,42 +56,42 @@ ReactiveSource('merge', {
   params: [
     {id: 'sources', type: 'source[]', as: 'array', mandatory: true, dynamic: true, templateValue: [], composite: true}
   ],
-  impl: (ctx, {sources}) => jb.rxUtils.merge(...sources(ctx))
+  impl: (ctx, {}, {sources}) => jb.rxUtils.merge(...sources(ctx))
 })
 
 ReactiveSource('rx.promise', {
   params: [
     {id: 'promise', mandatory: true}
   ],
-  impl: (ctx, {promise}) => jb.rxUtils.map(x => ctx.dataObj(x))(jb.rxUtils.fromPromise(promise))
+  impl: (ctx, {}, {promise}) => jb.rxUtils.map(x => ctx.dataObj(x))(jb.rxUtils.fromPromise(promise))
 })
 
 ReactiveOperator('rx.do',{
   params: [
     {id: 'action', type: 'action', dynamic: true, mandatory: true}
   ],
-  impl: (ctx, {action}) => jb.rxUtils.Do(ctx2 => action(ctx2))
+  impl: (ctx, {}, {action}) => jb.rxUtils.Do(ctx2 => action(ctx2))
 })
 
 ReactiveOperator('rx.doPromise',{
   params: [
     {id: 'action', type: 'action', dynamic: true, mandatory: true}
   ],
-  impl: (ctx, {action}) => jb.rxUtils.doPromise(ctx2 => action(ctx2))
+  impl: (ctx, {}, {action}) => jb.rxUtils.doPromise(ctx2 => action(ctx2))
 })
 
 ReactiveOperator('rx.map',{
   params: [
     {id: 'func', dynamic: true, mandatory: true}
   ],
-  impl: (ctx, {func}) => jb.rxUtils.map(addDebugInfo(ctx2 => ctx.dataObj(func(ctx2), ctx2.vars || {}, ctx2.data), ctx))
+  impl: (ctx, {}, {func}) => jb.rxUtils.map(addDebugInfo(ctx2 => ctx.dataObj(func(ctx2), ctx2.vars || {}, ctx2.data), ctx))
 })
 
 ReactiveOperator('rx.mapPromise',{
   params: [
     {id: 'func', type: 'data', moreTypes: 'action<common>', dynamic: true, mandatory: true}
   ],
-  impl: (ctx, {func}) => jb.rxUtils.mapPromise(ctx2 => Promise.resolve(func(ctx2)).then(data => ctx.dataObj(data, ctx2.vars || {}, ctx2.data))
+  impl: (ctx, {}, {func}) => jb.rxUtils.mapPromise(ctx2 => Promise.resolve(func(ctx2)).then(data => ctx.dataObj(data, ctx2.vars || {}, ctx2.data))
     .catch(err => ({vars: {...ctx2.vars, err}, data: err})))
 })
 
@@ -100,7 +100,7 @@ ReactiveOperator('rx.filter',{
   params: [
     {id: 'filter', type: 'boolean', dynamic: true, mandatory: true}
   ],
-  impl: (ctx, {filter}) => jb.rxUtils.filter(addDebugInfo(ctx2 => filter(ctx2), ctx))
+  impl: (ctx, {}, {filter}) => jb.rxUtils.filter(addDebugInfo(ctx2 => filter(ctx2), ctx))
 })
 
 ReactiveOperator('rx.flatMap',{
@@ -111,7 +111,7 @@ ReactiveOperator('rx.flatMap',{
     {id: 'onInputEnd', type: 'action', dynamic: true},
     {id: 'onItem', type: 'action', dynamic: true}
   ],
-  impl: (ctx, {source: sourceGenerator, onInputBegin, onInputEnd, onItem}) => source => (start, sink) => {
+  impl: (ctx, {}, {source: sourceGenerator, onInputBegin, onInputEnd, onItem}) => source => (start, sink) => {
     if (start !== 0) return
     let sourceTalkback, innerSources = [], sourceEnded
 
@@ -166,7 +166,7 @@ ReactiveOperator('rx.concatMap', {
     {id: 'source', type: 'reactive-source', dynamic: true, mandatory: true, description: 'keeps the order of the results, can return array, promise or callbag'},
     {id: 'combineResultWithInput', dynamic: true, description: 'combines %$input% with the inner result %%'}
   ],
-  impl: (ctx, {source, combineResultWithInput: combine}) => combine.profile
+  impl: (ctx, {}, {source, combineResultWithInput: combine}) => combine.profile
     ? jb.rxUtils.concatMap(ctx2 => source(ctx2), (input, {data}) => combine({data, vars: {...input.vars, input: input.data}}))
     : jb.rxUtils.concatMap(ctx2 => source(ctx2))
 })
@@ -185,7 +185,7 @@ ReactiveOperator('rx.takeUntil',{
   params: [
     {id: 'notifier', type: 'reactive-source', description: 'can be also promise or any other'}
   ],
-  impl: (ctx, {notifier}) => jb.rxUtils.takeUntil({notifier})
+  impl: (ctx, {}, {notifier}) => jb.rxUtils.takeUntil({notifier})
 })
 
 ReactiveOperator('rx.take',{
@@ -194,14 +194,14 @@ ReactiveOperator('rx.take',{
   params: [
     {id: 'count', as: 'number', dynamic: true, mandatory: true}
   ],
-  impl: (ctx, {count}) => jb.rxUtils.take(count(), ctx)
+  impl: (ctx, {}, {count}) => jb.rxUtils.take(count(), ctx)
 })
 
 ReactiveOperator('rx.splitToBuffers',{
   params: [
     {id: 'count', as: 'number', dynamic: true, mandatory: true}
   ],
-  impl: (ctx, {count: countF}) => source => (start, sink) => {
+  impl: (ctx, {}, {count: countF}) => source => (start, sink) => {
     const count = countF(ctx)
     if (start !== 0) return
     let sourceTalkback, buffer = []
@@ -232,7 +232,7 @@ ReactiveOperator('rx.splitToBuffers',{
 
 ReactiveOperator('rx.last',{
   category: 'filter',
-  impl: () => jb.rxUtils.last()
+  impl: ({}, {}) => jb.rxUtils.last()
 })
 
 ReactiveOperator('rx.var',{

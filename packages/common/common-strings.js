@@ -10,7 +10,7 @@ Data('prefix', {
     {id: 'separator', as: 'string', mandatory: true},
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {separator, text}) => (text||'').substring(0,text.indexOf(separator))
+  impl: (ctx, {}, {separator, text}) => (text||'').substring(0,text.indexOf(separator))
 })
 
 Data('suffix', {
@@ -19,7 +19,7 @@ Data('suffix', {
     {id: 'separator', as: 'string', mandatory: true},
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {separator, text}) => (text||'').substring(text.lastIndexOf(separator)+separator.length)
+  impl: (ctx, {}, {separator, text}) => (text||'').substring(text.lastIndexOf(separator)+separator.length)
 })
 
 Data('removePrefix', {
@@ -28,7 +28,7 @@ Data('removePrefix', {
     {id: 'separator', as: 'string', mandatory: true},
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {separator, text}) => text.indexOf(separator) == -1 ? text : text.substring(text.indexOf(separator)+separator.length)
+  impl: (ctx, {}, {separator, text}) => text.indexOf(separator) == -1 ? text : text.substring(text.indexOf(separator)+separator.length)
 })
 
 Data('removeSuffix', {
@@ -37,7 +37,7 @@ Data('removeSuffix', {
     {id: 'separator', as: 'string', mandatory: true},
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {separator, text}) => text.lastIndexOf(separator) == -1 ? text : text.substring(0,text.lastIndexOf(separator))
+  impl: (ctx, {}, {separator, text}) => text.lastIndexOf(separator) == -1 ? text : text.substring(0,text.lastIndexOf(separator))
 })
 
 Data('removeSuffixRegex', {
@@ -46,7 +46,7 @@ Data('removeSuffixRegex', {
     {id: 'suffix', as: 'string', mandatory: true, description: 'regular expression. e.g [0-9]*'},
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {suffix, text}) => {
+  impl: (ctx, {}, {suffix, text}) => {
     ctx.jbCtx.profile.prefixRegexp = ctx.jbCtx.profile.prefixRegexp || new RegExp(suffix+'$');
     const m = (text||'').match(ctx.jbCtx.profile.prefixRegexp);
     return (m && (text||'').substring(m.index+1)) || text;
@@ -59,28 +59,28 @@ Boolean('matchRegex', {
     {id: 'regex', as: 'string', mandatory: true, description: 'e.g: [a-zA-Z]*'},
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {regex, text}) => text.match(new RegExp(regex))
+  impl: (ctx, {}, {regex, text}) => text.match(new RegExp(regex))
 })
 
 Data('toUpperCase', {
   params: [
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {text}) => text.toUpperCase()
+  impl: (ctx, {}, {text}) => text.toUpperCase()
 })
 
 Data('toLowerCase', {
   params: [
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {text}) => text.toLowerCase()
+  impl: (ctx, {}, {text}) => text.toLowerCase()
 })
 
 Data('capitalize', {
   params: [
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {text}) => text.charAt(0).toUpperCase() + text.slice(1)
+  impl: (ctx, {}, {text}) => text.charAt(0).toUpperCase() + text.slice(1)
 })
 
 Boolean('startsWith', {
@@ -89,7 +89,7 @@ Boolean('startsWith', {
     {id: 'startsWith', as: 'string', mandatory: true},
     {id: 'text', defaultValue: '%%', as: 'string', byName: true}
   ],
-  impl: (ctx, {startsWith, text}) => text.startsWith(startsWith)
+  impl: (ctx, {}, {startsWith, text}) => text.startsWith(startsWith)
 })
 
 Boolean('endsWith', {
@@ -98,7 +98,7 @@ Boolean('endsWith', {
     {id: 'endsWith', as: 'string', mandatory: true},
     {id: 'text', defaultValue: '%%', as: 'string'}
   ],
-  impl: (ctx, {endsWith, text}) => text.endsWith(endsWith)
+  impl: (ctx, {}, {endsWith, text}) => text.endsWith(endsWith)
 })
 
 Data('json.stringify', {
@@ -106,14 +106,14 @@ Data('json.stringify', {
     {id: 'value', defaultValue: '%%'},
     {id: 'space', as: 'string', description: 'use space or tab to make pretty output'}
   ],
-  impl: (ctx, {value, space}) => JSON.stringify(calcValue(value),null,space)
+  impl: (ctx, {}, {value, space}) => JSON.stringify(calcValue(value),null,space)
 })
 
 Data('json.parse', {
   params: [
     {id: 'text', as: 'string', defaultValue: '%%'}
   ],
-  impl: (ctx, {text}) => {
+  impl: (ctx, {}, {text}) => {
     try {
       return JSON.parse(text)
     } catch (e) {
@@ -130,7 +130,7 @@ Data('replace', {
     {id: 'useRegex', type: 'boolean', as: 'boolean', defaultValue: true},
     {id: 'regexFlags', as: 'string', defaultValue: 'g', description: 'g,i,m'}
   ],
-  impl: (ctx, {find, replace, text, useRegex, regexFlags}) =>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+  impl: (ctx, {}, {find, replace, text, useRegex, regexFlags}) =>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
     useRegex ? text.replace(new RegExp(find,regexFlags) ,replace) : text.replace(find,replace)
 })
 
@@ -141,7 +141,7 @@ Data('extractPrefix', {
     {id: 'regex', type: 'boolean', as: 'boolean', description: 'separator is regex'},
     {id: 'keepSeparator', type: 'boolean', as: 'boolean'}
   ],
-  impl: (ctx, {separator, text, regex, keepSeparator}) => {
+  impl: (ctx, {}, {separator, text, regex, keepSeparator}) => {
     if (!regex) {
       return text.substring(0,text.indexOf(separator)) + (keepSeparator ? separator : '')
     } else { // regex
@@ -159,7 +159,7 @@ Data('extractSuffix', {
     {id: 'regex', type: 'boolean', as: 'boolean', description: 'separator is regex'},
     {id: 'keepSeparator', type: 'boolean', as: 'boolean'}
   ],
-  impl: (ctx, {separator, text, regex, keepSeparator}) => {
+  impl: (ctx, {}, {separator, text, regex, keepSeparator}) => {
     if (!regex) {
       return text.substring(text.lastIndexOf(separator) + (keepSeparator ? 0 : separator.length));
     } else { // regex
@@ -185,7 +185,7 @@ Data('formatDate', {
     {id: 'second', as: 'string', options: 'numeric,2-digit'},
     {id: 'timeZoneName', as: 'string', options: 'long,short'}
   ],
-  impl: (ctx, params) => new Date(params.date).toLocaleDateString(undefined, Object.fromEntries(jb.entries(params).filter(e=>e[1])))
+  impl: (ctx, {}, params) => new Date(params.date).toLocaleDateString(undefined, Object.fromEntries(jb.entries(params).filter(e=>e[1])))
 })
 
 Data('formatNumber', {
@@ -194,5 +194,5 @@ Data('formatNumber', {
     {id: 'precision', as: 'number', defaultValue: '2', description: '10.33'},
     {id: 'num', defaultValue: '%%'}
   ],
-  impl: (ctx, {precision, num: x}) => typeof x == 'number' ? +x.toFixed(+precision) : x
+  impl: (ctx, {}, {precision, num: x}) => typeof x == 'number' ? +x.toFixed(+precision) : x
 })

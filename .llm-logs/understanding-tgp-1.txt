@@ -1542,7 +1542,7 @@ Pedagogy('progressiveComplexity', {
     {id: 'concepts', type: 'concept[]', mandatory: true},
     {id: 'maxComplexity', as: 'number', defaultValue: 5}
   ],
-  impl: (ctx, {concepts, maxComplexity}) => {
+  impl: (ctx, {}, {concepts, maxComplexity}) => {
     return orderByComplexity(concepts, maxComplexity)
   }
 })
@@ -1552,7 +1552,7 @@ Pedagogy('antiContamination', {
     {id: 'targetConcept', as: 'string'},
     {id: 'contaminatingPatterns', as: 'array'}
   ],
-  impl: (ctx, {targetConcept, contaminatingPatterns}) => {
+  impl: (ctx, {}, {targetConcept, contaminatingPatterns}) => {
     return generateAntiPatterns(targetConcept, contaminatingPatterns)
   }
 })
@@ -1603,7 +1603,7 @@ Knowledge('extractFromSource', {
     {id: 'sourceFile', as: 'string'},
     {id: 'extractionRules', type: 'extractionRule[]'}
   ],
-  impl: (ctx, {sourceFile, extractionRules}) => {
+  impl: (ctx, {}, {sourceFile, extractionRules}) => {
     return analyzeSourceCode(sourceFile, extractionRules)
   }
 })
@@ -1621,7 +1621,7 @@ Knowledge('prerequisiteChain', {
     {id: 'targetConcept', as: 'string'},
     {id: 'knowledgeBase', type: 'conceptMap'}
   ],
-  impl: (ctx, {targetConcept, knowledgeBase}) => {
+  impl: (ctx, {}, {targetConcept, knowledgeBase}) => {
     return buildPrerequisiteChain(targetConcept, knowledgeBase)
   }
 })
@@ -1640,7 +1640,7 @@ Generation('teachingContext', {
     {id: 'antiPatterns', type: 'pedagogy[]'},
     {id: 'verificationQuiz', type: 'comprehension[]'}
   ],
-  impl: (ctx, {knowledge, teachingStrategy, antiPatterns, verificationQuiz}) => {
+  impl: (ctx, {}, {knowledge, teachingStrategy, antiPatterns, verificationQuiz}) => {
     return synthesizeTeachingContext(knowledge, teachingStrategy, antiPatterns, verificationQuiz)
   }
 })
@@ -1876,7 +1876,7 @@ Generation('fromSources', {
     {id: 'concepts', as: 'array', mandatory: true},
     {id: 'teachingStrategy', as: 'string', options: 'progressive,comprehensive,minimal'}
   ],
-  impl: (ctx, {sourceFiles, concepts, teachingStrategy}) => {
+  impl: (ctx, {}, {sourceFiles, concepts, teachingStrategy}) => {
     // Generate doclet content from sources
     return generateDocletFromSources(sourceFiles, concepts, teachingStrategy)
   }
@@ -1949,7 +1949,7 @@ Synthesis('mergeDoclets', {
     {id: 'mergingStrategy', as: 'string', options: 'sequential,topical,hierarchical', defaultValue: 'topical'},
     {id: 'conflictResolution', as: 'string', options: 'latest,merge,explicit', defaultValue: 'merge'}
   ],
-  impl: (ctx, {sourceDoclets, mergingStrategy, conflictResolution}) => {
+  impl: (ctx, {}, {sourceDoclets, mergingStrategy, conflictResolution}) => {
     return mergeDocletsByStrategy(sourceDoclets, mergingStrategy, conflictResolution)
   }
 })
@@ -1962,7 +1962,7 @@ Synthesis('summarizeContent', {
     {id: 'preserveElements', as: 'array', defaultValue: ['examples', 'syntax', 'antiPatterns']},
     {id: 'compressionStrategy', as: 'string', options: 'aggressive,conservative,balanced', defaultValue: 'balanced'}
   ],
-  impl: (ctx, {sourceContent, targetLength, preserveElements, compressionStrategy}) => {
+  impl: (ctx, {}, {sourceContent, targetLength, preserveElements, compressionStrategy}) => {
     return intelligentSummarization(sourceContent, targetLength, preserveElements, compressionStrategy)
   }
 })
@@ -1975,7 +1975,7 @@ Synthesis('optimizeForLLM', {
     {id: 'learningObjectives', as: 'array', description: 'What the LLM should understand after reading'},
     {id: 'knownWeaknesses', as: 'array', description: 'Common LLM failure patterns to address'}
   ],
-  impl: (ctx, {mergedContent, targetAudience, learningObjectives, knownWeaknesses}) => {
+  impl: (ctx, {}, {mergedContent, targetAudience, learningObjectives, knownWeaknesses}) => {
     return optimizeContentForLLMUnderstanding(mergedContent, targetAudience, learningObjectives, knownWeaknesses)
   }
 })
@@ -1988,7 +1988,7 @@ Synthesis('assembleTeachingContext', {
     {id: 'maxTokens', as: 'number', defaultValue: 200000},
     {id: 'includeVerification', as: 'boolean', defaultValue: true}
   ],
-  impl: (ctx, {optimizedContent, contextTemplate, maxTokens, includeVerification}) => {
+  impl: (ctx, {}, {optimizedContent, contextTemplate, maxTokens, includeVerification}) => {
     return assembleContext(optimizedContent, contextTemplate, maxTokens, includeVerification)
   }
 })
@@ -2227,7 +2227,7 @@ Mixin('fundamentalsMixin', {
     {id: 'includeSource', as: 'boolean', defaultValue: false}
   ],
   categories: ['fundamentals'],
-  impl: (ctx, {summaryLevel, includeSource}) => {
+  impl: (ctx, {}, {summaryLevel, includeSource}) => {
     const doclets = findDocletsByCategory('fundamentals')
     return applyTreatment(doclets, summaryLevel, includeSource)
   }
@@ -2240,7 +2240,7 @@ Mixin('executionModelMixin', {
   ],
   categories: ['execution-model'],
   prerequisites: ['fundamentals'], // Dependency
-  impl: (ctx, {summaryLevel, emphasizeCtx}) => {
+  impl: (ctx, {}, {summaryLevel, emphasizeCtx}) => {
     const doclets = findDocletsByCategory('execution-model')
     if (emphasizeCtx) {
       return emphasizeCtxInContent(applyTreatment(doclets, summaryLevel))
@@ -2255,7 +2255,7 @@ Mixin('antiPatternsMixin', {
     {id: 'contaminationTypes', as: 'array', defaultValue: ['oop', 'traditional-compile']}
   ],
   categories: ['anti-patterns'],
-  impl: (ctx, {summaryLevel, contaminationTypes}) => {
+  impl: (ctx, {}, {summaryLevel, contaminationTypes}) => {
     const doclets = findDocletsByCategory('anti-patterns')
     return filterByContaminationType(applyTreatment(doclets, summaryLevel), contaminationTypes)
   }
@@ -2268,7 +2268,7 @@ Mixin('practicalUsageMixin', {
     {id: 'includeTests', as: 'boolean', defaultValue: true}
   ],
   categories: ['practical-usage'],
-  impl: (ctx, {summaryLevel, domains, includeTests}) => {
+  impl: (ctx, {}, {summaryLevel, domains, includeTests}) => {
     const doclets = findDocletsByDomains(domains)
     const content = applyTreatment(doclets, summaryLevel)
     return includeTests ? embedTestResults(content) : content
@@ -2288,7 +2288,7 @@ Synthesis('mixinComposition', {
     {id: 'globalSummaryLevel', type: 'summaryLevel'},
     {id: 'maxTokens', as: 'number', defaultValue: 200000}
   ],
-  impl: (ctx, {mixins, compositionStrategy, globalSummaryLevel, maxTokens}) => {
+  impl: (ctx, {}, {mixins, compositionStrategy, globalSummaryLevel, maxTokens}) => {
     const resolvedMixins = resolveDependencies(mixins)
     const composedContent = composeByStrategy(resolvedMixins, compositionStrategy)
     return fitToTokenLimit(composedContent, maxTokens, globalSummaryLevel)

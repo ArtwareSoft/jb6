@@ -77,7 +77,7 @@ DataStore('dataStore', {
     {id: 'dbImpl', type: 'db-impl', defaultValue: byContext()},
     {id: 'features', type: 'data-store-feature[]' },
   ],
-  impl: (ctx, dataStoreArgs) => {
+  impl: (ctx, {}, dataStoreArgs) => {
     const sharing = dataStoreArgs.sharing
     const props = (dataStoreArgs.features || []).reduce((acc,feature) => ({...acc, ...feature}) , {})
     const dbImplInstance = dataStoreArgs.dbImpl.init({...dataStoreArgs, ...dataStoreArgs.sharing, ...props})
@@ -110,7 +110,7 @@ const fileBased = DbImpl('fileBased', {
     {id: 'CRUDFunctions', defaultValue: () => jb.socialDbUtils},
     {id: 'myRoomsSecrets', type: 'my-rooms-secrets' }
   ],
-  impl: (ctx, args) => ({
+  impl: (ctx, {}, args) => ({
       init(dataStoreArgs) {
         const {fileName, sharing, mediaType, dataStructure} = dataStoreArgs
         const { readFile, writeFile, refineFile } = args.CRUDFunctions
@@ -164,7 +164,7 @@ DbImpl('byContext', {
     {id: 'dev', type: 'db-impl', defaultValue: dev()},
     {id: 'prod', type: 'db-impl', defaultValue: prod() }
   ],
-  impl: (ctx, {testImpl, dev, prod}) => ({
+  impl: (ctx, {}, {testImpl, dev, prod}) => ({
       init(dataStoreArgs) {
         this.dataStoreArgs = dataStoreArgs        
         const isLocalHost = typeof location !== 'undefined' && location.hostname === 'localhost'
@@ -272,12 +272,12 @@ Data('socialDB.get', {
     {id: 'eventAction'},
     {id: 'eventData'}
   ],
-  impl: (ctx, {dataStore, doNotUpdateRoomActivity, useCache, eventAction: action, eventData: data}) => 
+  impl: (ctx, {}, {dataStore, doNotUpdateRoomActivity, useCache, eventAction: action, eventData: data}) => 
     dataStore.get({doNotUpdateRoomActivity, useCache, action, data, ctx})
 })
 
 Data('socialDB.getMyRoomsWithLambda', {
-  impl: (ctx) => ({ })
+  impl: (ctx, {}, {}) => ({ })
 })
 
 Action('socialDB.put', {
@@ -288,7 +288,7 @@ Action('socialDB.put', {
     {id: 'eventAction'},
     {id: 'eventData'}
   ],
-  impl: (ctx, {dataStore, content, doNotUpdateRoomActivity, eventAction: action, eventData: data}) => 
+  impl: (ctx, {}, {dataStore, content, doNotUpdateRoomActivity, eventAction: action, eventData: data}) => 
     dataStore.put(content, {doNotUpdateRoomActivity, action, data, ctx})
 })
 
@@ -299,7 +299,7 @@ Action('socialDB.refine', {
     {id: 'eventAction'},
     {id: 'eventData'}
   ],
-  impl: (ctx, {dataStore, updateAction, eventAction: action, eventData: data}) =>
+  impl: (ctx, {}, {dataStore, updateAction, eventAction: action, eventData: data}) =>
     dataStore.refine(userId, roomId, updateAction, {action, data, ctx})
 })
 
@@ -308,7 +308,7 @@ Action('socialDB.append', {
     {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
     {id: 'toAppend', mandatory: true}
   ],
-  impl: (ctx, {dataStore, toAppend: item}) => dataStore.appendItem(userId, roomId, item, {ctx})
+  impl: (ctx, {}, {dataStore, toAppend: item}) => dataStore.appendItem(userId, roomId, item, {ctx})
 })
 
 Action('socialDB.subscribeToUpdates', {
@@ -316,7 +316,7 @@ Action('socialDB.subscribeToUpdates', {
     {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
     {id: 'callback', type: 'function', mandatory: true}
   ],
-  impl: (ctx, {dataStore, callback}) => dataStore.subscribeToUpdates(callback, {ctx})
+  impl: (ctx, {}, {dataStore, callback}) => dataStore.subscribeToUpdates(callback, {ctx})
 })
 
 Action('socialDB.notifyActivity', {
@@ -324,7 +324,7 @@ Action('socialDB.notifyActivity', {
     {id: 'dataStore', type: 'data-store<social-db>', mandatory: true},
     {id: 'event', as: 'object', defaultValue: {}, mandatory: true}
   ],
-  impl: (ctx, {dataStore, event}) => dataStore.notifyInternalActivity(event, {ctx})
+  impl: (ctx, {}, {dataStore, event}) => dataStore.notifyInternalActivity(event, {ctx})
 })
 
 const {socialDB} = ns
@@ -439,7 +439,7 @@ Action('socialDB.joinRoom', {
     {id: 'userId', as: 'string', defaultValue: '%$userId%'},
     {id: 'roomId', as: 'string', defaultValue: '%$roomId%'}
   ],
-  impl: async (ctx, {userId, roomId}) => {
+  impl: async (ctx, {}, {userId, roomId}) => {
     if (!roomId || roomId == 'undefined') {
       return
     }
@@ -478,7 +478,7 @@ Action('socialDB.createRoom', {
     {id: 'userId', as: 'string', defaultValue: '%$userId%'},
     {id: 'displayName', as: 'string', mandatory: true},
   ],
-  impl: async (ctx, {userId, displayName}) => {
+  impl: async (ctx, {}, {userId, displayName}) => {
     const roomId = 'r' + Math.random().toString(36).slice(2, 11)
     displayName = displayName || 'general'
     const roomSettingsContent = { roomId, roomPublicKey: 'rpub' + Math.random().toString(36).slice(2, 11), displayName, participants: {} }

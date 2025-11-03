@@ -27,7 +27,7 @@ Data('jq',{
     params: [
         {id: 'script', as: 'text', asIs: true}
     ],
-    impl: (ctx,{script}) => {
+    impl: (ctx, {}, {script}) => {
         ctx.jbCtx.compiledJq = ctx.jbCtx.compiledJq || jq.compileJb(script)
         return [...ctx.jbCtx.compiledJq(ctx)]
     }

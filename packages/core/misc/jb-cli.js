@@ -16,7 +16,7 @@ Data('bash', {
   params: [
     {id: 'script', as: 'text' }
   ],
-  impl: (ctx, {script}) => runBashScript(script)
+  impl: (ctx, {}, {script}) => runBashScript(script)
 })
 
 async function runCliInContext(script, options) {

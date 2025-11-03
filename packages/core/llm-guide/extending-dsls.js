@@ -37,12 +37,12 @@ Doclet('dslOwnerVsClient', {
 // Can add new components directly to the DSL:
 Data('newDataOperation', {           // ✅ Direct DSL extension
   params: [{id: 'input', mandatory: true}],
-  impl: (ctx, {input}) => processData(input)
+  impl: (ctx, {}, {input}) => processData(input)
 })
 
 Action('newAction', {                // ✅ Direct DSL extension  
   params: [{id: 'target', mandatory: true}],
-  impl: (ctx, {target}) => performAction(target)
+  impl: (ctx, {}, {target}) => performAction(target)
 })
 
 // Owner privileges:

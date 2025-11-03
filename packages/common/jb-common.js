@@ -17,7 +17,7 @@ Data('log', {
     {id: 'logName', as: 'string', mandatory: 'true'},
     {id: 'logObj', as: 'single', defaultValue: '%%'}
   ],
-  impl: (ctx,{logName,logObj}) => { log(logName,{...logObj,ctx}); return ctx.data }
+  impl: (ctx, {}, {logName,logObj}) => { log(logName,{...logObj,ctx}); return ctx.data }
 })
 
 Data('pipeline', {
@@ -26,7 +26,7 @@ Data('pipeline', {
     {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
     {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
-  impl: (ctx, { operators, source } ) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
+  impl: (ctx, {}, { operators, source }) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
 })
 
 Data('pipe', {
@@ -35,7 +35,7 @@ Data('pipe', {
     {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
     {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
-  impl: async (ctx, {operators,source}) => waitForInnerElements(asArray(operators.profile).reduce(async (dataArrayPromise, profile,index) => {
+  impl: async (ctx, {}, {operators,source}) => waitForInnerElements(asArray(operators.profile).reduce(async (dataArrayPromise, profile,index) => {
       const dataArray = await waitForInnerElements(dataArrayPromise)
       return runAsAggregator(ctx, operators, index, dataArray, profile)
     }, waitForInnerElements(source()) ))
@@ -51,7 +51,7 @@ Aggregator('join', {
     {id: 'items', as: 'array', defaultValue: '%%'},
     {id: 'itemText', as: 'string', dynamic: true, defaultValue: '%%'}
   ],
-  impl: (ctx,{ separator,prefix,suffix,items,itemText}) => {
+  impl: (ctx, {}, { separator,prefix,suffix,items,itemText}) => {
 		const itemToText = ctx.jbCtx.args.itemText ? item => itemText(ctx.setData(item)) : item => toString(item)
 		return prefix + items.map(itemToText).join(separator) + suffix;
 	}
@@ -61,14 +61,14 @@ Aggregator('filter', {
   params: [
     {id: 'filter', type: 'boolean', as: 'boolean', dynamic: true, mandatory: true}
   ],
-  impl: (ctx, {filter}) => toArray(ctx.data).filter(item => filter(ctx.setData(item)))
+  impl: (ctx, {}, {filter}) => toArray(ctx.data).filter(item => filter(ctx.setData(item)))
 })
 
 Aggregator('first', {
   params: [
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: ({},{items}) => items[0]
+  impl: ({}, {}, {items}) => items[0]
 })
 
 Data('list', {
@@ -76,7 +76,7 @@ Data('list', {
   params: [
     {id: 'items', type: 'data[]', as: 'array', composite: true}
   ],
-  impl: ({}, {items}) => items.flatMap(item=>Array.isArray(item) ? item : [item])
+  impl: ({}, {}, {items}) => items.flatMap(item=>Array.isArray(item) ? item : [item])
 })
 
 Aggregator('slice', {
@@ -84,7 +84,7 @@ Aggregator('slice', {
     {id: 'start', as: 'number', defaultValue: 0, description: '0-based index', mandatory: true},
     {id: 'end', as: 'number', mandatory: true, description: '0-based index of where to end the selection (not including itself)'}
   ],
-  impl: ({data},{start,end}) => {
+  impl: ({data}, {}, {start,end}) => {
 		if (!data || !data.slice) return null
 		return end ? data.slice(start,end) : data.slice(start)
 	}
@@ -94,7 +94,7 @@ Data('firstSucceeding', {
   params: [
     {id: 'operators', type: 'data[]', as: 'array', composite: true}
   ],
-  impl: ({},{ operators }) => {
+  impl: ({}, {}, { operators }) => {
     for(let i=0;i<operators.length;i++) {
       const val = calcValue(operators[i])
       const isNumber = typeof val === 'number'
@@ -118,7 +118,7 @@ Data('properties', {
   params: [
     { id: 'obj', defaultValue: '%%', as: 'single' }
   ],
-  impl: (ctx, { obj }) => Object.keys(obj).filter(p=>p.indexOf('$jb_') != 0).map((id,index) =>
+  impl: (ctx, {}, { obj }) => Object.keys(obj).filter(p=>p.indexOf('$jb_') != 0).map((id,index) =>
 			({ id: id, val: obj[id], index: index }))
 })
 
@@ -127,7 +127,7 @@ Data('keys', {
   params: [
     { id: 'obj', defaultValue: '%%', as: 'single' }
   ],
-  impl: (ctx, { obj }) => Object.keys(obj && typeof obj === 'object' ? obj : {})
+  impl: (ctx, {}, { obj }) => Object.keys(obj && typeof obj === 'object' ? obj : {})
 })
 
 Data('values', {
@@ -135,7 +135,7 @@ Data('values', {
   params: [
     { id: 'obj', defaultValue: '%%', as: 'single' }
   ],
-  impl: (ctx, { obj }) => Object.values(obj && typeof obj === 'object' ? obj : {})
+  impl: (ctx, {}, { obj }) => Object.values(obj && typeof obj === 'object' ? obj : {})
 })
 
 Data('mapValues', {
@@ -145,7 +145,7 @@ Data('mapValues', {
     {id: 'map', dynamic: true, mandatory: true},
     {id: 'obj', defaultValue: '%%', as: 'single'}
   ],
-  impl: (ctx, {map, obj}) => Object.fromEntries(Object.keys(obj).map(k=>[k, map(ctx.setData(obj[k]))]))
+  impl: (ctx, {}, {map, obj}) => Object.fromEntries(Object.keys(obj).map(k=>[k, map(ctx.setData(obj[k]))]))
 })
 
 Data('entries', {
@@ -154,11 +154,11 @@ Data('entries', {
   params: [
     {id: 'obj', defaultValue: '%%', as: 'single'}
   ],
-  impl: (ctx, {obj}) => Object.entries(obj)
+  impl: (ctx, {}, {obj}) => Object.entries(obj)
 })
 
 Data('now', {
-  impl: () => Date.now()
+  impl: ({}, {}) => Date.now()
 })
 
 Data('plus', {
@@ -167,7 +167,7 @@ Data('plus', {
     {id: 'x', as: 'number', mandatory: true},
     {id: 'y', as: 'number', mandatory: true}
   ],
-  impl: (ctx, {x, y}) => +x + +y
+  impl: (ctx, {}, {x, y}) => +x + +y
 })
 
 Data('minus', {
@@ -176,7 +176,7 @@ Data('minus', {
     {id: 'x', as: 'number', mandatory: true},
     {id: 'y', as: 'number', mandatory: true}
   ],
-  impl: (ctx, {x, y}) => +x - +y
+  impl: (ctx, {}, {x, y}) => +x - +y
 })
 
 Data('mul', {
@@ -185,7 +185,7 @@ Data('mul', {
     {id: 'x', as: 'number', mandatory: true},
     {id: 'y', as: 'number', mandatory: true}
   ],
-  impl: (ctx, {x, y}) => +x * +y
+  impl: (ctx, {}, {x, y}) => +x * +y
 })
 
 Data('div', {
@@ -194,7 +194,7 @@ Data('div', {
     {id: 'x', as: 'number', mandatory: true},
     {id: 'y', as: 'number', mandatory: true}
   ],
-  impl: (ctx, {x, y}) => +x / +y
+  impl: (ctx, {}, {x, y}) => +x / +y
 })
 
 DefComponents('abs,acos,acosh,asin,asinh,atan,atan2,atanh,cbrt,ceil,clz32,cos,cosh,exp,expm1,floor,fround,hypot,log2,random,round,sign,sin,sinh,sqrt,tan,tanh,trunc', 
@@ -204,7 +204,7 @@ DefComponents('abs,acos,acosh,asin,asinh,atan,atan2,atanh,cbrt,ceil,clz32,cos,co
     params: [
       {id: 'func', as: 'string', defaultValue: f}
     ],
-    impl: (ctx, {func}) => Math[func](ctx.data)
+    impl: (ctx, {}, {func}) => Math[func](ctx.data)
   })
 )
 
@@ -215,7 +215,7 @@ Data('property', {
     {id: 'ofObj', defaultValue: '%%'},
     {id: 'useRef', as: 'boolean', type: 'boolean<common>'}
   ],
-  impl: (ctx, {prop, ofObj: obj, useRef}) => useRef && jb.ext.db ? jb.ext.db.objectProperty(obj,prop,ctx) : obj[prop]
+  impl: (ctx, {}, {prop, ofObj: obj, useRef}) => useRef && jb.ext.db ? jb.ext.db.objectProperty(obj,prop,ctx) : obj[prop]
 })
 
 Data('indexOf', {
@@ -223,7 +223,7 @@ Data('indexOf', {
     {id: 'array', as: 'array', mandatory: true},
     {id: 'item', as: 'single', mandatory: true}
   ],
-  impl: (ctx, {array, item}) => array.indexOf(item)
+  impl: (ctx, {}, {array, item}) => array.indexOf(item)
 })
 
 Data('obj', {
@@ -232,7 +232,7 @@ Data('obj', {
   params: [
     {id: 'props', type: 'prop[]', mandatory: true, sugar: true}
   ],
-  impl: (ctx, {props}) => Object.fromEntries((props || []).map(p=>[p.name, toJstype(p.val(ctx),p.type)]))
+  impl: (ctx, {}, {props}) => Object.fromEntries((props || []).map(p=>[p.name, toJstype(p.val(ctx),p.type)]))
 })
 
 Data('dynamicObject', {
@@ -243,7 +243,7 @@ Data('dynamicObject', {
     {id: 'propertyName', mandatory: true, as: 'string', dynamic: true},
     {id: 'value', mandatory: true, dynamic: true}
   ],
-  impl: (ctx, {items, propertyName, value}) =>
+  impl: (ctx, {}, {items, propertyName, value}) =>
     items.reduce((obj,item)=>({ ...obj, [propertyName(ctx.setData(item))]: value(ctx.setData(item)) }),{})
 })
 
@@ -251,7 +251,7 @@ Data('objFromVars', {
   params: [
     {id: 'Vars', type: 'data[]', mandatory: true, as: 'array', description: 'names of vars'},
   ],
-  impl: (ctx, {vars}) => vars.reduce((acc,id)=>({ ...acc, [id]: ctx.vars[id] }),{})
+  impl: (ctx, {}, {vars}) => vars.reduce((acc,id)=>({ ...acc, [id]: ctx.vars[id] }),{})
 })
 
 Data('selectProps', {
@@ -260,7 +260,7 @@ Data('selectProps', {
     {id: 'propNames', type: 'data[]', mandatory: true, as: 'array', description: 'names of properties'},
     {id: 'ofObj', type: 'data', defaultValue: '%%'},
   ],
-  impl: (ctx, {propNames, ofObj: obj}) => propNames.reduce((acc,id)=>({ ...acc, [id]: obj[id] }),{})
+  impl: (ctx, {}, {propNames, ofObj: obj}) => propNames.reduce((acc,id)=>({ ...acc, [id]: obj[id] }),{})
 })
 
 Data('transformProp', {
@@ -270,7 +270,7 @@ Data('transformProp', {
     {id: 'transform', as: 'string', dynamic: true, mandatory: true, description: 'prop value as input', composite: true},
     {id: 'ofObj', type: 'data', defaultValue: '%%'},
   ],
-  impl: (ctx, {prop, transform, ofObj: obj}) => (typeof obj == 'object' && prop) ? {...obj, [prop]: transform(ctx.setData(obj[prop])) } : obj
+  impl: (ctx, {}, {prop, transform, ofObj: obj}) => (typeof obj == 'object' && prop) ? {...obj, [prop]: transform(ctx.setData(obj[prop])) } : obj
 })
 
 Data('extend', {
@@ -280,7 +280,7 @@ Data('extend', {
     {id: 'props', type: 'prop[]', mandatory: true, defaultValue: []},
     {id: 'obj', byName: true, defaultValue: '%%'}
   ],
-  impl: (ctx,{ properties,obj} ) =>
+  impl: (ctx, {}, {properties,obj}) =>
 		Object.assign({}, obj, Object.fromEntries(properties.map(p=>[p.name, toJstype(p.val(ctx),p.type)])))
 })
 
@@ -291,7 +291,7 @@ Data('extendWithObj', {
     { id: 'obj', mandatory: true },
     { id: 'withObj', defaultValue: '%%' }
   ],
-  impl: (ctx, { obj, withObj }) => Object.assign({}, withObj, obj)
+  impl: (ctx, {}, { obj, withObj }) => Object.assign({}, withObj, obj)
 })
 
 Data('extendWithIndex', {
@@ -301,7 +301,7 @@ Data('extendWithIndex', {
   params: [
     {id: 'props', type: 'prop[]', mandatory: true, defaultValue: []}
   ],
-  impl: (ctx, {properties}) => toArray(ctx.data).map((item,i) =>
+  impl: (ctx, {}, {properties}) => toArray(ctx.data).map((item,i) =>
 			Object.assign({}, item, Object.fromEntries(properties.map(p=>[p.name, toJstype(p.val(ctx.setData(item).setVars({index:i})),p.type)]))))
 })
 
@@ -319,7 +319,7 @@ export const not = Boolean('not', {
   params: [
     {id: 'of', type: 'boolean', as: 'boolean', mandatory: true, composite: true}
   ],
-  impl: (ctx, {of}) => !of
+  impl: (ctx, {}, {of}) => !of
 })
 
 Boolean('and', {
@@ -328,7 +328,7 @@ Boolean('and', {
   params: [
     {id: 'items', type: 'boolean[]', dynamic: true, mandatory: true, composite: true}
   ],
-  impl: (ctx, {items}) => asArray(items.profile).reduce((res,_,i) => res && ctx.runInnerArg(items,i), true)
+  impl: (ctx, {}, {items}) => asArray(items.profile).reduce((res,_,i) => res && ctx.runInnerArg(items,i), true)
 })
 
 Boolean('or', {
@@ -337,7 +337,7 @@ Boolean('or', {
   params: [
     {id: 'items', type: 'boolean[]', dynamic: true, mandatory: true, composite: true}
   ],
-  impl: (ctx, {items}) => asArray(items.profile).reduce((res,_,i) => res || ctx.runInnerArg(items,i), false)
+  impl: (ctx, {}, {items}) => asArray(items.profile).reduce((res,_,i) => res || ctx.runInnerArg(items,i), false)
 })
 
 Boolean('between', {
@@ -347,7 +347,7 @@ Boolean('between', {
     { id: 'to', as: 'number', mandatory: true },
     { id: 'val', as: 'number', defaultValue: '%%' }
   ],
-  impl: (ctx, { from, to, val }) => val >= from && val <= to
+  impl: (ctx, {}, { from, to, val }) => val >= from && val <= to
 })
 
 Boolean('greaterThan', {
@@ -356,7 +356,7 @@ Boolean('greaterThan', {
     { id: 'orEquals', as: 'boolean', type: 'boolean<common>', defaultValue: false, description: 'include equals in comparison' },
     { id: 'val', as: 'number', defaultValue: '%%', description: 'value to check' }
   ],
-  impl: (ctx, { than, val, orEquals }) => orEquals ? val >= than : val > than
+  impl: (ctx, {}, { than, val, orEquals }) => orEquals ? val >= than : val > than
 })
 
 Boolean('isNull', {
@@ -364,7 +364,7 @@ Boolean('isNull', {
   params: [
     {id: 'obj', defaultValue: '%%'}
   ],
-  impl: (ctx, {obj}) => calcValue(obj) == null
+  impl: (ctx, {}, {obj}) => calcValue(obj) == null
 })
 
 Boolean('notNull', {
@@ -372,21 +372,21 @@ Boolean('notNull', {
   params: [
     {id: 'obj', defaultValue: '%%'}
   ],
-  impl: (ctx, {obj}) => calcValue(obj) != null
+  impl: (ctx, {}, {obj}) => calcValue(obj) != null
 })
 
 Boolean('isEmpty', {
   params: [
     {id: 'item', as: 'single', defaultValue: '%%', composite: true}
   ],
-  impl: (ctx, {item}) => !item || (Array.isArray(item) && item.length == 0)
+  impl: (ctx, {}, {item}) => !item || (Array.isArray(item) && item.length == 0)
 })
 
 Boolean('notEmpty', {
   params: [
     {id: 'item', as: 'single', defaultValue: '%%', composite: true}
   ],
-  impl: (ctx, {item}) => item && !(Array.isArray(item) && item.length == 0)
+  impl: (ctx, {}, {item}) => item && !(Array.isArray(item) && item.length == 0)
 })
 
 Boolean('equals', {
@@ -394,7 +394,7 @@ Boolean('equals', {
     {id: 'item1', mandatory: true},
     {id: 'item2', defaultValue: '%%'}
   ],
-  impl: (ctx, {item1, item2}) => {
+  impl: (ctx, {}, {item1, item2}) => {
     return typeof item1 == 'object' && typeof item1 == 'object' ? Object.keys(objectDiff(item1,item2)||[]).length == 0 
       : toSingle(item1) == toSingle(item2)
   }
@@ -405,7 +405,7 @@ Boolean('notEquals', {
     {id: 'item1', as: 'single', mandatory: true},
     {id: 'item2', defaultValue: '%%', as: 'single'}
   ],
-  impl: (ctx, {item1, item2}) => item1 != item2
+  impl: (ctx, {}, {item1, item2}) => item1 != item2
 })
 
 Action('runActionOnItem', {
@@ -413,7 +413,7 @@ Action('runActionOnItem', {
     {id: 'item', mandatory: true},
     {id: 'action', type: 'action', dynamic: true, mandatory: true, composite: true}
   ],
-  impl: (ctx, {item, action}) => isPromise(item) ? Promise.resolve(item).then(_item => action(ctx.setData(_item))) 
+  impl: (ctx, {}, {item, action}) => isPromise(item) ? Promise.resolve(item).then(_item => action(ctx.setData(_item))) 
     : item != null && action(ctx.setData(item))
 })
 
@@ -424,7 +424,7 @@ Action('runActionOnItems', {
     {id: 'action', type: 'action', dynamic: true, mandatory: true},
     {id: 'indexVariable', as: 'string' }
   ],
-  impl: (ctx, {items, action, indexVariable}) => items.reduce( async (pr,_item,i) => {
+  impl: (ctx, {}, {items, action, indexVariable}) => items.reduce( async (pr,_item,i) => {
     await pr;
     const item = await _item
     return action(ctx.setVars({[indexVariable]: i}).setData(item))
@@ -437,7 +437,7 @@ Action('removeProps', {
     {id: 'names', type: 'data[]', mandatory: true},
     {id: 'obj', byName: true, defaultValue: '%%'}
   ],
-  impl: (ctx, {names, obj}) => obj && names.forEach(name=> delete obj[name])
+  impl: (ctx, {}, {names, obj}) => obj && names.forEach(name=> delete obj[name])
 })
 
 Action('delay', {
@@ -446,7 +446,7 @@ Action('delay', {
     {id: 'mSec', as: 'number', defaultValue: 1},
     {id: 'res', defaultValue: '%%'}
   ],
-  impl: (ctx, {mSec, res}) => delay(mSec,res)
+  impl: (ctx, {}, {mSec, res}) => delay(mSec,res)
 })
 
 Data('range', {
@@ -455,14 +455,14 @@ Data('range', {
     {id: 'from', as: 'number', defaultValue: 1},
     {id: 'to', as: 'number', defaultValue: 10}
   ],
-  impl: (ctx, {from, to}) => Array.from(Array(to-from+1).keys()).map(x=>x+from)
+  impl: (ctx, {}, {from, to}) => Array.from(Array(to-from+1).keys()).map(x=>x+from)
 })
 
 Data('typeOf', {
   params: [
     {id: 'obj', defaultValue: '%%'}
   ],
-  impl: (ctx, {obj}) => {
+  impl: (ctx, {}, {obj}) => {
     const val = calcValue(obj)
     return Array.isArray(val) ? 'array' : typeof val
   }
@@ -472,7 +472,7 @@ Data('className', {
   params: [
     {id: 'obj', defaultValue: '%%'}
   ],
-  impl: (ctx, {obj}) => {
+  impl: (ctx, {}, {obj}) => {
     const val = calcValue(obj);
     return val && val.constructor && val.constructor.name
   }
@@ -483,7 +483,7 @@ Boolean('isOfType', {
     {id: 'type', as: 'string', mandatory: true, options: 'string,boolean,array,object,null'},
     {id: 'obj', defaultValue: '%%'}
   ],
-  impl: (ctx, {type, obj}) => {
+  impl: (ctx, {}, {type, obj}) => {
     const val = calcValue(obj)
     const objType = val == null ? 'null' : Array.isArray(val) ? 'array' : typeof val
     return type.split(',').indexOf(objType) != -1
@@ -496,7 +496,7 @@ Boolean('inGroup', {
     {id: 'group', as: 'array', mandatory: true},
     {id: 'item', as: 'single', defaultValue: '%%'}
   ],
-  impl: (ctx, {group, item}) => group.indexOf(item) != -1
+  impl: (ctx, {}, {group, item}) => group.indexOf(item) != -1
 })
 
 Data('Switch', {
@@ -505,7 +505,7 @@ Data('Switch', {
     {id: 'cases', type: 'switch-case[]', as: 'array', mandatory: true, defaultValue: []},
     {id: 'default', dynamic: true}
   ],
-  impl: (ctx, {cases, default: defaultValue}) => {
+  impl: (ctx, {}, {cases, default: defaultValue}) => {
     for(let i=0;i<cases.length;i++)
       if (cases[i].condition(ctx))
         return cases[i].value(ctx)
@@ -527,7 +527,7 @@ Action('actionSwitch', {
     {id: 'defaultAction', type: 'action', dynamic: true}
   ],
   macroByValue: false,
-  impl: (ctx, {cases, defaultAction}) => {
+  impl: (ctx, {}, {cases, defaultAction}) => {
     for(let i=0;i<cases.length;i++)
       if (cases[i].condition(ctx))
         return cases[i].action(ctx)
@@ -547,7 +547,7 @@ Data('getSessionStorage', {
   params: [
     {id: 'id', as: 'string'}
   ],
-  impl: (ctx, {id}) => sessionStorage(id)
+  impl: (ctx, {}, {id}) => sessionStorage(id)
 })
 
 Action('setSessionStorage', {
@@ -555,7 +555,7 @@ Action('setSessionStorage', {
     {id: 'id', as: 'string'},
     {id: 'value', dynamic: true}
   ],
-  impl: (ctx, {id, value}) => sessionStorage(id,value())
+  impl: (ctx, {}, {id, value}) => sessionStorage(id,value())
 })
 
 Data('waitFor', {
@@ -565,7 +565,7 @@ Data('waitFor', {
     {id: 'timeout', as: 'number', defaultValue: 3000},
     {id: 'logOnError', as: 'string', dynamic: true}
   ],
-  impl: (ctx, {check, interval, timeout, logOnError}) => {
+  impl: (ctx, {}, {check, interval, timeout, logOnError}) => {
     if (!timeout) 
       return logError('waitFor no timeout',{ctx})
     let waitingForPromise, timesoFar = 0
@@ -609,7 +609,7 @@ Data('split', {
     {id: 'text', as: 'string', defaultValue: '%%', byName: true},
     {id: 'part', options: 'all,first,second,last,but first,but last', defaultValue: 'all'}
   ],
-  impl: (ctx, {separator, text, part}) => {
+  impl: (ctx, {}, {separator, text, part}) => {
     const out = text.split(separator.replace(/\\r\\n/g,'\n').replace(/\\n/g,'\n'));
     switch (part) {
       case 'first': return out[0];
@@ -628,7 +628,7 @@ export const contains = Boolean('contains', {
     {id: 'allText', defaultValue: '%%', as: 'string'},
     {id: 'anyOrder', as: 'boolean', type: 'boolean'}
   ],
-  impl: (ctx, {text, allText, anyOrder}) => {
+  impl: (ctx, {}, {text, allText, anyOrder}) => {
     let prevIndex = -1
     for(let i=0;i<text.length;i++) {
       const newIndex = allText.indexOf(toString(text[i]),prevIndex+1)

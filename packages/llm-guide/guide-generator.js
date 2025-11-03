@@ -23,7 +23,7 @@ const bookletsContent = Data('bookletsContent', {
   params: [
     {id: 'booklets', as: 'text', description: 'comma delimited names'}
   ],
-  impl: async (ctx, {booklets }) => {
+  impl: async (ctx, {}, {booklets }) => {
       const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
       const { llmGuideFiles, staticMappings } = await calcImportData({forRepo: repoRoot})
       const tgpModel = await calcTgpModelData({entryPointPaths: llmGuideFiles})
@@ -53,7 +53,7 @@ const tgpModel = Data('tgpModel', {
   params: [
     {id: 'forDsls', as: 'string', mandatory: true, description: 'e.g: llm-guide,test,common,llm-api'},
   ],
-  impl: async (ctx, { forDsls }) => {
+  impl: async (ctx, {}, { forDsls }) => {
     const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
     try {
       const res = await coreUtils.calcTgpModelData({forRepo: repoRoot }) // await coreUtils.calcTgpModelData({forDsls})

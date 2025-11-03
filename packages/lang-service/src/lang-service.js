@@ -13,7 +13,7 @@ Data('langService.completionItems', {
     params: [
         { id: 'compTextAndCursor', defaultValue: '%%' }
     ],
-    impl: async (ctx, { compTextAndCursor }) => {
+    impl: async (ctx, {}, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
         const { actionMap, compText, compPos, errors, cursorPos, compId, tgpModel, comp } = compProps
         let items = [], title = '', paramDef
@@ -53,7 +53,7 @@ Data('langService.compReferences', {
     params: [
         { id: 'compTextAndCursor', defaultValue: '%%' }
     ],
-    impl: async (ctx, { compTextAndCursor }) => {    
+    impl: async (ctx, {}, { compTextAndCursor }) => {    
         const compProps = await calcCompProps(compTextAndCursor)
         const { compId: PTToSearch, prop } = PTInPath(compProps)
         const { filePath } = compProps
@@ -93,7 +93,7 @@ Data('langService.definition', {
     params: [
         { id: 'compTextAndCursor', defaultValue: '%%' }
     ],
-    impl: async (ctx, { compTextAndCursor }) => {
+    impl: async (ctx, {}, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
         const { errors, tgpModel, path } = compProps
         const cmpId = path && tgpModel.compIdOfPath(path)
@@ -110,14 +110,14 @@ Data('langService.calcCompProps', {
   params: [
     {id: 'compTextAndCursor', defaultValue: '%%'}
   ],
-  impl: (ctx, { compTextAndCursor }) => calcCompProps(compTextAndCursor)
+  impl: (ctx, {}, { compTextAndCursor }) => calcCompProps(compTextAndCursor)
 })
 
 Data('langService.editAndCursorOfCompletionItem', {
   params: [
     {id: 'item'}
   ],
-  impl: async (ctx,{item}) => {
+  impl: async (ctx, {}, {item}) => {
     if (item.edit) return item
     if (!item.compProps) return {}
     const { text, compId, comp, compPos, tgpModel } = item.compProps
@@ -148,7 +148,7 @@ Data('langService.deleteEdits', {
     params: [
         { id: 'compTextAndCursor', defaultValue: '%%' }
     ],
-    impl: async (ctx, { compTextAndCursor }) => {
+    impl: async (ctx, {}, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
         const { reformatEdits, text, comp, compPos, compId, errors, path, tgpModel, lineText } = compProps
         if (reformatEdits)
@@ -187,7 +187,7 @@ Data('langService.duplicateEdits', {
     params: [
         { id: 'compTextAndCursor', defaultValue: '%%' }
     ],
-    impl: async (ctx, { compTextAndCursor }) => {
+    impl: async (ctx, {}, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
         const { reformatEdits, text, shortId, comp, compPos, compId, errors, path, tgpModel, lineText } = compProps
         if (reformatEdits)
@@ -228,7 +228,7 @@ Data('langService.createTestEdits', {
     params: [
         { id: 'compTextAndCursor', defaultValue: '%%' }
     ],
-    impl: async (ctx, { compTextAndCursor }) => {
+    impl: async (ctx, {}, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
         const { reformatEdits, text, shortId, compPos} = compProps
         if (reformatEdits)
@@ -248,7 +248,7 @@ Data('langService.moveInArrayEdits', {
         { id: 'diff', as: 'number', defaultValue: '%%' },
         { id: 'compTextAndCursor' }
     ],
-    impl: async (ctx, {diff, compTextAndCursor}) => {
+    impl: async (ctx, {}, {diff, compTextAndCursor}) => {
         const compProps = await calcCompProps(compTextAndCursor)
         const { reformatEdits, compId, compPos, actionMap, text, path, comp, tgpModel } = compProps
         if (!reformatEdits && actionMap) {

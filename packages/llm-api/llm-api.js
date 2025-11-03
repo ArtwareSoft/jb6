@@ -22,7 +22,7 @@ ReactiveSource('llm.completionsRx', {
     {id: 'useLocalStorageCache', as: 'boolean'},
     {id: 'notifyUsage', type: 'action<common>', dynamic: true}
   ],
-  impl: (ctx,{ prompt, llmModel, maxTokens: max_tokens,includeSystemMessages, useLocalStorageCache, notifyUsage}) => (start,sink) => {
+  impl: (ctx, {}, { prompt, llmModel, maxTokens: max_tokens,includeSystemMessages, useLocalStorageCache, notifyUsage}) => (start,sink) => {
       if (start !== 0) return
       const model = llmModel || dsls['llm-api'].model.gpt_35_turbo_0125.$run()
       let controller = null, connection, connectionAborted, DONE, fullContent = ''
@@ -119,20 +119,20 @@ Prompt('prompt', {
   params: [
     {id: 'elems', type: 'prompt[]', composite: true}
   ],
-  impl: async (ctx,{elems}) => waitForInnerElements(elems)
+  impl: async (ctx, {}, {elems}) => waitForInnerElements(elems)
 })
 
 Prompt('system', {
   params: [ {id: 'content', as: 'text'} ],
-  impl: (ctx,{content}) => Promise.resolve(content).then(content => ({role: 'system', content}))
+  impl: (ctx, {}, {content}) => Promise.resolve(content).then(content => ({role: 'system', content}))
 })
 Prompt('user', {
   params: [ {id: 'content', as: 'text'} ],
-  impl: (ctx,{content}) => Promise.resolve(content).then(content => ({role: 'user', content}))
+  impl: (ctx, {}, {content}) => Promise.resolve(content).then(content => ({role: 'user', content}))
 })
 Prompt('assistant', {
   params: [ {id: 'content', as: 'text'} ],
-  impl: (ctx,{content}) => Promise.resolve(content).then(content => ({role: 'assistant', content}))
+  impl: (ctx, {}, {content}) => Promise.resolve(content).then(content => ({role: 'assistant', content}))
 })
 
 
@@ -215,7 +215,7 @@ Data('llm.completions', {
     {id: 'useLocalStorageCache', as: 'boolean'},
     {id: 'notifyUsage', type: 'action<common>', dynamic: true}
   ],
-  impl: (ctx, args) => {
+  impl: (ctx, {}, args) => {
     const $ = dsls.rx['reactive-source']['llm.completionsRx'][coreUtils.asJbComp]
     const profile = ctx.jbCtx.profile = { ... ctx.jbCtx.profile, $ }
     const source = ctx.run(profile)

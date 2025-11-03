@@ -104,7 +104,7 @@ Aggregator('join', {
   params: [
     {id: 'itemText', as: 'string', dynamic: true, defaultValue: '%%'}
   ],
-  impl: (ctx, {itemText}) => {
+  impl: (ctx, {}, {itemText}) => {
     const itemToText = ctx.jbCtx.args.itemText ? 
       item => itemText(ctx.setData(item)) :    // ← Function call with context!
       item => toString(item)
@@ -132,7 +132,7 @@ mapValues(toUpperCase('%%'))  // Becomes: value => map(ctx.setData(value))`,
 // Without dynamic: true - immediate resolution
 Data('immediate', {
   params: [{id: 'value', type: 'data'}],  // dynamic: false (default)
-  impl: (ctx, {value}) => {
+  impl: (ctx, {}, {value}) => {
     console.log('Value:', value)  // e.g., 25 (resolved at instantiation)
   }
 })
@@ -140,7 +140,7 @@ Data('immediate', {
 // With dynamic: true - deferred resolution  
 Data('deferred', {
   params: [{id: 'value', type: 'data', dynamic: true}],  // dynamic: true
-  impl: (ctx, {value}) => {
+  impl: (ctx, {}, {value}) => {
     const actualValue = value(ctx)  // Call to get the value
     console.log('Value:', actualValue)  // e.g., 25 (resolved at execution)
   }
@@ -252,7 +252,7 @@ const result2 = pipelineTemplate.$run({data: data2})   // ✅ Same template, dif
         scrambledAnswer: '==gdhVGblxGIhx2bv9Gct92YgQXaklGbkBiI15WZ0NHIsAXYt92bM5WZ0FGdiAiZs9GbvxWbvNGI0VWZ5h2YgQHbhJXZQBSYkF2Z'
       }),
       predictResultQuiz({
-        scenario: 'Data("test", {params: [{id: "val", dynamic: true}], impl: (ctx, {val}) => val(ctx)}); const template = test(42); const result = template.$run();',
+        scenario: 'Data("test", {params: [{id: "val", dynamic: true}], impl: (ctx, {}, {val}) => val(ctx)}); const template = test(42); const result = template.$run();',
         context: 'What type of result do you get?',
         scrambledAnswer: '=c2dvNUTTRFIu9Wa0NWYgwyc0lmZl5WZiBSZhVGbgIXZ152YnBnbgUWZhFGUgQHdhRmYhx2bv9Gcz9WYgQ3YlJnc'
       }),
@@ -278,14 +278,14 @@ Doclet('dynamicParameterPatterns', {
 // Static parameter - resolved at generic comp instantiation time
 Data('staticExample', {
   params: [{id: 'threshold', type: 'data'}],  // dynamic: false (default)
-  impl: (ctx, {threshold}) => 
+  impl: (ctx, {}, {threshold}) => 
     ctx.data.filter(item => item.value > threshold)  // threshold is fixed value
 })
 
 // Dynamic parameter - resolved at execution time
 Data('dynamicExample', {
   params: [{id: 'threshold', type: 'data', dynamic: true}],  // dynamic: true
-  impl: (ctx, {threshold}) => 
+  impl: (ctx, {}, {threshold}) => 
     ctx.data.filter(item => item.value > threshold(ctx))  // threshold is function
 })
 

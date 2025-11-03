@@ -196,7 +196,7 @@ Any('If', {
     {id: 'then', type: '$asParent', dynamic: true, composite: true},
     {id: 'Else', type: '$asParent', dynamic: true}
   ],
-  impl: ({},{ condition, then, Else}) => condition() ? then() : Else()
+  impl: ({}, {}, { condition, then, Else}) => condition() ? then() : Else()
 })
 
 Any('typeAdapter', {
@@ -204,7 +204,7 @@ Any('typeAdapter', {
     {id: 'fromType', as: 'string', mandatory: true, description: 'e.g. type1<myDsl>'},
     {id: 'val', dynamicTypeFromParent: 'fromType', mandatory: true}
   ],
-  impl: (ctx, {val}) => val
+  impl: (ctx, {}, {val}) => val
 })
 
 Any('TBD', {
@@ -226,7 +226,7 @@ Action('runActions', {
   params: [
     {id: 'actions', type: 'action[]', dynamic: true, composite: true, mandatory: true}
   ],
-  impl: (ctx, {actions}) => asArray(actions).reduce((pr,_,index) => pr.finally(() => ctx.runInnerArg(actions,index)), Promise.resolve())
+  impl: (ctx, {}, {actions}) => asArray(actions).reduce((pr,_,index) => pr.finally(() => ctx.runInnerArg(actions,index)), Promise.resolve())
 })
 
 // Action('writeValue', {

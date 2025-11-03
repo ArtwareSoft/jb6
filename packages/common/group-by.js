@@ -15,7 +15,7 @@ Aggregator('splitByPivot', {
     {id: 'pivot', as: 'string', description: 'prop name', mandatory: true},
     {id: 'items', as: 'array', defaultValue: '%%'}
   ],
-  impl: (ctx, {pivot, items}) => {
+  impl: (ctx, {}, {pivot, items}) => {
       const keys = unique(items.map(item=>item[pivot]))
       const groups = Object.fromEntries(keys.map(key=> [key,[]]))
       items.forEach(item => groups[item[pivot]].push(item))
@@ -28,7 +28,7 @@ Data('enrichGroupProps', {
   params: [
     {id: 'props', type: 'group-prop[]', mandatory: true},
   ],
-  impl: (ctx, {props}) => props.flatMap(x=>asArray(x)).reduce((item,prop) => ({...item, ...prop.enrichGroupItem(item)}), ctx.data )
+  impl: (ctx, {}, {props}) => props.flatMap(x=>asArray(x)).reduce((item,prop) => ({...item, ...prop.enrichGroupItem(item)}), ctx.data )
 })
 
 const { GroupProp,
@@ -58,7 +58,7 @@ GroupProp('group.prop', {
     {id: 'val', dynamic: true, mandatory: true, defaultValue: '', description: 'input is group items'},
     {id: 'type', as: 'string', options: 'string,number,boolean,object,array,asIs', defaultValue: 'asIs'},
   ],
-  impl: (ctx, {name, val, type}) => ({ 
+  impl: (ctx, {}, {name, val, type}) => ({ 
     enrichGroupItem: item => ({...item, [name]: RT_types[type](val(ctx.setData(item.items)))})
   })
 })

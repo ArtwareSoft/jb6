@@ -24,8 +24,7 @@ Test('dataTest', {
     {id: 'spy', as: 'string'},
     {id: 'includeTestRes', as: 'boolean', type: 'boolean'}
   ],
-//  resultSchema: asIs({testID: 'string', success: 'boolean', reason: 'string', testRes: 'any'}),
-  impl: async function(ctx,{ calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy,includeTestRes }) {
+  impl: async (ctx,{}, { calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy,includeTestRes }) => {
 		const ctxToUse = ctx.vars.testID ? ctx : ctx.setVars({testID:'unknown'})
 		const {testID,singleTest,uiTest}  = ctxToUse.vars
 		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 5000 : null

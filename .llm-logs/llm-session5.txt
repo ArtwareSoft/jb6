@@ -22,7 +22,7 @@
 ### Implementation Strategy Discovery:
 ✅ SUCCESS: Found jb-common.js structure with Data() components defined as functions
 ✅ SUCCESS: Identified that learnCommonDsl should be a Data() component, not just a Doclet
-✅ SUCCESS: Noticed that functions are defined using Data('functionName', {params: [...], impl: (ctx, {params}) => {...}})
+✅ SUCCESS: Noticed that functions are defined using Data('functionName', {params: [...], impl: (ctx, {}, {params}) => {...}})
 
 ### Key Patterns:
 - Data components define reusable functions that can be called in pipelines

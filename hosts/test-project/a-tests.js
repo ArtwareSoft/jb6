@@ -23,7 +23,7 @@ const {
 //     params: [
 //       {id: 'func', as: 'string', defaultValue: templateParam}
 //     ],
-//     impl: (ctx, {func}) => Math[func](ctx.data)
+//     impl: (ctx, {}, {func}) => Math[func](ctx.data)
 //   })
 // )
 

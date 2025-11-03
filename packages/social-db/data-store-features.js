@@ -7,7 +7,7 @@ const {
 
 
 DataStoreFeature('binary', {
-  impl: () => ({ props: { binary: true }})
+  impl: ({}, {}) => ({ props: { binary: true }})
 })
 
 DataStoreFeature('validator', {

@@ -59,7 +59,7 @@ UiAction('actions', {
   params: [ 
     { id:'actions', type: 'ui-action[]', composite: true } 
   ],
-  impl: ({},{actions}) => ({
+  impl: ({}, {}, {actions}) => ({
     async exec(ctx) {
       for (const a of actions)
         await a.exec(ctx)
@@ -69,7 +69,7 @@ UiAction('actions', {
 
 UiAction('waitForMutations', {
   params: [ { id:'timeout', as:'number' } ],
-  impl: ({},{timeout}) => ({ exec: ctx => ctx.vars.win.waitForMutations(timeout) })
+  impl: ({}, {}, {timeout}) => ({ exec: ctx => ctx.vars.win.waitForMutations(timeout) })
 })
 
 UiAction('waitForSelector', {
@@ -77,7 +77,7 @@ UiAction('waitForSelector', {
     { id: 'selector', as: 'string' },
     { id: 'timeout', as: 'number', defaultValue: 2000 }
   ],
-  impl: ({}, { selector, timeout }) => ({
+  impl: ({}, {}, { selector, timeout }) => ({
     async exec(ctx) {
       const {win} = ctx.vars
       return new Promise(resolve => {
@@ -104,7 +104,7 @@ UiAction('waitForText', {
     { id: 'text', as: 'string' },
     { id: 'timeout', as: 'number', defaultValue: 8000 }
   ],
-  impl: ({}, { text, timeout }) => ({
+  impl: ({}, {}, { text, timeout }) => ({
     async exec(ctx) {
       const {win} = ctx.vars
       return new Promise(resolve => {
@@ -130,7 +130,7 @@ UiAction('click', {
   params: [
     { id: 'buttonText', as: 'string' },
   ],
-  impl: (ctx, { buttonText }) => ({
+  impl: (ctx, {}, { buttonText }) => ({
     async exec(ctx) {
       const { win } = ctx.vars
       try {
@@ -156,7 +156,7 @@ UiAction('longPress', {
     { id: 'buttonText', as: 'string' },
     { id: 'timeToPress', as: 'number', defaultValue: 350, byName: true },
   ],
-  impl: (ctx, { buttonText, timeToPress }) => ({
+  impl: (ctx, {}, { buttonText, timeToPress }) => ({
     async exec(ctx) {
       const { win } = ctx.vars
       try {

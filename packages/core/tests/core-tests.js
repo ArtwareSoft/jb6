@@ -110,7 +110,7 @@ const getAsBool = Data({
   params: [
     {id: 'val', as: 'boolean', type: 'boolean'}
   ],
-  impl: (ctx,{val}) => val
+  impl: (ctx, {}, {val}) => val
 })
 
 Test('coreTest.getExpValueAsBoolean', {
@@ -129,7 +129,7 @@ const nullParamPt = Data({
   params: [
     {id: 'tst1', as: 'string'}
   ],
-  impl: (ctx,{tst1}) => tst1
+  impl: (ctx, {}, {tst1}) => tst1
 })
 Test('coreTest.emptyParamAsString', {
   impl: dataTest(nullParamPt(), ctx => ctx.data == '' && ctx.data != null)
@@ -286,7 +286,7 @@ const asIsParam = Data({
   params: [
     {id: 'param', as: 'string', asIs: true}
   ],
-  impl: (ctx,{param}) => param
+  impl: (ctx, {}, {param}) => param
 })
 
 Test('expTest.asIsParam', {
