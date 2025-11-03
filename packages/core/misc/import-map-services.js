@@ -192,12 +192,16 @@ async function packageJson(packageDir) {
 async function getStaticConfig(repoRoot, pkgJson) {
   const repoName = pkgJson.name  
   try {
+    // consider lookup in package jsons for pkgJson.jb6Root pkgJson.importMap
     const path = await import('path')
     const { readdir } = await import('fs/promises') 
     const pkgsDir = pkgJson.name == 'jb6-monorepo' && path.resolve(repoRoot, 'packages')
       || pkgJson.jb6Root && path.resolve(repoRoot,pkgJson.jb6Root)
       || `${repoRoot}/node_modules/@jb6`
-    const entries = await readdir(pkgsDir, { withFileTypes: true })
+    let entries = []
+    try {
+      entries = await readdir(pkgsDir, { withFileTypes: true })
+    } catch(e) {}
     const folders = entries.filter(e => e.isDirectory() || e.isSymbolicLink()).map(e => e.name)
     const imports = {...pkgJson.importMap, ... Object.fromEntries(folders.flatMap(f => [[`@jb6/${f}`,  `/jb6_packages/${f}/index.js`], [`@jb6/${f}/`, `/jb6_packages/${f}/`]])) }
     const staticMappings = repoName == 'jb6-monorepo' ? [
@@ -251,7 +255,7 @@ async function calcRepoRootAndProjectDir(filePath) {
     if (parentDir === currentDir) break
     currentDir = parentDir
   }
-  return { repoRoot, projectDir }
+  return { repoRoot: repoRoot || projectDir, projectDir }
 }
 
 async function discoverFiles(staticMappings, pkgJson, {projectDir}) {
@@ -317,7 +321,7 @@ async function discoverFiles(staticMappings, pkgJson, {projectDir}) {
 
 function resolveWithImportMap(specifier, importMap, staticMappings) {
   if (specifier[0] == '/') return specifier
-  const imports = importMap.imports
+  const imports = importMap?.imports
   if (!imports || !staticMappings) return undefined
   
   let winner = ''

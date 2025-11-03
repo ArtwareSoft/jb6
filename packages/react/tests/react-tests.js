@@ -29,13 +29,28 @@ Test('reactTest.buttonClick', {
   })
 })
 
+Test('reactTest.buttonClickWithParams', {
+  params: [
+    {id: 'textAfterClick', as: 'string', defaultValue: 'Clicked!'}
+  ],
+  impl: reactTest({
+    reactComp: ({},{},{textAfterClick}) => {
+    const [text, setText] = useState('Click me')
+    return h('button', { onClick: () => setText(textAfterClick) }, text)
+  },
+    expectedResult: contains('%$textAfterClick%'),
+    userActions: actions(click('Click me'))
+  })
+})
+
 Test('reactTest.cli', {
+  HeavyTest: true,
   impl: dataTest({
     calculate: async () => {
-    const result = await jb.testingUtils.runTestCli('reactTest.buttonClick', {entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`})
+    const result = await jb.testingUtils.runTestCli('reactTest.buttonClickWithParams', {textAfterClick : 'kuki'},  {entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`})
     return result?.result?.testRes
   },
-    expectedResult: contains('Clicked!'),
+    expectedResult: contains('kuki'),
     timeout: 2000
   })
 })
@@ -44,13 +59,18 @@ Test('reactTest.vm', {
   HeavyTest: true,
   impl: dataTest({
     calculate: async () => {
+    const builtIn = { JSDOM: 'jsdom' }
     const results = await Promise.all([
-      jb.testingUtils.runTestVm('reactTest.buttonClick', { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`,JSDOM: true }),
-      jb.testingUtils.runTestVm('reactTest.buttonClick', { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`, JSDOM: true })
-   ])
+      jb.testingUtils.runTestVm({
+        testID: 'reactTest.buttonClickWithParams', params: {textAfterClick : 'aaa'}, 
+        resources: { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`}, builtIn }),
+      jb.testingUtils.runTestVm({
+          testID: 'reactTest.buttonClickWithParams', params: {textAfterClick : 'bbb'}, 
+          resources: { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`}, builtIn }),
+     ])
     return results.map(r=> r?.testRes).join(',')
   },
-    expectedResult: contains('Clicked!','Clicked!'),
+    expectedResult: contains('aaa','bbb'),
     timeout: 2000
   })
 })

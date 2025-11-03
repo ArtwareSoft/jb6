@@ -268,6 +268,20 @@ Test('prettyPrintTest.comp', {
   })
 })
 
+Test('vmTest.minimal', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: async () => {
+      const builtIn = {}
+      const result = await jb.testingUtils.runTestVm({
+          testID: 'coreTest.ns', resources: { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/core/tests/core-tests.js`}, builtIn })
+      return result
+    },
+    expectedResult: contains('aaa','bbb'),
+    timeout: 2000
+  })
+})
+
 const asIsParam = Data({
   params: [
     {id: 'param', as: 'string', asIs: true}

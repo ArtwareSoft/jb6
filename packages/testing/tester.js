@@ -76,7 +76,7 @@ Test('dataTest', {
 globalThis.spy = spy
 globalThis.jb = jb
 
-async function runTestCli(testID, resources) {
+async function runTestCli(testID, params, resources) {
     const {entryFiles, testFiles, projectDir, importMap } = await coreUtils.calcImportData(resources)
     const imports = unique([...entryFiles, ...testFiles])
     const script = `
@@ -85,7 +85,7 @@ async function runTestCli(testID, resources) {
       const imports = ${JSON.stringify(imports)}
       try {
         await Promise.all(imports.map(f => import(f))) //.catch(e => console.error(f, e.message) )))
-        const result = await jb.testingUtils.runTest('${testID}', {singleTest: true})
+        const result = await jb.testingUtils.runTest('${testID}', {singleTest: true, params: ${JSON.stringify(params || {})}})
         await coreUtils.writeServiceResult(result)
       } catch (e) {
         await coreUtils.writeServiceResult({error: e.message})
@@ -101,13 +101,14 @@ async function runTestCli(testID, resources) {
     }
 }
 
-async function runTestVm(testID, resources) {
+async function runTestVm(args) {
+    const {testID, params, resources, builtIn, vmId, importMap, staticMappings} = args
     if (!isNode) {
         const script = `import { jb, coreUtils } from '@jb6/core'
     import '@jb6/testing/tester.js'
     ;(async()=>{
     try {
-      const result = await jb.testingUtils.runTestVm('${testID}', ${JSON.stringify(resources)})
+      const result = await jb.testingUtils.runTestVm(${JSON.stringify(args)})
       await coreUtils.writeServiceResult(result || '')
     } catch (e) { console.error(e) }
     })()`
@@ -115,26 +116,30 @@ async function runTestVm(testID, resources) {
           return res.result
       }
       await import ('@jb6/core/misc/jb-vm.js')
-      const testVm = await coreUtils.getOrCreateVm({resources})
+//      const v8 = await import ('v8')
+//      const heapSummary = () => Object.fromEntries(v8.getHeapSpaceStatistics().filter(s => s.space_used_size || s.space_size || s.physical_space_size).map(s => [s.space_name, [s.space_used_size, s.space_size, s.physical_space_size].map(v => +(v/1024/1024).toFixed(2))]))
+//      const mem_before = heapSummary().code_space
+      const testVm = await coreUtils.getOrCreateVm({vmId, resources, builtIn, importMap, staticMappings})
       try {
-        const resPromise = testVm.evalScript(`jb.testingUtils.runTestInVm('${testID}')`)
+        const resPromise = testVm.evalScript(`jb.testingUtils.runTestInVm('${testID}', ${JSON.stringify(params || {})})`)
         const result = await resPromise
-        //await testVm.runHttpRequest(runTestScript, null, {json: out => result = out })
+//        testVm.destroy()
+//        result.mem_after = heapSummary().code_space
+//        result.mem_before = mem_before
         return result
       } catch (e) {
         console.error(e)
       }
 }
 
-async function runTestInVm(testID, httpReqId) {
+async function runTestInVm(testID, params, httpReqId) {
     const jbComp = Test[testID][asJbComp]
     let res = {}
     const start = Date.now()
     try {
-        console.log(1)
         const ctx = new Ctx().setVars({ testID, singleTest: true, httpReqId })
-        console.log(ctx)
-        res = await jbComp.runProfile({}, ctx)
+        debugger
+        res = await jbComp.runProfile(params, ctx)
         console.log('test res', res)
     } catch (e) {
         res = { success: false, reason: e}
@@ -143,7 +148,7 @@ async function runTestInVm(testID, httpReqId) {
     return res
 }
 
-export async function runTest(testID, {fullTestId, singleTest, action, httpReqId} = {}) {
+export async function runTest(testID, {fullTestId, singleTest, action, httpReqId, params} = {}) {
     !singleTest && await cleanBeforeRun()
     const jbComp = Test[testID][asJbComp]
     log('start test',{testID})
@@ -151,7 +156,7 @@ export async function runTest(testID, {fullTestId, singleTest, action, httpReqId
     const start = Date.now()
     try {
         const ctx = new Ctx().setVars({ testID, fullTestId,singleTest, httpReqId, win1: globalThis })
-        res = await jbComp.runProfile({}, ctx)
+        res = await jbComp.runProfile({...params}, ctx)
         if (action) {
             const actionId = action.split(':')[0]
             const actionParam = action.slice(actionId.length+1)

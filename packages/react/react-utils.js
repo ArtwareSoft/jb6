@@ -28,8 +28,8 @@ function L(iconName) {
   }
 }
 
-function loadLucid05() {
-  return jb.reactUtils.icons = import('./lib/lucide-0.5.mjs')
+async function loadLucid05() {
+  return jb.reactUtils.icons = await import('./lib/lucide-0.5.mjs')
 }
 
 console.log('react-utils')
@@ -39,9 +39,9 @@ if (!globalThis.window) {
   initReact = async () => {
     console.log('initReact node')
     const cli = Object.fromEntries(process.argv.slice(2).filter(a=>a.startsWith('--')).map(a=>a.slice(2).split('=')))
-    const url = globalThis.jsDomUrl || cli.url || 'http://localhost'
+    const url = globalThis.builtIn?.window?.url || cli.url || 'http://localhost'
     const html = globalThis.html || '<!DOCTYPE html><body></body>'
-    const JSDOM = globalThis.JSDOM || (await import('jsdom')).JSDOM
+    const JSDOM = globalThis.builtIn?.JSDOM?.JSDOM || (await import('jsdom')).JSDOM
     const dom = new JSDOM(html, { url, pretendToBeVisual: true, resources: 'usable', features: { ProcessExternalResources: false } })
     const win = globalThis.window = dom.window
     const isLocalHost = win.location.hostname === 'localhost'
@@ -81,7 +81,7 @@ if (!globalThis.window) {
     if (!reactUtils.reactPromise)
       reactUtils.reactPromise = (async () => {
         const { React, ReactDomClient, ReactDom } = await import(`./lib/react-all-${ver}.mjs`)
-        await import('./lib/tailwindcss-4.1.15.mjs')
+        await import('./lib/tailwindcss.js')
         Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient  })
       })()
     return reactUtils.reactPromise

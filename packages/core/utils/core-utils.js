@@ -284,8 +284,7 @@ function logVsCode(...args) {
     globalThis.jbVSCodeLog(...args)
 }
 
-
-const isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string'
+const isNode = globalThis.process?.versions?.node
 
 function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, reshowVisited } = {}) {
   const visited = new WeakSet()

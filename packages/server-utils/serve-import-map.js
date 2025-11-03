@@ -48,21 +48,6 @@ function serveCli(app) {
     res.status(200).json({ result })
   })
 
-  app.post('/run-on-vm', async (req, res) => {
-    if (!req.body) {
-      res.status(200).json({ error: 'no body in req' })
-      return
-    }
-    const repoRoot = await calcRepoRoot()
-    const { script, ...options } = req.body
-
-    const vmId = calcHash(script) // creates a separated vm for each req
-    const vm = getOrCreateVm({vmId, resources: {...options, forRepo: repoRoot}})
-    const result = await vm.runHttpRequest(script, req, res)  
-    if (result)
-      res.status(200).json({ result })
-  })
-
   app.post('/run-bash', async (req, res) => {
     const { script } = req.body
     const result = await runBashScript(script)

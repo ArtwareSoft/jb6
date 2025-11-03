@@ -21,7 +21,9 @@ function jbCompProxy(jbComp) {
   return new Proxy(() => 0, {
       get: (o, p) => {
         if (p == '$run')
-            return (...args) => jbComp.runProfile(resolveProfileArgs(calcArgs(jbComp, args)))
+          return (...args) => jbComp.runProfile(resolveProfileArgs(calcArgs(jbComp, args)))
+        if (p == '$runWithCtx')
+          return (ctx,...args) => jbComp.runProfile(resolveProfileArgs(calcArgs(jbComp, args)), ctx)
     
         return p === asJbComp && jbComp
       },

@@ -7,7 +7,7 @@
   "scripts": {
     "test": "node packages/testing/run-tests-cli.js all",
     "test-via-web": "start http://localhost:8083/packages/testing/tests.html",
-    "local": "node --experimental-vm-modules packages/testing/jb-web-server.js",
+    "local": "node --experimental-vm-modules --expose-gc packages/testing/jb-web-server.js",
     "jb6:bumpVer": "node scripts/bump-calver.js",
     "jb6:publish": "bash scripts/publish.sh",
     "bumpPub": "npm run jb6:bumpVer && npm run jb6:publish",

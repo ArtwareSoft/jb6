@@ -33,13 +33,13 @@ async function runNodeCli(script, options = {}) {
   options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
   const importParts = options.importMapsInCli ? ['--import',options.importMapsInCli] : []
 
-  const cmd = `node --inspect-brk --experimental-vm-modules --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
+  const cmd = `node --inspect-brk --experimental-vm-modules --expose-gc --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
   const cwd = options.projectDir
   const scriptToRun = `console.log = () => {};\n${script}`
   return new Promise(resolve => {
     let out = '', err = ''
     try {
-      const child = spawn(process.execPath, ['--experimental-vm-modules', '--input-type=module', ...importParts, '-e', scriptToRun], {cwd })
+      const child = spawn(process.execPath, ['--experimental-vm-modules', '--expose-gc', '--input-type=module', ...importParts, '-e', scriptToRun], {cwd })
       child.stdout.on('data', d => out += d)
       child.stderr.on('data', d => err += d)
       child.on('close', code => {
@@ -68,7 +68,7 @@ async function runNodeCliViaJbWebServer(script, options = {}) {
     
     options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
     const importParts = options.importMapsInCli ? ['--import',options.importMapsInCli] : []
-    const cmd = `node --inspect-brk --experimental-vm-modules --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
+    const cmd = `node --inspect-brk --experimental-vm-modules --expose-gc --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
     const res = await fetch(`${expressUrl}/run-cli`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

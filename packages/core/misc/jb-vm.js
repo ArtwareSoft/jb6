@@ -3,18 +3,17 @@ import vm from 'node:vm'
 
 import https from 'node:https'
 import http from 'node:http'
-import module from 'node:module'
-import { createRequire } from 'node:module'
+//import module from 'node:module'
+//import { createRequire } from 'node:module'
+//const nodeRequire = createRequire(import.meta.url)
 
-const nodeRequire = createRequire(import.meta.url)
+// function isBuiltin(specifier) {
+//   return module.builtinModules.includes(specifier)
+// }
 
-function isBuiltin(specifier) {
-  return module.builtinModules.includes(specifier)
-}
-
-function isBuiltinOrNpm(specifier) {
-    return isBuiltin(specifier) || (!specifier.startsWith('file://') && !specifier.startsWith('http') && !specifier.startsWith('@') && !specifier.startsWith('.'))
-}
+// function isBuiltinOrNpm(specifier) {
+//     return isBuiltin(specifier) || (!specifier.startsWith('file://') && !specifier.startsWith('http') && !specifier.startsWith('@') && !specifier.startsWith('.'))
+// }
 
 import { jb } from '@jb6/repo'
 import './import-map-services.js'
@@ -31,9 +30,11 @@ async function getOrCreateVm(options) {
     const {importMap, staticMappings } = resources ? await calcImportData(resources) : options
 
     const moduleCache = new Map()
+    const vmCleanup = []
+    const builtInModules = {}
 
-    function calcIdentifierUrl(specifier, referrer = {}) {
-        //if (isBuiltinOrNpm(specifier)) return specifier
+    function calcSpecifierUrl(specifier, referrer = {}) {
+        if (/^https?:\/\//.test(specifier) || builtInModules[specifier]) return specifier
         const fixRelative = specifier[0] == '.' ? safeResolveURL(specifier, referrer.identifier).href : specifier
         const resolved = resolveWithImportMap(fixRelative.replace(/^file:\/\//,''), importMap, staticMappings)
         if (!resolved) {
@@ -47,37 +48,28 @@ async function getOrCreateVm(options) {
         if (!identifier)
             debugger
         if (moduleCache.has(identifier)) {
-            console.log('♻️ Reusing cached module', identifier)
+            //console.log('♻️ Reusing cached module', identifier)
             return moduleCache.get(identifier)
         }
         
-        console.log('📦 Creating new module', identifier)
+        //console.log('📦 Creating new module', identifier)
         try {
-            // if (isBuiltinOrNpm(identifier)) {
-            //     console.log('🔧 built in or npm', identifier)
-            //     return (async() => {
-            //         const exports = await import(identifier) // use the global await ...
-            //         const fakeModule = { namespace: exports, link: () => {}, evaluate: () => {} }
-            //         moduleCache.set(identifier, fakeModule)
-            //         return fakeModule    
-            //     })()
-            // }
-    
-            const source = fileContent || fs.readFileSync(safeResolveURL(identifier), 'utf8')
-
-            const mod = new vm.SourceTextModule(source, { identifier, context,
-                // initializeImportMeta(meta) {
-                //     meta.url = identifier;
-                // },
-                importModuleDynamically: async (specifier, referrer) => {
-                    const content = /^https?:\/\//.test(specifier) && await fetchRemoteCode(specifier)
-                    const child = loadModule(calcIdentifierUrl(specifier, referrer), context, {fileContent: content })
-                    await child.link(linker)
-                    await child.evaluate()
-                    return child.namespace
-                }
-            })
-
+            let mod
+            if (builtInModules[identifier]) {
+                mod = new vm.SyntheticModule(
+                    Object.keys(builtInModules[identifier]), // export names
+                    function init() {
+                      for (const [key, value] of Object.entries(builtInModules[identifier]))
+                        this.setExport(key, value)
+                    },
+                    { context, identifier }
+                  )
+            } else {
+                const source = fileContent || fs.readFileSync(safeResolveURL(identifier), 'utf8')
+                mod = new vm.SourceTextModule(source, { identifier, context,
+                    importModuleDynamically: (specifier, referrer) => importModuleDynamically (context, specifier, referrer)
+                })
+            }
             moduleCache.set(identifier, mod)
             return mod
         } catch (e) {
@@ -87,16 +79,31 @@ async function getOrCreateVm(options) {
 
     function linker(specifier, referrer) {
         console.log('linker', specifier, referrer.identifier)
-        const childId = calcIdentifierUrl(specifier,referrer)
+        const childId = calcSpecifierUrl(specifier,referrer)
         return loadModule(childId, referrer.context, {fileContent: ''})
+    }
+
+    async function importModuleDynamically (context, specifier, referrer) {
+        const content = /^https?:\/\//.test(specifier) && await fetchRemoteCode(specifier)
+        const child = loadModule(calcSpecifierUrl(specifier, referrer), context, {fileContent: content })
+        child.status === 'unlinked' && await child.link(linker)
+        await child.evaluate()
+        return child.namespace
     }
 
     async function init() {
         const httpRequests = {}
+        const builtIn = options.builtIn || {}
+        await Promise.all(Object.entries(builtIn || {}).filter(e=>typeof e[1] == 'string').map( async e => {
+            builtIn[e[0]] = await import(e[1])
+            builtInModules[e[1]] = builtIn[e[0]] = builtIn[e[0]].default || builtIn[e[0]]
+        }))
 
-        const JSDOM = options.resources?.JSDOM && (await import('jsdom')).JSDOM
-
-        const context = vm.createContext({ console, httpRequests, setTimeout, clearTimeout, setInterval, clearInterval, process, JSDOM })
+        const context = vm.createContext({ 
+            console, vmId, httpRequests, setTimeout, clearTimeout, setInterval, clearInterval, process, AbortController,
+            URLSearchParams, atob, gc, performance, URL, calcSpecifierUrl,
+            fetch,
+            vmCleanup, builtIn })
         const {entryFiles} = await coreUtils.calcImportData(resources)
         const initCode = ['import { jb } from "@jb6/core"', "globalThis.jb = jb",entryFiles.map(e=>`import '${e}'`)].join('\n')
         const mod = await loadModule(vmId || 'entryScript', context , {fileContent: initCode, displayErrors: true })
@@ -106,34 +113,28 @@ async function getOrCreateVm(options) {
         async function evalScript(code) {
             try {
                 const reqId = '' + Math.floor(10000000 + Math.random() * 90000000)
-                const withReqId = `globalThis.httpReqId = '${reqId}'; \n${code}`
-                return vm.runInContext(withReqId,context, {filename: `evalScript-${reqId}`, displayErrors: true})
+                const withReqId = `globalThis.reqId = '${reqId}'; \n${code}`
+                return vm.runInContext(withReqId,context, {filename: `evalScript-${reqId}`, displayErrors: true, 
+                    importModuleDynamically: (specifier, referrer) => importModuleDynamically (context, specifier, referrer)})
             } catch(e) {
                 logError('error evaluating script', {code, e})
             }
         }
-        async function runHttpRequest(script, req, res) {
-            const reqId = '' + Math.floor(10000000 + Math.random() * 90000000)
-            httpRequests[reqId] = { req, res }
-            const fileContent = `
-                const httpReqId = '${reqId}'
-                ${script}`
-            const mod = await loadModule(reqId, context , {fileContent })
-            await mod.link(linker)
-            try {
-                const result = await mod.evaluate()
-                delete httpRequests[reqId]
-                return result
-            } catch(e) {
-                logError('error evaluating httpReq', e)
-            }
+        
+        function destroy() {
+           moduleCache.clear()
+           delete vmCache[vmId]
+           vmCleanup.forEach(f=>f())
+           for (const k of Object.keys(context)) delete context[k]
+           context.globalThis = null
+           gc()
         }
 
-        return { context, runHttpRequest, httpRequests, evalScript }
+        return { context, httpRequests, evalScript, destroy }
     }
 
     const entry = await init()
-    return {vmId, ...entry}
+    return vmCache[vmId] = {vmId, ...entry}
 }
 
 async function fetchRemoteCode(url) {
