@@ -268,8 +268,6 @@ Test('prettyPrintTest.comp', {
   })
 })
 
-
-
 Test('vmTest.minimal', {
   HeavyTest: true,
   impl: dataTest({
@@ -277,9 +275,9 @@ Test('vmTest.minimal', {
       const builtIn = {}
       const result = await jb.testingUtils.runTestVm({
           testID: 'coreTest.ns', resources: { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/core/tests/core-tests.js`}, builtIn })
-      return result
+      return result?.testRes?.[0]
     },
-    expectedResult: contains('aaa','bbb'),
+    expectedResult: equals(2),
     timeout: 2000
   })
 })

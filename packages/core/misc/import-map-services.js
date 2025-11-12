@@ -361,10 +361,16 @@ async function fetchByEnv(url, staticMappings = [], httpServer = '') {
   if (!isNode) {
     const { logError } = coreUtils
     const rUrl = httpServer + absPathToUrl(url, staticMappings)
-    const res = await fetch(rUrl)
+    let res
+    try {
+      res = await fetch(rUrl)
+    } catch(error) {
+      logError(`fetch ${rUrl}`)
+      return { error: error.stack }
+    }
     if (!res.ok) {
       logError(`fetch ${url} → ${res.status}`)
-      return ''
+      return { error: `${rUrl} error`}
     } 
     return await res.text()
   }

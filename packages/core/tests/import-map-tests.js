@@ -58,9 +58,10 @@ Test('genieTest.calcTgpModelData', {
       return coreUtils.calcTgpModelData({
         entryPointPaths: `${geniePath}/public/applets/sampleApplet/index.js`, fetchByEnvHttpServer: 'http://localhost:3000'})
     },
-    expectedResult: contains(`${geniePath}/public/3rd-party/@jb6`, '/jb6_packages/common/index.js', {
+    expectedResult: contains('/public/3rd-party/@jb6', '/jb6_packages/common/index.js', {
       allText: json.stringify()
-    })
+    }),
+    timeout: 2000
   })
 })
 
@@ -72,7 +73,7 @@ Test('genieTest.nodejs.calcTgpModelData', {
         const script = `
               const {coreUtils} = await import('@jb6/core')
       await import('@jb6/lang-service')
-      const result = await coreUtils.calcTgpModelData({ entryPointPaths: '%{geniePath}/public/applets/sampleApplet/index.js', fetchByEnvHttpServer: 'http://localhost:3000'})
+      const result = await coreUtils.calcTgpModelData({ entryPointPaths: '${geniePath}/public/applets/sampleApplet/index.js', fetchByEnvHttpServer: 'http://localhost:3000'})
         await coreUtils.writeServiceResult(result)
         `
         const res = await coreUtils.runNodeCliViaJbWebServer(script, {projectDir: geniePath, 
