@@ -124,7 +124,7 @@ Data('addProp', {
 Data('removeProps', {
   description: 'remove properties from object',
   params: [
-    {id: 'names', type: 'data[]', mandatory: true},
+    {id: 'names', type: 'data[]', as: 'array', mandatory: true},
     {id: 'obj', byName: true, defaultValue: '%%'}
   ],
   impl: (ctx, {}, {names,obj}) => names.reduce((obj,name) => { const{ [name]: _, ...rest } = obj; return rest }, obj)

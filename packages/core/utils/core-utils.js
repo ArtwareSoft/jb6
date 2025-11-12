@@ -286,8 +286,8 @@ function logVsCode(...args) {
 
 const isNode = globalThis.process?.versions?.node
 
-function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, reshowVisited } = {}) {
-  const visited = new WeakSet()
+function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, reshowVisited } = {}) {  
+  const visited = new WeakMap()
   return _strip(value, 0, '')
 
   function _strip(data, depth, path) {
@@ -299,14 +299,15 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, resho
     if (depth > MAX_OBJ_DEPTH)
       return `[Max depth reached at ${path}]`
     if (!reshowVisited && typeof data === 'object') {
-      if (visited.has(data))
-        return `[Already visited at ${path}]`
-      visited.add(data)
+      if (visited.has(data)) {
+        return `[jbReference: ${visited.get(data)}]`
+      }
+      visited.set(data, path || '<root>')
     }
     if (Array.isArray(data)) {
       if (data.length > MAX_ARRAY_LENGTH)
         data = data.slice(0, MAX_ARRAY_LENGTH)
-      return data.map((item, i) => _strip(item, depth + 1, `${path}[${i}]`))
+      return data.map((item, i) => _strip(item, depth + 1, path ? `${path}.${i}` : `${i}`))
     }
     if (data instanceof Error)
       return { $$: 'Error', message: data.message }
@@ -317,6 +318,19 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, resho
     }
     return data
   }
+}
+
+function resolveRefs(obj, root = obj, visited = new WeakSet()) {
+  if (typeof obj === 'string') {
+    const match = obj.match(/^\[jbReference: ([^\]]+)\]$/)
+    if (match)
+      return match[1] === '<root>' ? root : calcPath(root, match[1])
+  }
+  if (obj === null || typeof obj !== 'object' || visited.has(obj)) return obj
+  visited.add(obj)
+
+  if (Array.isArray(obj)) return obj.map(v => resolveRefs(v, root, visited))
+  return Object.fromEntries(Object.entries(obj).map(e=>[e[0],resolveRefs(e[1], root, visited)]))
 }
 
 const estimateTokens = t => Math.ceil(((t.match(/\b\w+\b/g)||[]).length)*1.3)
@@ -383,6 +397,7 @@ async function writeServiceResult(result,_httpReqId) {
     await once(process.stdout, 'drain')
   process.stdout.end()
   await once(process.stdout, 'finish')
+  process.exit(0)
 }
 
 Object.assign(jb.coreUtils, {
@@ -390,5 +405,5 @@ Object.assign(jb.coreUtils, {
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult
+  calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult
 })

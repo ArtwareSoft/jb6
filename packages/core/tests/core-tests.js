@@ -16,7 +16,7 @@ const {
     test: { dataTest }
   }
 } = dsls
-const { prettyPrintComp } = coreUtils
+const { prettyPrintComp, prettyPrint } = coreUtils
 const { math } = ns
 
 Const('person', {
@@ -268,6 +268,8 @@ Test('prettyPrintTest.comp', {
   })
 })
 
+
+
 Test('vmTest.minimal', {
   HeavyTest: true,
   impl: dataTest({
@@ -291,4 +293,19 @@ const asIsParam = Data({
 
 Test('expTest.asIsParam', {
   impl: dataTest(asIsParam('%%'), contains('%'))
+})
+
+Test('coreUtilsTest.resolveRefs', {
+  impl: dataTest({
+    calculate: () => {
+      const shared = { id: 'shared', value: 42 }
+      const dag = {root: [shared,shared], a: {id: 'a', shared}, b : {shared} }
+      
+      const stripped = coreUtils.stripData(dag)
+      const resolved = coreUtils.resolveRefs(stripped)
+      const ref = stripped.root[1]
+      return `${ref}-${prettyPrint(resolved)}`      
+    },
+    expectedResult: equals(`[jbReference: root.0]-{\n  root: [\n    {id: 'shared', value: 42},\n    {id: 'shared', value: 42}\n  ],\n  a: {id: 'a', shared: {id: 'shared', value: 42}},\n  b: {shared: {id: 'shared', value: 42}}\n}`)
+  })
 })

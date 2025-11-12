@@ -27,7 +27,12 @@ const vmCache = {}
 async function getOrCreateVm(options) {
     const { vmId, resources} = options
     if (vmId && vmCache[vmId]) return vmCache[vmId]
-    const {importMap, staticMappings } = resources ? await calcImportData(resources) : options
+    const importData = resources ? await calcImportData(resources) : options
+    const {importMap, staticMappings } = importData
+    if (!importMap) {
+        console.error('can not calc importMap',importData, resources,options)
+        return 
+    }
 
     const moduleCache = new Map()
     const vmCleanup = []
@@ -38,8 +43,8 @@ async function getOrCreateVm(options) {
         const fixRelative = specifier[0] == '.' ? safeResolveURL(specifier, referrer.identifier).href : specifier
         const resolved = resolveWithImportMap(fixRelative.replace(/^file:\/\//,''), importMap, staticMappings)
         if (!resolved) {
-            debugger
             console.error('can not resolve', specifier, fixRelative, referrer.identifier, referrer)
+            return ''
         }
         return safeResolveURL(resolved.startsWith('file://') ? resolved : ('file://' + resolved)).href
     }
@@ -80,6 +85,7 @@ async function getOrCreateVm(options) {
     function linker(specifier, referrer) {
         console.log('linker', specifier, referrer.identifier)
         const childId = calcSpecifierUrl(specifier,referrer)
+        if (!childId) return new vm.SyntheticModule([], () => {}, { context, identifier: `error calculating url for ${specifier}` })
         return loadModule(childId, referrer.context, {fileContent: ''})
     }
 
