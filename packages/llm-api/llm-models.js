@@ -313,14 +313,14 @@ Model('gpt_35_turbo_0125', {
 
 Model('gpt_35_turbo_16k', {
   description: 'expensive(3~4) fast(117), 16K context',
-  impl: model('gpt-3.5-turbo-16k-0613', { 
-    price: [3, 4], // Validated pricing
-    provider: openAI(), 
+  impl: model('gpt-3.5-turbo-16k-0613', {
+    price: [3,4],
+    provider: openAI(),
     bestFor: 'Longer document processing: document analysis, content generation with more context, extended conversations',
     doNotUseFor: 'Complex reasoning, advanced tasks, latest information needs, ultra-long context requirements',
     reasoning: false,
-    contextWindow: 16385, // 16K tokens
-    responseSpeed: 117.8, // tokens/sec from Artificial Analysis (GPT-4.1 as reference)
-    latency: 0.45 // seconds TTFT from Artificial Analysis
+    contextWindow: 16385,
+    responseSpeed: 117.8,
+    latency: 0.45
   })
 })

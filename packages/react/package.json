@@ -5,6 +5,7 @@
   "exports": {
     ".": "./index.js",
     "./data-browser.js": "./data-browser.js",
+    "./tailwind-report.js": "./tailwind-report.js",
     "./tests/*.js": "./tests/*.js"
   },
   "scripts": {},

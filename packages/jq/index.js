@@ -1,8 +1,16 @@
-import {dsls} from '@jb6/core'
+import {dsls, jb, coreUtils} from '@jb6/core'
 
 const {
     common: { Data }
 } = dsls
+
+jb.jQRepository = {}
+
+coreUtils.jq = (script, ctx) => {
+    const compiledJq = (jb.jQRepository[script] = jb.jQRepository[script] || jq.compileJb(script))
+    return Array.from(compiledJq(ctx))[0]
+}
+
 
 //import jq from './jq.js'
 // let jqPromise = null

@@ -44,7 +44,8 @@ function compHeader(compId) {
   return `component('${compId.split('>').pop()}', `
 }
 
-function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros,singleLine, depth, tgpModel, type, resolvedParams} = {}) {
+function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros, tgpNoMacros, singleLine, depth, tgpModel, type, resolvedParams} = {}) {
+  noMacros = noMacros || tgpNoMacros
   val = (val && val[asJbComp]) || val
   const props = {}
   const startOffset = val.$comp ? compHeader(fullPTId(val)).length : 0
@@ -208,10 +209,10 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
 
   function calcProfileProps(profile, path, settings = {}) {
     const {forceByName, parentParam, posInArray} = settings
-    if (noMacros)
-      return asIsProps(profile,path)
     if (profile.$unresolvedArgs)
       resolveProfileArgs(profile)
+    if (noMacros)
+      return asIsProps(profile,path)
 
     if (profile.$ == 'asIs') {
       const toPrint = profile[OrigArgs][0]
@@ -334,11 +335,23 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     const defaultImpl = (profile.impl && typeof profile.impl == 'function' && profile.impl.toString() == '({params}) => params')
     const objProps = Object.keys(profile).filter(x=>x!= 'impl' || !defaultImpl).filter(p=>!p.startsWith('$symbol'))
     if (objProps.indexOf('$') > 0) { // make the $ first
-      objProps.splice(objProps.indexOf('$'),1);
-      objProps.unshift('$');
+      objProps.splice(objProps.indexOf('$'),1)
+      objProps.unshift('$')
     }
+    let profileToUse = profile
+    debugger
+    if (tgpNoMacros) {
+      if (profile.$.type == 'comp') {
+        debugger
+        profileToUse = {...profile, id: profile.id, type: profile.$dslType }  
+        Object.keys(profileToUse).forEach(k=>{ if (k != '$' && k[0] == '$') delete profileToUse[k]})
+      } else {
+        profileToUse = {...profile, $: `${profile.$.$dslType}${profile.$.id}`}
+      }
+      Object.keys(profileToUse).forEach(k=>{ if (k != '$' && k[0] == '$') delete profileToUse[k]})
+    } 
     const len = objProps.reduce((len,key) => len 
-      + calcValueProps(profile[key],`${path}~${key}`).len + key.length + 3,2,{asIs: true})
+      + calcValueProps(profileToUse[key],`${path}~${key}`).len + key.length + 3,2,{asIs: true})
     const innerVals = objProps.map(prop=>({innerPath: prop}))
     return openCloseProps(path, {token:'{'},{ token:'}'}, { len, simpleObj: true, innerVals})
   }
