@@ -65,7 +65,7 @@ function run(profile, ctx = new Ctx(), settings = {openExpression: true, openArr
     else if (profile && typeof profile == 'object' && openObj)
         res = Object.fromEntries(Object.entries(profile).map(([id,p]) =>[id,run(p, ctx.setJbCtx(jbCtx.innerDataPath(i)), settings)]))
     
-    if (jbCtx.probe)
+    if (jbCtx.probe && res !== profile)
         jbCtx.probe.record(ctx, res, ctx.data, ctx.vars)
     return res
 }
@@ -228,4 +228,4 @@ class paramRunner {
     }
 }
 
-Object.assign(jb.coreUtils, {run, Ctx, jbComp, resolveDelayed})
+Object.assign(jb.coreUtils, {run, Ctx, JBCtx, jbComp, resolveDelayed})

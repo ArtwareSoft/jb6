@@ -1,8 +1,8 @@
 import { dsls, ns, coreUtils, jb } from '@jb6/core'
-import '@jb6/react/tailwind-report.js' 
+import '@jb6/react/tailwind-card.js' 
 import '@jb6/testing'
 import { peopleTransactionsDb as db } from './peopleTransactionsDb-test.js'
-const { tailwindHtmlToPng, h } = jb.tailwindReportUtils
+const { tailwindHtmlToPng, h } = jb.tailwindCardUtils
 
 import '@jb6/jq'
 import '@jb6/core/misc/jb-cli.js'
@@ -16,7 +16,7 @@ const {
   }, 
 } = dsls
 
-Test('tailwindReportTest.htmlToPng', {
+Test('tailwindCardTest.pngUrl', {
   impl: dataTest({
     calculate: async ctx => {
       const best = jq(".people | sort_by(.rating) | reverse", ctx.setData(db))

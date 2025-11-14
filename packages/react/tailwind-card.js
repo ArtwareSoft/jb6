@@ -5,7 +5,7 @@ const {
     tgp: { TgpType }
 } = dsls
 
-jb.tailwindReportUtils = { tailwindHtmlToPng, h }
+jb.tailwindCardUtils = { tailwindHtmlToPng, h }
 
 function h(t, p = {}, ...c){
   let [tag,cls]= typeof t==="string" ? t.split(/:(.+)/) : [t]
@@ -108,9 +108,9 @@ async function tailwindHtmlToPng(args) {
   if (!coreUtils.isNode) {
     const script = `
       import { coreUtils, jb } from '@jb6/core'
-      import '@jb6/react/tailwind-report.js'
+      import '@jb6/react/tailwind-card.js'
       try {
-        const result = await jb.tailwindReportUtils.tailwindHtmlToPng(${JSON.stringify(args)})
+        const result = await jb.tailwindCardUtils.tailwindHtmlToPng(${JSON.stringify(args)})
         await coreUtils.writeServiceResult(result)
       } catch (e) {
         await coreUtils.writeServiceResult(e.message || e)

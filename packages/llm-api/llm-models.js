@@ -31,6 +31,14 @@ const gemini = Provider('gemini', {
   })
 })
 
+const groq = Provider('groq', {
+  impl: providerByApi('groq', 'GROK_API_KEY', {
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    headers: ({},{apiKey}) => ({'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }),
+    useProxy: true
+  })
+})
+
 // CLI version using the working Gemini CLI
 
 const claudeCode = Provider('claudeCode', {
@@ -44,6 +52,23 @@ const claudeCode = Provider('claudeCode', {
 
 const geminiCli = Provider('geminiCli', {
   impl: providerByCli('gemini-cli', `mkdir -p /tmp/clean && cd /tmp/clean && echo '%$prompt%' | gemini -p --model %$model%`)
+})
+
+Model('llama_33_70b_versatile', {
+  description: 'cheap(0.59~0.79) very fast(~300), excellent reasoning',
+  impl: model('llama-3.3-70b-versatile', {
+    price: [0.59,0.79],
+    provider: groq(),
+    bestFor: 'Cost-effective high-quality tasks: code generation, business analysis, jq queries, React components, reasoning tasks, data processing, content generation with excellent quality at low cost',
+    doNotUseFor: 'Tasks requiring absolute maximum intelligence, multimodal processing, very long context reasoning (>100k tokens effectively)',
+    reasoning: true,
+    codingScore: 82,
+    mathScore: 85,
+    contextWindow: 128000,
+    responseSpeed: 300,
+    latency: 0.3,
+    factualAccuracy: 82
+  })
 })
 
 // Updated Gemini models with current working API names (July 2025)

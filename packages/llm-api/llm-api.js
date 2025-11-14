@@ -1,13 +1,14 @@
 import { dsls, coreUtils, ns } from '@jb6/core'
 
 import '@jb6/core/misc/jb-cli.js'
+import '@jb6/core/misc/import-map-services.js'
 
 const { 
   rx: { ReactiveSource, ReactiveOperator },
   common: { Data },
   tgp: { TgpType },
 } = dsls
-const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript, waitForInnerElements } = coreUtils
+const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript, waitForInnerElements, calcRepoRoot } = coreUtils
 
 const Provider = TgpType('provider', 'llm-api')
 const Model = TgpType('model', 'llm-api')
@@ -48,7 +49,7 @@ ReactiveSource('llm.completionsRx', {
         let {controller, reader} = await jb.llmUtils.apiCall(model, {messages, max_tokens, ctx})
         let chunkLeft = ''
         return reader.read().then(async function processResp({ done, value, fullResponse }) {
-          console.log(fullContent)
+          //console.log(fullContent)
           if (done) {
             log('llm source done from reader', {ctx})
             if (!DONE) {
@@ -215,10 +216,12 @@ Data('llm.completions', {
     {id: 'useLocalStorageCache', as: 'boolean'},
     {id: 'notifyUsage', type: 'action<common>', dynamic: true}
   ],
-  impl: (ctx, {}, args) => {
-    const $ = dsls.rx['reactive-source']['llm.completionsRx'][coreUtils.asJbComp]
-    const profile = ctx.jbCtx.profile = { ... ctx.jbCtx.profile, $ }
-    const source = ctx.run(profile)
+  impl: (ctx) => {
+    const comp = dsls.rx['reactive-source']['llm.completionsRx']
+    const {$, ...args} = ctx.jbCtx.profile
+    const newCtx = new coreUtils.Ctx().setVars(ctx.vars)
+    newCtx.jbCtx = new coreUtils.JBCtx({...ctx.jbCtx, path: 'data<common>llm.completionsRx~impl'})
+    const source = comp.$runWithCtx(newCtx,args)
     return new Promise(resolve => {
       let fullContent
       source(0, (t,d) => { 
@@ -323,7 +326,8 @@ jb.llmUtils = {
       if (isNode) {
         const { readFile } = await import('fs/promises')
         const path = await import('path')
-        env = await readFile(path.join(process.cwd(),'.env'), 'utf8') || ''
+        const repoRoot= await calcRepoRoot()
+        env = await readFile(path.join(repoRoot,'.env'), 'utf8') || ''
       } else {
         env = await fetch(`/env`).then(res=>res.text())
       }
