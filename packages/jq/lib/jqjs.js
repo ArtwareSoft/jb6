@@ -59,10 +59,13 @@ function compile(prog) {
 
 function compileJb(prog) {
     let filter = parse(tokenise(prog).tokens)
-    const ret = ctx => filter.node.apply(ctx.data, {
-        userFuncArgs: {},
-        variables: ctx.vars
-    })
+    const ret = ctx => { 
+        if (!ctx) debugger
+        return filter.node.apply(ctx.data, {
+            userFuncArgs: {},
+            variables: ctx.vars
+        }) 
+    }
     ret.filter = filter
     ret.ast = filter.node
     ret.trace = (input) => {

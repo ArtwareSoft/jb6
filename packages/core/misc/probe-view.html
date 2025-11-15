@@ -32,6 +32,7 @@
   <script type="module">
 import { coreUtils } from '@jb6/core'
 import { reactUtils } from '@jb6/react'
+import '@jb6/react/lib/tailwindcss.js'
 import '@jb6/react/tests/react-testers.js'
 import '@jb6/core/misc/import-map-services.js'
 import '@jb6/core/misc/probe.js'
@@ -121,6 +122,7 @@ function ProbeResultView(props) {
     { id: 'cmd',      tabTitle: 'CMD',  render: renderCmd,   condition: p => !!_cmd },
     { id: 'error',    tabTitle: 'ERR',  render: renderError, condition: p => !!error },
     // Dynamic workflow view
+    { id: 'image',    tabTitle: 'IMG',  render: renderImage, condition: p => !!testRes?.imageUrl },
     // { id: 'ultra',    tabTitle: 'UM', jsFile: './ultra-log-view.js',     renderDynamic: 'UltraMsgView',   condition: p => Array.isArray(p.testRes?.ultraMsgLog) && p.testRes.ultraMsgLog.length > 0 },
     // { id: 'workflow', tabTitle: 'WF',   jsFile: './workflow-log-view.js', renderDynamic: 'WorkflowLogView', condition: p => !!testRes?.workflowLog }
   ]
@@ -242,6 +244,10 @@ function renderError({ error }) {
       typeof error === 'string' ? error : JSON.stringify(error, null, 2)
     )
   )
+}
+
+function renderImage({ imageUrl }) {
+  return h('img', { src: imageUrl })
 }
 
 /** ---------------- CodeMirror I/O ---------------- **/

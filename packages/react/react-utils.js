@@ -81,7 +81,7 @@ if (!globalThis.window) {
     if (!reactUtils.reactPromise)
       reactUtils.reactPromise = (async () => {
         const { React, ReactDomClient, ReactDom } = await import(`./lib/react-all-${ver}.mjs`)
-        await import('./lib/tailwindcss.js')
+        //await import('./lib/tailwindcss.js')
         Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient  })
       })()
     return reactUtils.reactPromise

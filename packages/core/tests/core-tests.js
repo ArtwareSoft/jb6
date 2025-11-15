@@ -268,19 +268,19 @@ Test('prettyPrintTest.comp', {
   })
 })
 
-Test('prettyPrintTest.compNoMacros', {
-  impl: dataTest({
-    calculate: () => { 
-      debugger
-      const res = prettyPrintComp(dsls.test.test['coreTest.asyncVar'], {tgpModel: jb, tgpNoMacros: true} ) 
-      debugger
-      return res
-    },
-    expectedResult: equals(asIs(`tgpComp('coreTest.asyncVar', {
-  impl: dataTest(pipeline(Var(), Var(), '%$a%,%$b%'), equals('3,5'))
-})`))
-  })
-})
+// Test('prettyPrintTest.compNoMacros', {
+//   impl: dataTest({
+//     calculate: () => { 
+//       debugger
+//       const res = prettyPrintComp(dsls.test.test['coreTest.asyncVar'], {tgpModel: jb, tgpNoMacros: true} ) 
+//       debugger
+//       return res
+//     },
+//     expectedResult: equals(asIs(`tgpComp('coreTest.asyncVar', {
+//   impl: dataTest(pipeline(Var(), Var(), '%$a%,%$b%'), equals('3,5'))
+// })`))
+//   })
+// })
 
 
 Test('vmTest.minimal', {

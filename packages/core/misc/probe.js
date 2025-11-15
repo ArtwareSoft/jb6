@@ -17,8 +17,9 @@ Object.assign(coreUtils, {runProbe, runProbeCli})
 
 async function runProbeCli(probePath, resources) {
     const { extraCode } = resources
-    const {entryFiles, testFiles, projectDir, importMap } = await coreUtils.calcImportData(resources)
-    const imports = unique([...entryFiles, ...testFiles])
+    const {entryFiles, testFiles, importMap, jb6_testFiles, projectDir } = await coreUtils.calcImportData(resources)
+    const moreTests = jb6_testFiles.filter(x=>x.includes(projectDir))
+    const imports = unique([...entryFiles, ...testFiles,...moreTests])
     const script = `
       import { writeFile } from 'fs/promises'
       import { jb, dsls, coreUtils } from '@jb6/core'
@@ -46,17 +47,22 @@ async function runProbeCli(probePath, resources) {
 
 async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
   debugger
-    if (!_probePath) {
+  if (!_probePath) {
        logError(`probe runCircuit missing probe path`, {})
        return { error: `probe runCircuit missing probe path` }
     }
     const probePath = _probePath.indexOf('<') == -1 ? `test<test>${_probePath}` : _probePath
     log('probe start run circuit',{probePath})
-    const circuit = circuitCmpId || calcCircuit()
+    let circuit = circuitCmpId || calcCircuit()
     if (circuit.error)
       return circuit
     if (!circuit)
         return { error: `probe can not infer circuitCtx from ${probePath}` }
+    if (!compByFullId(circuit, jb) && compByFullId(`test<test>${circuit}`, jb))
+      circuit = `test<test>${circuit}`
+
+    if (!compByFullId(circuit, jb))
+      return { error: `can not find comp circuit ${circuit}` }
 
     let probeObj = new Probe(circuit)
     try {
@@ -64,7 +70,7 @@ async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
     } catch (e) {}
 
     const result = {
-        circuitCmpId : circuit, 
+        circuitCmpId: circuit, 
         probePath,
         visits: probeObj.visits,
         totalTime: probeObj.totalTime,

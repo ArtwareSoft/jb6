@@ -1,6 +1,6 @@
 import { coreUtils, dsls, ns, jb } from '@jb6/core'
 
-const { toArray, logError } = coreUtils
+const { toArray, logError, log } = coreUtils
 const {
   tgp: { TgpType },
   rx: { ReactiveOperator, ReactiveSource },
@@ -44,7 +44,7 @@ ReactiveSource('subjectSource', {
 
 Action('subject.notify', {
   params: [
-    {id: 'subject', type: 'subject', mandatory: true},
+    {id: 'subject', type: 'subject<rx>', mandatory: true},
     {id: 'Data', dynamic: true, defaultValue: '%%'}
   ],
   impl: (ctx, {}, {subject,Data}) => subject.trigger.next(ctx.dataObj(Data(ctx)))
@@ -52,14 +52,14 @@ Action('subject.notify', {
 
 Action('subject.complete', {
   params: [
-    {id: 'subject', type: 'subject', mandatory: true}
+    {id: 'subject', type: 'subject<rx>', mandatory: true}
   ],
   impl: (ctx, {}, {subject}) => subject.trigger.complete()
 })
 
 Action('subject.sendError', {
   params: [
-    {id: 'subject', type: 'subject', mandatory: true},
+    {id: 'subject', type: 'subject<rx>', mandatory: true},
     {id: 'error', dynamic: true, mandatory: true}
   ],
   impl: (ctx, {}, {subject,error}) => subject.trigger.error(error())

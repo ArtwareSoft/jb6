@@ -33,6 +33,10 @@ Test('rxTest.mapPromise', {
   impl: dataTest(rx.pipe(rx.data(0), rx.mapPromise(({data}) => coreUtils.delay(1,data+2))), equals('2'))
 })
 
+Test('rxTest.varInRxPipe', {
+  impl: dataTest(rx.pipe(Var('x', 'hello'), rx.data('%$x%')), equals('hello'))
+})
+
 Test('rxTest.doPromise', {
   impl: dataTest({
     calculate: rx.pipe(rx.data(1), rx.doPromise(delay(1, '-%%-')), rx.mapPromise(delay(1, '-%%-'))),

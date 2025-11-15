@@ -51,10 +51,9 @@ ReactiveSource('rx.data', {
 })
 
 ReactiveSource('merge', {
-  category: 'source',
   description: 'merge callbags sources (or any)',
   params: [
-    {id: 'sources', type: 'source[]', as: 'array', mandatory: true, dynamic: true, templateValue: [], composite: true}
+    {id: 'sources', type: 'reactive-source[]', as: 'array', mandatory: true, dynamic: true, templateValue: [], composite: true}
   ],
   impl: (ctx, {}, {sources}) => jb.rxUtils.merge(...sources(ctx))
 })
@@ -63,8 +62,30 @@ ReactiveSource('rx.promise', {
   params: [
     {id: 'promise', mandatory: true}
   ],
-  impl: (ctx, {}, {promise}) => jb.rxUtils.map(x => ctx.dataObj(x))(jb.rxUtils.fromPromise(promise))
+  impl: (ctx, {}, {promise}) => (start, sink) => {
+    let sinkDone
+    if (start !== 0) return
+    Promise.resolve(promise).then(d => { 
+      if (!sinkDone && d != null) { // Only emit non-null values
+        sink(1, ctx.dataObj(d))
+        sink(2) 
+      } else if (!sinkDone) {
+        sink(2) // Complete without emitting anything for null values
+      }
+    }).catch(err => !sinkDone && sink(2, err))
+
+    sink(0, function promiseTB(t, d) {
+      if (t == 2) sinkDone = true
+    })
+  }
 })
+
+// ReactiveSource('rx.promise', {
+//   params: [
+//     {id: 'promise', mandatory: true}
+//   ],
+//   impl: (ctx, {}, {promise}) => jb.rxUtils.map(x => ctx.dataObj(x))(jb.rxUtils.fromPromise(promise))
+// })
 
 ReactiveOperator('rx.do',{
   params: [
@@ -157,6 +178,45 @@ ReactiveOperator('rx.flatMap',{
       if (sourceEnded && innerSources.length == 0)
         sink(2, d)
     }
+  }
+})
+
+ReactiveSource('rx.renewable', {
+  description: 'renewable source from function returning promise, calls function on each pull',
+  params: [
+    {id: 'promiseFunc', type: 'data', dynamic: true, mandatory: true, description: 'Function that returns a promise'}
+  ],
+  impl: (ctx, {}, {promiseFunc}) => (start, sink) => {
+    if (start !== 0) return
+    
+    let active = true
+    
+    const callFunction = () => {
+      if (!active) return
+      
+      try {
+        const promise = promiseFunc(ctx)
+        Promise.resolve(promise)
+          .then(result => {
+            if (active) sink(1, ctx.dataObj(result))
+          })
+          .catch(err => {
+            if (active) sink(2, err)
+          })
+      } catch (err) {
+        if (active) sink(2, err)
+      }
+    }
+    
+    sink(0, function talkback(t, d) {
+      if (t === 1) {
+        callFunction()
+      } else if (t === 2) {
+        active = false
+      }
+    })
+    
+    callFunction()
   }
 })
 

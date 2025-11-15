@@ -316,6 +316,11 @@ Test('completionTest.people', {
   })
 })
 
+Test('completionTest.asParent', {
+  impl: completionOptionsTest(`dataTest(If('', __list()))`, {
+    expectedSelections: ['list']
+  })
+})
 
 Test('completionTest.person', {
   HeavyTest: true,

@@ -2,8 +2,18 @@ import { dsls, coreUtils, jb } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
 
 const {
+    common: { Data },
     tgp: { TgpType }
 } = dsls
+
+Data('tailwindHtmlToPng', {
+  params: [
+    {id: 'html', as: 'text', defaultValue: '%%'},
+    {id: 'width', as: 'number', defaultValue: 400},
+    {id: 'paddingBottom', as: 'number', defaultValue: 10},
+  ],
+  impl: ({},{},args) => tailwindHtmlToPng(args)
+})
 
 jb.tailwindCardUtils = { tailwindHtmlToPng, h }
 

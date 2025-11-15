@@ -222,6 +222,8 @@ class tgpModelForLangService {
     }
     PTsOfPath(path) {
         const dslType = this.paramType(path)
+        if (dslType == '$asParent<tgp>')
+            return this.PTsOfPath(parentPath(path))
         if (!path) {
             logError(`PTsOfPath can not find dsl type of path ${path}`)
             return []

@@ -260,7 +260,7 @@ Doclet('sourceCodeInclusion', {
 mechanismUnderTheHood({
   snippet: \`// ACTUAL run() function from jb-core.js:
 function run(profile, ctx = new Ctx(), settings = {...}) {
-  if (profile && profile.$ && openComp) {
+  if (profile && profile.$) {
     const comp = asComp(profile.$)
     const ret = comp.runProfile(profile, ctx, settings)
     res = toRTType(jbCtx.parentParam, ret)

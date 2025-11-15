@@ -168,7 +168,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, pare
     if (res) return res
   }
 
-  const typeFromParent = parentParam?.typeAsParent === true && parentType
+  const typeFromParent = parentParam?.$dslType == '$asParent<tgp>' && parentType // parentParam?.typeAsParent === true && parentType
   const dynamicTypeFromParent = typeof parentParam?.dynamicTypeFromParent == 'function' && parentParam.dynamicTypeFromParent(parent, tgpModel.dsls)
   const byTypeRules = [dynamicTypeFromParent,typeFromParent,dslType].filter(x=>x).join(',').split(',').filter(x=>x)
     .flatMap(t=>moreTypesByTypeRules(t)).join(',')

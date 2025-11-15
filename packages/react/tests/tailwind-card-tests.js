@@ -31,7 +31,8 @@ Test('tailwindCardTest.pngUrl', {
       const pngUrl = await tailwindHtmlToPng({html})
       return pngUrl
   },
-    expectedResult: contains('data')
+    expectedResult: contains('data'),
+    timeout: '1000'
   })
 })
 
