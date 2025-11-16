@@ -71,6 +71,32 @@ Model('llama_33_70b_versatile', {
   })
 })
 
+Model('gpt_oss_120b', {
+  description: 'medium price(0.15~0.75) very fast(~540), excellent reasoning, open-weight MoE',
+  impl: model('gpt-oss-120b', {
+    price: [0.15, 0.75], // $0.15 input, $0.75 output per M tokens on Groq
+    provider: groq(),
+    bestFor: 'High-reasoning tasks requiring transparency: advanced coding, mathematical reasoning, research applications, agentic workflows, function calling, chain-of-thought debugging, scientific analysis, custom fine-tuning scenarios',
+    doNotUseFor: 'Multimodal tasks (text-only model), ultra-high-volume production without caching, tasks requiring maximum safety alignment, creative writing where proprietary models excel',
+    reasoning: true,
+    codingScore: 87.3, // HumanEval pass rate
+    mathScore: 96.6, // AIME 2025 score 
+    contextWindow: 128000, // 128K tokens
+    responseSpeed: 540, // tokens/sec on Groq infrastructure
+    latency: 0.20, // TTFT in seconds from Baseten benchmarks
+    factualAccuracy: 94.2, // MMLU score
+    architecture: 'MoE', // Mixture of Experts
+    totalParameters: 117000000000, // 117B total parameters
+    activeParameters: 5100000000, // 5.1B active per forward pass
+    layers: 36,
+    experts: 128, // with Top-4 routing
+    license: 'Apache-2.0',
+    chainOfThought: true, // Full CoT transparency
+    toolUse: true, // Native function calling and structured outputs
+    openWeight: true // Can be downloaded and run locally
+  })
+})
+
 // Updated Gemini models with current working API names (July 2025)
 
 Model('gemini_2_5_flash', {

@@ -6,15 +6,17 @@ import './llm-models.js'
 import '@jb6/jq'
 import '@jb6/rx'
 import '@jb6/rx/rx-common.js'
+import '@jb6/common'
+
 
 const { jq } = coreUtils
 
 const {
-    tgp: {var: {Var}}, 
+    tgp: {var: {Var}, any : {If }}, 
     'llm-api': { Prompt,
         prompt: { prompt, user, system},
-        model: {llama_33_70b_versatile}
-      },
+        model: {llama_33_70b_versatile, gpt_oss_120b, claude_code_sonnet_4}
+    },
     
     common: { Data,
         data: { pipe, tailwindHtmlToPng, obj, asIs, first },
@@ -38,18 +40,7 @@ Prompt('llm.card', {
     system('DATABASE SCHEMA: %$DBSchema%'),
     system(`Generate React components using jq + h function. Use + for strings, no backticks.
 
-EXAMPLE 1 - Simple list:
-(ctx) => {
-const data = jq('.products | sort_by(.price)', ctx)
-return h('div:grid gap-4', {},
-  ...data.map(item => h('div:bg-white p-4 rounded', {},
-    h('h3:font-bold', {}, item.name),
-    h('p', {}, '$' + item.price)
-  ))
-)
-}
-
-EXAMPLE 2 - With filtering:
+EXAMPLE 1 - With filtering:
 (ctx) => {
 const data = jq('.customers | map(select(.tier == "gold"))', ctx)
 return h('div:flex flex-wrap gap-3', {},
@@ -60,7 +51,7 @@ return h('div:flex flex-wrap gap-3', {},
 )
 }
 
-EXAMPLE 3 - Complex query:
+EXAMPLE 2 - Complex query:
 (ctx) => {
 const data = jq('.orders | map(select(.status == "shipped")) | sort_by(.total_amount) | reverse', ctx)
 return h('div:space-y-2', {},
@@ -79,21 +70,12 @@ do not use js section, start with "(ctx) => {".
     user('%$prompt%')
   )
 })
-
-const userRequests= Subject('userRequests', {
-  impl: topic('userRequests')
-})
-
-const errors= Subject('errors', {
-  impl: topic('errors')
-})
   
 Data('llmCard.compileAndRunCard', {
   params: [
     {id: 'db', as: 'object'},
-    {id: 'onError', type: 'action'}
   ],
-  impl: (ctx,{},{db,onError}) => {
+  impl: (ctx,{},{db}) => {
         const code = ctx.data
         const h = jb.tailwindCardUtils.h
         try {
@@ -101,42 +83,50 @@ Data('llmCard.compileAndRunCard', {
             const vdom = func(ctx.setData(db))
             const html = vdom.toHtml()
             //console.log(html)
-            return html
+            return { code, html }
         } catch (error) {
-            onError(ctx.setData(error.message))
+            return {error: {code, html, message: error.message || error} }
+            //onError(ctx.setData(error.message))
         }
     }
 })
 const { llmCard } = ns
 
-ReactiveSource('rx.cardToPng', {
+const retryOnError= Data('retryOnError', {
+  params: [
+    {id: 'calc', dynamic: true},
+    {id: 'retries', as: 'number', defaultValue: 1}
+  ],
+  impl: async (ctx,{},{calc, retries}) => {
+    let error, res, tries = 0
+    while ((!res || res?.error) && tries < retries) {
+        tries++
+        res = await calc(ctx)
+        if (res.error) {
+            error = error || { errors: [] }
+            error.errors.push(res.error)
+        }
+    }
+    return { res, error }
+  }
+})
+
+Data('llm.cardToPng', {
   circuit: 'llmCardTest.profitableProductsPng',
   params: [
     {id: 'prompt', as: 'text'},
     {id: 'DBSchema', as: 'text'},
     {id: 'db', as: 'object'}
   ],
-  impl: rx.pipe(
-    Var('errors', () => []),
-    merge(
-      rx.data('start'),
-      subjectSource(userRequests()),
-      rx.pipe(subjectSource(errors()), rx.do(({data}, {errors}) => errors.push(data)), rx.take(5))
-    ),
-    rx.mapPromise(llm.completions(llm.card('%$prompt%', '%$DBSchema%'), llama_33_70b_versatile(), { maxTokens: 300 })),
-    rx.map(llmCard.compileAndRunCard('%$db%', subject.notify(errors()))),
-    rx.mapPromise(tailwindHtmlToPng()),
-    rx.map(obj(prop('imageUrl', '%%'), prop('err', '%$errors%')))
+  impl: pipe(
+    retryOnError(pipe(
+      llm.completions(llm.card('%$prompt%', '%$DBSchema%'), llama_33_70b_versatile(), { maxTokens: 300 }),
+      llmCard.compileAndRunCard('%$db%'),
+      first()
+    )),
+    If('%error%', '%%', tailwindHtmlToPng('%html%')),
+    first()
   )
-})
-
-Data('llm.cardToPng', {
-  params: [
-    {id: 'prompt', as: 'text'},
-    {id: 'DBSchema', as: 'text'},
-    {id: 'db', as: 'object'}
-  ],
-  impl: rx.pipe(rx.cardToPng('%$prompt%', '%$DBSchema%', { db: '%$db%' }), rx.take(1))
 })
 
 /*

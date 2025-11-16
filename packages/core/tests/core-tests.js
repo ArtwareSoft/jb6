@@ -10,6 +10,7 @@ const {
   common: { Data, Action, Boolean,
     data: { pipeline, filter, join, property, obj, delay, asIs }, 
     Boolean: { contains, equals, and },
+    action: { runActions },
     Prop: { prop }
   },
   test: { Test,
@@ -265,6 +266,14 @@ Test('prettyPrintTest.comp', {
     expectedResult: equals(asIs(`tgpComp('coreTest.asyncVar', {
   impl: dataTest(pipeline(Var(), Var(), '%$a%,%$b%'), equals('3,5'))
 })`))
+  })
+})
+
+Test('runActions', {
+  impl: dataTest({
+    vars: Var('res', () => ({ counter: 0})),
+    expectedResult: '%$res/counter% == 2',
+    runBefore: runActions(({},{res}) => { res.counter++ }, ({},{res}) => res.counter++)
   })
 })
 

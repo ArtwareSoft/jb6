@@ -121,8 +121,8 @@ function ProbeResultView(props) {
     { id: 'json',     tabTitle: 'JSON', render: renderJson },
     { id: 'cmd',      tabTitle: 'CMD',  render: renderCmd,   condition: p => !!_cmd },
     { id: 'error',    tabTitle: 'ERR',  render: renderError, condition: p => !!error },
+    { id: 'image',    tabTitle: 'IMG',  render: renderImage, condition: p => probeRes?.circuitRes?.imageUrl || testRes?.imageUrl },
     // Dynamic workflow view
-    { id: 'image',    tabTitle: 'IMG',  render: renderImage, condition: p => !!testRes?.imageUrl },
     // { id: 'ultra',    tabTitle: 'UM', jsFile: './ultra-log-view.js',     renderDynamic: 'UltraMsgView',   condition: p => Array.isArray(p.testRes?.ultraMsgLog) && p.testRes.ultraMsgLog.length > 0 },
     // { id: 'workflow', tabTitle: 'WF',   jsFile: './workflow-log-view.js', renderDynamic: 'WorkflowLogView', condition: p => !!testRes?.workflowLog }
   ]
@@ -246,8 +246,8 @@ function renderError({ error }) {
   )
 }
 
-function renderImage({ imageUrl }) {
-  return h('img', { src: imageUrl })
+function renderImage({ probeRes, testRes }) {
+  return h('img', { src: probeRes?.circuitRes?.imageUrl || testRes?.imageUrl})
 }
 
 /** ---------------- CodeMirror I/O ---------------- **/

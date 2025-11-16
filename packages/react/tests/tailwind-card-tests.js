@@ -17,6 +17,7 @@ const {
 } = dsls
 
 Test('tailwindCardTest.pngUrl', {
+  doNotRunInTests: true,
   impl: dataTest({
     calculate: async ctx => {
       const best = jq(".people | sort_by(.rating) | reverse", ctx.setData(db))

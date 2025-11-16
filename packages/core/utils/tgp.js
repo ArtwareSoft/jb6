@@ -224,9 +224,14 @@ Any('runCtx', {
 
 Action('runActions', {
   params: [
-    {id: 'actions', type: 'action[]', dynamic: true, composite: true, mandatory: true}
+    { id: 'actions', type: 'action[]', dynamic: true, composite: true, mandatory: true }
   ],
-  impl: (ctx, {}, {actions}) => asArray(actions).reduce((pr,_,index) => pr.finally(() => ctx.runInnerArg(actions,index)), Promise.resolve())
+  impl: async (ctx, {}, { actions }) => {
+    const list = asArray(actions.profile)
+    for (let i = 0; i < list.length; i++) {
+      await ctx.runInnerArg(actions, i)
+    }
+  }
 })
 
 // Action('writeValue', {

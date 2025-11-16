@@ -339,7 +339,6 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       objProps.unshift('$')
     }
     let profileToUse = profile
-    debugger
     if (tgpNoMacros) {
       if (profile.$.type == 'comp') {
         debugger

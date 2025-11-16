@@ -186,6 +186,6 @@ async function tailwindHtmlToPng(args) {
   const pngBuffer = await page.screenshot({type: 'png', captureBeyondViewport: false })
   await page.close()
 
-  return `data:image/png;base64,${pngBuffer.toString('base64')}`
+  return { imageUrl: `data:image/png;base64,${pngBuffer.toString('base64')}`, html: finalHTML }
 }
 
