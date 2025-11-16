@@ -73,7 +73,7 @@ Model('llama_33_70b_versatile', {
 
 Model('gpt_oss_120b', {
   description: 'medium price(0.15~0.75) very fast(~540), excellent reasoning, open-weight MoE',
-  impl: model('gpt-oss-120b', {
+  impl: model('openai/gpt-oss-120b', {
     price: [0.15, 0.75], // $0.15 input, $0.75 output per M tokens on Groq
     provider: groq(),
     bestFor: 'High-reasoning tasks requiring transparency: advanced coding, mathematical reasoning, research applications, agentic workflows, function calling, chain-of-thought debugging, scientific analysis, custom fine-tuning scenarios',

@@ -4,9 +4,11 @@ import '@jb6/react/tailwind-card.js'
 import './llm-api.js'
 import './llm-models.js'
 import '@jb6/jq'
-import '@jb6/rx'
-import '@jb6/rx/rx-common.js'
+// import '@jb6/rx'
+// import '@jb6/rx/rx-common.js'
 import '@jb6/common'
+
+//import { parse } from '@jb6/lang-service/lib/acorn-loose.mjs'
 
 
 const { jq } = coreUtils
@@ -22,23 +24,18 @@ const {
         data: { pipe, tailwindHtmlToPng, obj, asIs, first },
         prop: { prop }
      },
-     rx: { ReactiveSource,ReactiveOperator, Subject,
-        subject: { topic },
-        'reactive-source' : { interval, subjectSource, merge, mergeConcat },
-        'reactive-operator' : {}
-      },    
 } = dsls
 
 const { rx, llm, subject } = ns
 
 Prompt('llm.card', {
+  circuit: 'llmCardTest.profitableProductsPng',
   params: [
     {id: 'prompt', as: 'text'},
     {id: 'DBSchema', as: 'text'}
   ],
   impl: prompt(
-    system('DATABASE SCHEMA: %$DBSchema%'),
-    system(`Generate React components using jq + h function. Use + for strings, no backticks.
+    system(`You are an API. you can not speak to the user. Generate React components using jq + h function. Use + for strings, no backticks.
 
 EXAMPLE 1 - With filtering:
 (ctx) => {
@@ -67,35 +64,36 @@ ensure the jq code uses the same table and field names as in the schema!!
 do not exceed 300 tokens. 
 do not use js section, start with "(ctx) => {".
 `),
+    user('DATABASE SCHEMA by example: %$DBSchema%'),
     user('%$prompt%')
   )
 })
   
-Data('llmCard.compileAndRunCard', {
+const compileAndRunCard = Data('compileAndRunCard', {
   params: [
-    {id: 'db', as: 'object'},
+    {id: 'db', as: 'object'}
   ],
   impl: (ctx,{},{db}) => {
         const code = ctx.data
+        let html
         const h = jb.tailwindCardUtils.h
         try {
             const func = (new Function('h', 'jq', `return ${code}`))(h,jq)
             const vdom = func(ctx.setData(db))
-            const html = vdom.toHtml()
+            html = vdom.toHtml()
             //console.log(html)
             return { code, html }
         } catch (error) {
-            return {error: {code, html, message: error.message || error} }
+            return {error: {code, html, message: error.stack || error} }
             //onError(ctx.setData(error.message))
         }
     }
 })
-const { llmCard } = ns
 
 const retryOnError= Data('retryOnError', {
   params: [
     {id: 'calc', dynamic: true},
-    {id: 'retries', as: 'number', defaultValue: 1}
+    {id: 'retries', as: 'number', defaultValue: 3}
   ],
   impl: async (ctx,{},{calc, retries}) => {
     let error, res, tries = 0
@@ -120,19 +118,11 @@ Data('llm.cardToPng', {
   ],
   impl: pipe(
     retryOnError(pipe(
-      llm.completions(llm.card('%$prompt%', '%$DBSchema%'), llama_33_70b_versatile(), { maxTokens: 300 }),
-      llmCard.compileAndRunCard('%$db%'),
+      llm.completions(llm.card('%$prompt%', '%$DBSchema%'), gpt_oss_120b(), { maxTokens: 3000 }),
+      compileAndRunCard('%$db%'),
       first()
     )),
     If('%error%', '%%', tailwindHtmlToPng('%html%')),
     first()
   )
 })
-
-/*
-    rx.mapPromise(
-        If('%$errors.length < 5%', 
-            pipe(llm.completions(llm.card('%$prompt%', '%$DBSchema%'), llama_33_70b_versatile(), { maxTokens: 300 }))
-    , pipe() )),
-
-*/

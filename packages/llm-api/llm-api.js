@@ -2,12 +2,16 @@
 
 import '@jb6/core/misc/jb-cli.js'
 import '@jb6/core/misc/import-map-services.js'
+import '@jb6/common'
+import '@jb6/rx'
 
 const { 
   rx: { ReactiveSource, ReactiveOperator },
-  common: { Data },
-  tgp: { TgpType },
+  common: { Data, data: { pipe, first } },
+  tgp: { TgpType, any: { typeAdapter } },
 } = dsls
+const { rx } = ns
+
 const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript, waitForInnerElements, calcRepoRoot } = coreUtils
 
 const Provider = TgpType('provider', 'llm-api')
@@ -216,23 +220,49 @@ Data('llm.completions', {
     {id: 'useLocalStorageCache', as: 'boolean'},
     {id: 'notifyUsage', type: 'action<common>', dynamic: true}
   ],
-  impl: (ctx) => {
-    const comp = dsls.rx['reactive-source']['llm.completionsRx']
-    const {$, ...args} = ctx.jbCtx.profile
-    const newCtx = new coreUtils.Ctx().setVars(ctx.vars)
-    newCtx.jbCtx = new coreUtils.JBCtx({...ctx.jbCtx, path: 'data<common>llm.completionsRx~impl'})
-    const source = comp.$runWithCtx(newCtx,args)
-    return new Promise(resolve => {
-      let fullContent
-      source(0, (t,d) => { 
-        if (t === 1)
-          fullContent = d.vars.fullContent
-        if (t === 2) resolve(fullContent)
-      })
-    })
-  }
+  impl: pipe(
+    typeAdapter('reactive-source<rx>', rx.pipe(
+      llm.completionsRx('%$prompt()%', '%$llmModel%', {
+        maxTokens: '%$maxTokens%',
+        includeSystemMessages: '%$includeSystemMessages%',
+        useLocalStorageCache: '%$useLocalStorageCache%',
+        notifyUsage: '%$notifyUsage()%'
+      }),
+      rx.last(),
+      rx.map('%$fullContent%')
+    )),
+    first()
+  )
 })
-  
+
+// Data('llm.completions', {
+//   description: 'synchronious version of llm.completionsRx',
+//   params: [
+//     {id: 'prompt', type: 'prompt<llm-api>', dynamic: true},
+//     {id: 'llmModel', type: 'model<llm-api>'},
+//     {id: 'maxTokens', as: 'number', defaultValue: 3500},
+//     {id: 'includeSystemMessages', as: 'boolean'},
+//     {id: 'useLocalStorageCache', as: 'boolean'},
+//     {id: 'notifyUsage', type: 'action<common>', dynamic: true}
+//   ],
+//   impl: (ctx) => {
+//     debugger
+//     const comp = dsls.rx['reactive-source']['llm.completionsRx']
+//     const {args} = ctx.jbCtx
+//     const newCtx = new coreUtils.Ctx().setVars(ctx.vars)
+//     newCtx.jbCtx = new coreUtils.JBCtx({...ctx.jbCtx, path: 'data<common>llm.completionsRx~impl'})
+//     const source = comp.$runWithCtx(newCtx,args)
+//     return new Promise(resolve => {
+//       let fullContent
+//       source(0, (t,d) => { 
+//         if (t === 1)
+//           fullContent = d.vars.fullContent
+//         if (t === 2) resolve(fullContent)
+//       })
+//     })
+//   }
+// })
+
 Provider('providerByApi', {
   params: [
     {id: 'name', as: 'string'},

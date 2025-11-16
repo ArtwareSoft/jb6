@@ -290,7 +290,7 @@ ReactiveOperator('rx.splitToBuffers',{
   }
 })
 
-ReactiveOperator('rx.last',{
+ReactiveOperator('rx.last', {
   category: 'filter',
   impl: ({}, {}) => jb.rxUtils.last()
 })
