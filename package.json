@@ -24,6 +24,7 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.17",
     "@tailwindcss/postcss": "^4.1.17",
+    "autoprefixer": "^10.4.22",
     "esbuild": "^0.25.11",
     "express": "^5.1.0",
     "globby": "^14.1.0",

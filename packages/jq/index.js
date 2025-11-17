@@ -7,10 +7,13 @@ const {
 
 jb.jQRepository = {}
 
-coreUtils.jq = (script, ctx) => {
+coreUtils.jbjq = (script, ctx) => {
     const compiledJq = (jb.jQRepository[script] = jb.jQRepository[script] || jq.compileJb(script))
     return Array.from(compiledJq(ctx))[0]
 }
+coreUtils.jq = jq
+
+coreUtils.compileJb = jq.compileJb
 
 Data('jq',{
     params: [

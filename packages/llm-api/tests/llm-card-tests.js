@@ -75,14 +75,13 @@ Test('llmCardTest.profitableProductsPng', {
   HeavyTest: true,
   impl: dataTest({
     calculate: llm.cardToPng({
-      prompt: 'Create a chart showing our most profitable products with good ratings. show the profit',
+      prompt: 'Create a VERY BEAUTIFUL chart showing our 3 most profitable products. show the profit',
       DBSchema: `{
   "products": [{"name": "iPhone", "price": 999, "cost": 600, "rating": 4.8, "units_sold": 1250}],
   "customers": [{"name": "John", "total_spent": 5420, "tier": "gold", "orders_count": 8}],
   "orders": [{"customer_name": "John", "total_amount": 1299, "status": "shipped", "order_date": "2024-11-01"}]
   }`,
-      db: productsDb(),
-      llmModel: llama_33_70b_versatile()
+      db: productsDb()
     }),
     expectedResult: contains('data', { allText: '%imageUrl%' }),
     timeout: '5000'

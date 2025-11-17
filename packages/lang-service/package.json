@@ -3,7 +3,8 @@
   "version": "1.251115.0",
   "type": "module",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./lib/*.mjs": "./lib/*.mjs"
   },
   "files": [
     "*.js",

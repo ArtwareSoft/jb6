@@ -1,5 +1,7 @@
 import { dsls, coreUtils, jb } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
+import '@jb6/core/misc/import-map-services.js'
+import { execFileSync } from 'child_process'
 
 const {
     common: { Data },
@@ -75,43 +77,6 @@ async function ensureChromeDaemon(chromeBin) {
   return globalThis.__ensureChromePromise
 }
 
-let tailwindCompilerPromise
-
-async function getTailwindCompiler(config = {}) {
-  if (!tailwindCompilerPromise) {
-    tailwindCompilerPromise = (async () => {
-      const postcssMod = await import('postcss')
-      const twPostcssMod = await import('@tailwindcss/postcss')
-
-      const postcss = postcssMod.default || postcssMod
-      const tailwindPostcss = twPostcssMod.default || twPostcssMod
-
-      class TailwindCompiler {
-        constructor(cfg = {}) {
-          this.cfg = cfg
-        }
-        async compile(html) {
-          const processor = postcss([
-            tailwindPostcss({
-              ...this.cfg,
-              content: [{ raw: html, extension: 'html' }]
-            })
-          ])
-
-          const result = await processor.process(
-            '@tailwind base; @tailwind components; @tailwind utilities;',
-            { from: undefined }
-          )
-          return result.css
-        }
-      }
-
-      return new TailwindCompiler(config)
-    })()
-  }
-  return tailwindCompilerPromise
-}
-
 async function tailwindHtmlToPng(args) {
   const { html, width = 400, paddingBottom = 10 } = args
 
@@ -128,11 +93,16 @@ async function tailwindHtmlToPng(args) {
     const res = await coreUtils.runNodeCliViaJbWebServer(script)
     return res.result
   }
+  const repoRoot = await coreUtils.calcRepoRoot()  
+  const inputCss = `
+@import "${repoRoot}/node_modules/tailwindcss/index.css";
+@source inline(${JSON.stringify(html)});
+`
+  const postcss = (await import('postcss')).default
+  const tw_postcss = (await import('@tailwindcss/postcss')).default
 
-  const compiler = await getTailwindCompiler()
-  const htmlForTailwind = `<body><div id="root">${html}</div></body>`
-
-  const tailwindCss = await compiler.compile(htmlForTailwind)
+  const result = await postcss([tw_postcss()]).process(inputCss)
+  const tailwindCss = result.css
 
   const layoutCss = `
     :root {
@@ -152,7 +122,7 @@ async function tailwindHtmlToPng(args) {
       /* background: #ffffff; */
     }
   `
-  const finalHTML = `<!doctype html><html><head><meta charset="utf-8"><style>${layoutCss}\n${tailwindCss}</style></head>${htmlForTailwind}</html>`
+  const finalHTML = `<!doctype html><html><head><meta charset="utf-8"><style>${layoutCss}\n${tailwindCss}</style></head>${html}</html>`
 
   const puppeteer = (await import('puppeteer-core')).default
   const chromeBin = process.env.CHROME_BIN || 'google-chrome'
@@ -186,6 +156,6 @@ async function tailwindHtmlToPng(args) {
   const pngBuffer = await page.screenshot({type: 'png', captureBeyondViewport: false })
   await page.close()
 
-  return { imageUrl: `data:image/png;base64,${pngBuffer.toString('base64')}`, html: finalHTML }
+  return { imageUrl: `data:image/png;base64,${pngBuffer.toString('base64')}`, html, finalHTML }
 }
 

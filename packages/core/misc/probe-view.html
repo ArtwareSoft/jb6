@@ -247,7 +247,7 @@ function renderError({ error }) {
 }
 
 function renderImage({ probeRes, testRes }) {
-  return h('img', { src: probeRes?.circuitRes?.imageUrl || testRes?.imageUrl})
+  return h('img', { src: probeRes?.circuitRes?.imageUrl || testRes?.imageUrl, width: 400 })
 }
 
 /** ---------------- CodeMirror I/O ---------------- **/
