@@ -9,14 +9,14 @@ import '@jb6/jq'
 import '@jb6/common'
 
 import { parse } from '@jb6/lang-service/lib/acorn-loose.mjs'
-
+import './llm-card-examples.js'
 
 const { jq, jbjq } = coreUtils
 
 const {
     tgp: {var: {Var}, any : {If }}, 
     'llm-api': { Prompt,
-        prompt: { prompt, user, system},
+        prompt: { prompt, user, system, tailwindChartGuide},
         model: {llama_33_70b_versatile, gpt_oss_120b, claude_code_sonnet_4}
     },
     
@@ -37,6 +37,13 @@ Prompt('llm.card', {
   impl: prompt(
     system(`You are an API. you can not speak to the user. Generate React components using jq + h function. Use + for strings, no backticks.
         keep the format like the examples. we parse the js code and expect this pattern.
+        ***please add extra parentheses*** for anything in the jq expression: calculated fields, condition expression, etc
+        use ***only**** this functions in jq. other funcs are not supported: length, keys, has, in, type, del, empty, select, arrays GitHub, objects, booleans, numbers, strings, nulls, map, map_values, sort, sort_by, explode, implode, split, join, 
+        add, add/1, to_entries, from_entries, with_entries, walk/1, range/1, range/2, range/3, any/0, any/1, any/2, all/0, all/1, all/2, 
+        contains, inside, path, getpath/1, setpath/2, delpaths/1, pick/1, trim/0, ltrim/0, rtrim/0, trimstr/1, ltrimstr/1, rtrimstr/1, 
+        first, last, nth/1, first/1, last/1, nth/2, limit/2, skip/2, sub/1, sub/2, gsub/1, gsub/2, test/1, test/2, split/2, capture/1, 
+        capture/2, match/1, match/2, splits/1, splits/2, ascii_upcase/1, ascii_downcase/1, tostring, tonumber, toboolean, tojson, fromjson
+
 
 EXAMPLE 1 - With filtering:
 (ctx) => {
@@ -51,7 +58,7 @@ return h('div:flex flex-wrap gap-3', {},
 
 EXAMPLE 2 - Complex query:
 (ctx) => {
-const data = jq('.orders | map(select(.status == "shipped")) | sort_by(.total_amount) | reverse', ctx)
+const data = jq('.orders | map(select((.quantity > 0) and (.total_amount > 0)) ) | sort_by(.total_amount) | reverse', ctx)
 return h('div:space-y-2', {},
   ...data.map(order => h('div:bg-gray-100 p-2 hover:bg-gray-200', {},
     h('p:font-medium', {}, order.customer_name),
@@ -72,36 +79,14 @@ return h('div:grid gap-3', {},
 )
 }
 
-note: *extra parentheses* for calculated fields
-
-EXAMPLE 4 - Beautiful bar chart:
-(ctx) => {
-const data = jq('.sales | group_by(.category) | map({category: .[0].category, total: map(.amount) | add}) | sort_by(.total) | reverse | .[0:6]', ctx)
-const maxValue = Math.max(...data.map(d => d.total))
-return h('div:flex flex-col gap-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl shadow-lg', {},
-  h('h2:text-2xl font-bold text-gray-800 mb-2', {}, '📊 Top Categories'),
-  ...data.map((item, idx) => h('div:flex items-center gap-3', {},
-    h('span:text-sm font-medium text-gray-600 w-6', {}, (idx + 1) + '.'),
-    h('div:flex-1', {},
-      h('div:flex justify-between items-center mb-1', {},
-        h('span:text-sm font-semibold text-gray-800 truncate', {}, item.category),
-        h('span:text-xs font-bold text-blue-600', {}, '$' + item.total.toLocaleString())
-      ),
-      h('div:w-full bg-gray-200 rounded-full h-3 overflow-hidden', {},
-        h('div:bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full', { 
-          style: 'width: ' + (item.total / maxValue * 100) + '%' 
-        })
-      )
-    )
-  ))
-)
-}
+***please add extra parentheses*** for anything: calculated fields, condition expression, etc
 
 Follow these patterns exactly.
 ensure the jq code uses the same table and field names as in the schema!! 
 do not exceed 300 tokens. 
 do not use js section, start with "(ctx) => {".
 `),
+    tailwindChartGuide(),
     user('DATABASE SCHEMA by example: %$DBSchema%'),
     user('%$prompt%')
   )
@@ -137,7 +122,7 @@ const compileAndRunCard = Data('compileAndRunCard', {
             return { error: 'empty result' }
 
         let html
-        const h = jb.tailwind.h
+        const h = jb.tailwindUtils.h
         try {
             const func = (new Function('h', 'jq', `return ${code}`))(h,jbjq)
             const vdom = func(ctx.setData(db))
@@ -179,7 +164,7 @@ Data('llm.cardToPng', {
   ],
   impl: pipe(
     retryOnError(pipe(
-      llm.completions(llm.card('%$prompt%', '%$DBSchema%'), claude_code_sonnet_4(), { maxTokens: 5000 }),
+      llm.completions(llm.card('%$prompt%', '%$DBSchema%'), gpt_oss_120b(), { maxTokens: 3000 }),
       compileAndRunCard('%$db%'),
       first()
     )),

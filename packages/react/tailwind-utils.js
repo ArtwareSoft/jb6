@@ -36,7 +36,7 @@ Data('compileTailwindCSS', {
   impl: ({},{},{html}) => compileTailwindCSS({html})
 })
 
-async function compileTailwindCSS(args) { // used by mcp tools
+async function compileTailwindCSS(args) {
   const { html } = args
   if (!coreUtils.isNode) {
     const script = `
@@ -74,9 +74,9 @@ async function compileTailwindCSS(args) { // used by mcp tools
 
 function extractClassesFromHTML(html) {
   const classes = new Set();
-  const regex = /class\s*=\s*["']([^"']*)["']/gi;
-  let match; while ((match = regex.exec(html)) !== null) match[1].split(/\s+/).forEach(cls => cls.trim() && classes.add(cls.trim()));
-  return Array.from(classes);
+  const regex = /class\s*=\s*["']([^"']*)["']/gi
+  let match; while ((match = regex.exec(html)) !== null) match[1].split(/\s+/).forEach(cls => cls.trim() && classes.add(cls.trim()))
+  return Array.from(classes)
 }
 
 Data('tailwindHtmlToPng', {
@@ -143,7 +143,7 @@ async function tailwindHtmlToPng(args) {
     const res = await coreUtils.runNodeCliViaJbWebServer(script)
     return res.result
   }
-  const tailwindCss = compileTailwindCSS({html})
+  const tailwindCss = await compileTailwindCSS({html})
   const layoutCss = `
     :root {
       color-scheme: light;
