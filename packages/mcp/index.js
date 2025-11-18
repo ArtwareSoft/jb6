@@ -1,9 +1,8 @@
-import { coreUtils } from '@jb6/core'
+import { coreUtils, dsls } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
 import { startMcpServer } from './mcp-utils.js'
 import './mcp-jb-tools.js'
 import './mcp-fs-tools.js'
-//import './todo-prog-tools.js'
 
 //console.error('Starting jb6 MCP server script...')
 if (coreUtils.isNode) {
@@ -31,6 +30,7 @@ if (coreUtils.isNode) {
             jb.coreRegistry.repoRoot = await coreUtils.calcRepoRoot()
         await coreUtils.calcJb6RepoRootAndImportMapsInCli()
         const extraMcp = `${jb.coreRegistry.repoRoot}/.jb6/mcp.js`
+
 
         if (await exists(extraMcp))
             await import(extraMcp)

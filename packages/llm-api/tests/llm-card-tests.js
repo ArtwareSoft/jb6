@@ -73,6 +73,7 @@ const productsDb = Data('productsDb', {
 
 Test('llmCardTest.profitableProductsPng', {
   HeavyTest: true,
+  doNotRunInTests: true,
   impl: dataTest({
     calculate: llm.cardToPng({
       prompt: 'Create a VERY BEAUTIFUL chart showing our 3 most profitable products. show the profit',

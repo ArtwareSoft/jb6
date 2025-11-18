@@ -28,7 +28,7 @@ dynamic function 'hold' and keeps the args until called by client with ctx. it h
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 
-const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray, waitForInnerElements } = jb.coreUtils
+const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, isPromise, asArray, waitForInnerElements, logError } = jb.coreUtils
 
 function run(profile, ctx = new Ctx(), settings = {}) {
     // changing context with data and vars
@@ -198,6 +198,10 @@ class paramRunner {
 
         if (this.dynamic == true) {
             const res = (callerCtx, arrayIndex) => {
+                if (arrayIndex && typeof arrayIndex != 'number') {
+                    logError('tgp core error: use single ctx param when invoking dynamic:true funcs, vars are taken from the ctx. second param can only be arrayIndex of array profile. ', {secondParam: arrayIndex, ctx: callerCtx})
+                    arrayIndex = null
+                }
                 const _creatorCtx = arrayIndex != null ? creatorCtx.setJbCtx(creatorCtx.jbCtx.innerArrayPath(arrayIndex)) : creatorCtx
                 return doResolve(mergeDataCtx(_creatorCtx, callerCtx))
             }

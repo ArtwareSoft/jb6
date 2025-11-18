@@ -1,6 +1,6 @@
 import { dsls, coreUtils, jb, ns } from '@jb6/core'
 
-import '@jb6/react/tailwind-card.js'
+import '@jb6/react/tailwind-utils.js'
 import './llm-api.js'
 import './llm-models.js'
 import '@jb6/jq'
@@ -137,7 +137,7 @@ const compileAndRunCard = Data('compileAndRunCard', {
             return { error: 'empty result' }
 
         let html
-        const h = jb.tailwindCardUtils.h
+        const h = jb.tailwind.h
         try {
             const func = (new Function('h', 'jq', `return ${code}`))(h,jbjq)
             const vdom = func(ctx.setData(db))

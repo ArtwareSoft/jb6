@@ -82,4 +82,3 @@ Tool('scrambleText', {
     join('##\n')
   ))
 })
-

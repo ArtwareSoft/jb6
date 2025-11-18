@@ -188,6 +188,8 @@ export const commands = {
         const url = new URL(probeViewUrl)
         url.searchParams.set('path', path)
         url.searchParams.set('filePath', relativeFilePath)
+
+        vsCodelog({path,relativeFilePath,VSCodeWorkspaceProjectRoot,projectRoot})
         
         vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows') 
         if (!probeResultPanel) {

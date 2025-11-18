@@ -331,3 +331,13 @@ Test('coreUtilsTest.resolveRefs', {
     expectedResult: equals(`[jbReference: root.0]-{\n  root: [\n    {id: 'shared', value: 42},\n    {id: 'shared', value: 42}\n  ],\n  a: {id: 'a', shared: {id: 'shared', value: 42}},\n  b: {shared: {id: 'shared', value: 42}}\n}`)
   })
 })
+
+const dynamicParamForTest = Data('dynamicParamForTest', {
+  params: [
+    {id: 'func', as: 'string', dynamic: true, defaultValue: 'hello'}
+  ]
+})
+
+Test('coreUtilsTest.dynamicParamWithErrorSecondParam', {
+  impl: dataTest(ctx => dynamicParamForTest.$run().func(ctx, ctx.vars), equals('hello'))
+})

@@ -1,8 +1,8 @@
 import { dsls, ns, coreUtils, jb } from '@jb6/core'
-import '@jb6/react/tailwind-card.js' 
+import '@jb6/react/tailwind-utils.js' 
 import '@jb6/testing'
 import { peopleTransactionsDb as db } from './peopleTransactionsDb-test.js'
-const { tailwindHtmlToPng, h } = jb.tailwindCardUtils
+const { tailwindHtmlToPng, h } = jb.tailwindUtils
 
 import '@jb6/jq'
 import '@jb6/core/misc/jb-cli.js'

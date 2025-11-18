@@ -21,6 +21,25 @@ Test('mcpTest.scrambleText', {
   })
 })
 
+Test('mcpTest.compileTailwindCSS', {
+  HeavyTest: true,
+  impl: mcpToolTest('compileTailwindCSS', asIs({html: '<div class="p-6"></div>'}), {
+    expectedResult: contains('padding: calc(var(--spacing) * 6')
+  })
+})
+
+Test('mcpTest.compileTailwindCSSChart', {
+  HeavyTest: true,
+  impl: mcpToolTest('compileTailwindCSS', asIs({html: `<div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+  <h2 class="text-2xl font-bold text-center mb-6">TITLE HERE</h2>
+  <div class="space-y-4">
+    <!-- Bars go here -->
+  </div>
+</div>`}), {
+    expectedResult: contains('padding: calc(var(--spacing) * 6')
+  })
+})
+
 Test('genieMcpTest.scrambleText', {
   HeavyTest: true,
   impl: mcpToolTest('scrambleText', asIs({texts: 'hello world##test text'}), {

@@ -1,23 +1,13 @@
 import { dsls, coreUtils, jb } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
 import '@jb6/core/misc/import-map-services.js'
-import { execFileSync } from 'child_process'
+
+jb.tailwindUtils = { tailwindHtmlToPng, compileTailwindCSS, h }
 
 const {
     common: { Data },
     tgp: { TgpType }
 } = dsls
-
-Data('tailwindHtmlToPng', {
-  params: [
-    {id: 'html', as: 'text', defaultValue: '%%'},
-    {id: 'width', as: 'number', defaultValue: 400},
-    {id: 'paddingBottom', as: 'number', defaultValue: 10},
-  ],
-  impl: ({},{},args) => tailwindHtmlToPng(args)
-})
-
-jb.tailwindCardUtils = { tailwindHtmlToPng, h }
 
 function h(t, p = {}, ...c){
   let [tag,cls]= typeof t==="string" ? t.split(/:(.+)/) : [t]
@@ -37,6 +27,66 @@ function createElement(type, props = {}, ...children) {
   }
   return vdom
 }
+
+
+Data('compileTailwindCSS', {
+  params: [
+    {id: 'html', as: 'text', defaultValue: '%%'},
+  ],
+  impl: ({},{},{html}) => compileTailwindCSS({html})
+})
+
+async function compileTailwindCSS(args) { // used by mcp tools
+  const { html } = args
+  if (!coreUtils.isNode) {
+    const script = `
+      import { coreUtils, jb } from '@jb6/core'
+      import '@jb6/react/tailwind-utils.js'
+      try {
+        const result = await jb.tailwindUtils.compileTailwindCSS(${JSON.stringify(args)})
+        await coreUtils.writeServiceResult(result)
+      } catch (e) {
+        await coreUtils.writeServiceResult(e.message || e)
+      }`
+    const res = await coreUtils.runNodeCliViaJbWebServer(script)
+    return res.result
+  }
+  const repoRoot = await coreUtils.calcRepoRoot()  
+  const { compile } = await import("@tailwindcss/node")
+  const { join } = await import("path")
+  const { readFile } = await import("fs/promises")
+
+  const inputCss = `@layer theme, base, components, utilities;
+  @import "${join(repoRoot, 'node_modules/tailwindcss/theme.css')}" layer(theme);
+  @import "${join(repoRoot, 'node_modules/tailwindcss/utilities.css')}" layer(utilities);`
+
+  const loadModule = async (id) => {
+      if (id.endsWith('.css')) {
+          try {
+              return await readFile(id, 'utf8')
+          } catch (err) {}
+      }
+  }
+  const compiler = await compile(inputCss, { base: repoRoot, loadModule, onDependency: () => {} })
+  const classes = extractClassesFromHTML(html)
+  return compiler.build(classes)
+}
+
+function extractClassesFromHTML(html) {
+  const classes = new Set();
+  const regex = /class\s*=\s*["']([^"']*)["']/gi;
+  let match; while ((match = regex.exec(html)) !== null) match[1].split(/\s+/).forEach(cls => cls.trim() && classes.add(cls.trim()));
+  return Array.from(classes);
+}
+
+Data('tailwindHtmlToPng', {
+  params: [
+    {id: 'html', as: 'text', defaultValue: '%%'},
+    {id: 'width', as: 'number', defaultValue: 400},
+    {id: 'paddingBottom', as: 'number', defaultValue: 10},
+  ],
+  impl: ({},{},args) => tailwindHtmlToPng(args)
+})
 
 const CHROME_PORT = 9222
 
@@ -83,9 +133,9 @@ async function tailwindHtmlToPng(args) {
   if (!coreUtils.isNode) {
     const script = `
       import { coreUtils, jb } from '@jb6/core'
-      import '@jb6/react/tailwind-card.js'
+      import '@jb6/react/tailwind-utils.js'
       try {
-        const result = await jb.tailwindCardUtils.tailwindHtmlToPng(${JSON.stringify(args)})
+        const result = await jb.tailwindUtils.tailwindHtmlToPng(${JSON.stringify(args)})
         await coreUtils.writeServiceResult(result)
       } catch (e) {
         await coreUtils.writeServiceResult(e.message || e)
@@ -93,17 +143,7 @@ async function tailwindHtmlToPng(args) {
     const res = await coreUtils.runNodeCliViaJbWebServer(script)
     return res.result
   }
-  const repoRoot = await coreUtils.calcRepoRoot()  
-  const inputCss = `
-@import "${repoRoot}/node_modules/tailwindcss/index.css";
-@source inline(${JSON.stringify(html)});
-`
-  const postcss = (await import('postcss')).default
-  const tw_postcss = (await import('@tailwindcss/postcss')).default
-
-  const result = await postcss([tw_postcss()]).process(inputCss)
-  const tailwindCss = result.css
-
+  const tailwindCss = compileTailwindCSS({html})
   const layoutCss = `
     :root {
       color-scheme: light;
