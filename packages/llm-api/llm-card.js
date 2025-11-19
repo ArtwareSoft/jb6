@@ -17,7 +17,7 @@ const {
     tgp: {var: {Var}, any : {If }}, 
     'llm-api': { Prompt,
         prompt: { prompt, user, system, tailwindChartGuide},
-        model: {llama_33_70b_versatile, gpt_oss_120b, claude_code_sonnet_4}
+        model: {llama_33_70b_versatile, gpt_oss_120b, claude_code_sonnet_4, llama_guard_4_12b}
     },
     
     common: { Data,
@@ -164,7 +164,7 @@ Data('llm.cardToPng', {
   ],
   impl: pipe(
     retryOnError(pipe(
-      llm.completions(llm.card('%$prompt%', '%$DBSchema%'), gpt_oss_120b(), { maxTokens: 3000 }),
+      llm.completions(llm.card('%$prompt%', '%$DBSchema%'), llama_guard_4_12b(), { maxTokens: 1000 }),
       compileAndRunCard('%$db%'),
       first()
     )),

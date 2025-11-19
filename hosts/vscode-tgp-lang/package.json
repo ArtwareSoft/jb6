@@ -2,7 +2,7 @@
   "name": "jb6-tgp-lang",
   "displayName": "jb6 TGP Language",
   "description": "TGP language service and probe activation",
-  "version": "2511.17.1",
+  "version": "2511.19.5",
   "publisher": "artwaresoft",
   "license": "MIT",
   "engines": {
@@ -18,9 +18,9 @@
   ],
   "dependencies": {
     "@jb6/repo": "file:lib/jb6-repo-1.0.0.tgz",
-    "@jb6/core": "file:lib/jb6-core-1.251117.0.tgz",
-    "@jb6/lang-service": "file:lib/jb6-lang-service-1.251117.0.tgz",
-    "@jb6/react": "file:lib/jb6-react-1.251117.0.tgz"
+    "@jb6/core": "file:lib/jb6-core-1.251119.0.tgz",
+    "@jb6/lang-service": "file:lib/jb6-lang-service-1.251119.0.tgz",
+    "@jb6/react": "file:lib/jb6-react-1.251119.0.tgz"
   },
   "scripts": {},
   "main": "csj-starter.js",
@@ -53,6 +53,16 @@
         "jbart.probeViewPath": {
           "type": "string",
           "description": "path on jb6Server to the probe-view.html"
+        },
+        "jbart.cacheOnSameProfile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable caching to improve suggestion performance when staying within the same profile context."
+        },
+        "jbart.detailedLog": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable detailed logging in the jBart output channel."
         }
       }
     },

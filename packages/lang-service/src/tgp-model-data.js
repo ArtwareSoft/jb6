@@ -24,7 +24,7 @@ export async function calcTgpModelData(resources) {
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
 
   const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, files: Object.keys(codeMap), importMap, entryFiles, testFiles, projectDir, staticMappings}
-  logVsCode('calcTgpModelData before', resources, tgpModel)
+  globalThis.detailedjbVSCodeLog && logVsCode('calcTgpModelData before', resources, tgpModel)
 
   const {dsls} = tgpModel
 
@@ -81,7 +81,7 @@ export async function calcTgpModelData(resources) {
     directDefs.forEach(decl => parseCompDec({decl, url, src}))
   })
 
-  logVsCode('calcTgpModelData result', resources, tgpModel)
+  globalThis.detailedjbVSCodeLog && logVsCode('calcTgpModelData result', resources, tgpModel)
 
   return tgpModel
 
@@ -128,7 +128,7 @@ export async function calcTgpModelData(resources) {
           .filter(ex => ex.type === 'CallExpression' && ex.callee.type === 'Import')
           .map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(rUrl, rel))
       ].filter(x=>!x.match(/^\/libs\//))
-      logVsCode('crawl', url, imports)
+      globalThis.detailedjbVSCodeLog && logVsCode('crawl', url, imports)
 
       await Promise.all(imports.map(url => crawl(url)))
     } catch (e) {

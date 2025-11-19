@@ -54,6 +54,25 @@ const geminiCli = Provider('geminiCli', {
   impl: providerByCli('gemini-cli', `mkdir -p /tmp/clean && cd /tmp/clean && echo '%$prompt%' | gemini -p --model %$model%`)
 })
 
+
+
+Model('llama_guard_4_12b', {
+  description: 'cheap(0.59~0.79) very fast(~300), excellent reasoning',
+  impl: model('meta-llama/llama-guard-4-12b', {
+    price: [0.59,0.79],
+    provider: groq(),
+    bestFor: 'Cost-effective high-quality tasks: code generation, business analysis, jq queries, React components, reasoning tasks, data processing, content generation with excellent quality at low cost',
+    doNotUseFor: 'Tasks requiring absolute maximum intelligence, multimodal processing, very long context reasoning (>100k tokens effectively)',
+    reasoning: true,
+    codingScore: 82,
+    mathScore: 85,
+    contextWindow: 128000,
+    responseSpeed: 300,
+    latency: 0.3,
+    factualAccuracy: 82
+  })
+})
+
 Model('llama_33_70b_versatile', {
   description: 'cheap(0.59~0.79) very fast(~300), excellent reasoning',
   impl: model('llama-3.3-70b-versatile', {

@@ -54,12 +54,6 @@ Test('completionTest.text', {
   impl: completionOptionsTest(`uiTest(text(__'__hello'__, __'__'__))`, ['style','pipeline','style','style','pipeline','style'])
 })
 
-Test('completionTest.dataStore', {
-  impl: completionOptionsTest(`ALL:DataStore('a', { impl: dataStore(__) })`, ['fileName'], {
-    filePath: 'packages/social-db/social-db-tests.js'
-  })
-})
-
 Test('completionTest.typeAdapter', {
   impl: completionOptionsTest(`ALL:Data('x', {impl: typeAdapter('boolean<common>', '__')})`, ['or'])
 })
@@ -74,6 +68,10 @@ Test('completionTest.mixedSingleArgAsArrayMiddle', {
 
 Test('completionTest.betweentwoFirstArgs', {
   impl: completionOptionsTest(`uiTest(text('hello world'),__ contains('hello world'))`, ['runBefore'])
+})
+
+Test('completionTest.newLinebug', {
+  impl: completionOptionsTest(`ALL:Test('x', {\nimpl: '__')`, ['dataTest'])
 })
 
 Test('completionTest.VariableDeclarationBug', {

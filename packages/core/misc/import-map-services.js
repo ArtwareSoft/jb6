@@ -376,7 +376,7 @@ async function fetchByEnv(url, staticMappings = [], httpServer = '') {
   }
   const { readFile } = await import('fs/promises')
   const { logVsCode, logError } = coreUtils
-  logVsCode(`fetch ${url}`)
+  globalThis.detailedjbVSCodeLog && logVsCode(`fetch ${url}`)
   try {
     return await readFile(url, 'utf8')
   } catch(e) {

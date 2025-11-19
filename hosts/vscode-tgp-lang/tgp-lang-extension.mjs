@@ -5,6 +5,8 @@ jbVSCodeLog('utils loaded', commands)
 const { logException } = coreUtils
  
 export async function doActivate(context) {
+    const config = vscodeNS.workspace.getConfiguration('jbart')
+    globalThis.detailedjbVSCodeLog = config.get('detailedLog')
 
     // 'openProbeResultPanel','openjBartStudio','openProbeResultEditor','closeProbeResultEditor'
     ;['moveUp','moveDown','openjBartTest','visitLastPath','delete','duplicate','applyCompChangeOfCompletionItem'
