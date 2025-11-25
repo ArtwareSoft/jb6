@@ -69,6 +69,7 @@ Test('completionOptionsTest', {
   params: [
     {id: 'compText', as: 'text', description: 'use __ for completion points'},
     {id: 'expectedSelections', as: 'array', description: 'label a selection that should exist in the menu. one for each point'},
+    {id: 'notInSuggstions', as: 'array', description: 'label a selection that should not exist in the menu'},
     {id: 'filePath', as: 'string'},
     {id: 'dsl', as: 'string'}
   ],
@@ -86,13 +87,15 @@ Test('completionOptionsTest', {
       }, Promise.resolve())
       return acc
     },
-    expectedResult: ({data},{},{expectedSelections}) => {
+    expectedResult: ({data},{},{expectedSelections, notInSuggstions}) => {
       const errors = data.reduce((errors,{options},i) => {
         if (options?.[0] == 'reformat')
           return ['bad format']
         if (!options)
             return [`no options at index ${i}`]
-        const res = options.includes(expectedSelections[i]) ? '' : ` ${expectedSelections[i]} not found at index ${i}`
+        const res1 = options.includes(expectedSelections[i]) ? '' : ` ${expectedSelections[i]} not found at index ${i}`
+        const res2 = !options.includes(notInSuggstions[i]||'__') ? '' : ` ${notInSuggstions[i]} found at index ${i}`
+        const res = [res1,res2].join('')
         return [...errors,res]
       }, []).filter(x=>x).join(', ')
       return errors.match(/^-*$/) ? true : { testFailure: errors }

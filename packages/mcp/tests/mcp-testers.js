@@ -24,28 +24,28 @@ Test('mcpToolTest', {
   ],
   impl: dataTest({
     calculate: async (ctx,{},{tool,args, repoRoot: repoRootParam, jb6PackagesRoot: jb6PackagesRootParam, importMapsInCli}) => { 
-            const repoRoot = repoRootParam || await calcRepoRoot()
-            
-            const jb6PackagesRoot = jb6PackagesRootParam || `${jb.coreRegistry.repoRoot}/packages`
+        const repoRoot = repoRootParam || await calcRepoRoot()
+        
+        const jb6PackagesRoot = jb6PackagesRootParam || `${jb.coreRegistry.repoRoot}/packages`
 
-            const req  = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":tool,arguments: args}}
-            const reqJSON = JSON.stringify(req)
-            const importPart = importMapsInCli ? `--import ${importMapsInCli}` : '' //./public/tests/register.js`
-            const script = `cd ${repoRoot} && node ${importPart} ${jb6PackagesRoot}/mcp/index.js --start --repoRoot=. <<'__JSON__'
+        const req  = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":tool,arguments: args}}
+        const reqJSON = JSON.stringify(req)
+        const importPart = importMapsInCli ? `--import ${importMapsInCli}` : '' //./public/tests/register.js`
+        const script = `cd ${repoRoot} && node ${importPart} ${jb6PackagesRoot}/mcp/index.js --start --repoRoot=. <<'__JSON__'
 ${reqJSON}
 __JSON__`
-            const res = await runBashScript(script)
-            const mcpRes = res?.stdout?.result?.content?.[0]?.text
-            let parsedMcpRes
-            try {
-              parsedMcpRes = JSON.parse(mcpRes)
-            } catch(e) {}
-            if (parsedMcpRes?.error)
-              return { testFailure: parsedMcpRes?.error}
-            if (!mcpRes)
-              return { testFailure: 'error in mcp res'}
-            return mcpRes
-        },
+        const res = await runBashScript(script)
+        const mcpRes = res?.stdout?.result?.content?.[0]?.text
+        let parsedMcpRes
+        try {
+          parsedMcpRes = /^[\s]*[{\[]/.test(mcpRes) && JSON.parse(mcpRes)
+        } catch(e) {}
+        if (parsedMcpRes?.error)
+          return { testFailure: parsedMcpRes?.error}
+        if (!mcpRes)
+          return { testFailure: 'error in mcp res'}
+        return mcpRes
+    },
     expectedResult: '%$expectedResult()%',
     timeout: 2000,
     includeTestRes: true

@@ -51,7 +51,7 @@ Const('people', [
 ])
 
 Test('coreTest.datum2', {
-impl: dataTest(pipeline('%%', { data: 'hello' }), equals('hello'))
+  impl: dataTest(pipeline('%%', { data: 'hello' }), equals('hello'))
 })
 
 Test('coreTest.ns', {

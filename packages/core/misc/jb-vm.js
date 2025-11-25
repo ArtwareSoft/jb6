@@ -3,17 +3,6 @@ import vm from 'node:vm'
 
 import https from 'node:https'
 import http from 'node:http'
-//import module from 'node:module'
-//import { createRequire } from 'node:module'
-//const nodeRequire = createRequire(import.meta.url)
-
-// function isBuiltin(specifier) {
-//   return module.builtinModules.includes(specifier)
-// }
-
-// function isBuiltinOrNpm(specifier) {
-//     return isBuiltin(specifier) || (!specifier.startsWith('file://') && !specifier.startsWith('http') && !specifier.startsWith('@') && !specifier.startsWith('.'))
-// }
 
 import { jb } from '@jb6/repo'
 import './import-map-services.js'
@@ -107,7 +96,7 @@ async function getOrCreateVm(options) {
 
         const context = vm.createContext({ 
             console, vmId, httpRequests, setTimeout, clearTimeout, setInterval, clearInterval, process, AbortController,
-            URLSearchParams, atob, gc, performance, URL, calcSpecifierUrl,
+            URLSearchParams, atob, gc, performance, URL, calcSpecifierUrl, Buffer,
             fetch,
             vmCleanup, builtIn })
         const {entryFiles} = await coreUtils.calcImportData(resources)

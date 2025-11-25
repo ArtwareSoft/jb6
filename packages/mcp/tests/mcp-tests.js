@@ -60,6 +60,17 @@ Test('genieMcpTest.tgpModel', {
   })
 })
 
+Test('genieMcpTest.wonderWorkflow', {
+  HeavyTest: true,
+  doNotRunInTests: true,
+  impl: mcpToolTest('wonderWorkflow', asIs({userMessage: 'say hello'}), {
+    repoRoot: '/home/shaiby/projects/Genie',
+    jb6PackagesRoot: '/home/shaiby/projects/Genie/public/3rd-party/@jb6',
+    importMapsInCli: './public/core/nodejs-importmap.js',
+    expectedResult: contains('ello')
+  })
+})
+
 Test('genieMcpTest.snippet', {
   HeavyTest: true,
   impl: mcpToolTest({

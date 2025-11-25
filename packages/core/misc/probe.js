@@ -18,8 +18,8 @@ Object.assign(coreUtils, {runProbe, runProbeCli})
 async function runProbeCli(probePath, resources) {
     const { extraCode } = resources
     const {entryFiles, testFiles, importMap, jb6_testFiles, projectDir } = await coreUtils.calcImportData(resources)
-    const moreTests = jb6_testFiles.filter(x=>x.includes(projectDir))
-    const imports = unique([...entryFiles, ...testFiles,...moreTests])
+    //const moreTests = jb6_testFiles.filter(x=>x.includes(projectDir))
+    const imports = unique([...entryFiles, ...testFiles]) // ,...moreTests
     const script = `
       import { writeFile } from 'fs/promises'
       import { jb, dsls, coreUtils } from '@jb6/core'
@@ -28,11 +28,11 @@ async function runProbeCli(probePath, resources) {
       const imports = ${JSON.stringify(imports)}
       try {
         ${extraCode || ''}
-        await Promise.all(imports.map(f => import(f))) //.catch(e => console.error(f, e.message) )))
+        await Promise.all(imports.map(f => import(f))) // .catch(e => console.error(e.stack) )
         const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath)})
         await coreUtils.writeServiceResult(result)
       } catch (e) {
-        await coreUtils.writeServiceResult({error: e.message})
+        await coreUtils.writeServiceResult({error: e.stack})
         console.error(e)
       }
     `

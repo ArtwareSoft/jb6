@@ -25,7 +25,7 @@ Test('dataTest', {
     {id: 'includeTestRes', as: 'boolean', type: 'boolean'}
   ],
   impl: async (ctx,{}, { calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy,includeTestRes }) => {
-		const ctxToUse = ctx.vars.testID ? ctx : ctx.setVars({testID:'unknown'})
+		const ctxToUse = ctx.vars.testID ? ctx : ctx.setVars({testID:'unknown', isTest: true})
 		const {testID,singleTest,uiTest}  = ctxToUse.vars
 		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 5000 : null
 		const _timeout = singleTest ? Math.max(1000,timeout) : (remoteTimeout || timeout)

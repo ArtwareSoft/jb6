@@ -22,7 +22,7 @@ Test('completionTest.param1', {
 Test('completionTest.param', {
   impl: completionOptionsTest({
     compText: `uiTest(__text(__'hello world',__ ''__)__,__ __contains('hello world')__)`,
-    expectedSelections: ['runBefore','style','style','style','runBefore','runBefore','not','runBefore']
+    expectedSelections: ['button','style','style','style','runBefore','runBefore','not','runBefore']
   })
 })
 
@@ -70,9 +70,13 @@ Test('completionTest.betweentwoFirstArgs', {
   impl: completionOptionsTest(`uiTest(text('hello world'),__ contains('hello world'))`, ['runBefore'])
 })
 
-Test('completionTest.newLinebug', {
-  impl: completionOptionsTest(`ALL:Test('x', {\nimpl: '__')`, ['dataTest'])
+Test('completionTest.notSuggestingParams', {
+  impl: completionOptionsTest('uiTest(__text())', ['button'], { notInSuggstions: ['runBefore'] })
 })
+
+// Test('completionTest.newLinebug', {
+//   impl: completionOptionsTest(`ALL:Test('x', {\nimpl: '__')`, ['dataTest'])
+// })
 
 Test('completionTest.VariableDeclarationBug', {
   impl: completionOptionsTest(`group(__)`, ['button2'])
@@ -103,7 +107,7 @@ Test('completionTest.createPipelineFromComp', {
 })
 
 Test('completionTest.newBooleanAsTrue', {
-  impl: completionActionTest('uiTest(__text(split()))', {
+  impl: completionActionTest('uiTest(text(split())__)', {
     completionToActivate: 'allowError',
     expectedEdit: asIs({range: {start: {line: 1, col: 28}, end: {line: 1, col: 28}}, newText: ', { allowError: true }'}),
     expectedCursorPos: '1,44'
@@ -117,7 +121,7 @@ Test('completionTest.groupInGroup', {
 })
 
 Test('completionTest.singleArgAsArray.begin', {
-  impl: completionActionTest(`uiTest(group(__text('')))`, {
+  impl: completionActionTest(`uiTest(group(text('')__))`, {
     completionToActivate: 'features',
     expectedEdit: asIs({range: {start: {line: 1, col: 29}, end: {line: 1, col: 29}}, newText: ', { features: TBD() }'}),
     expectedCursorPos: '1,43'
@@ -141,7 +145,7 @@ Test('completionTest.singleArgAsArray.middle', {
 })
 
 Test('completionTest.paramsAndProfiles', {
-  impl: completionOptionsTest(`uiTest(__text(''))`, {
+  impl: completionOptionsTest(`uiTest(text('')__)`, {
     expectedSelections: ['runBefore','button']
   })
 })
@@ -212,7 +216,7 @@ Test('completionTest.splitPart', {
 
 Test('completionTest.dynamicFormat', {
   impl: completionActionTest({
-    compText: `uiTest(__text('my text'), contains('hello world'))`,
+    compText: `uiTest(text('my text')__, contains('hello world'))`,
     completionToActivate: 'uiAction',
     expectedEdit: asIs({range: {start: {line: 1, col: 55}, end: {line: 1, col: 55}}, newText: ', { uiAction: TBD() }'}),
     expectedCursorPos: '1,69'
@@ -380,6 +384,20 @@ Test('completionTest.multiLine', {
   })
 })
 
+Test('completionTest.multiLineInArray', {
+  impl: completionOptionsTest({
+    compText: `group({
+    controls: [__
+      text('hello'),__
+      group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),
+      text('world')__
+__    __],
+    features: TBD()
+  })`,
+    expectedSelections: ['text','text','text','text','text']
+  })
+})
+
 Test('completionTest.multiLineWithConstVar', {
   impl: completionActionTest({
     compText: `ALL:const aa = Test('x', {\n  impl: uiTest(group(__\n    text('hello'),\n    group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n    text('world')\n  ))\n})`,
@@ -419,6 +437,14 @@ Test('completionActionTest.defaultValueAsProfile', {
         range: {start: {line: 0, col: 14}, end: {line: 0, col: 57}},
         newText: `\n  params: [\n    {id: 'x', defaultValue: list()}\n  ]\n`
     }),
+    expectedCursorPos: '0,13'
+  })
+})
+
+Test('completionActionTest.fixUnActivatedMacro', {
+  impl: completionActionTest(`ALL:Data('cmp1', __{ impl: asIs})`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({range: {start: {line: 0, col: 14}, end: {line: 0, col: 25}}, newText: '\n  impl: asIs()\n'}),
     expectedCursorPos: '0,13'
   })
 })

@@ -162,7 +162,11 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
             actionMap.push({ action: `endToken!${path}`, from: endOfPTName, to: endOfPTName })    
             actionMap.push({ action: `setPT!${path}`, from: ast.start, to: endOfPTName })
             actionMap.push({ action: `edit!${path}`, from: endOfPTName, to: endOfPTName })
-            actionMap.push({ action: `addProp!${path}`, from: endOfPTName, to: endOfPTName, source: 'profile-begin' })
+            const stringProfile = ['"',"'","`"].includes(expressionAst?.arguments?.[0]?.raw?.[0])
+            const startFirstArg = expressionAst?.arguments?.[0]?.start
+            const spaces = startFirstArg && (startFirstArg - endOfPTName > 1)
+            if (spaces || stringProfile)
+                actionMap.push({ action: `addProp!${path}`, from: endOfPTName, to: startFirstArg, source: 'before-profile-begin' })
             actionMap.push({ action: `addProp!${path}`, from: ast.end - 1, to: ast.end, source: 'profile-end'  })
             actionMap.push({ action: `end!${path}`, from: ast.end, to: ast.end })
 

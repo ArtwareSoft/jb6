@@ -30,10 +30,8 @@ async function provideCompletionItems(compProps, ctx) {
     const actions = actionMap.filter(e => e.from <= inCompOffset && inCompOffset < e.to || (e.from == e.to && e.from == inCompOffset))
         .map(e => e.action).filter(e => e.indexOf('edit!') != 0 && e.indexOf('begin!') != 0 && e.indexOf('end!') != 0)
     if (actions.length == 0) return { items: [] }
-    const priorities = ['addProp']
     let paramDef = null
-    const sortedActions = unique(actions).map(action=>action.split('!')).sort((a1,a2) => priorities.indexOf(a2[0]) - priorities.indexOf(a1[0]))
-    let items = sortedActions.reduce((acc, action) => {
+    let items = unique(actions).map(action=>action.split('!')).reduce((acc, action) => {
         const [op, path] = action
         paramDef = tgpModel.paramDef(path)
         // if (!paramDef)
@@ -48,6 +46,9 @@ async function provideCompletionItems(compProps, ctx) {
     }, [])
     if (actions[0] && actions[0].indexOf('insideText') == 0)
         items = await dataCompletions(compProps, actions[0].split('!').pop(), ctx)
+    items.sort((c1,c2) => (c1.sortWith || 20) - (c2.sortWith || 20))
+    if (items[1]?.kind == 25) // 25 twice
+        items.shift()
 
     return { items, paramDef }
 }
@@ -56,16 +57,18 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
     const { tgpModel } = compProps
     const options = tgpModel.PTsOfPath(path).map(comp => {
         const compId = `${comp.$dslType}${comp.id}`
+        const isPT = comp.params?.length
         return {
-            label: comp.id, kind: 2, compId, opKind, path, compProps,
+            label: comp.id, kind: isPT ? 2 : 19, compId, opKind, path, compProps,
             detail: [comp.description, compId.indexOf('>') != -1 && compId.split('>')[0] + '>'].filter(x => x).join(' '),
             extend(ctx) { return setPTOp(this.path, this.opKind, this.compId, ctx) },
+            sortWith: 10 + (isPT ? 0 : 1) // promote pts
         }
     })
     const isArrayElem = path.match(/~[0-9]+$/)
     const propStr = isArrayElem ? path.split('~').slice(-2).join('~') : path.split('~').pop()
     const propTitle = {
-        label: propStr + ': ' + tgpModel.paramType(path), kind: 25, path, extend: () => { }, sortText: '!!02',
+        label: propStr + ': ' + tgpModel.paramType(path), kind: 25, path, extend: () => { }, sortWith: 1,
         detail: calcPath(tgpModel.paramDef(path), 'description')
     }
     return [propTitle, ...options]
@@ -123,7 +126,7 @@ function newProfile(comp, {basedOnPath, basedOnVal} = {}) {
 
 function enumCompletions(path, compProps) {
     return compProps.tgpModel.paramDef(path).options.split(',').map(label => ({
-        label, kind: 19, path, compProps, op: { $set: label } }))
+        label, sortWith: 3, kind: 19, path, compProps, op: { $set: label } }))
 }
 
 function paramCompletions(path, compProps) {
@@ -131,7 +134,7 @@ function paramCompletions(path, compProps) {
     const params = tgpModel.paramsOfPath(path).filter(p => tgpModel.valOfPath(path + '~' + p.id) === undefined)
         .sort((p2, p1) => (p1.mandatory ? 1 : 0) - (p2.mandatory ? 1 : 0))
     return params.map(param => ({
-        label: param.id, path, kind: 4, id: param.id, compProps, detail: [param.as, param.type, param.description].filter(x => x).join(' '),
+        label: param.id, sortWith: 2, path, kind: 4, id: param.id, compProps, detail: [param.as, param.type, param.description].filter(x => x).join(' '),
         extend(ctx) { return addPropertyOp(`${this.path}~${this.id}`, ctx) },
     }))
 
@@ -151,7 +154,7 @@ function paramCompletions(path, compProps) {
 function wrapWithArray(path, compProps) {
     const tgpModel = compProps.tgpModel
     return [path].filter(x => x).map(path => tgpModel.canWrapWithArray(path) ? {
-        label: `wrap with array`, kind: 18, compProps, path, extend(ctx) { return { ...wrapWithArrayOp(this.path, ctx), whereToLand: 'end' } },
+        label: `wrap with array`, sortWith: 5, kind: 18, compProps, path, extend(ctx) { return { ...wrapWithArrayOp(this.path, ctx), whereToLand: 'end' } },
     } : null).filter(x => x).slice(0, 1)
 
     function wrapWithArrayOp(path, srcCtx) {
@@ -307,7 +310,7 @@ ${compText}
     }
 
     options = [
-      { ...valueOption('goto circuit', circuitCmpId), kind: 17, 
+      { ...valueOption('goto circuit', circuitCmpId), sortWith: 6, kind: 17, 
         command : tgpEditorHost().gotoCompCommand(compByFullId(probeRes.circuitCmpId, tgpModel)) },
       valueOption('#visits',''+visits),
       valueOption('#data', probeCtx.data),

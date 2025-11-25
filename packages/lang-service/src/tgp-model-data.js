@@ -166,6 +166,11 @@ function astToTgpObj(node, code) {
         }
         return attachNode(func)
       }
+      case 'Identifier': {
+        // fixing identifier to be like CallExpression
+        node.arguments = []
+        return attachNode({$: node.name || [node.object?.name,node.property?.name].join('.'), $unresolvedArgs: []})
+      }
 
       default: return undefined
     }

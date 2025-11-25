@@ -32,12 +32,9 @@ async function loadLucid05() {
   return jb.reactUtils.icons = await import('./lib/lucide-0.5.mjs')
 }
 
-console.log('react-utils')
-
 let initReact = () => {}
 if (!globalThis.window) {
   initReact = async () => {
-    console.log('initReact node')
     const cli = Object.fromEntries(process.argv.slice(2).filter(a=>a.startsWith('--')).map(a=>a.slice(2).split('=')))
     const url = globalThis.builtIn?.window?.url || cli.url || 'http://localhost'
     const html = globalThis.html || '<!DOCTYPE html><body></body>'
