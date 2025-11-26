@@ -341,3 +341,35 @@ const dynamicParamForTest = Data('dynamicParamForTest', {
 Test('coreUtilsTest.dynamicParamWithErrorSecondParam', {
   impl: dataTest(ctx => dynamicParamForTest.$run().func(ctx, ctx.vars), equals('hello'))
 })
+
+const trackOriginForTest = Data('trackOriginForTest', {
+  params: [
+    {id: 'p1', as: 'string'},
+    {id: 'p2', as: 'string'},
+  ],
+  impl: pipeline(Var('v2','$track:varvar'), '$track:start %$p1% %$p2% %$v2% end')
+})
+
+Test('coreUtilsTest.trackOrigin', {
+  impl: dataTest({
+    vars: Var('stringsOrigins', obj()),
+    calculate: pipeline(trackOriginForTest('hello', 'world'), (ctx) => coreUtils.trackOrigins('start hello world varvar end', ctx)),
+    expectedResult: equals(asIs([
+      {text: 'start ', range: [0,5], source: 'data<common>trackOriginForTest~impl~source', posInExp: 0},
+      {
+        text: 'hello',
+        range: [6,10],
+        source: 'test<test>coreUtilsTest.trackOrigin~impl~calculate~source~p1'
+      },
+      {text: ' ', range: [11,11], source: 'data<common>trackOriginForTest~impl~source', posInExp: 11},
+      {
+        text: 'world',
+        range: [12,16],
+        source: 'test<test>coreUtilsTest.trackOrigin~impl~calculate~source~p2'
+      },
+      {text: ' ', range: [17,17], source: 'data<common>trackOriginForTest~impl~source', posInExp: 17},
+      {text: 'varvar', range: [18,23], source: 'data<common>trackOriginForTest~impl~vars~0~val'},
+      {text: ' end', range: [24,27], source: 'data<common>trackOriginForTest~impl~source', posInExp: 23}
+    ]))
+  })
+})

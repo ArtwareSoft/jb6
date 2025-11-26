@@ -6,16 +6,16 @@ const { log, logError, isRefType, resolveFinishedPromise, toString, toNumber, RT
 const isRef = v => jb.dbUtils?.isRef(v)
 const objHandler = v => jb.dbUtils ? jb.dbUtils.objHandler(v) : null
 
-Object.assign(coreUtils, {calcExpression: calc, calcVar, calcBool})
+Object.assign(coreUtils, {calcExpression: calc, calcVar, calcBool, trackOrigins })
 const { consts } = jb.coreRegistry
 
 function calcVar(varname, ctx) {
     if (jb.dbUtils)
         return jb.dbUtils.calcVar(varname,ctx)
     const { jbCtx: { args }} = ctx  
-    return resolveFinishedPromise(doCalc())
+    return resolveFinishedPromise(doCalcVar())
 
-    function doCalc() {
+    function doCalcVar() {
         if (args && args[varname] != undefined) return args[varname]
         if (ctx.vars[varname] != undefined) return ctx.vars[varname] 
         if (consts[varname] != undefined) return consts[varname]
@@ -23,20 +23,31 @@ function calcVar(varname, ctx) {
 }
 
 function calc(_exp, ctx, overrideParentParam ) {
-    const { jbCtx : {parentParam: ctxParentParam } } = ctx
-    const parentParam = overrideParentParam || ctxParentParam
-    const jstype = parentParam?.ref ? 'ref' : parentParam?.as
-    let exp = '' + _exp
-    if (jstype == 'boolean' || parentParam?.type?.startsWith('boolean')) return calcBool(exp, ctx, parentParam)
-    if (exp.indexOf('$debugger:') == 0) {
-      debugger
-      exp = exp.split('$debugger:')[1]
+  const { jbCtx : {parentParam: ctxParentParam }, vars: { stringsOrigins } } = ctx
+  const parentParam = overrideParentParam || ctxParentParam
+  const jstype = parentParam?.ref ? 'ref' : parentParam?.as
+  let exp = '' + _exp
+  if (jstype == 'boolean' || parentParam?.type?.startsWith('boolean')) 
+    return calcBool(exp, ctx, parentParam)
+  if (exp.indexOf('$debugger:') == 0) {
+    debugger
+    exp = exp.split('$debugger:')[1]
+  }
+  if (exp.indexOf('$track:') == 0) {
+    exp = exp.split('$track:')[1]
+    const res = doCalc(exp, ctx, overrideParentParam)
+    if (stringsOrigins) {
+      stringsOrigins[res] = stringsOrigins[res] || []
+      stringsOrigins[res].push({ ctx, exp, overrideParentParam })
     }
-    if (exp.indexOf('$log:') == 0) {
-      const out = calc(exp.split('$log:')[1],ctx)
-      console.log(out, ctx)
-      return out
-    }
+    return res
+  }
+
+  const res = doCalc(exp, ctx, overrideParentParam)
+  return res
+}
+
+function doCalc(exp, ctx, parentParam ) {
     if (exp.indexOf('%') == -1 && exp.indexOf('{') == -1) return exp
     if (exp == '{%%}' || exp == '%%')
         return expPart('')
@@ -55,6 +66,7 @@ function calc(_exp, ctx, overrideParentParam ) {
     function expPart(expressionPart, _parentParam) {
       return resolveFinishedPromise(evalExpressionPart(expressionPart,ctx, _parentParam || parentParam))
     }
+
     function conditionalExp(exp) {
       // check variable value - if not empty return all exp, otherwise empty
       const match = exp.match(/%([^%;{}\s><"']*)%/)
@@ -62,8 +74,9 @@ function calc(_exp, ctx, overrideParentParam ) {
         return calc(exp, ctx, { as: 'string' })
       else
         return ''
-    }
+    }   
 }
+
 
 function evalExpressionPart(expressionPart, ctx, calculatedParentParam ) {
     const jstype = calculatedParentParam?.ref ? 'ref' : calculatedParentParam?.as
@@ -178,4 +191,61 @@ function calcBool(exp, ctx, parentParam) {
     function doCalcNumber(exp) {
         return toNumber(calc(trim(exp), ctx, {as: 'number'}))
     }
+}
+
+
+function trackOrigins(str, ctx) {
+  const { stringsOrigins } = ctx.vars
+  const records = stringsOrigins[str]
+  if (!records) return
+  
+  const record = records[0]
+  if (records.length > 1)
+    console.log('trackOrigins: more then one origins for string',str, records)
+  const exp = record.exp
+  const recordCtx = record.ctx
+  
+  const segments = []
+  let position = 0, lastIndex = 0
+  
+  exp.replace(/%([^%]+)%/g, (match, innerExp, offset) => {
+    if (offset > lastIndex) {
+      const literalText = exp.slice(lastIndex, offset)
+      segments.push({ text: literalText, range: [position, position + literalText.length - 1], source: recordCtx.jbCtx.path, posInExp: lastIndex })
+      position += literalText.length
+    }
+    
+    const value = toString(evalExpressionPart(innerExp, recordCtx, record.overrideParentParam))
+    const varName = (innerExp.match(/\$(.*)/) || [])[1]
+    if (recordCtx.jbCtx?.args?.[varName] !== undefined) {
+      const source = `${recordCtx.jbCtx.creatorStack.slice(-1)[0]}~${varName}`
+      segments.push({ text: value, range: [position, position + value.length - 1], source })
+    } else if (recordCtx.vars?.[varName] !== undefined) {
+      const varSegments = trackOrigins(value, recordCtx)
+      if (varSegments && varSegments.length) {
+        varSegments.forEach(segment => {
+          segments.push({
+            text: segment.text,
+            range: [position + segment.range[0], position + segment.range[1]],
+            source: segment.source
+          })
+        })
+      } else {
+        segments.push({ text: value, range: [position, position + value.length - 1], source: `var:${varName}`})
+      }
+    } else {
+      // Fallback
+      segments.push({ text: value, range: [position, position + value.length - 1], source: `exp:${innerExp}`})
+    }
+    
+    position += value.length
+    lastIndex = offset + match.length
+  })
+  
+  if (lastIndex < exp.length) {
+    const literalText = exp.slice(lastIndex)
+    segments.push({ text: literalText, range: [position, position + literalText.length - 1], source: recordCtx.jbCtx.path, posInExp: lastIndex })
+  }
+  
+  return segments
 }
