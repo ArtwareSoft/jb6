@@ -17,8 +17,9 @@ export async function calcTgpModelData(resources) {
   const { fetchByEnvHttpServer } = resources
   if (resources.forDsls == 'test' && !resources.entryPointsPaths)
     resources.forRepo = await calcRepoRoot()
-  const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot, llmGuideFiles } = await calcImportData(resources)
-  const rootFilePaths = unique([...entryFiles, ...testFiles, ...llmGuideFiles])
+  const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot, llmGuideFiles, jb6_llmGuideFiles } = await calcImportData(resources)
+  const allLlmGuideFiles = unique([...llmGuideFiles || [], ...jb6_llmGuideFiles || []])
+  const rootFilePaths = unique([...entryFiles, ...testFiles, ...allLlmGuideFiles])
   // crawl
   const codeMap = {} , visited = {}
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())

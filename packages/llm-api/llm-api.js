@@ -93,7 +93,10 @@ ReactiveSource('llm.completionsRx', {
                   Object.assign(val, jb.llmUtils.notifyApiUsage(val,ctx))
                   notifyUsage(ctx.setData(val))
                 }
-                const content = calcPath(val,'choices.0.delta.content') || calcPath(val,'delta.text')
+//                const content = calcPath(val,'choices.0.delta.content') || calcPath(val,'delta.text')
+                const content = val?.choices?.[0]?.delta?.content ?? val?.choices?.[0]?.message?.content ?? val?.delta?.content ?? val?.delta?.text 
+                  ?? val?.text ?? null
+
                 if (content == null) return
                 if (typeof content != 'string') logError('source.llmCompletions non string content', {content, val, ctx})
                 fullContent += content

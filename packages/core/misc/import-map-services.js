@@ -310,7 +310,7 @@ async function discoverFiles(staticMappings, pkgJson, {projectDir}) {
       const dirName = path.basename(path.dirname(filePath))
       const isTestFile = fileName.match(/-tests?\.js$/) || dirName === 'tests' && fileName.match(/\.js$/)
       const isTesterFile = fileName.match(/-testers\.js$/)
-      const isLlmGuideFile = fileName.match(/-llm-guide\.js$/) || dirName === 'llm-guide'
+      const isLlmGuideFile = fileName.match(/-llm-guide\.js$/) || (dirName === 'llm-guide' && fileName.endsWith('.js'))
       
       if ((isTestFile || isTesterFile)) discoveredFiles.testFiles.push(filePath)
       else if (isLlmGuideFile) discoveredFiles.llmGuideFiles.push(filePath)

@@ -19,7 +19,10 @@ async function runProbeCli(probePath, resources) {
     const { extraCode } = resources
     const {entryFiles, testFiles, importMap, jb6_testFiles, projectDir } = await coreUtils.calcImportData(resources)
     //const moreTests = jb6_testFiles.filter(x=>x.includes(projectDir))
-    const imports = unique([...entryFiles, ...testFiles]) // ,...moreTests
+    const allTests = testFiles.filter(path=>path.includes('all-tests'))
+    const testsToInclude = allTests.length ? allTests : testFiles
+    const imports = unique([...entryFiles, ...testsToInclude]) // ,...moreTests
+
     const script = `
       import { writeFile } from 'fs/promises'
       import { jb, dsls, coreUtils } from '@jb6/core'

@@ -548,9 +548,8 @@ Object.assign(jb.rxUtils, {
     })        
   },
   fromCallBag: source => source,
-//  isSink: cb => typeof cb == 'function' && cb.toString().match(/source/),
-  isCallbag: cb => typeof cb == 'function' && cb.toString().split('=>')[0].split('{')[0].replace(/\s/g,'').match(/start,sink|t,d/),
-  isCallbagOperator: cb => typeof cb == 'function' && cb.toString().match(/^\s*source\s*=>/),
+  isCallbag: cb => typeof cb == 'function' && cb.toString && cb.toString().split('=>')[0].split('{')[0].replace(/\s/g,'').match(/start,sink|t,d/),
+  isCallbagOperator: cb => typeof cb == 'function' && cb.toString && cb.toString().match(/^\s*source\s*=>/),
   injectSniffers(cbs,ctx) {
     return cbs
   },  

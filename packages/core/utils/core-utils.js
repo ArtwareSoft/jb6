@@ -193,7 +193,7 @@ function waitForInnerElements(item, {passRx} = {}) { // resolve promises in arra
   return item
 }
 
-const isCallbag = cb => typeof cb == 'function' && cb.toString().split('=>')[0].split('{')[0].replace(/\s/g,'').match(/start,sink|t,d/)
+const isCallbag = cb => typeof cb == 'function' && cb.toString && cb.toString().split('=>')[0].split('{')[0].replace(/\s/g,'').match(/start,sink|t,d/)
 const callbagToPromiseArray = source => new Promise(resolve => {
   let talkback
   const res = []

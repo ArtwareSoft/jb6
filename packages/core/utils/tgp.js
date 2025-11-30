@@ -15,6 +15,7 @@ const tgpComp = CompDef({ // bootstraping
     {id: 'id', as: 'string', mandatory: true},
     {id: 'type', as: 'string', byName: true},
     {id: 'dsl', as: 'string'},
+    {id: 'moreTypes', as: 'string'},
     {id: 'macroByValue', as: 'boolean'},
     {id: 'description', as: 'string'},
     {id: 'HeavyTest', as: 'boolean' },
