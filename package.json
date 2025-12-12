@@ -1,7 +1,7 @@
 {
   "name": "jb6-monorepo",
   "private": true,
-  "version": "1.251125.0",
+  "version": "1.251212.0",
   "description": "JB6 core + plugins (pure-JS workspaces mono-repo)",
   "type": "module",
   "scripts": {
@@ -22,15 +22,15 @@
     "#jb6/*": "./packages/*"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.1.17",
-    "@tailwindcss/postcss": "^4.1.17",
     "autoprefixer": "^10.4.22",
     "esbuild": "^0.25.11",
     "express": "^5.1.0",
     "globby": "^14.1.0",
     "lucide": "^0.546.0",
-    "postcss": "^8.5.6",
     "puppeteer-core": "^24.30.0",
+    "@tailwindcss/cli": "^4.1.17",
+    "@tailwindcss/postcss": "^4.1.17",
+    "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17"
   },
   "keywords": [],

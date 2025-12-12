@@ -74,16 +74,22 @@ async function getOrCreateVm(options) {
     function linker(specifier, referrer) {
         console.log('linker', specifier, referrer.identifier)
         const childId = calcSpecifierUrl(specifier,referrer)
-        if (!childId) return new vm.SyntheticModule([], () => {}, { context, identifier: `error calculating url for ${specifier}` })
+        if (!childId) return new vm.SyntheticModule([], () => {}, { context, identifier: `error calculating url for ${specifier} from ${referrer?.identifier}` })
         return loadModule(childId, referrer.context, {fileContent: ''})
     }
 
     async function importModuleDynamically (context, specifier, referrer) {
-        const content = /^https?:\/\//.test(specifier) && await fetchRemoteCode(specifier)
-        const child = loadModule(calcSpecifierUrl(specifier, referrer), context, {fileContent: content })
-        child.status === 'unlinked' && await child.link(linker)
+        const resolvedId = calcSpecifierUrl(specifier, referrer)
+        if (!resolvedId) 
+            throw new Error(`Cannot resolve dynamic import '${specifier}' from '${referrer?.identifier}'`)
+    
+        const content = /^https?:\/\//.test(resolvedId) && await fetchRemoteCode(resolvedId)
+        const child = loadModule(resolvedId, context, { fileContent: content })
+        if (child.status === 'unlinked')
+            await child.link(linker)
+
         await child.evaluate()
-        return child.namespace
+        return child.namespace    
     }
 
     async function init() {

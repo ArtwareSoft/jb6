@@ -44,8 +44,6 @@ export async function startMcpServer() {
     mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolConfigs }))
 
     mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-      console.error('Received tool call request:', JSON.stringify(request, null, 2))
-      debugger
       const { name, arguments: args } = request.params 
       const result = await dsls.mcp.tool[name].$run(args)
       return result
@@ -61,17 +59,11 @@ export async function startMcpServer() {
     })
 
     mcpServer.setRequestHandler(GenericToolCallSchema, async (request) => {
-      console.error('Received generic tool call request:', JSON.stringify(request, null, 2))
-      debugger      
-      try {
-        const { name, arguments: args } = request.params
-        const result = await dsls.mcp.tool[name].$run(args)
-        return result
-      } catch (error) {
-        console.error(`Error executing tool ${name}:`, error)
-        throw error
-      }
+      const { name, arguments: args } = request.params
+      const result = await dsls.mcp.tool[name].$run(args)
+      return result
     })
+
       
     const transport = new StdioServerTransport()
     await mcpServer.connect(transport)

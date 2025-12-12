@@ -69,7 +69,8 @@ async function compileTailwindCSS(args) {
   }
   const compiler = await compile(inputCss, { base: repoRoot, loadModule, onDependency: () => {} })
   const classes = extractClassesFromHTML(html)
-  return compiler.build(classes)
+  const tailwindCss = compiler.build(classes)
+  return { tailwindCss }
 }
 
 function extractClassesFromHTML(html) {
@@ -143,7 +144,7 @@ async function tailwindHtmlToPng(args) {
     const res = await coreUtils.runNodeCliViaJbWebServer(script)
     return res.result
   }
-  const tailwindCss = await compileTailwindCSS({html})
+  const {tailwindCss} = await compileTailwindCSS({html})
   const layoutCss = `
     :root {
       color-scheme: light;
@@ -196,6 +197,7 @@ async function tailwindHtmlToPng(args) {
   const pngBuffer = await page.screenshot({type: 'png', captureBeyondViewport: false })
   await page.close()
 
-  return { imageUrl: `data:image/png;base64,${pngBuffer.toString('base64')}`, html, finalHTML }
+  const base64 = pngBuffer.toString('base64')
+  return { imageUrl: `data:image/png;base64,${base64}`, base64, html, finalHTML }
 }
 

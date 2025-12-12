@@ -82,6 +82,7 @@ function resolveDelayed(profile) {
         delete profile.$delayed
         resolveProfileArgs(profile)
     }
+    return profile
 }
 
 class JBCtx {

@@ -22,11 +22,13 @@ Test('dataTest', {
     {id: 'cleanUp', type: 'action', dynamic: true},
     {id: 'expectedCounters', as: 'single'},
     {id: 'spy', as: 'string'},
-    {id: 'includeTestRes', as: 'boolean', type: 'boolean'}
+    {id: 'logger', as: 'string', description: 'e.g dbLogger'},
   ],
-  impl: async (ctx,{}, { calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy,includeTestRes }) => {
-		const ctxToUse = ctx.vars.testID ? ctx : ctx.setVars({testID:'unknown', isTest: true})
-		const {testID,singleTest,uiTest}  = ctxToUse.vars
+  impl: async (ctx,{}, { calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy, logger }) => {
+        const loggerObj = logger && dsls.test.logger[logger] && { [logger] : dsls.test.logger[logger].$runWithCtx(ctx) } || {}
+        const testID = ctx.vars.testID || (ctx.jbCtx.creatorStack.slice(-1)[0]||'').split('~')[0]
+		const ctxToUse = ctx.setVars({testID, isTest: true, testSessionId: `test-${Date.now()}`, ...loggerObj})
+		const {singleTest}  = ctxToUse.vars
 		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 5000 : null
 		const _timeout = singleTest ? Math.max(1000,timeout) : (remoteTimeout || timeout)
 		_spy && spy.setLogs(_spy+',error')
@@ -42,8 +44,8 @@ Test('dataTest', {
 					let res
 					try {
 						res = await calculate(ctxToUse)
-					} catch (e) {
-						res = [{testFailure: e}]	
+					} catch (error) {
+						res = [{testFailure: error.stack}]	
 					}
 					const _res = await waitForInnerElements(res)
 					return _res

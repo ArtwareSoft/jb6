@@ -37,4 +37,17 @@ Test('tailwindCardTest.pngUrl', {
   })
 })
 
+Test('tailwindCardTest.badHtml', {
+  doNotRunInTests: true,
+  impl: dataTest({
+    calculate: async ctx => {
+      const html = `<div class="chat-body py-2"><div class="flex justify-end mb-4 mt-4 px-4"><div dir="auto" class="px-4 py-3 max-w-sm whitespace-pre-wrap font-sans text-base leading-6 rounded-2xl font-normal bg-gray-100 text-[undefined]">hey</div></div><div class="w-full px-4"><div style="white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; font-family: Inter, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, system-ui, sans-serif; font-size: 16px; line-height: 1.5; font-weight: 400; direction: ltr; text-align: left;"><div style="margin-bottom: 0px;"><span>Hello! How can I help you today?</span></div></div><div class="end-of-assistant-finished-response"></div></div></div>`
+      const pngUrl = await tailwindHtmlToPng({html})
+      return pngUrl
+  },
+    expectedResult: contains('data'),
+    timeout: '1000'
+  })
+})
+
 

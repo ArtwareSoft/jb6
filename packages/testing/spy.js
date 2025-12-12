@@ -1,4 +1,10 @@
-import { jb } from '@jb6/core'
+import { jb, dsls } from '@jb6/core'
+
+const { 
+    tgp: {TgpType}
+} = dsls
+  
+TgpType('logger', 'test')
 
 let enabled = false, spyParam, _obs, enrichers = []
 const logs = []

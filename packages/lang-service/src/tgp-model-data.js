@@ -104,7 +104,8 @@ export async function calcTgpModelData(resources) {
     if (!shortId)
       logError(`calcTgpModelData no id mismatch`,{ url, ...offsetToLineCol(src, decl) })
 
-    const $location = { path: url, ...offsetToLineCol(src, decl.start), to: offsetToLineCol(src, decl.end) }
+    const rUrl = resolveWithImportMap(url, importMap, staticMappings) || url
+    const $location = { path: rUrl, ...offsetToLineCol(src, decl.start), to: offsetToLineCol(src, decl.end) }
     const _comp = compDefs[tgpType](shortId, {...comp, $location})
     const jbComp = _comp[asJbComp] // remove the proxy
     delete jbComp.$
@@ -114,9 +115,8 @@ export async function calcTgpModelData(resources) {
   async function crawl(url) {
     if (visited[url]) return
     visited[url] = true
-    let rUrl = ''
     try {
-      rUrl = resolveWithImportMap(url, importMap, staticMappings) || url
+      const rUrl = resolveWithImportMap(url, importMap, staticMappings) || url
       const src = await fetchByEnv(rUrl, staticMappings, fetchByEnvHttpServer)
       codeMap[url] = src
 
