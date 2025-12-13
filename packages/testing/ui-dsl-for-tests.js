@@ -11,6 +11,8 @@ const {
 const Control = TgpType('control','ui')
 const Feature = TgpType('feature','ui')
 
+const Action = TgpType('action','ui') // check collision with common dsl
+
 TgpType('ui-action','test')
 TgpType('jbm','jbm')
 
@@ -35,8 +37,18 @@ Control('button', {
   ]
 })
 
-const button2 = Control('button2', {  
-  params: []
+Action('uiAct', {
+  impl: []
+})
+
+const button2 = Control('button2', {
+  params: [
+    {id: 'action', type: 'action<ui>', mandatory: true, dynamic: true}
+  ]
+})
+
+Control('checkActionCollision', {
+  impl: button2()
 })
 
 Control('controlWithCondition', {

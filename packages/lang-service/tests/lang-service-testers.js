@@ -167,7 +167,7 @@ Test('actionMapTest', {
     {id: 'expectedPos', as: 'string'}
   ],
   impl: dataTest({
-    calculate: ({},{},{profile, expectedType}) => getTgpModel().then(tgpModel => {
+    calculate: ({},{},{profile, expectedType, filePath}) => getTgpModel().then(tgpModel => {
       const { text, actionMap } =  (typeof profile != 'string') ? prettyPrintActionMap() : { text: profile, actionMap: []}
       const actionMapFromParse = calcProfileActionMap(text, {tgpModel, tgpType: expectedType} ).actionMap
         .map(e=>({from: e.from, to: e.to,action: e.action, source: e.source})) // for debug to match actionMap
@@ -175,7 +175,7 @@ Test('actionMapTest', {
 
       function prettyPrintActionMap() {
         const topComp = resolveProfileArgs(profile, {expectedType})
-        resolveProfileTypes(topComp, {tgpModel, expectedType, topComp})
+        resolveProfileTypes(topComp, {tgpModel, expectedType, topComp, filePath})
         return prettyPrintWithPositions(topComp, {tgpModel})      }
     }),
     expectedResult: ({ data : {actionMap, actionMapFromParse, compText}},{},{expectedPos,path}) => {

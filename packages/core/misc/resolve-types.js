@@ -13,10 +13,10 @@ function calcDslType(fullId) {
     return (fullId || '').split('>')[0] + '>'
 }
 
-export function resolveProfileTypes(prof, { astFromParent, expectedType, parent, parentParam, tgpModel, topComp, parentType, tgpPath = ''} = {}) {
+export function resolveProfileTypes(prof, { astFromParent, expectedType, parent, parentParam, tgpModel, filePath, topComp, parentType, tgpPath = ''} = {}) {
     if (!prof || !prof.constructor || ['Object','Array'].indexOf(prof.constructor.name) == -1) return prof
     const typeFromParent = expectedType == '$asParent<>' ? (parentType || calcDslType(parent?.$$)) : expectedType
-    const dynamicTypeFromParent = parentParam?.dynamicTypeFromParent?.(parent,tgpModel.dsls,topComp)
+    const dynamicTypeFromParent = parentParam?.dynamicTypeFromParent?.({parent,tgpModel,filePath})
     const fromFullId = calcDslType(prof.$$)
     const dslType = dynamicTypeFromParent || typeFromParent || fromFullId 
     if (!dslType || dslType?.indexOf('<') == -1) debugger
@@ -37,15 +37,15 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
     if (Array.isArray(prof)) {
       prof[primitivesAst] = Object.fromEntries(prof.map( (val,i) => isPrimitiveValue(val) && [i,ast?.elements[i]]).filter(Boolean))
       prof.forEach((v,i) =>resolveProfileTypes(v, { 
-        astFromParent: prof[primitivesAst][i], expectedType: dslType, parent, parentParam, topComp, tgpModel, parentType, tgpPath: [tgpPath,i].join('~')}))
+        astFromParent: prof[primitivesAst][i], expectedType: dslType, parent, parentParam, topComp, tgpModel, filePath, parentType, tgpPath: [tgpPath,i].join('~')}))
     } else if (comp && prof.$ != 'asIs') {
       ;[...(comp.params || []), ...systemParams].forEach(p=> 
           resolveProfileTypes(prof[p.id], { 
             astFromParent: prof[primitivesAst]?.[p.id], expectedType: p.$dslType, parentType: dslType, parent: prof, 
-            parentParam: p, topComp, tgpModel, tgpPath: [tgpPath,p.id].join('~')}))
+            parentParam: p, topComp, tgpModel, filePath, tgpPath: [tgpPath,p.id].join('~')}))
     } else if (!comp && prof.$) {
         logError(`resolveProfile - can not resolve ${prof.$} at ${topComp && topComp.$$} ${tgpPath} expected type ${dslType || 'unknown'}`, 
-            {tgpModel, compId: prof.$, prof, expectedType, dslType, topComp, parentType})
+            {tgpModel, filePath, compId: prof.$, prof, expectedType, dslType, topComp, parentType})
     }
     return prof
 }
@@ -152,7 +152,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, pare
   if (!id) return
   const dsls = tgpModel.dsls
   if (dslType == 'comp<tgp>')
-    return jb.dsls.tgp.tgpComp[asJbComp]
+    return dsls.tgp.tgpComp
   if (dslType) {
     const [type, dsl] = splitDslType(dslType)
     const res = dsls[dsl||'common']?.[type]?.[id]
@@ -169,7 +169,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, pare
   }
 
   const typeFromParent = parentParam?.$dslType == '$asParent<tgp>' && parentType // parentParam?.typeAsParent === true && parentType
-  const dynamicTypeFromParent = typeof parentParam?.dynamicTypeFromParent == 'function' && parentParam.dynamicTypeFromParent(parent, tgpModel.dsls)
+  const dynamicTypeFromParent = typeof parentParam?.dynamicTypeFromParent == 'function' && parentParam.dynamicTypeFromParent({parent, tgpModel, filePath: topComp.$location[0]})
   const byTypeRules = [dynamicTypeFromParent,typeFromParent,dslType].filter(x=>x).join(',').split(',').filter(x=>x)
     .flatMap(t=>moreTypesByTypeRules(t)).join(',')
 

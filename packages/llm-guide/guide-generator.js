@@ -56,6 +56,7 @@ const tgpModel = Data('tgpModel', {
   impl: async (ctx, {}, { forDsls }) => {
     const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
     try {
+      debugger
       const res = await coreUtils.calcTgpModelData({forRepo: repoRoot }) // await coreUtils.calcTgpModelData({forDsls})
       const {dsls: _dsls} = deepMapValues(res,minifyComp,filter)
       const filterDsls = Array.isArray(forDsls) ? forDsls : (forDsls||'').split(',').map(x=>x.trim()).filter(Boolean)

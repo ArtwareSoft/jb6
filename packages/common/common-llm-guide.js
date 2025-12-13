@@ -5,7 +5,7 @@ import '@jb6/llm-guide'
 
 const { 
   tgp: { Const, var: { Var } }, 
-  common: { data: { pipeline, filter, count, scrambleText }, Boolean: { and } },
+  common: { data: { pipeline, filter, count, scrambleText, join }, Boolean: { and } },
   'llm-guide': { Doclet, Booklet,
     doclet: { howTo },
     booklet: { booklet },
@@ -442,117 +442,8 @@ Doclet('advancedGroupByQuiz', {
   })
 })
 
-Doclet('buildComplexPipelineQuiz', {
-  description: 'Quiz: Build complex pipelines from business requirements using groupBy, filtering, and aggregation',
-  impl: howTo({
-    problem: problem('Challenge users to construct sophisticated pipelines from scratch, integrating multiple DSL concepts'),
-    guidance: [],
-    testLlmUnderstanding: [
-      buildQuiz({
-        requirements: `Build a sales analysis pipeline that:
-        1. Takes sales data with fields: region, amount, status
-        2. Filters for sales > $500
-        3. Groups by region
-        4. Adds count and sum for each region
-        5. Keeps only regions with more than 2 sales
-        6. Formats as "Region has X sales worth $Y"
-        7. Joins with " | " separator`,
-        context: `Const('sales', [
-          {region: "North", amount: 600, status: "completed"},
-          {region: "South", amount: 300, status: "completed"},
-          {region: "North", amount: 800, status: "completed"},
-          {region: "East", amount: 700, status: "completed"},
-          {region: "North", amount: 400, status: "pending"},
-          {region: "East", amount: 900, status: "completed"}
-        ])`,
-        scrambledSolution: '==QKpcCI8ByJo4WavpGIscCJggGdy92dgMXZsF2cgAychhGInACLpciMg4DIngiclRHbpZGIskSKnQnb19WbhdCKtV3cuAXdvJ3ZgwSKoQnb192YuAXdvJ3ZoMHcvJHUwV3bydEajlmcuVGIskyJu9WanVmcngCdvZXaQlnQ0lGbwNHIskyJwATNg4DIngiclRHbpZGIscyJoUmbpxWZwlGc',
-        scrambledHint: '=4WavpGIk5WYgQXYtJ3bmBSesxWYulmZgwycwV3bydGIyVGdslmZg4WZoRHIsMnbvlGdhdWZyd2ZhBCa0l2dgg2YpJnblBiblhGdgwCc19mcnBiblhGdgwSej5WZpNWamZWZgI3bmBCdzJXamBiclRHbpZGI6IXZi1WZtVmU'
-      }),
-      buildQuiz({
-        requirements: `Build an employee analysis pipeline:
-        1. Filter for active employees only (%active% == true)
-        2. Group by department  
-        3. Calculate count and maximum salary per department
-        4. Sort departments by max salary (highest first)
-        5. Take top 3 departments only
-        6. Format as "Department: X people, max salary $Y"`,
-        context: `Const('employees', [
-          {department: "Engineering", salary: 120000, active: true},
-          {department: "Sales", salary: 80000, active: true},
-          {department: "Engineering", salary: 95000, active: false},
-          {department: "Marketing", salary: 70000, active: true},
-          {department: "Engineering", salary: 110000, active: true},
-          {department: "Sales", salary: 85000, active: true}
-        ])`,
-        scrambledSolution: '==QKnQCI5JXYsF2cggXYtBCLlxGcvVGcgAiOnACLpMDK0NncpZGIskCKlNnclZXZyBCLpcSeyFGbhNFeh12JoQncvNHIskSKnknchxWYzdCK4FWbuAXdvJ3ZgwSKoQnb192YuAXdvJ3ZoMHcvJHUwV3bydEajlmcuVGIskyJ05WZtRnchBXZkdCK09mdpBVeCRXasB3cgwSKnUWdyRHI90DIngiclRHbpZGIscyJoUmbpxWZwlGc',
-        scrambledHint: '=MHdsV3clJHIn5Wa0lWbpxGIk5WYgwyckxWZpZGIkVGdhxWdjxWYjBSeiByZulGdy92cgwycu9Wa0FmclB3bgknQwV3bydGI6QXdvJWYgsmbphGV'
-      }),
-      buildQuiz({
-        requirements: `Create an advanced order analysis pipeline:
-        1. Filter for completed orders from 2024 onwards using and() logic
-        2. Group by month
-        3. Calculate count, total revenue, and customer list per month
-        4. Keep only months with revenue > $10,000
-        5. Sort by revenue (highest first)
-        6. Return the grouped data objects (no string formatting)`,
-        context: `Const('orders', [
-          {month: "Jan", status: "completed", date: "2024-01-15", total: 5000, customer: "A"},
-          {month: "Jan", status: "completed", date: "2024-01-20", total: 8000, customer: "B"},
-          {month: "Feb", status: "completed", date: "2024-02-10", total: 12000, customer: "C"},
-          {month: "Jan", status: "pending", date: "2024-01-25", total: 3000, customer: "D"}
-        ])`,
-        scrambledSolution: '==QKpgSZzJXZ2VmcgwSKn0WdzdCK0J3bzBCLpcCMwADMxAiPgcCKyVGdslmZgwSKpcycyVWbvR3c1N2JgwyJyVWbvR3c1N2Jo4WavpmLwV3bydGIskyJsFGdvR3Jo0Wdz5Cc19mcnBCLpgCduV3bj5Cc19mcnhycw9mcQBXdvJ3RoNWay5WZgwSKngGdu9WbngCdvZXaQlnQ0lGbwNHIskSKnISMw0SMw0CNyAjMiAiPgcCIsciIkVGdlxGct92YiASP9AyJoQmbhhiclRHbpZGIscyJoUmbpxWZwlGc',
-        scrambledHint: '==wZulWbh5GI5RnclB3byBHIy9mZgIXZ0VWbhJXYwByJzF2Jg4WYgMHZlVmbgkCKul2bq5Cc19mcnBiclJWbl1WZyBCLz52bpRXak52bjBSZsBXa0xWdtBicvZGIpgCZuFGIlNXV'
-      }),
-      buildQuiz({
-        requirements: `Build a product category analysis pipeline:
-        1. Filter products under $100
-        2. Group by category
-        3. Get count and list of product names per category (use proper group.join syntax)
-        4. Keep categories with 3+ products
-        5. Sort by count (ascending order)
-        6. Format as "Category: product1,product2,product3"`,
-        context: `Const('products', [
-          {category: "Electronics", price: 50, name: "Mouse"},
-          {category: "Books", price: 20, name: "Novel"},
-          {category: "Electronics", price: 80, name: "Keyboard"},
-          {category: "Electronics", price: 120, name: "Monitor"},
-          {category: "Books", price: 15, name: "Guide"},
-          {category: "Books", price: 25, name: "Manual"},
-          {category: "Clothing", price: 30, name: "Shirt"}
-        ])`,
-        scrambledSolution: '==QKnAiOnACLpcCduV3bjdCK0J3bzBCLpcyMg0jPgcCKyVGdslmZgwSKpcycl1WYOR3Y1R2byB3JgwyJl1WYudCKul2bq5Cc19mcnBCLpgCduV3bj5Cc19mcnhycw9mcQBXdvJ3RoNWay5WZgwSKnkncvdWZ0F2YngCdvZXaQlnQ0lGbwNHIskyJwATMgwDIngiclRHbpZGIscyJoUmbpxWZwlGc'
-      }),
-      buildQuiz({
-        requirements: `Performance optimization challenge - Build the MOST EFFICIENT pipeline:
-        1. Large dataset of 10,000+ sales records
-        2. Only interested in "electronics" category  
-        3. Group by sales representative
-        4. Calculate count and total amount for each rep
-        5. Keep reps with 10+ sales
-        6. Sort by total revenue (highest first)
-        
-        CRITICAL: Optimize for performance with large datasets`,
-        context: 'Large dataset with fields: category, rep, amount, date',
-        scrambledSolution: '=kSKoU2cyVmdlJHIskyJtV3cngCdy92cgwSKnATMg0jPgcCKyVGdslmZgwSKpcCduV3btF2Jo0Wdz5Cc19mcnBCLpgCduV3bj5Cc19mcnhycw9mcQBXdvJ3RoNWay5WZgwSKnAXZydCK09mdpBVeCRXasB3cgwSKnIycjlmbvJHdjVGblJCI90DIngiclRHbpZGIscyJoUmbpxWZwlGc',
-        scrambledHint: 'hRXYkByczVGbgM3clN2byBHIvRHIn5WawV3bydGIFJ1TGVkQgkncvdWZ0F2YgI3bmBiclRHbpZGIzlXY3xWQgESesJXYlBiclRHbpZEI6QHanl2culGI5V2S'
-      }),
-      explainConceptQuiz({
-        prompt: 'What are the key principles for building efficient groupBy pipelines? Explain the optimal operation sequence and why order matters.',
-        scrambledKeyPoints: '==QKl1WYudCK09mdpBVeCRXasB3cgknctlmY1R2bsBSZuFGI09mdtl2JpcCZhVWZyJGI5RnclRHIhRXYkBSemlmclZHI09mdpBVe0VGdhRWZyBCL5F2cuVGcn5WZ0BHI09WZ252bm5WSgE2Yy9GcgUmcvBHI6cmbpJWZ05WZgk3YuhWa05WZgI3YlJGI5NmblhGdgEGdhRGI',
-        scrambledScoringCriteria: 'Filter early for performance, proper sequence (filter→group→enrich→filter→sort), understanding of data flow, performance considerations for large datasets'
-      }),
-      explainConceptQuiz({
-        prompt: 'Explain the difference between filtering before vs after groupBy operations. When should you use each approach?',
-        scrambledKeyPoints: '=4WavpGIk5WYgUGchRGI5ZWayVmdgUGdpd2bsBSZyFGdz9GI0NXZ0BCLu9Wa0FGdhJXZgUGdpN3bw12YgE2Yy9GcgUmcvBHI6cmcl5WZpR3YsBiclRHbpZGI6UGdld2bkBCdhhGdgUGbllmZgM3clN2byBHI0V2ZgcXZuVmdvdHIhRXYkBSeul2Y1RWZyBi',
-        scrambledScoringCriteria: 'Understanding of performance implications, correct use cases for each approach, data volume considerations, logical vs performance filtering'
-      })
-    ]
-  })
-})
-
 Booklet('commonDslQuizzes', {
-  impl: booklet('learningMethodologyQuiz,snippetDebuggingQuiz,dslLandscapeQuiz,pipelineFundamentalsQuiz,filteringOperationsQuiz,aggregationOperationsQuiz,advancedGroupByQuiz,buildComplexPipelineQuiz')
+  impl: booklet('learningMethodologyQuiz,snippetDebuggingQuiz,dslLandscapeQuiz,pipelineFundamentalsQuiz,filteringOperationsQuiz,aggregationOperationsQuiz,advancedGroupByQuiz')
 })
 
 Booklet('commonDslBooklet', {

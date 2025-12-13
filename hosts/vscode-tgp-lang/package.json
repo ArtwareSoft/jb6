@@ -2,7 +2,7 @@
   "name": "jb6-tgp-lang",
   "displayName": "jb6 TGP Language",
   "description": "TGP language service and probe activation",
-  "version": "2512.12.1",
+  "version": "2512.12.14",
   "publisher": "artwaresoft",
   "license": "MIT",
   "engines": {
@@ -18,9 +18,9 @@
   ],
   "dependencies": {
     "@jb6/repo": "file:lib/jb6-repo-1.0.0.tgz",
-    "@jb6/core": "file:lib/jb6-core-1.251212.0.tgz",
-    "@jb6/lang-service": "file:lib/jb6-lang-service-1.251212.0.tgz",
-    "@jb6/react": "file:lib/jb6-react-1.251212.0.tgz"
+    "@jb6/core": "file:lib/jb6-core-1.251213.0.tgz",
+    "@jb6/lang-service": "file:lib/jb6-lang-service-1.251213.0.tgz",
+    "@jb6/react": "file:lib/jb6-react-1.251213.0.tgz"
   },
   "scripts": {},
   "main": "csj-starter.js",

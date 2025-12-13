@@ -15,7 +15,7 @@ Data('langService.completionItems', {
     ],
     impl: async (ctx, {}, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { actionMap, compText, compPos, errors, cursorPos, compId, tgpModel, comp } = compProps
+        const { actionMap, compText, compPos, errors, cursorPos, compId, tgpModel, comp, filePath } = compProps
         let items = [], title = '', paramDef
 
         if (actionMap) {
@@ -35,7 +35,7 @@ Data('langService.completionItems', {
             title = prettyPrint(errors)
         }
 
-        const formattedCompText = prettyPrintComp(comp, { initialPath: compId, tgpModel })
+        const formattedCompText = prettyPrintComp(comp, { initialPath: compId, tgpModel, filePath })
         if (formattedCompText != compText) {
             const reformatEdits = deltaFileContent(compText, formattedCompText , compPos)
             const item = {
@@ -120,7 +120,7 @@ Data('langService.editAndCursorOfCompletionItem', {
   impl: async (ctx, {}, {item}) => {
     if (item.edit) return item
     if (!item.compProps) return {}
-    const { text, compId, comp, compPos, tgpModel } = item.compProps
+    const { text, compId, comp, compPos, tgpModel, filePath } = item.compProps
     const itemProps = item.extend ? { ...item, ...item.extend() } : item
     const { op, path, resultPath, whereToLand } = itemProps
 
@@ -128,7 +128,7 @@ Data('langService.editAndCursorOfCompletionItem', {
     calcPath(opOnComp,path.split('~').slice(1),op) // create op as nested object
     const newComp = update(comp,opOnComp)
     resolveCompArgs(newComp,{tgpModel})
-    const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
+    const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel, filePath })
     const edit = deltaFileContent(text, newcompText , compPos)
 
     const cursorPos = itemProps.cursorPos || calcNewPos(newcompText)
@@ -150,7 +150,7 @@ Data('langService.deleteEdits', {
     ],
     impl: async (ctx, {}, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { reformatEdits, text, comp, compPos, compId, errors, path, tgpModel, lineText } = compProps
+        const { reformatEdits, text, comp, compPos, compId, filePath, path, tgpModel, lineText } = compProps
         if (reformatEdits)
             return { errors: ['delete - bad format'], ...compProps }
 
@@ -166,7 +166,7 @@ Data('langService.deleteEdits', {
 
         const newComp = update(comp,opOnComp)
         resolveCompArgs(newComp,{tgpModel})
-        const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
+        const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel, filePath })
         const edit = deltaFileContent(text, newcompText , compPos)
         
         return { edit, cursorPos: calcNewPos(newcompText), hash: calcHashNoTitle(text) }
@@ -189,7 +189,7 @@ Data('langService.duplicateEdits', {
     ],
     impl: async (ctx, {}, { compTextAndCursor }) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { reformatEdits, text, shortId, comp, compPos, compId, errors, path, tgpModel, lineText } = compProps
+        const { reformatEdits, text, shortId, comp, compPos, compId, filePath, path, tgpModel, lineText } = compProps
         if (reformatEdits)
             return { errors: ['duplicate - not in array'], ...compProps }
 
@@ -201,14 +201,14 @@ Data('langService.duplicateEdits', {
             const toAdd = cloneProfile(calcPath(comp,pathAr))
             calcPath(opOnComp,pathAr.slice(0, -1),{$splice: [[indexInArray, 0, toAdd]] })    
             const newComp = update(comp,opOnComp)
-            const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
+            const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel, filePath })
             const edit = deltaFileContent(text, newcompText , compPos)
             log('lang services duplicate', { edit, ...compProps })
             const targetPath = [compId,...pathAr.slice(0, -1),indexInArray+1].join('~')
             return { edit, cursorPos: calcNewPos(targetPath, newcompText), hash: calcHashNoTitle(text) }
         } else if (path.indexOf('~') == -1) { // duplicate component
             const noOfLines = (text.match(/\n/g) || []).length+1
-            const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
+            const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel, filePath })
             const edit = deltaFileContent('', newcompText, compPos+noOfLines)
             log('lang services duplicate comp', { edit, ...compProps })
             return { edit, cursorPos: {line: compPos+noOfLines+1, col: 0}}
@@ -250,7 +250,7 @@ Data('langService.moveInArrayEdits', {
     ],
     impl: async (ctx, {}, {diff, compTextAndCursor}) => {
         const compProps = await calcCompProps(compTextAndCursor)
-        const { reformatEdits, compId, compPos, actionMap, text, path, comp, tgpModel } = compProps
+        const { reformatEdits, compId, compPos, actionMap, text, path, comp, tgpModel, filePath } = compProps
         if (!reformatEdits && actionMap) {
             const rev = path.split('~').slice(1).reverse()
             const indexOfElem = rev.findIndex(x => x.match(/^[0-9]+$/))
@@ -265,7 +265,7 @@ Data('langService.moveInArrayEdits', {
                 const opOnComp = {}
                 calcPath(opOnComp,arrayPath,op) // create opOnComp as nested object
                 const newComp = update(comp,opOnComp)
-                const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel })
+                const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel, filePath })
                 const edit = deltaFileContent(text, newcompText , compPos)
                 log('tgpTextEditor moveInArray', { op, edit, ...compProps })
 
@@ -279,7 +279,7 @@ Data('langService.moveInArrayEdits', {
         return { errors: ['moveInArray - array elem was not found'], ...compProps }
 
         function calcNewPos(path, compText) {
-            const { line, col } = getPosOfPath(path, 'begin',{compText, tgpModel})
+            const { line, col } = getPosOfPath(path, 'begin',{compText, tgpModel, filePath})
             if (!line && !col)
                 return logError('moveInArray can not find path', { path })
             return { line: line + compPos.line, col }

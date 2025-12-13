@@ -7,7 +7,7 @@ const {
     tgp: { Const, TgpType,
       var : { Var } 
     },
-    common: { Data, Action, Boolean,
+    'common': { Data, Action, Boolean,
       data: { pipeline, cmpA, filter, join, property, obj, delay, asIs }, 
       Boolean: { contains, equals },
       Prop: { prop }

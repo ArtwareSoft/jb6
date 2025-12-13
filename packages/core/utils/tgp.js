@@ -3,7 +3,7 @@ import './core-utils.js'
 const { coreUtils } = jb
 const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError } = coreUtils
 
-Object.assign(coreUtils, { globalsOfType, ptsOfType, toCapitalType })
+Object.assign(coreUtils, { globalsOfType, ptsOfType, toCapitalType, findCompDefById, CompDefByDslType })
 
 const CompDef = comp => jbCompProxy(new jbComp(resolveProfileTop(comp)))
 
@@ -22,7 +22,7 @@ const tgpComp = CompDef({ // bootstraping
     {id: 'doNotRunInTests', as: 'boolean' },
     {id: 'circuit', as: 'string' },
     {id: 'params', type: 'param[]'},
-    {id: 'impl', dynamicTypeFromParent: (parent, dsls) => dsls.tgp.comp[parent.$]?.dslType, mandatory: true},
+    {id: 'impl', type: '$asParent<tgp>', mandatory: true }
   ]
 })
 
@@ -181,6 +181,22 @@ function globalsOfType(tgpType) { // not via tgpModel
 
 function ptsOfType(tgpType) { // not via tgpModel
   return Object.keys(tgpType).map(x=>tgpType[x]).map(x=>x[asJbComp]).filter(x=>x).filter(x=>(x.params || []).length).map(({id})=>id.split('>').pop())
+}
+
+function findCompDefById({id, tgpModel, filePath}) {
+  if (!filePath)
+    return Object.values(tgpModel.dsls).flatMap(dsl=>Object.values(dsl)).find(t=>t.capitalLetterId == id)
+  if (filePath[0] != '/') debugger
+  return tgpModel.compDefsByFilePaths[filePath][id]
+}
+
+function CompDefByDslType({dslType, tgpModel, filePath}) {
+  if (!filePath) {
+    const dsl = dslType.match(/<([^.>]*)>/)[1]
+    return Object.entries(tgpModel.dsls[dsl]).find(x=>x[1]?.dslType == dslType)?.[0]
+  }
+
+  return Object.entries(tgpModel.compDefsByFilePaths[filePath]).find(x=>x[1]?.dslType == dslType)?.[0]
 }
 
 Data('asIs', {

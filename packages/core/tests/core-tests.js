@@ -263,7 +263,7 @@ Test('expTest.expWithArrayVar', {
 Test('prettyPrintTest.comp', {
   impl: dataTest({
     calculate: () => prettyPrintComp(dsls.test.test['coreTest.asyncVar'], {tgpModel: jb} ),
-    expectedResult: equals(asIs(`tgpComp('coreTest.asyncVar', {
+    expectedResult: equals(asIs(`Test('coreTest.asyncVar', {
   impl: dataTest(pipeline(Var(), Var(), '%$a%,%$b%'), equals('3,5'))
 })`))
   })

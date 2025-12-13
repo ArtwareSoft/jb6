@@ -2,7 +2,7 @@ import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/resolve-types.js'
 
 const { resolveCompArgs, resolveProfileArgs, resolveProfileTypes, sysProps, resolveProfileTop, OrigArgs,
-  jbComp, asJbComp, isPrimitiveValue, asArray, calcValue, compIdOfProfile, compByFullId, resolveDelayed } = coreUtils
+  jbComp, asJbComp, isPrimitiveValue, asArray, calcValue, compIdOfProfile, compByFullId, CompDefByDslType } = coreUtils
 const {
   common: { Data }
 } = dsls
@@ -22,17 +22,19 @@ Data('prettyPrint', {
 const emptyLineWithSpaces = Array.from(new Array(200)).map(_=>' ').join('')
 
 function prettyPrintComp(comp,settings={}) {
-  const { tgpModel } = settings
+  const { tgpModel, filePath } = settings
   comp = comp[asJbComp] ? comp[asJbComp] : comp
   const originalParams = comp.params ? (comp.params || []).map(p=>({...p})) : undefined
-  const { type, dsl } = typeof comp.$ == 'string' ? tgpModel.dsls.tgp.comp[comp.$] : comp
-  Object.assign(comp, {type,dsl})
   resolveProfileTop(comp)
-  delete comp.type; delete comp.dsl
   const resolvedParams = comp.params || []
-  comp.params = originalParams
-
-  return prettyPrintWithPositions(comp,{...settings, resolvedParams}).text
+  const id = CompDefByDslType({tgpModel, filePath, dslType: comp.$dslType })
+  const compToPrint = {
+    ...comp, params: originalParams,
+    $: new jbComp({...jb.dsls.tgp.tgpComp[coreUtils.asJbComp], $dslType: comp.$dslType, id }), 
+    type: undefined, dsl: undefined
+  }
+  
+  return prettyPrintWithPositions(compToPrint,{...settings, resolvedParams}).text
 }
 
 function prettyPrint(val,settings = {}) {
@@ -44,7 +46,7 @@ function compHeader(compId) {
   return `component('${compId.split('>').pop()}', `
 }
 
-function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros, tgpNoMacros, singleLine, depth, tgpModel, type, resolvedParams} = {}) {
+function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros, tgpNoMacros, singleLine, depth, tgpModel, type, resolvedParams, filePath} = {}) {
   noMacros = noMacros || tgpNoMacros
   val = (val && val[asJbComp]) || val
   const props = {}
@@ -226,7 +228,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       const index = path.match(/([0-9]+)~defaultValue$/)[1]
       const resolvedParam = resolvedParams[index]
       const topComp = compByFullId(path.split('~')[0], tgpModel)
-      resolveProfileTypes(profile, {tgpModel, expectedType: resolvedParam.$dslType, topComp})
+      resolveProfileTypes(profile, {tgpModel, expectedType: resolvedParam.$dslType, topComp, filePath})
     }
 
     if (profile.$comp) {

@@ -1,6 +1,6 @@
 import { parse } from '../lib/acorn-loose.mjs'
 import { coreUtils } from '@jb6/core'
-const { jb, systemParams, astToTgpObj, astNode, logException, logError, resolveProfileTop, asJbComp, resolveProfileArgs,
+const { jb, systemParams, astToTgpObj, astNode, logException, logError, findCompDefById,
     resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType } = coreUtils
 
 export const langServiceUtils = jb.langServiceUtils = { closestComp, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath, 
@@ -42,20 +42,20 @@ function lineColToOffset(text, { line, col }) {
     return res
 }
 
-function getPosOfPath(path, _where = 'edit', { compText, tgpModel } = {}) { // edit,begin,end,function
-    const { actionMap, text } = calcProfileActionMap(compText, {tgpModel, expectedPath: path})
+function getPosOfPath(path, _where = 'edit', { compText, tgpModel, filePath } = {}) { // edit,begin,end,function
+    const { actionMap, text } = calcProfileActionMap(compText, {tgpModel, filePath, expectedPath: path})
     const item = asArray(_where).reduce((acc,where) => acc || actionMap.find(e => e.action == `${where}!${path}`), null)
     if (!item) return { line: 0, col: 0 }
     return offsetToLineCol(text, item.from )
 }
 
-function filePosOfPath(tgpPath, {tgpModel}) {
+function filePosOfPath(tgpPath, {tgpModel, filePath}) {
     const compId = tgpPath.split('~')[0]
     const loc = compByFullId(compId, tgpModel).$location
     if (!loc) return
     const path = loc.path
     const compLine = (+loc.line) || 0
-    const { line, col } = getPosOfPath(tgpPath, 'begin', {tgpModel})
+    const { line, col } = getPosOfPath(tgpPath, 'begin', {tgpModel, filePath})
     return { path, line: line + compLine, col }
 }
 
@@ -82,29 +82,35 @@ function deltaFileContent(compText, newCompText, compPos) {
     }
 }
 
-function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inCompOffset = -1, expectedPath = ''}) {
+function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePath, inCompOffset = -1, expectedPath = ''}) {
     const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
     if (!topComp)
         return { text: compText, comp: topComp, actionMap: [], error: 'syntax error' }
-    try {
-        resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp, tgpPath: topComp?.id})
-    } catch (error) {
-        return { text: compText, comp: topComp, actionMap: [], error }
-    }
-    let compId = '', dslTypeId
-    if (tgpType == 'comp<tgp>' && topComp?.id) { // set compId and add to comps registry
-//        log('calcProfileActionMap', compText, topComp)
-        const typeId = topComp.$
-        if (!tgpModel.dsls.tgp.comp[typeId]) {
-            globalThis.showUserMessage && globalThis.showUserMessage('error', `${typeId} not found`)
-            return { text: compText, compId, comp: topComp, actionMap: [], path: '' }
-        }
-        const dslType = tgpModel.dsls.tgp.comp[topComp.$].dslType
+    let compId = '', dslTypeId, compDef
+    if (tgpType == 'comp<tgp>') {
+        compDef = findCompDefById({id: topComp.$, tgpModel, filePath})
+        topComp.id = topComp[astNode].expression.arguments[0].value
+        topComp.$ = jb.dsls.tgp.tgpComp[coreUtils.asJbComp]
+        const dslType = compDef.dslType
         compId = `${dslType}${topComp.id}`
         const [ type, dsl ] = splitDslType(dslType)
         dslTypeId = [ dsl, type, topComp.id]
-        tgpModel.dsls[dsl][type][topComp.id] = topComp
+        Object.assign(topComp, {$dslType: dslType, $$: compId, type, dsl})
+        topComp.$originalParams = topComp.params ? (topComp.params || []).map(p=>({...p})) : undefined // for pretty print
+        try {
+            resolveProfileTypes(topComp, {tgpModel, expectedType: dslType, topComp, tgpPath: topComp?.id, filePath})
+        } catch (error) {
+            return { text: compText, comp: topComp, actionMap: [], error }
+        }
+        tgpModel.dsls[dsl][type][topComp.id] = topComp    
+    } else {
+        try {
+            resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp, tgpPath: topComp?.id})
+        } catch (error) {
+            return { text: compText, comp: topComp, actionMap: [], error }
+        }
     }
+
     const actionMap = []
 
     calcActionMap(topComp, compId, topComp[astNode])
@@ -112,7 +118,7 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, inComp
         .map(x => x.action.split('!').pop())
         .reduce((longest, current) => current.length > longest.length ? current : longest, '');
 
-    return { text: compText, compId, comp: topComp, actionMap, path, dslTypeId }
+    return { text: compText, compId, comp: topComp, actionMap, path, dslTypeId, compDef }
 
     function calcActionMap(prof,path,ast) {
         const pathMatch = expectedPath.startsWith(path) || path.startsWith(expectedPath)

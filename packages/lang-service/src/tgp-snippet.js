@@ -18,6 +18,7 @@ async function calcSnippetScript({profileText, setupCode = '', forBrowser, repoR
   const compNames = compNamesInProfile(profileText)
   const comps = Object.values(tgpModel.dsls).flatMap(type=>Object.values(type)).filter(x=>typeof x == 'object').flatMap(x=>Object.values(x))
     .filter(x => compNames.includes(x.id))
+  
   const { type } = comps.find(c=> c.id === compNames[0]) || { type: 'data' }
   const profText = comps.length ? profileText : JSON.stringify(profileText) 
   const origCompText = `${toCapitalType(type)}('noName',{impl: ${profText}})`    
@@ -29,12 +30,12 @@ async function calcSnippetScript({profileText, setupCode = '', forBrowser, repoR
     compText = parts.join('')
   }
   
-  const {dslTypeId, path: probePath, comp, error} = parseProfile({compText, tgpModel, inCompOffset : parts?.[0].length})
+  const {dslTypeId, path: probePath, comp, compDef, error} = parseProfile({compText, tgpModel, inCompOffset : parts?.[0].length})
   if (error)
     return { error, compText, isProbeMode, origCompText }
   if (!comp.id)
     return { error : 'runSnippet: profileText must be prefixed with type<dsl>. e.g. test<test>:dataTest(...)' }
-  const dslsSection = calcDslsSection([comp])
+  const dslsSection = calcDslsSection([comp],compDef)
   const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
 
   const dslsEntryPoints = await discoverDslEntryPoints({ forDsls: unique(comps.map(c=>c.dsl)), repoRoot})   // repoRoot for genieTest
@@ -68,7 +69,7 @@ export async function calc() {
 
   function parseProfile({compText,tgpModel,inCompOffset}) {
     try {
-      return calcProfileActionMap(compText, {tgpType: 'comp<tgp>', tgpModel, inCompOffset})
+      return calcProfileActionMap(compText, {tgpModel, inCompOffset})
     } catch(error) {
       return { error }
     }
@@ -109,16 +110,19 @@ async function runSnippet(args) {
   }
 }
 
-function calcDslsSection(comps) {
-    const _items = [['data', 'common', 'asIs']] // should be const
-    const defaultCompDefs = [{ dsl: 'tgp', id: 'Const'}, { dsl: 'common', id: 'Data'}]
-    const compDefs = [...defaultCompDefs, ...comps.filter(comp=>comp.impl?.$$).map(comp=>({ dsl: comp.impl?.$$?.match(/([^<]+)<([^>]+)>(.+)/)[2], id: comp.$ }))]
+function calcDslsSection(comps, compDef) {
+    const _items = [['data', 'common', 'asIs']]
+    const compDefs = [{ dsl: 'tgp', id: 'Const'}, { dsl: compDef.dsl, id: compDef.capitalLetterId }] // { dsl: 'common', id: 'Data'}]
+    // const compDefs = [...defaultCompDefs, ...comps.filter(comp=>comp.impl?.$$)
+    //   .filter(comp=>typeof comp.$ == 'string')
+    //   .map(comp=>({ dsl: comp.impl?.$$?.match(/([^<]+)<([^>]+)>(.+)/)[2], id: comp.$ }))]
     comps.forEach(calcItems)
     const items = unique(_items.filter(x=>x))
     const ns = unique(items.filter(item=>item[2].indexOf('.') != -1).map(item =>item[2].split('.')[0]))
+    const dsls = unique([...items.map(x=>x[1]), ...compDefs.map(c=>c.dsl) ] ).sort()
     const ns_str = ns.length ? `const { ${ns.join(', ')} } = ns` : ''
 
-    const dsls = unique(items.map(x=>x[1])).sort().map(dsl=>{
+    const dslsStr = dsls.map(dsl=>{
         const types = unique(items.filter(x=>x[1] == dsl).map(x=>x[0])).sort().map(type=> {
             const comps = unique(items.filter(x=>x[1] == dsl && x[0] == type).map(x=>x[2])).filter(x=>x.indexOf('.') == -1).sort().join(', ')
             const typeStr = type.indexOf('-') == -1 ? type : `'${type}'`
@@ -130,11 +134,11 @@ function calcDslsSection(comps) {
         const dslStr = dsl.indexOf('-') == -1 ? dsl : `'${dsl}'`
         return `\t${dslStr}:{ ${compDefsStr}\n\t\t${types}\n\t}`
     }).join(',\n')
-    return [`const {\n${dsls}\n} = dsls`, ns_str].filter(Boolean).join('\n')
+    return [`const {\n${dslsStr}\n} = dsls`, ns_str].filter(Boolean).join('\n')
 
 
     function calcItems(node) {
-        if (node.$$) _items.push(node.$$.match(/([^<]+)<([^>]+)>(.+)/).slice(1))
+        if (typeof node.$$ == 'string') _items.push(node.$$.match(/([^<]+)<([^>]+)>(.+)/).slice(1))
         if (typeof node == 'object') Object.values(node).filter(x=>x).forEach(x=>calcItems(x))
     }
 }

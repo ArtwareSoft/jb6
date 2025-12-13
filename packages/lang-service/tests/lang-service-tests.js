@@ -43,6 +43,27 @@ __    ]
   })
 })
 
+Test('completionTest.typeCollision', {
+  impl: completionOptionsTest(`uiTest(button2(__TBD()))`, ['uiAct'])
+})
+
+Test('completionTest.simple', {
+  impl: completionOptionsTest(`uiTest(__)`, ['control'])
+})
+
+Test('completionTest.lastItemInArray', {
+  impl: completionOptionsTest({
+    compText: `reactTest(() => {}, contains('Clicked!'), {
+    userActions: [
+      waitForSelector('aaaaaaaaaaaaaaaaaaaaaa'),
+      click()__
+__    ]
+  })`,
+    expectedSelections: ['click','click'],
+    filePath: 'packages/react/tests/react-tests.js'
+  })
+})
+
 Test('completionTest.pt', {
   impl: completionOptionsTest({
     compText: `uiTest(group(__text('__hello world'), __text('2'__)__), __contains('hello world','2'))`,
@@ -504,6 +525,7 @@ Test('completionActionTest.keepName', {
 Test('completionActionTest.defaultValueWithDslType', {
   impl: completionActionTest(`ALL:Control('ctrl1', __{ params: [{id: 'f', type: 'feature', defaultValue: method()}] })`, {
     completionToActivate: '🔄 reformat',
+    filePath: 'packages/testing/ui-dsl-for-tests.js',
     expectedEdit: asIs({
         range: {start: {line: 0, col: 18}, end: {line: 0, col: 80}},
         newText: `\n  params: [\n    {id: 'f', type: 'feature', defaultValue: method()}\n  ]\n`

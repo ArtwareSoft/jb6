@@ -8,7 +8,7 @@ const {
   },
 } = dsls
 
-TgpType('group-prop','common')
+const GroupProp = TgpType('group-prop','common')
 
 Aggregator('splitByPivot', {
   params: [
@@ -30,10 +30,6 @@ Data('enrichGroupProps', {
   ],
   impl: (ctx, {}, {props}) => props.flatMap(x=>asArray(x)).reduce((item,prop) => ({...item, ...prop.enrichGroupItem(item)}), ctx.data )
 })
-
-const { GroupProp,
-  data : {splitByPivot, groupProps}
-} = dsls.common
 
 // Aggregator('groupBy', {
 //   params: [

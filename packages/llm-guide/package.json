@@ -1,13 +1,13 @@
 {
   "name": "@jb6/llm-guide",
-  "version": "1.251212.0",
+  "version": "1.251213.0",
   "type": "module",
   "exports": {
     ".": "./index.js",
     "./*.js": "./*.js"
   },
   "dependencies": {
-    "@jb6/core": "1.251212.0"
+    "@jb6/core": "1.251213.0"
   },
   "repository": {
     "type": "git",
