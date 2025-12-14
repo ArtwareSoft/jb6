@@ -163,26 +163,23 @@ async function tailwindHtmlToPng(args) {
   await page.setRequestInterception(true)
   page.on('request', r => r.abort())
 
-  await page.setViewport({ width: width + 3, height: 400, deviceScaleFactor: 1 })
   await page.setContent(finalHTML, { waitUntil: 'domcontentloaded' })
 
   const height = await page.evaluate(() => {
-    const root = document.getElementById('root')
-    if (!root) return 400
-    const rect = root.getBoundingClientRect()
-    // bottom = top + height (includes padding)
+    const rect = document.body.getBoundingClientRect()
     return Math.ceil(rect.bottom)
   })
 
   // Resize to fit content exactly
   await page.setViewport({
     width: width + 3,
-    height: Math.max(200, height),
+    height: Math.max(200, height) + paddingBottom,
     deviceScaleFactor: 1
   })
 
   const pngBuffer = await page.screenshot({type: 'png', captureBeyondViewport: false })
-  await page.close()
+  try { await page.close() } catch {}
+  try { await browser.disconnect() } catch {}
 
   const base64 = pngBuffer.toString('base64')
   return { imageUrl: `data:image/png;base64,${base64}`, base64, html, finalHTML }
