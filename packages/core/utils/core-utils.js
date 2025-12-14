@@ -382,21 +382,32 @@ function calcHash(str) {
   return hash
 }
 
-async function writeServiceResult(result,_httpReqId) {
+async function writeServiceResult(result, _httpReqId) {
   const httpReqId = _httpReqId || globalThis.httpReqId
-  if (httpReqId) {
-    httpRequests[httpReqId].res.json(result)
-    return
-  }
+  if (httpReqId)
+    return httpRequests[httpReqId].res.json(result)
+
   const res = JSON.stringify(result, null, 2)
   const writeRes = process.stdout.write(res)
+
   if (res.length < 40000)
-    process.exit(0)
+    return process.exit(0)
+
   const { once } = await import('events')
+  const withTimeout = (p, ms, label) =>
+    Promise.race([
+      p,
+      new Promise((_, r) =>
+        setTimeout(() => r(new Error(`timeout waiting for ${label}`)), ms)
+      )
+    ])
+
   if (!writeRes)
-    await once(process.stdout, 'drain')
+    await withTimeout(once(process.stdout, 'drain'), 5000, 'drain')
+
   process.stdout.end()
-  await once(process.stdout, 'finish')
+  await withTimeout(once(process.stdout, 'finish'), 5000, 'finish')
+
   process.exit(0)
 }
 

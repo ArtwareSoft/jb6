@@ -129,7 +129,7 @@ async function ensureChromeDaemon(chromeBin) {
 }
 
 async function tailwindHtmlToPng(args) {
-  const { html, width = 400, paddingBottom = 10 } = args
+  const { html, width = 400, paddingBottom = 10, layoutCss: layoutCssOverride } = args
 
   if (!coreUtils.isNode) {
     const script = `
@@ -145,24 +145,11 @@ async function tailwindHtmlToPng(args) {
     return res.result
   }
   const {tailwindCss} = await compileTailwindCSS({html})
-  const layoutCss = `
-    :root {
-      color-scheme: light;
-    }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #ffffff;
-    }
-    #root {
-      box-sizing: border-box;
-      max-width: ${width}px;
-      margin: 0 auto;
-      padding: 16px 16px ${paddingBottom}px;
-      /* optional: make it feel like a card */
-      /* background: #ffffff; */
-    }
-  `
+  const layoutCss = layoutCssOverride || `* { box-sizing: border-box; }
+  html, body { width: ${width}px; margin: 0; padding: 0; overflow-x: hidden; }
+  body { padding-bottom: ${paddingBottom}px; }
+  .chat-body, .w-full, .max-w-sm { max-width: 100%; }
+  button { max-width: 100%; }`
   const finalHTML = `<!doctype html><html><head><meta charset="utf-8"><style>${layoutCss}\n${tailwindCss}</style></head>${html}</html>`
 
   const puppeteer = (await import('puppeteer-core')).default
