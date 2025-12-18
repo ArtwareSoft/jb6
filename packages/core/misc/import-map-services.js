@@ -12,7 +12,7 @@ Object.assign(coreUtils, { getStaticServeConfig, calcImportData, resolveWithImpo
 
 const ignoreDirs = [ 'node_modules', '3rd-party', '.git'] 
 async function calcRepoRoot(options) {
-  if (jb.coreRegistry.repoRoot) return jb.coreRegistry.repoRoot
+  if (jb.coreRegistry.repoRoot || globalThis.__repoRoot) return jb.coreRegistry.repoRoot || globalThis.__repoRoot
 
   if (globalThis.VSCodeWorkspaceProjectRoot)
     return jb.coreRegistry.repoRoot = globalThis.VSCodeWorkspaceProjectRoot

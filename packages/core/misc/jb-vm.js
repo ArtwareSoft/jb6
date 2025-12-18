@@ -38,7 +38,7 @@ async function getOrCreateVm(options) {
         return safeResolveURL(resolved.startsWith('file://') ? resolved : ('file://' + resolved)).href
     }
 
-    function loadModule(identifier, context, {fileContent} = {}) {
+    function loadModule(identifier, context, {fileContent, referrer} = {}) {
         if (!identifier)
             debugger
         if (moduleCache.has(identifier)) {
@@ -59,23 +59,30 @@ async function getOrCreateVm(options) {
                     { context, identifier }
                   )
             } else {
-                const source = fileContent || fs.readFileSync(safeResolveURL(identifier), 'utf8')
-                mod = new vm.SourceTextModule(source, { identifier, context,
-                    importModuleDynamically: (specifier, referrer) => importModuleDynamically (context, specifier, referrer)
-                })
+                try {
+                    const source = fileContent || fs.readFileSync(safeResolveURL(identifier), 'utf8')
+                    mod = new vm.SourceTextModule(source, { identifier, context,
+                        importModuleDynamically: (specifier, referrer) => importModuleDynamically (context, specifier, referrer)
+                    })
+                } catch(error) {
+                    console.log(`can not find module ${identifier} from '${referrer?.identifier}'`)
+                    return new vm.SyntheticModule([], () => {}, { context, identifier: `error loading module ${identifier} from ${referrer?.identifier}` })
+                }
             }
             moduleCache.set(identifier, mod)
             return mod
-        } catch (e) {
-            console.log(e)
+        } catch (error) {
+            console.log(error.stack)
         }
     }
 
     function linker(specifier, referrer) {
-        console.log('linker', specifier, referrer.identifier)
+        //console.log('linker', specifier, referrer.identifier)
         const childId = calcSpecifierUrl(specifier,referrer)
-        if (!childId) return new vm.SyntheticModule([], () => {}, { context, identifier: `error calculating url for ${specifier} from ${referrer?.identifier}` })
-        return loadModule(childId, referrer.context, {fileContent: ''})
+        const res = childId && loadModule(childId, referrer.context, {fileContent: '', referrer})
+        if (!res)
+            return new vm.SyntheticModule([], () => {}, { context, identifier: `error calculating url for ${specifier} from ${referrer?.identifier}` })
+        return res
     }
 
     async function importModuleDynamically (context, specifier, referrer) {
@@ -84,7 +91,7 @@ async function getOrCreateVm(options) {
             throw new Error(`Cannot resolve dynamic import '${specifier}' from '${referrer?.identifier}'`)
     
         const content = /^https?:\/\//.test(resolvedId) && await fetchRemoteCode(resolvedId)
-        const child = loadModule(resolvedId, context, { fileContent: content })
+        const child = loadModule(resolvedId, context, { fileContent: content, referrer})
         if (child.status === 'unlinked')
             await child.link(linker)
 
@@ -104,7 +111,7 @@ async function getOrCreateVm(options) {
             console, vmId, httpRequests, setTimeout, clearTimeout, setInterval, clearInterval, process, AbortController,
             URLSearchParams, atob, gc, performance, URL, calcSpecifierUrl, Buffer,
             fetch,
-            vmCleanup, builtIn })
+            vmCleanup, builtIn, __repoRoot: globalThis.__repoRoot })
         const {entryFiles} = await coreUtils.calcImportData(resources)
         const initCode = ['import { jb } from "@jb6/core"', "globalThis.jb = jb",entryFiles.map(e=>`import '${e}'`)].join('\n')
         const mod = await loadModule(vmId || 'entryScript', context , {fileContent: initCode, displayErrors: true })
