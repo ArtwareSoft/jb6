@@ -56,7 +56,7 @@ Test('genieTest.calcTgpModelData', {
       const {coreUtils} = await import('@jb6/core')
       await import('@jb6/lang-service')
       return coreUtils.calcTgpModelData({
-        entryPointPaths: `${geniePath}/public/workflows/reports.js`, fetchByEnvHttpServer: 'http://localhost:3000'})
+        entryPointPaths: `${geniePath}/public/llm-flow/reports-dsl.js`, fetchByEnvHttpServer: 'http://localhost:3000'})
     },
     expectedResult: contains('/public/3rd-party/@jb6', '/jb6_packages/common/index.js', {
       allText: json.stringify()
