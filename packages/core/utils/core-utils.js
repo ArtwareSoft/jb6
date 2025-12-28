@@ -411,10 +411,15 @@ async function writeServiceResult(result, _httpReqId) {
   process.exit(0)
 }
 
+function broadcastStatus(text) {
+  globalThis.process && globalThis.process.stderr.write(text)
+}
+
+
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logVsCode, isNode,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult
+  calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus
 })

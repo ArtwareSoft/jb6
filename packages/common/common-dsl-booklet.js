@@ -68,8 +68,3 @@ runActionOnItems('%$items%', log('Item: %%'))            // Iteration actions`,
   })
 })
 
-Doclet('dataProcessingEssentials', {
-  impl: howTo(
-    problem('Master core data processing patterns with pipeline, filter, and aggregations'),
-    solution({
-      code: `

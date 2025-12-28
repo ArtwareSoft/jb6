@@ -23,7 +23,9 @@ function calcVar(varname, ctx) {
 }
 
 function calc(_exp, ctx, overrideParentParam ) {
-  const { jbCtx : {parentParam: ctxParentParam }, vars: { stringsOrigins } } = ctx
+  const { jbCtx : {parentParam: ctxParentParam }, vars: { stringsOrigins, doNotCalcExpression } } = ctx
+  if (doNotCalcExpression)
+    return _exp
   const parentParam = overrideParentParam || ctxParentParam
   const jstype = parentParam?.ref ? 'ref' : parentParam?.as
   let exp = '' + _exp

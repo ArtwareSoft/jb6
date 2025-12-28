@@ -71,6 +71,21 @@ Test('probeCliTest.helloWorld', {
   })
 })
 
+Test('probeCliTest.statusViaStderr', {
+  impl: dataTest({
+    calculate: async () => {
+      const repoRoot = await coreUtils.calcRepoRoot()
+      const entryPointPaths = `${repoRoot}/hosts/test-project/a-tests.js`
+      const status = []
+      const onStatus = data => status.push(data)
+      await runProbeCli('test<test>myTests.statusViaStderr~impl~expectedResult',{entryPointPaths}, onStatus)
+      return status
+    },
+    expectedResult: equals('1,2', join(',')),
+    timeout: 1000
+  })
+})
+
 Test('probeCliTest.findTestFiles', {
   HeavyTest: true,
   impl: dataTest({

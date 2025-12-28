@@ -3,7 +3,7 @@ import './core-utils.js'
 const { coreUtils } = jb
 const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError } = coreUtils
 
-Object.assign(coreUtils, { globalsOfType, ptsOfType, toCapitalType, findCompDefById, CompDefByDslType })
+Object.assign(coreUtils, { globalsOfType, globalsOfType2, ptsOfType, toCapitalType, findCompDefById, CompDefByDslType })
 
 const CompDef = comp => jbCompProxy(new jbComp(resolveProfileTop(comp)))
 
@@ -18,6 +18,8 @@ const tgpComp = CompDef({ // bootstraping
     {id: 'moreTypes', as: 'string'},
     {id: 'macroByValue', as: 'boolean'},
     {id: 'description', as: 'string'},
+    {id: 'descriptionForLLM', as: 'text'},
+    {id: 'whenToUse', as: 'text'},
     {id: 'HeavyTest', as: 'boolean' },
     {id: 'doNotRunInTests', as: 'boolean' },
     {id: 'circuit', as: 'string' },
@@ -175,8 +177,14 @@ function calcSourceLocation(errStack) {
   }      
 }
 
-function globalsOfType(tgpType) { // not via tgpModel
+function globalsOfType(tgpType) { // not via tgpModel: TODO: rename to globalsOfTypeIds
   return Object.keys(tgpType).map(x=>tgpType[x]).map(x=>x[asJbComp]).filter(x=>x).filter(x=>!(x.params || []).length).map(({id})=>id.split('>').pop())
+}
+
+function globalsOfType2(tgpType, ctx, filter = 'noParams') {
+  return Object.entries(tgpType).filter(e =>e[1][asJbComp])
+    .filter(e => filter != 'noParams' || (e[1][asJbComp]?.params || []).length)
+    .map(([id,val]) => ({id, ...val.$runWithCtx(ctx)}))
 }
 
 function ptsOfType(tgpType) { // not via tgpModel

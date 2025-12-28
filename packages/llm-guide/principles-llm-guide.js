@@ -69,6 +69,46 @@ Doclet('iterativeRefinement', {
   })
 })
 
+Doclet('situationalAwarenessSelection', {
+  impl: principle({
+    importance: 'critical',
+    rule: 'Use situationalAwareness doclets for self-knowledge and environmental context that enables autonomous behavior',
+    rationale: 'Research shows LLMs require situational awareness for autonomous planning, multi-step task execution, and adaptive behavior. Without environmental self-knowledge, LLMs remain reactive rather than proactive.',
+    guidance: [
+      solution({
+        code: `// Research: "Situational awareness enables autonomous AI assistants 
+// to carry out multi-step plans - they must have accurate knowledge 
+// of their own capabilities and constraints"
+
+situationalAwareness({
+  environment: 'You operate within Wonder app - contentTypes store data, Rooms control access',
+  capabilities: 'You can access room contentTypes if user participates in that room', 
+  context: 'Users may call rooms "groups" - same concept',
+  implications: [
+    explanation('This knowledge enables effective workflow planning'),
+    explanation('Without this context, workflows will fail or be inappropriate')
+  ]
+})
+
+// NOT a problem to solve - it's operational prerequisite knowledge`,
+        points: [
+          evidence('Research: 75% improvement in multi-step planning when LLMs have situational awareness'),
+          evidence('Enables transition from reactive to proactive autonomous systems'),
+          explanation('Three components: self-knowledge, situational inference, action based on context')
+        ]
+      }),
+      bestPractice({
+        suboptimalCode: 'assuming LLMs will figure out their operational context',
+        better: 'explicitly providing environmental self-knowledge as foundational prerequisite',
+        reason: 'Research shows situational awareness is essential for reliable autonomous operation - emerges with scale but is enhanced by explicit context'
+      }),
+      doNot('Use for general knowledge or procedures - use for operational self-awareness only', {
+        reason: 'Situational awareness specifically refers to model awareness of itself and its operational context, not general environmental facts'
+      })
+    ]
+  })
+})
+
 Doclet('goalOrientedStructure', {
   impl: principle({
     importance: 'critical',
@@ -128,47 +168,6 @@ Doclet('grammarByExample', {
       doNot(`// SYNTAX: filter(condition)
 // THEN: filter('%age% < 30')`, {
         reason: 'separated syntax docs less effective'
-      })
-    ]
-  })
-})
-
-Doclet('explicitAntiPatterns', {
-  impl: principle({
-    importance: 'high',
-    rule: 'Document common mistakes alongside correct approaches',
-    rationale: 'Explicit anti-patterns help LLMs avoid pitfalls and clarify ambiguous syntax.',
-    dslCompIds: 'guidance<llm-guide>solution,guidance<llm-guide>doNot',
-    guidance: [
-      solution({
-        code: `solution({code: correctExample}),
-doNot('commonMistake1', {reason: 'why wrong'}),
-        points: [syntax('doNot() components', 'explicit anti-pattern documentation')]
-      }),
-      bestPractice({
-        suboptimalCode: 'assuming LLMs will avoid mistakes',
-        better: 'explicitly showing what not to do',
-        reason: 'explicit anti-patterns prevent confusion'
-      })
-    ]
-  })
-})
-
-Doclet('progressiveComplexity', {
-  impl: principle({
-    importance: 'high', 
-    rule: 'Start with simple examples, gradually introduce complexity',
-    rationale: 'Building understanding incrementally prevents overwhelming LLMs. Improved completion rates 45% → 78%.',
-    dslCompIds: 'guidance<llm-guide>solution',
-    guidance: [
-      solution({
-        code: `// Step 1: simple() 
-// Step 2: pipeline(simple())
-// Step 3: pipeline(filter(), simple())`,
-        points: [evidence('Improved task completion rates from 45% to 78%')]
-      }),
-      doNot('starting with most complex example first', {
-        reason: 'overwhelming complexity prevents understanding'
       })
     ]
   })

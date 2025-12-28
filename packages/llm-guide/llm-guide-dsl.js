@@ -1,8 +1,12 @@
-import { dsls } from '@jb6/core'
+import { dsls, coreUtils } from '@jb6/core'
+import '@jb6/lang-service'
 
 const { 
   tgp: { TgpType },
 } = dsls
+
+Object.assign(coreUtils, {bookletContent})
+
 // ============================================================================= 
 // DOCLET DSL - 
 // Guidance LLM doclets codify expert task-solving patterns into structured, reusable templates 
@@ -50,6 +54,16 @@ Doclet('fundamentalLlmMethodology', {
     {id: 'process', as: 'text', description: 'Step-by-step process'},
     {id: 'guidance', type: 'guidance[]'},
     {id: 'testLlmUnderstanding', type: 'validation[]'}
+  ]
+})
+
+Doclet('situationalAwareness', {
+  description: 'Foundational environmental and operational context knowledge',
+  params: [
+    {id: 'environment', as: 'text', mandatory: true, description: 'Operational environment and core concepts'},
+    {id: 'capabilities', as: 'text', description: 'Available tools, data structures, and system capabilities'},  
+    {id: 'context', as: 'text', description: 'Situational context, constraints, and operational modes'},
+    {id: 'implications', type: 'explanationPoint[]', description: 'What this knowledge means for effective operation'}
   ]
 })
 
@@ -278,7 +292,19 @@ Validation('buildQuiz', {
 Booklet('booklet', {
   params: [
     {id: 'doclets', as: 'string', description: 'comma delimited names of doclets', madatory: true},
-    {id: 'guidance', type: 'guidance[]'}
+    {id: 'whenToUse', as: 'text'}
   ]
 })
 
+function bookletContent(bookletId, ctx) { 
+  const booklet = dsls['llm-guide'].booklet[bookletId]
+  const bookletCtx = ctx.setVars({doNotCalcExpression: true})
+  
+  const docletsRaw = booklet.$run().doclets.split(',').map(doclet => doclet.trim()).filter(doclet => dsls['llm-guide'].doclet[doclet])
+      .map(doclet => coreUtils.prettyPrintComp(dsls['llm-guide'].doclet[doclet] ,{tgpModel: jb} )).join('\n\n')
+
+  const doclets = docletsRaw.replace(/<BOOKLET-EVALUATE>%\$([^%]+)%<\/BOOKLET-EVALUATE>/g, 
+      (match, varName) => coreUtils.prettyPrint(bookletCtx.vars[varName], {noMacros: true}) ?? match)
+  
+  return { bookletId, doclets }
+}

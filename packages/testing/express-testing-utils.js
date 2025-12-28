@@ -5,7 +5,7 @@ import { coreUtils } from '@jb6/core'
 import { serverUtils } from '@jb6/server-utils'
 
 const { calcRepoRoot }  = coreUtils
-const { serveImportMap, serveCli, serveGotoSource}  = serverUtils
+const { serveImportMap, serveCli, serveCliStream, serveGotoSource}  = serverUtils
 
 export async function expressTestServices(app) {
   app.use(express.json({ limit: '10mb' }))
@@ -13,6 +13,7 @@ export async function expressTestServices(app) {
 
   serveImportMap(app, {express})
   serveCli(app)
+  serveCliStream(app)
   serveGotoSource(app)
 
   const repoRoot = await calcRepoRoot()

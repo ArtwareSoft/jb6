@@ -15,7 +15,7 @@ jb.probeRepository = {
 }
 Object.assign(coreUtils, {runProbe, runProbeCli})
 
-async function runProbeCli(probePath, resources) {
+async function runProbeCli(probePath, resources, onStatus) {
     const { extraCode } = resources
     const {entryFiles, testFiles, importMap, jb6_testFiles, projectDir } = await coreUtils.calcImportData(resources)
     //const moreTests = jb6_testFiles.filter(x=>x.includes(projectDir))
@@ -40,7 +40,7 @@ async function runProbeCli(probePath, resources) {
       }
     `
     try {
-      const { result, error, cmd } = await coreUtils.runCliInContext(script, {projectDir, importMapsInCli: importMap.importMapsInCli})
+      const { result, error, cmd } = await coreUtils.runCliInContext(script, {projectDir, importMapsInCli: importMap.importMapsInCli}, onStatus)
       return { probeRes: result, error, cmd, projectDir }
     } catch (error) {
       debugger

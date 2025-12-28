@@ -26,21 +26,31 @@
   .CodeMirror { height: 100%; font-size: 12px; border: 1px solid #ddd; }
 </style>
 </head>
+  
 <body>
-  <div id="show" style="height: 100vh;"></div>
+  <div id="show" style="height: 100vh;">
+  </div>
 
   <script type="module">
-import { coreUtils } from '@jb6/core'
+import { dsls, coreUtils } from '@jb6/core'
 import { reactUtils } from '@jb6/react'
 import '@jb6/react/lib/tailwindcss.js'
 import '@jb6/react/tests/react-testers.js'
 import '@jb6/core/misc/import-map-services.js'
 import '@jb6/core/misc/probe.js'
 import '@jb6/core/misc/pretty-print.js'
+import '@jb6/jq'
+
+const { 
+  tgp: { TgpType },
+  common: { Data, Action, Boolean,
+    data: { jq }, 
+  },
+} = dsls
+
 
 const { h, L, useState, useEffect, useRef, createRoot, prettyPrintNode } = reactUtils
 
-/** ---------------- boot ---------------- **/
 async function run() {
   const { importMapsInCli } = JB_IMPORT_MAP
   jb.coreRegistry.importMapsInCli = importMapsInCli
@@ -52,11 +62,15 @@ async function run() {
   const path = urlParams.get('path') || 'reactTest.HelloWorld~impl~expectedResult'
 
   const render = (c) => createRoot(document.getElementById('show')).render(c)
+  let status = ''
+  let lastPaint = 0
+  const onStatus = (status) => render(h(LoadingView, { path, status }))
+  
   render(h(LoadingView, { path }))
 
   let result, error
   try {
-    result = await coreUtils.runProbeCli(path, { entryPointPaths: fullFilePath })
+    result = await coreUtils.runProbeCli(path, { entryPointPaths: fullFilePath }, onStatus)
     error = result.error || result.probeRes?.error
   } catch (e) { error = e }
 
@@ -73,18 +87,21 @@ async function run() {
 run()
 
 /** ---------------- basic views ---------------- **/
-function LoadingView({ path }) {
+function LoadingView({ path, status }) {
   const [dots, setDots] = useState('')
   useEffect(() => {
     const i = setInterval(() => setDots(p => p.length >= 3 ? '' : p + '.'), 500)
     return () => clearInterval(i)
   }, [])
-  return h('div:w-full h-96 flex items-center justify-center bg-gray-50', {},
-    h('div:text-center', {},
-      h('div:text-lg font-semibold mb-2', {}, `Calculating probe${dots}`),
-      h('div:text-sm text-gray-600', {}, path),
-      h('div:text-xs text-gray-400 mt-2', {}, 'Please wait...')
-    )
+  return h('div:w-full h-full flex flex-col bg-gray-50', {},
+    h('div:flex items-center justify-center py-8', {},
+      h('div:text-center', {},
+        h('div:text-xs text-gray-400 mt-2', {}, `Calculating probe${dots}`),
+        h('div:text-lg font-semibold mb-2', {}, status),
+        h('div:text-sm text-gray-600', {}, path),
+        h('div:text-xs text-gray-400 mt-2', {}, 'Please wait...'),
+      )
+    ),
   )
 }
 
@@ -102,9 +119,35 @@ function ErrorView({ error, cmd }) {
   )
 }
 
-/** ---------------- declarative wrapper ---------------- **/
+function findImageUrl({probeRes,testRes,firstResInput}) {
+  const ctx = new coreUtils.Ctx().setVars({probeRes,testRes}).setData(firstResInput)
+  try {
+    const inLogs = jq.$runWithCtx(ctx,'first(.. | .imageUrl?)')[0]
+    return inLogs || probeRes?.circuitRes?.imageUrl || testRes?.imageUrl
+  } catch(error) {
+    console.error(error)
+  }
+}
+
+function findProp(jqExp, {probeRes,testRes,firstResInput}) {
+  const ctx = new coreUtils.Ctx().setVars({probeRes,testRes}).setData(firstResInput)
+  try {
+    const inLogs = jq.$runWithCtx(ctx,jqExp)[0]
+    return inLogs || probeRes?.circuitRes?.[prop] || testRes?.[prop]
+  } catch(error) {
+    console.error(error)
+  }
+}
+
 function ProbeResultView(props) {
   const { probeRes, cmd: _cmd, error, projectDir, testRes } = props
+  const _firstRes = probeRes.result[0]?.in?.data
+  let firstResInput = _firstRes
+  try {
+    firstResInput = typeof _firstRes == 'string' ? JSON.parse(_firstRes) : _firstRes
+  } catch(e) {}
+  props.firstResInput = firstResInput
+
   const cmd = [`cd ${projectDir}`, _cmd].join('\n')
 
   // Small status bits
@@ -116,15 +159,20 @@ function ProbeResultView(props) {
 
   // ---- Declarative views list ----
   // To add new tabs, push an object here. Dynamic views: set jsFile + renderDynamic (export name).
+  const showInCodeMirror = (id, tabTitle, jqExp) => ({id, tabTitle, render: renderPropInCodeMirror(jqExp), condition: p => findProp(jqExp,props) })
   const views = [
     { id: 'results',  tabTitle: 'RES',  render: renderResults },
     { id: 'json',     tabTitle: 'JSON', render: renderJson },
     { id: 'cmd',      tabTitle: 'CMD',  render: renderCmd,   condition: p => !!_cmd },
     { id: 'error',    tabTitle: 'ERR',  render: renderError, condition: p => !!error },
-    { id: 'image',    tabTitle: 'IMG',  render: renderImage, condition: p => probeRes?.circuitRes?.imageUrl || testRes?.imageUrl },
+    { id: 'image',    tabTitle: 'IMG',  render: renderImage, condition: p => findImageUrl(props)},
+    showInCodeMirror('llmFlow','FLW', 'first(.. | .llmFlow?)'),
+    showInCodeMirror('systemPrompt','SYS', '[.. | objects | select(.role? == "system") | .content?] | join("\n#####\n")'),
+    showInCodeMirror('userPrompt','USR', '[.. | objects | select(.role? == "user") | .content?] | join("\n#####\n")'),
+
     // Dynamic workflow view
-    // { id: 'ultra',    tabTitle: 'UM', jsFile: './ultra-log-view.js',     renderDynamic: 'UltraMsgView',   condition: p => Array.isArray(p.testRes?.ultraMsgLog) && p.testRes.ultraMsgLog.length > 0 },
-    // { id: 'workflow', tabTitle: 'WF',   jsFile: './workflow-log-view.js', renderDynamic: 'WorkflowLogView', condition: p => !!testRes?.workflowLog }
+    { id: 'ultra',    tabTitle: 'UM', jsFile: './ultra-log-view.js',     renderDynamic: 'UltraMsgView',   condition: p => Array.isArray(p.testRes?.ultraMsgLog) && p.testRes.ultraMsgLog.length > 0 },
+    { id: 'workflow', tabTitle: 'WF',   jsFile: './workflow-log-view.js', renderDynamic: 'WorkflowLogView', condition: p => !!testRes?.workflowLog }
   ]
 
   const availableViews = views.filter(v => !v.condition || v.condition(props))
@@ -237,6 +285,20 @@ function renderCmd({ cmd, projectDir }) {
   )
 }
 
+function renderImage(props) {
+  return h('img', { src: findImageUrl(props), width: 400 })
+}
+
+function renderProp(prop) {
+  return props => h('pre:bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono whitespace-pre', {},
+    h('code', {}, findProp(prop, props)))
+}
+
+function renderPropInCodeMirror(prop) {
+  return props => h('pre:p-3 flex flex-col overflow-auto', {},
+    h(CodeMirrorJs, {code: findProp(prop, props)}))
+}
+
 function renderError({ error }) {
   return h('div:p-3', {},
     h('div:mb-2 font-medium text-red-800', {}, 'Error:'),
@@ -246,11 +308,69 @@ function renderError({ error }) {
   )
 }
 
-function renderImage({ probeRes, testRes }) {
-  return h('img', { src: probeRes?.circuitRes?.imageUrl || testRes?.imageUrl, width: 400 })
+function summarizeRecord(record, keepPrefixSize = 1000, maxLength = 4000) {
+    const text = record ? JSON.stringify(record) : ''
+    if (text.length <= maxLength) return record
+    const suffixSize = maxLength - keepPrefixSize
+    return { __squeezed: true, summary: text.slice(0, keepPrefixSize) + 
+      `====text was originally ${text.length} and was squeezed to ${maxLength} chars. ${text.length - maxLength} missing chars here====` + text.slice(text.length - suffixSize) }
 }
 
-/** ---------------- CodeMirror I/O ---------------- **/
+function squeezeArray(arr,k=10){
+  if(arr.length<=k*2) return arr
+  const mid = arr.length - k*2
+  return [...arr.slice(0,k), `${mid} items were here`, ...arr.slice(-k)]
+}
+
+function squeezeLogEntries(obj, parent, keepPrefixSize = 1000, maxLength = 2000) {
+  if (typeof obj !== 'object' || obj === null) return obj
+  const out = Array.isArray(obj) ? [] : {}
+  for (const [key, value] of Object.entries(obj)) {
+    let v = value
+    if (/[lL]og/.test(parent || ''))
+      v = Array.isArray(value) ? value.map(e => summarizeRecord(e, keepPrefixSize, maxLength)) : summarizeRecord(value, keepPrefixSize, maxLength)
+    // else if (/room/.test(key) && Array.isArray(value))
+    //   v = squeezeArray(value)
+    if (typeof value === 'object' && value !== null)
+      v = squeezeLogEntries(value, key, keepPrefixSize, maxLength)
+    out[key] = v
+  }
+  return out
+}
+
+function summarizeRecord1(record) { // reuslt.in.vars.workflowDb
+    const text = record?  JSON.stringify(record) : ''
+    const keepPrefixSize = 1000
+    const maxLength = 2000
+    return {summary: (text.length > maxLength) ? [text.slice(0,keepPrefixSize),
+      `====text was originally ${text.length}.and was squeezed to ${maxLength} chars. ${text.length - maxLength} missing chars here====`,
+      text.slice(text.length-maxLength+keepPrefixSize)
+    ].join('') : text}
+}
+
+function CodeMirrorJs({ code }) {
+  const host = useRef()
+  const cm = useRef()
+
+  useEffect(() => {
+    cm.current ||= CodeMirror(host.current, {
+      value: code,
+      mode: 'javascript',
+      readOnly: true,
+      lineNumbers: true,
+      foldGutter: true,
+      gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+    })
+  }, [])
+
+  useEffect(() => {
+    cm.current && cm.current.setValue(code)
+  }, [code])
+
+  return h('div:h-full', { ref: host })
+}
+
+
 function CodeMirrorInputOutput({ in: In, out }) {
   const inputRef = useRef()
   const outputRef = useRef()
@@ -277,6 +397,7 @@ function CodeMirrorInputOutput({ in: In, out }) {
 
   useEffect(() => {
     if (inputRef.current && !inputRef.current.codeMirrorInstance) {
+      const squeezed = squeezeLogEntries(inputData)
       let inputValue
       if (isHtmlString) {
         const tempDiv = document.createElement('div')
@@ -284,9 +405,9 @@ function CodeMirrorInputOutput({ in: In, out }) {
         inputValue = prettyPrintNode(tempDiv)
       } else {
         try {
-          inputValue = coreUtils.prettyPrint(inputData)
+          inputValue = coreUtils.prettyPrint(squeezed)
         } catch {
-          inputValue = JSON.stringify(inputData, null, 2)
+          inputValue = JSON.stringify(squeezed, null, 2)
         }
       }
       inputRef.current.codeMirrorInstance = CodeMirror(inputRef.current, {
@@ -354,6 +475,7 @@ function CodeMirrorInputOutput({ in: In, out }) {
     )
   )
 }
+
   </script>
 </body>
 </html>
