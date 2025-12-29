@@ -3,7 +3,8 @@
   "version": "1.251226.0",
   "type": "module",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./*.js": "./*.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.2",

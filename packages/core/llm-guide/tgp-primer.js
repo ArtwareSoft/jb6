@@ -674,7 +674,9 @@ const result = template.$run()                   // Instantiates template accord
         explanation('Component instantiation creates templates, $run() further instantiates them according to DSL type'),
         syntax('template vs instantiation', 'clear separation between template creation and DSL-specific instantiation'),
         whenToUse('when you need to create reusable templates'),
-        comparison('traditional functions', { advantage: 'templates can be inspected, modified, and reused' })
+        comparison('traditional functions', {
+          advantage: 'templates can be inspected, modified, and reused'
+        })
       ]
     }),
     solution({
@@ -731,16 +733,16 @@ Doclet('forwardReferences', {
  // Later: ActivityDetection('fileBased', {...})`,
       points: [
         explanation('Forward references solve component ordering in default values'),
-        syntax('TgpType.forward(\'id\')', 'creates lazy proxy for later resolution'),
+        syntax(`TgpType.forward('id')`, 'creates lazy proxy for later resolution'),
         whenToUse('when component used as default before definition')
       ]
     }),
     mechanismUnderTheHood({
-      snippet: `apply: () => () => dsls[dsl][type][componentId]()`,
+      snippet: 'apply: () => () => dsls[dsl][type][componentId]()',
       explain: 'returns function that resolves component when actually needed'
     })
   )
- })
+})
 
 Doclet('instantiationPatterns', {
   impl: howTo(
@@ -883,14 +885,14 @@ button(toUpperCase('save'), runActions([...]))  // data<common> can fill ui titl
         syntax('compositional architecture', 'small components combine into larger functionality'),
         syntax('declarative programming', 'describe what you want, not how to achieve it'),
         whenToUse('when building maintainable, reusable component-based systems'),
-        comparison('traditional programming', { advantage: 'declarative composition with type safety across domains' })
+        comparison('traditional programming', {
+          advantage: 'declarative composition with type safety across domains'
+        })
       ]
     })
   )
 })
 
 Booklet('tgpPrimer', {
-  impl: booklet(
-    'tgpBasics,workingWithCommonDSL,profiles,compDefExplanation,tgpTerminologyErrors,understandingDSLs,argsPosition,argsByValue,componentsWithinComponents'
-  )
+  impl: booklet('tgpBasics,workingWithCommonDSL,profiles,compDefExplanation,tgpTerminologyErrors,understandingDSLs,argsPosition,argsByValue,componentsWithinComponents')
 })

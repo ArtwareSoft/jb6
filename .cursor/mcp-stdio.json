@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "jb_mcp": {
+      "type": "stdio",
+      "command": "/usr/bin/node",
+      "args": [
+        "/home/shaiby/projects/jb6/packages/mcp/index.js", "--start", "--repoRoot=/home/shaiby/projects/jb6"
+      ]
+    }
+  }
+}

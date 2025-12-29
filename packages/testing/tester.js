@@ -2,7 +2,7 @@ import { coreUtils, dsls } from '@jb6/core'
 import '@jb6/common'
 import { spy } from './spy.js'
 
-const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfType, unique, isNode } = coreUtils
+const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfTypeIds, unique, isNode } = coreUtils
 jb.testingUtils = {runTest, runTests, runTestCli, runTestVm, runTestInVm}
 jb.testingRepository = {}
 
@@ -238,7 +238,7 @@ export async function runTests({specificTest,show,pattern,notPattern,take,repo,s
     showOnly = showOnly || action
     specificTest = specificTest && decodeURIComponent(specificTest).split('>').pop()
 
-    let tests = globalsOfType(Test)
+    let tests = globalsOfTypeIds(Test)
         .filter(id =>!specificTest || id == specificTest)
         .filter(id => specificTest || includeHeavy || !Test[id][asJbComp]?.HeavyTest)
         .filter(id => specificTest || !Test[id][asJbComp]?.doNotRunInTests)

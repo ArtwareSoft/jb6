@@ -5,13 +5,14 @@ import { coreUtils } from '@jb6/core'
 import { serverUtils } from '@jb6/server-utils'
 
 const { calcRepoRoot }  = coreUtils
-const { serveImportMap, serveCli, serveCliStream, serveGotoSource}  = serverUtils
+const { serveImportMap, serveCli, serveCliStream, serveGotoSource, serveMcp}  = serverUtils
 
 export async function expressTestServices(app) {
   app.use(express.json({ limit: '10mb' }))
   app.use(express.urlencoded({ extended: true, limit: '10mb' }))  
 
   serveImportMap(app, {express})
+  serveMcp(app, {express})
   serveCli(app)
   serveCliStream(app)
   serveGotoSource(app)

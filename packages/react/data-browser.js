@@ -12,7 +12,7 @@ const {
   } = dsls
   
 const { h, L, useState, useEffect, useRef, useContext } = reactUtils
-const { globalsOfType, Ctx } = coreUtils
+const { globalsOfTypeIds, Ctx } = coreUtils
 
 Object.assign(reactUtils,{DataBrowser})
 
@@ -73,7 +73,7 @@ ContentTypeView('text', {
 
 
 function detectContentTypeView(value) {
-  const view = globalsOfType(ContentTypeView).map(id=>dsls.react['content-type-view'][id].$run())
+  const view = globalsOfTypeIds(ContentTypeView).map(id=>dsls.react['content-type-view'][id].$run())
     .filter(x=>x.detect(value)).sort((x,y) => x.priority - y.priority)[0] || dsls.react['content-type-view'].text.$run()
   return view
 }

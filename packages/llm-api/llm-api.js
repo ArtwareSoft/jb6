@@ -371,7 +371,7 @@ jb.llmUtils = {
   },
   notifyApiUsage(rec, ctx) {
     jb.llmRepository.callHistory.push(rec)
-    const model = globalsOfType(Model).map(id=>dsls['llm-api'].model[id].$run()).find(m=>m.name == rec.model) 
+    const model = globalsOfType(Model).find(m=>m.name == rec.model) 
     if (!model)
       return logError(`notifyApiUsage can not find model ${rec.model}`, {rec, ctx})
     const usage = rec.usage

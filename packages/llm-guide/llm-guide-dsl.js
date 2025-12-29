@@ -296,7 +296,8 @@ Booklet('booklet', {
   ]
 })
 
-function bookletContent(bookletId, ctx) { 
+function bookletContent(bookletId, ctx, tgpModel = jb) { 
+  const dsls = tgpModel.dsls
   const booklet = dsls['llm-guide'].booklet[bookletId]
   const bookletCtx = ctx.setVars({doNotCalcExpression: true})
   

@@ -1,9 +1,8 @@
 {
-  "mcpServers": {
-    "jb_mcp": {
-      "command": "/usr/bin/node",
-      "args": [ "packages/mcp/index.js", "--start" ],
-      "cwd": "/home/shaiby/projects/jb6"
-    }
+    "mcpServers": {
+      "jb_mcp_http": {
+        "type": "http",
+        "url": "http://localhost:8083/mcp"
+      }
   }
 }

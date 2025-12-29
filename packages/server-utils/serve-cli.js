@@ -4,7 +4,36 @@ import '@jb6/core/misc/jb-cli.js'
 const { runNodeCli, runBashScript } = coreUtils
 
 jb.serverUtils = jb.serverUtils || {}
-Object.assign(jb.serverUtils, {serveCli, serveCliStream})
+Object.assign(jb.serverUtils, {serveCli, serveCliStream, serveMcp})
+
+export async function serveMcp(app, { express }) {
+  const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js')
+  const { startMcpServer } = await import("@jb6/mcp/mcp-utils.js")
+  await import('@jb6/mcp/mcp-jb-tools.js')
+  await import('@jb6/mcp/mcp-fs-tools.js')
+
+  app.post("/mcp", express.json({ type: "application/json" }), async (req, res) => {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    })
+
+    try {
+      const exclude = ['text','doclet']
+      const allTools = coreUtils.globalsOfTypeIds(dsls.mcp.tool,'all').filter(id => !exclude.includes(id))
+
+      await startMcpServer(transport,allTools)
+      await transport.handleRequest(req, res, req.body)
+
+      res.on("close", () => transport.close())
+    } catch (error) {
+      console.error(error?.stack || error)
+      if (!res.headersSent) res.status(500).end()
+      transport.close()
+    }
+  })
+}
+
 
 function serveCli(app) {
   app.post('/run-cli', async (req, res) => {

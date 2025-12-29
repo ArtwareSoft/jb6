@@ -36,7 +36,11 @@ if (coreUtils.isNode) {
             await import(extraMcp)
 
         try {                  
-            await startMcpServer()
+            const exclude = ['text','doclet']
+            const allTools = coreUtils.globalsOfTypeIds(dsls.mcp.tool,'all').filter(id => !exclude.includes(id))
+        
+            const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js")     
+            await startMcpServer(new StdioServerTransport(), allTools)
         } catch(error) {
             console.error("jb6 Server error:", error)
             process.exit(1)

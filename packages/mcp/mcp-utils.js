@@ -1,7 +1,7 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
 
-const { ptsOfType, globalsOfType, asJbComp } = coreUtils
+const { globalsOfTypeIds, asJbComp } = coreUtils
 const { 
     tgp: { TgpType, any: {typeAdapter}, var: {Var} },
     common: { Data,
@@ -11,17 +11,13 @@ const {
   
 // Define core types  
 const Tool = TgpType('tool', 'mcp')
-  
-export async function startMcpServer() {
+
+export async function startMcpServer(transport, allTools) {
   const { Server } = await import("@modelcontextprotocol/sdk/server/index.js")
-  const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js")
   const { z } = await import('zod')
   const { ListToolsRequestSchema, CallToolRequestSchema } = await import("@modelcontextprotocol/sdk/types.js")
     
-  // Get all tools from jb repository
-    const exclude = ['text','doclet']
-    const allTools = [...ptsOfType(Tool),...globalsOfType(Tool)].filter(id => !exclude.includes(id))
-    const toolConfigs = allTools.map(toolId => {
+  const toolConfigs = allTools.map(toolId => {
       const toolComp = dsls.mcp.tool[toolId][asJbComp]
       return {
         name: toolId,
@@ -63,9 +59,7 @@ export async function startMcpServer() {
       const result = await dsls.mcp.tool[name].$run(args)
       return result
     })
-
       
-    const transport = new StdioServerTransport()
     await mcpServer.connect(transport)
 }
 
