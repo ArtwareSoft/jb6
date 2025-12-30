@@ -8,8 +8,9 @@ TgpType('h-func','react')
 
 ReactComp('comp', {
   params: [
-    {id: 'hFunc', type: 'h-func', dynamic: true},
-    {id: 'enrichCtx', dynamic: true, byName: true}
+    {id: 'hFunc', type: 'h-func', dynamic: true, byName: true },
+    {id: 'enrichCtx', dynamic: true, byName: true},
+    {id: 'sampleData'}
   ],
   impl: (_ctx, {react: {h} }, { hFunc, enrichCtx }) => () => {
     const ctx = enrichCtx(_ctx) || _ctx
@@ -17,35 +18,35 @@ ReactComp('comp', {
   }
 })
 
+const ctxPromiseCache = {}
 ReactComp('compWithAsyncCtx', {
   params: [
-    {id: 'hFunc', type: 'h-func', dynamic: true },
-    {id: 'enrichCtx', dynamic: true, byName: true },
+    {id: 'hFunc', type: 'h-func', dynamic: true, byName: true  },
+    {id: 'enrichCtx', dynamic: true},
   ],
   impl: (_ctx, {react: {use, h} }, { hFunc, enrichCtx }) => {
-    const ctxPromise = enrichCtx(_ctx)
+    const id = _ctx.jbCtx.creatorStack?.join('-')
+    const ctxPromise = ctxPromiseCache[id] || ( ctxPromiseCache[id] = enrichCtx(_ctx))
     const comp = () => {
       const ctx = use(ctxPromise)
-      return h(hFunc(ctx))
+      const res = h(hFunc(ctx))
+      return res
     }
     return () => h(comp)    
   }
 })
 
-function hh(ctx, t, p) {
+function hh(ctx, t) {
   if (!(ctx instanceof coreUtils.Ctx))
     console.error('hh: first param of hh must be ctx')
   if (!(t.$ instanceof coreUtils.jbComp))
     console.error("hh: second param of hh must be profile e.g., hh(ctx, comp('p1Val')) and not hh(ctx, comp)")
-  if (p != undefined)
-    console.error("hh: use only two first params, comp params inside comp. hh(ctx, comp({p1: '..'})) and not hh(ctx, comp, {p1: '..'})")
 
   const hres = ctx.run(t)
   return hres()
 }
 
-function h(t, p = {}, ...c){
-  if (t && typeof t.then === 'function') debugger
+function h(t, p = {}, ...c) {
   let [tag,cls]= typeof t==="string" ? t.split(/:(.+)/) : [t]
   if (tag == 'L') {
     tag = L(cls)
@@ -115,7 +116,8 @@ if (!globalThis.window) {
   initReact = async () => {
     console.log('initReact browser')
     const isLocalHost = typeof location !== 'undefined' && location.hostname === 'localhost'
-    const ver = '19.2.0-prod' //isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
+    let ver = isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
+    //ver = '19.2.0-prod'
 
     if (typeof process === 'undefined')
       globalThis.process = { env: { NODE_ENV: 'development' }, platform: 'browser', version: '', versions: {} }

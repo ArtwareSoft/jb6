@@ -50,8 +50,7 @@ const compWithP1AndV1 = ReactComp('compWithP1AndV1', {
     {id: 'p1', as: 'string '}
   ],
   impl: comp({
-    hFunc: ({}, {v1, react: {h}} , {p1}) => 
-      () => h('div', {}, `myComp p1: ${p1}, v1: ${v1}` ),
+    hFunc: ({}, {v1, react: {h}}, {p1}) => () => h('div', {}, `myComp p1: ${p1}, v1: ${v1}`),
     enrichCtx: ctx => ctx.setVars({v1: 'v1Val'})
   })
 })
@@ -60,8 +59,8 @@ const asyncComp = ReactComp('asyncComp', {
   params: [
     {id: 'p1', as: 'string '}
   ],
-  impl: compWithAsyncCtx(({}, {v1, react: {h}} , {p1}) => 
-      () => h('div', {}, `myComp p1: ${p1}, v1: ${v1}` ), {
+  impl: compWithAsyncCtx({
+    hFunc: ({}, {v1, react: {h}}, {p1}) => () => h('div', {}, `myComp p1: ${p1}, v1: ${v1}`),
     enrichCtx: ctx => coreUtils.delay(20).then(()=>ctx.setVars({v1: 'v1Val'}))
   })
 })
@@ -91,7 +90,6 @@ Test('reactTest.asyncComp', {
 })
 
 Test('reactTest.usingAsyncCompWithHH', {
-  doNotRunInTests: true,
   impl: reactTest({
     hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, asyncComp('p1Val')),
     expectedResult: contains('myComp p1: p1Val, v1: v1Val'),
