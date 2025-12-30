@@ -1,7 +1,51 @@
-import { jb, coreUtils } from '@jb6/core'
-export const reactUtils = jb.reactUtils = { h, L, loadLucid05 }
+import { jb, coreUtils, dsls } from '@jb6/core'
+export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh }
+
+const { tgp: { TgpType }} = dsls
+
+const ReactComp = TgpType('react-comp','react')
+TgpType('h-func','react')
+
+ReactComp('comp', {
+  params: [
+    {id: 'hFunc', type: 'h-func', dynamic: true},
+    {id: 'enrichCtx', dynamic: true, byName: true}
+  ],
+  impl: (_ctx, {react: {h} }, { hFunc, enrichCtx }) => () => {
+    const ctx = enrichCtx(_ctx) || _ctx
+    return h(hFunc(ctx))
+  }
+})
+
+ReactComp('compWithAsyncCtx', {
+  params: [
+    {id: 'hFunc', type: 'h-func', dynamic: true },
+    {id: 'enrichCtx', dynamic: true, byName: true },
+  ],
+  impl: (_ctx, {react: {use, h} }, { hFunc, enrichCtx }) => {
+    const ctxPromise = enrichCtx(_ctx)
+    const comp = () => {
+      const ctx = use(ctxPromise)
+      return h(hFunc(ctx))
+    }
+    return () => h(comp)    
+  }
+})
+
+function hh(ctx, t, p) {
+  if (!(ctx instanceof coreUtils.Ctx))
+    console.error('hh: first param of hh must be ctx')
+  if (!(t.$ instanceof coreUtils.jbComp))
+    console.error("hh: second param of hh must be profile e.g., hh(ctx, comp('p1Val')) and not hh(ctx, comp)")
+  if (p != undefined)
+    console.error("hh: use only two first params, comp params inside comp. hh(ctx, comp({p1: '..'})) and not hh(ctx, comp, {p1: '..'})")
+
+  const hres = ctx.run(t)
+  return hres()
+}
 
 function h(t, p = {}, ...c){
+  if (t && typeof t.then === 'function') debugger
   let [tag,cls]= typeof t==="string" ? t.split(/:(.+)/) : [t]
   if (tag == 'L') {
     tag = L(cls)
@@ -70,15 +114,14 @@ if (!globalThis.window) {
 } else { // browser
   initReact = async () => {
     console.log('initReact browser')
-    const isLocalHost = false // typeof location !== 'undefined' && location.hostname === 'localhost'
-    const ver = isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
+    const isLocalHost = typeof location !== 'undefined' && location.hostname === 'localhost'
+    const ver = '19.2.0-prod' //isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
 
     if (typeof process === 'undefined')
       globalThis.process = { env: { NODE_ENV: 'development' }, platform: 'browser', version: '', versions: {} }
     if (!reactUtils.reactPromise)
       reactUtils.reactPromise = (async () => {
         const { React, ReactDomClient, ReactDom } = await import(`./lib/react-all-${ver}.mjs`)
-        //await import('./lib/tailwindcss.js')
         Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient  })
       })()
     return reactUtils.reactPromise
@@ -86,17 +129,3 @@ if (!globalThis.window) {
 }
 
 await (async () => initReact())()
-
-if (coreUtils.isNode) {
-  const cli = Object.fromEntries(process.argv.slice(2).filter(a=>a.startsWith('--')).map(a=>a.slice(2).split('=')))
-  globalThis.runNodeTests = () => {
-    cli.test && delay(1).then(() =>  // let the other modules finish their loading
-        runTests({
-          specificTest: cli.test,
-          notPattern:   cli.not,
-          pattern:      cli.pattern,
-          take:         cli.take
-        })
-      )
-  }
-}

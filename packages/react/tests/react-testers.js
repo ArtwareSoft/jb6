@@ -11,20 +11,23 @@ const {
   test: { Test, 
     test: { dataTest }
   }, 
+  react: { ReactComp, HFunc,
+    'react-comp': { comp },
+    'h-func': { hFunc }
+  },
   common: { Data }
 } = dsls
 
 const UiAction = TgpType('ui-action', 'test')
-const start = Date.now()
 Test('reactTest', {
     params: [
-      {id: 'reactComp', type: 'react-comp<react>', dynamic: true },
+      {id: 'hFunc', type: 'react-comp<react>', dynamic: true },
       {id: 'expectedResult', type: 'boolean', dynamic: true},
       {id: 'props', as: 'object' },
       {id: 'userActions', type: 'ui-action[]'}
     ],
     impl: dataTest({
-        calculate: async (ctx,{singleTest},{reactComp,userActions,props}) => { 
+        calculate: async (ctx,{singleTest},{hFunc,userActions,props}) => { 
           const win = globalThis.window
           if (!win)
             return {error: 'reactTest: no global window' }
@@ -36,8 +39,14 @@ Test('reactTest', {
           const hasActions = asArray(userActions).length > 0
           if (singleTest || hasActions)
               win.document.body.appendChild(testSimulation)
+          let hFuncRes
+          try {
+            hFuncRes = hFunc(ctx.setVars({react: reactUtils}))
+          } catch (error) {
+            return { error: error.stack}
+          }
 
-          reactUtils.createRoot(testSimulation).render(reactUtils.createElement(reactComp, props))
+          reactUtils.createRoot(testSimulation).render(reactUtils.createElement(hFuncRes, props))
           await win.waitForMutations(10)
           const ctxA = ctx.setVars({ win })
           for (const a of asArray(userActions)) {

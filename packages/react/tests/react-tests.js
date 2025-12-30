@@ -1,31 +1,141 @@
-import { dsls, ns } from '@jb6/core'
-import { h, L, useState, useEffect, useRef, useContext, reactUtils } from '@jb6/react'
+import { coreUtils, dsls, ns } from '@jb6/core'
 import './react-testers.js'
 
 const { 
   test: { Test, 
-      'ui-action': { click, longPress, actions },
+      'ui-action': { click, longPress, actions, waitForText },
       test: { dataTest, reactTest }
   }, 
   common: { Data, Action, Boolean,
     data: { pipeline, filter, join, property, obj, delay }, 
     Boolean: { contains, equals },
     Prop: { prop }
+  },
+  react: { ReactComp, HFunc,
+    'react-comp': { comp, compWithAsyncCtx },
   }
 } = dsls
 
 Test('reactTest.helloWorld', {
-  impl: reactTest(() => h('div', {}, 'hello world'), contains('hello world'))
+  impl: reactTest(({}, {react: {h}}) => () => h('div', {}, 'hello world'), contains('hello world'))
 })
 
 Test('reactTest.buttonClick', {
   impl: reactTest({
-    reactComp: () => {
-    const [text, setText] = useState('Click me')
-    return h('button', { onClick: () => setText('Clicked!') }, text)
-  },
+    hFunc: ({}, {react: {h, useState}}) => () => {
+      const [text, setText] = useState('Click me')
+      return h('button', { onClick: () => setText('Clicked!') }, text)
+    },
     expectedResult: contains('Clicked!'),
     userActions: actions(click('Click me'))
+  })
+})
+
+Test('reactTest.use', {
+  impl: reactTest({
+    hFunc: ({}, {react: {h, use}}) => {
+      const textPromise = coreUtils.delay(20).then(()=>'hello')
+      return () => {
+        const text = use(textPromise)
+        return h('div', {}, text)
+      }
+    },
+    expectedResult: contains('hello'),
+    userActions: waitForText('hello')
+  })
+})
+
+const compWithP1AndV1 = ReactComp('compWithP1AndV1', {
+  params: [
+    {id: 'p1', as: 'string '}
+  ],
+  impl: comp({
+    hFunc: ({}, {v1, react: {h}} , {p1}) => 
+      () => h('div', {}, `myComp p1: ${p1}, v1: ${v1}` ),
+    enrichCtx: ctx => ctx.setVars({v1: 'v1Val'})
+  })
+})
+
+const asyncComp = ReactComp('asyncComp', {
+  params: [
+    {id: 'p1', as: 'string '}
+  ],
+  impl: compWithAsyncCtx(({}, {v1, react: {h}} , {p1}) => 
+      () => h('div', {}, `myComp p1: ${p1}, v1: ${v1}` ), {
+    enrichCtx: ctx => coreUtils.delay(20).then(()=>ctx.setVars({v1: 'v1Val'}))
+  })
+})
+
+Test('reactTest.usingjbComp', {
+  impl: reactTest(compWithP1AndV1('p1Val'), contains('myComp p1: p1Val, v1: v1Val'))
+})
+
+Test('reactTest.usingjbCompWithHH', {
+  impl: reactTest({
+    hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, compWithP1AndV1('p1Val')),
+    expectedResult: contains('myComp p1: p1Val, v1: v1Val')
+  })
+})
+
+Test('reactTest.usingjbCompWith$run', {
+  impl: reactTest({
+    hFunc: (ctx, {react: {h}}) => () => h('div', {}, compWithP1AndV1.$runWithCtx(ctx,'p1Val')() ),
+    expectedResult: contains('myComp p1: p1Val, v1: v1Val')
+  })
+})
+
+Test('reactTest.asyncComp', {
+  impl: reactTest(asyncComp('p1Val'), contains('myComp p1: p1Val, v1: v1Val'), {
+    userActions: waitForText('v1Val')
+  })
+})
+
+Test('reactTest.usingAsyncCompWithHH', {
+  doNotRunInTests: true,
+  impl: reactTest({
+    hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, asyncComp('p1Val')),
+    expectedResult: contains('myComp p1: p1Val, v1: v1Val'),
+    userActions: waitForText('v1Val')
+  })
+})
+
+Test('reactTest.use.erichCtxAsync', {
+  impl: reactTest({
+    hFunc: (ctx, {react: {h, use}}) => {
+      const ctxPromise = enrichCtx(ctx)
+      return () => {
+        const ctx = use(ctxPromise)
+        const { text } = ctx.vars
+        return h('div', {}, text)
+      }
+
+      function enrichCtx(ctx) {
+        return coreUtils.delay(20).then(() => ctx.setVars({text: 'hello'}))
+      }
+    },
+    expectedResult: contains('hello'),
+    userActions: waitForText('hello')
+  })
+})
+
+Test('reactTest.use.erichCtxAsync.inner', {
+  impl: reactTest({
+    hFunc: (ctx, {react: {h, use}}) => {
+      const ctxPromise = enrichCtx(ctx)
+      const comp1 = () => {
+        const ctx = use(ctxPromise)
+        const { text } = ctx.vars
+        return h('div', {}, text)
+      }
+
+      return () => h(comp1)
+
+      function enrichCtx(ctx) {
+        return coreUtils.delay(20).then(() => ctx.setVars({text: 'hello'}))
+      }
+    },
+    expectedResult: contains('hello'),
+    userActions: waitForText('hello')
   })
 })
 
@@ -34,15 +144,16 @@ Test('reactTest.buttonClickWithParams', {
     {id: 'textAfterClick', as: 'string', defaultValue: 'Clicked!'}
   ],
   impl: reactTest({
-    reactComp: ({},{},{textAfterClick}) => {
-    const [text, setText] = useState('Click me')
-    return h('button', { onClick: () => setText(textAfterClick) }, text)
-  },
+    hFunc: ({}, {react: {h, useState}}, {textAfterClick}) => () => {
+      const [text, setText] = useState('Click me')
+      return h('button', { onClick: () => setText(textAfterClick) }, text)
+    },
     expectedResult: contains('%$textAfterClick%'),
     userActions: actions(click('Click me'))
   })
 })
 
+// These tests fails in probe-view. it is OK
 Test('reactTest.cli', {
   HeavyTest: true,
   impl: dataTest({
@@ -77,7 +188,7 @@ Test('reactTest.vm', {
 
 Test('reactTest.buttonForClick', {
   impl: reactTest({
-    reactComp: () => {
+    hFunc: ({}, {react: {h, useState}}) => () => {
     const [text, setText] = useState('Click me')
     return h('button', { onClick: () => setText('Clicked!') }, text)
   },
@@ -97,7 +208,7 @@ Test('reactTest.buttonForClick', {
 
 Test('reactTest.longPress', {
   impl: reactTest({
-    reactComp: () => {
+    hFunc: ({}, {react: {h, useState, useRef}}) => () => {
       const [text, setText] = useState('LongPress me')
       const timeoutRef = useRef(null)
       

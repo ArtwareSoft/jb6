@@ -38,6 +38,7 @@ if (coreUtils.isNode) {
         try {                  
             const exclude = ['text','doclet']
             const allTools = coreUtils.globalsOfTypeIds(dsls.mcp.tool,'all').filter(id => !exclude.includes(id))
+                .map(id=>({id, toolComp: dsls.mcp.tool[id][coreUtils.asJbComp] }))
         
             const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js")     
             await startMcpServer(new StdioServerTransport(), allTools)

@@ -57,7 +57,7 @@ async function run() {
 
   const projectRoot = await coreUtils.calcRepoRoot()
   const urlParams = new URLSearchParams(window.location.search)
-  const filePath = urlParams.get('filePath') || '/jb6_packages/react/tests/react-tests.js'
+  const filePath = urlParams.get('filePath') || '/packages/react/tests/react-tests.js'
   const fullFilePath = `${projectRoot}${filePath}`
   const path = urlParams.get('path') || 'reactTest.HelloWorld~impl~expectedResult'
 
@@ -129,11 +129,10 @@ function findImageUrl({probeRes,testRes,firstResInput}) {
   }
 }
 
-function findProp(jqExp, {probeRes,testRes,firstResInput}) {
-  const ctx = new coreUtils.Ctx().setVars({probeRes,testRes}).setData(firstResInput)
+function findProp(jqExp, {probeRes}) {
+  const ctx = new coreUtils.Ctx().setData(probeRes)
   try {
-    const inLogs = jq.$runWithCtx(ctx,jqExp)[0]
-    return inLogs || probeRes?.circuitRes?.[prop] || testRes?.[prop]
+    return jq.$runWithCtx(ctx,jqExp)[0]
   } catch(error) {
     console.error(error)
   }

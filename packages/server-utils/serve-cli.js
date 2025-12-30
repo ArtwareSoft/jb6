@@ -21,6 +21,7 @@ export async function serveMcp(app, { express }) {
     try {
       const exclude = ['text','doclet']
       const allTools = coreUtils.globalsOfTypeIds(dsls.mcp.tool,'all').filter(id => !exclude.includes(id))
+      .map(id=>({id, toolComp: dsls.mcp.tool[id][coreUtils.asJbComp] }))
 
       await startMcpServer(transport,allTools)
       await transport.handleRequest(req, res, req.body)

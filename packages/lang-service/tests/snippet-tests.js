@@ -81,14 +81,13 @@ Test('snippet.runFullTest', {
 Test('snippet.runReactTest', {
   HeavyTest: true,
   impl: snippetTest({
-    profileText: `reactTest(() => {
+    profileText: `reactTest(({},{react: {h, useState}}) => () => {
     const [text, setText] = useState('Click me')
     return h('button', { onClick: () => setText('Clicked!') }, text)
   }, contains('Clicked!'), {
     userActions: click('Click me')
   })`,
     expectedResult: '%success%',
-    setupCode: `const { h, L, useState, useEffect, useRef, useContext, reactUtils } = await import('@jb6/react')`
   })
 })
 

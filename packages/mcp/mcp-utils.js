@@ -17,11 +17,10 @@ export async function startMcpServer(transport, allTools) {
   const { z } = await import('zod')
   const { ListToolsRequestSchema, CallToolRequestSchema } = await import("@modelcontextprotocol/sdk/types.js")
     
-  const toolConfigs = allTools.map(toolId => {
-      const toolComp = dsls.mcp.tool[toolId][asJbComp]
+  const toolConfigs = allTools.map(({id,toolComp}) => {
       return {
-        name: toolId,
-        description: toolComp.description || `Tool: ${toolId}`,
+        name: id,
+        description: toolComp.description || `Tool: ${id}`,
         inputSchema: {
           type: "object",
           properties: (toolComp.params || []).reduce((props, param) => {
@@ -41,7 +40,8 @@ export async function startMcpServer(transport, allTools) {
 
     mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params 
-      const result = await dsls.mcp.tool[name].$run(args)
+      const toolComp = allTools.find(({id}) => id == name)?.toolComp
+      const result = await new coreUtils.Ctx().run({$: toolComp, ...args})
       return result
     })
 
@@ -56,7 +56,8 @@ export async function startMcpServer(transport, allTools) {
 
     mcpServer.setRequestHandler(GenericToolCallSchema, async (request) => {
       const { name, arguments: args } = request.params
-      const result = await dsls.mcp.tool[name].$run(args)
+      const toolComp = allTools.find(({id}) => id == name)?.toolComp
+      const result = await new coreUtils.Ctx().run({$: toolComp, ...args})
       return result
     })
       
