@@ -169,13 +169,14 @@ function wrapReactCompWithSampleData(cmpId, _ctx) {
     const comp = coreUtils.compByFullId(fullId, jb)
     const jbComp = comp[coreUtils.asJbComp]
     coreUtils.resolveCompArgs(jbComp)
-    const ctxData = ctx.run(jbComp.impl.sampleCtxData)
-    const ctxWithData = ctx.setData(ctxData.data).setVars(ctxData.vars)
+    const ctxData = jbComp.impl.sampleCtxData && ctx.run(jbComp.impl.sampleCtxData)
+    const props = jbComp.impl.samplePropsData && ctx.run(jbComp.impl.samplePropsData)
+    const ctxWithData = ctxData ? ctx.setData(ctxData.data).setVars(ctxData.vars) : ctx
 
-    const cmp = comp.$runWithCtx(ctxWithData)
-    return cmp
+    const reactCmp = comp.$runWithCtx(ctxWithData)
+    return { reactCmp, props }
   } catch(error) {
-    return () => reactUtils.h('pre',{},error.stack)
+    return { reactCmp: () => reactUtils.h('pre',{},error.stack) }
   }
 }
 

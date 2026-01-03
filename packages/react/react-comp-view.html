@@ -45,8 +45,8 @@
     await import (filePath)
 
     const cmpId = urlParams.get('cmpId') || 'showMe'
-    const cmp = reactUtils.wrapReactCompWithSampleData(cmpId)
-    reactUtils.createRoot(document.getElementById('show')).render(reactUtils.h(cmp))
+    const { reactCmp, props } = reactUtils.wrapReactCompWithSampleData(cmpId)
+    reactUtils.createRoot(document.getElementById('show')).render(reactUtils.hh(new coreUtils.Ctx(), reactCmp, props))
 
   </script>
 </body>

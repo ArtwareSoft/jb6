@@ -208,7 +208,7 @@ ReactComp('resultsView', {
       if (!result?.length)
         return h('div:text-gray-500 text-center py-4', {}, 'No results')
       return h('div:p-3 flex flex-col overflow-auto', {},
-        result.map(({in: In, out}, i) => hh(ctx, codeMirrorInputOutput, { In, out, key: i }))
+        result.map(({in: In, out}, i) => hh(ctx, codeMirrorInputOutput, { in: In, out, key: i }))
       )
     },
     sampleCtxData: jq('$sampleProbeRes | .. | .result? | { data: . }', { first: true }),
@@ -287,7 +287,7 @@ ReactComp('cmdView', {
       )
     },
     enrichCtx: (ctx, {top}) => ctx.setVars({projectDir: top.projectDir}),
-    sampleCtxData: jq('$sampleProbeRes | .. | .cmd? | { data: ., vars: {projectDir: $sampleProbeRes.projectDir}}', {
+    sampleCtxData: jq('$sampleProbeRes | .. | .cmd? | { data: ., vars: {top: $sampleProbeRes}}', {
       first: true
     }),
     metadata: [
@@ -426,14 +426,15 @@ const codeMirrorJson = ReactComp('codeMirrorJson', {
 
       return h('div:h-full', { ref: host })
     },
-    samplePropsData: asIs({json: { hello: 'world'}})
+    samplePropsData: asIs({json: {hello: 'world'}})
   })
 })
 
 
 const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
   impl: comp({
-    hFunc: ({}, {react: {h, useRef, useEffect, use, codeMirrorPromise}}) => ({In, out}) => {
+    samplePropsData: '%$sampleProbeRes/probeRes/result/0%',
+    hFunc: ({}, {react: {h, useRef, useEffect, use, codeMirrorPromise}}) => ({in: In, out}) => {
       const format = v => typeof v === 'object' ? coreUtils.prettyPrint(squeezeLogEntries(v)) : String(v)
       const inputData = In?.data ?? In
 

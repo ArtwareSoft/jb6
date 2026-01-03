@@ -188,7 +188,7 @@ UiAction('longPress', {
   })
 })
 
-async function probeReactComp(reactCmp) {
+async function probeReactComp(ctx, reactCmp, props) {
   const win = globalThis.window
   if (!win)
     return {error: 'reactTest: no global window' }
@@ -199,7 +199,7 @@ async function probeReactComp(reactCmp) {
   testSimulation.id = 'test-simulation'
   let hFuncRes
   try {
-    hFuncRes = reactUtils.h(reactCmp)
+    hFuncRes = reactUtils.hh(ctx, reactCmp, props)
   } catch (error) {
     return { error: error.stack}
   }
