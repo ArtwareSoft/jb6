@@ -170,9 +170,8 @@ Test('reactTest.longPress', {
 })
 
 ReactComp('showMe', {
-  doNotRunInTests: true,
   impl: comp({
-    hFunc: ({}, {text1, react: {h}}) => ({}) => h('div', {}, text1),
+    hFunc: ({}, {text1, v1, react: {h}}) => ({}) => h('div', {}, text1, v1),
     enrichCtx: ctx => ctx.setVars({text1: ctx.data.text}),
     sampleCtxData: asIs({data: {text: 'hello world'}, vars: {v1: 'v1Val'}})
   })

@@ -63,7 +63,7 @@ function compileJb(prog) {
         if (!ctx) debugger
         return filter.node.apply(ctx.data, {
             userFuncArgs: {},
-            variables: ctx.vars
+            variables: { ...jb?.coreRegistry?.consts, ...ctx.vars}
         }) 
     }
     ret.filter = filter

@@ -46,16 +46,7 @@
 
     const cmpId = urlParams.get('cmpId') || 'showMe'
     const cmp = reactUtils.wrapReactCompWithSampleData(cmpId)
-    // const ctx = new coreUtils.Ctx().setVars({react: jb.reactUtils})
-    // const jbComp = dsls.react['react-comp'][cmpId][coreUtils.asJbComp]
-    // coreUtils.resolveCompArgs(jbComp)
-    // const ctxData = jbComp.impl.sampleCtxData(ctx)
-    // const ctxWithData = ctx.setData(ctxData.data).setVars(ctxData.vars)
-
-    // const render = (c) => reactUtils.createRoot(document.getElementById('show')).render(c)
-    // const rCmp = dsls.react['react-comp'][cmpId].$runWithCtx(ctxWithData)
-    // render(reactUtils.h(rCmp))
-    reactUtils.createRoot(document.getElementById('show')).render(cmp)
+    reactUtils.createRoot(document.getElementById('show')).render(reactUtils.h(cmp))
 
   </script>
 </body>

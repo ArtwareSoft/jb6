@@ -18,11 +18,12 @@ coreUtils.compileJb = jq.compileJb
 Data('jq', {
   moreTypes: 'boolean<common>',
   params: [
-    {id: 'script', as: 'text', asIs: true}
+    {id: 'script', as: 'text', asIs: true},
+    {id: 'first', as: 'boolean', byName: true}
   ],
-  impl: (ctx, {}, {script}) => {
-    ctx.jbCtx.compiledJq = ctx.jbCtx.compiledJq || jq.compileJb(script)
-    return [...ctx.jbCtx.compiledJq(ctx)]
+  impl: (ctx, {}, {script, first}) => {
+    const complied = ctx.jbCtx.compiledJq = ctx.jbCtx.compiledJq || jq.compileJb(script)
+    return first ? complied(ctx).next().value : Array.from(complied(ctx))
   }
 })
 

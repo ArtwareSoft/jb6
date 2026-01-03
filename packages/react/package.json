@@ -4,8 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./index.js",
-    "./data-browser.js": "./data-browser.js",
-    "./tailwind-utils.js": "./tailwind-utils.js",
+    "./*.js": "./*.js",
+    "./lib/*.js": "./lib/*.js",
     "./tests/*.js": "./tests/*.js"
   },
   "scripts": {},

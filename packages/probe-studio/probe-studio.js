@@ -1,12 +1,16 @@
 import { dsls, coreUtils } from '@jb6/core'
 import { reactUtils } from '@jb6/react'
-import '@jb6/react/codemirror-utils.js'
-import '@jb6/react/lib/tailwindcss.js'
 import '@jb6/react/tests/react-testers.js'
 import '@jb6/core/misc/import-map-services.js'
 import '@jb6/core/misc/probe.js'
 import '@jb6/core/misc/pretty-print.js'
 import '@jb6/jq'
+
+// Browser-only imports
+if (!coreUtils.isNode) {
+  await import('@jb6/react/codemirror-utils.js')
+  await import('@jb6/react/lib/tailwindcss.js')
+}
 
 Object.assign(coreUtils, {runProbeStudio})
 
@@ -207,7 +211,7 @@ ReactComp('resultsView', {
         result.map(({in: In, out}, i) => hh(ctx, codeMirrorInputOutput, { In, out, key: i }))
       )
     },
-    sampleCtxData: jq('$sampleProbeRes | .. | .result | { data: . }'),
+    sampleCtxData: jq('$sampleProbeRes | .. | .result? | { data: . }', { first: true }),
     metadata: [
       abbr('RES'),
       matchData('%$top/probeRes/result%'),
@@ -229,11 +233,40 @@ ReactComp('testIframeView', {
     hFunc: (ctx, {react: {h}}) => () => {
       const testId = ctx.data
       const src = `/packages/testing/tests.html?test=${testId}&spy=all`
-      return h('iframe:w-full h-full min-h-[500px] border-0', { src })
+      return h('div:w-full h-full flex flex-col', {},
+        h('div:flex p-1', {},
+          h('a:text-gray-500 hover:text-gray-800', { href: src, target: '_blank', title: 'Open in new tab' }, 
+            h('L:ExternalLink', { className: 'w-4 h-4' })
+          )
+        ),
+        h('iframe:w-full flex-1 min-h-[500px] border-0', { src })
+      )
     },
     metadata: [
       abbr('TST'),
       matchData(({},{probeRes}) => probeRes.circuitCmpId.startsWith('test<test>') && probeRes.circuitCmpId.split('~')[0]),
+      priority(2)
+    ]
+  })
+})
+
+ReactComp('reactCompView', {
+  impl: comp({
+    hFunc: (ctx, {filePath, react: {h}}) => () => {
+      const cmpId = ctx.data
+      const src = `/jb6_packages/react/react-comp-view.html?cmpId=${encodeURIComponent(cmpId)}&filePath=${encodeURIComponent(filePath)}`
+      return h('div:w-full h-full flex flex-col', {},
+        h('div:flex p-1', {},
+          h('a:text-gray-500 hover:text-gray-800', { href: src, target: '_blank', title: 'Open in new tab' }, 
+            h('L:ExternalLink', { className: 'w-4 h-4' })
+          )
+        ),
+        h('iframe:w-full flex-1 min-h-[500px] border-0', { src })
+      )
+    },
+    metadata: [
+      abbr('CMP'),
+      matchData(({},{probeRes}) => probeRes.circuitCmpId.startsWith('react-comp<react>') && probeRes.circuitCmpId.split('>').pop().split('~')[0]),
       priority(2)
     ]
   })
@@ -253,7 +286,7 @@ ReactComp('cmdView', {
         h('pre:bg-gray-900 text-green-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono border border-gray-600 whitespace-pre-wrap', {}, `$ ${cmd}`)
       )
     },
-    sampleCtxData: jq('$sampleProbeRes | .. | .cmd | { data: . }'),
+    sampleCtxData: jq('$sampleProbeRes | .. | .cmd? | { data: ., vars: {projectDir: $sampleProbeRes.projectDir}}', { first: true }),
     metadata: [
       abbr('CMD'),
       matchData(jq('.. | .cmd?')),
@@ -363,6 +396,12 @@ function summarizeRecord1(record) { // reuslt.in.vars.workflowDb
 const codeMirrorJson = ReactComp('codeMirrorJson', {
   impl: comp({
     hFunc: ({}, {react: {h, useRef, useEffect, use, codeMirrorPromise}}) => ({json}) => {
+      if (coreUtils.isNode)
+        return h('textarea:h-full w-full font-mono text-xs p-2 border rounded bg-gray-50', { 
+          readOnly: true, 
+          value: coreUtils.prettyPrint(json) 
+        })
+
       const CodeMirror = use(codeMirrorPromise())
       const host = useRef()
       const cm = useRef()
@@ -392,14 +431,28 @@ const codeMirrorJson = ReactComp('codeMirrorJson', {
 const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
   impl: comp({
     hFunc: ({}, {react: {h, useRef, useEffect, use, codeMirrorPromise}}) => ({In, out}) => {
+      const format = v => typeof v === 'object' ? coreUtils.prettyPrint(squeezeLogEntries(v)) : String(v)
+      const inputData = In?.data ?? In
+
+      if (coreUtils.isNode) {
+        return h('div:flex flex-1 min-h-96 border rounded p-2 mb-2 gap-2', {},
+          h('div:flex-1 flex flex-col', {},
+            h('span:font-medium text-gray-600 mb-1', {}, 'Input:'),
+            h('textarea:flex-1 font-mono text-xs p-2 border rounded bg-gray-50', { readOnly: true, value: format(inputData) })
+          ),
+          h('div:flex-1 flex flex-col', {},
+            h('span:font-medium text-gray-600 mb-1', {}, 'Output:'),
+            h('textarea:flex-1 font-mono text-xs p-2 border rounded bg-gray-50', { readOnly: true, value: format(out) })
+          )
+        )
+      }
+
       const CodeMirror = use(codeMirrorPromise())
 
       const inputRef = useRef()
       const outputRef = useRef()
-      const inputData = In?.data ?? In
 
       useEffect(() => {
-        const format = v => typeof v === 'object' ? coreUtils.prettyPrint(squeezeLogEntries(v)) : String(v)
         const isHtml = v => typeof v === 'string' && /^\s*</.test(v)
         const inputMode = isHtml(inputData) ? 'xml' : 'javascript'
         const outMode = isHtml(out) ? 'xml' : 'javascript'
@@ -444,15 +497,6 @@ Const('sampleProbeRes', {
             vars: {singleTest: true, testID: 'test<test>reactTest', isTest: true, testSessionId: 'test-1767382961872'}
           }
         },
-        {
-          from: null,
-          out: true,
-          in: {
-            data: '<div>hello world</div>\n',
-            params: null,
-            vars: {singleTest: true, testID: 'test<test>reactTest', isTest: true, testSessionId: 'test-1767382961872'}
-          }
-        }
       ],
       circuitRes: {id: 'test<test>reactTest', success: true, testRes: '<div>hello world</div>\n', counters: {}},
       errors: [],

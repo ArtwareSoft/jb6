@@ -163,15 +163,20 @@ if (!globalThis.window) {
 }
 
 function wrapReactCompWithSampleData(cmpId, _ctx) {
-  const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
-  const comp = coreUtils.compByFullId(cmpId, jb)
-  const jbComp = comp[coreUtils.asJbComp]
-  coreUtils.resolveCompArgs(jbComp)
-  const ctxData = jbComp.impl.sampleCtxData(ctx)
-  const ctxWithData = ctx.setData(ctxData.data).setVars(ctxData.vars)
+  try {
+    const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
+    const fullId = cmpId.indexOf('<') == -1 ? `react-comp<react>${cmpId}` : cmpId
+    const comp = coreUtils.compByFullId(fullId, jb)
+    const jbComp = comp[coreUtils.asJbComp]
+    coreUtils.resolveCompArgs(jbComp)
+    const ctxData = ctx.run(jbComp.impl.sampleCtxData)
+    const ctxWithData = ctx.setData(ctxData.data).setVars(ctxData.vars)
 
-  const cmp = comp.$runWithCtx(ctxWithData)
-  return cmp
+    const cmp = comp.$runWithCtx(ctxWithData)
+    return cmp
+  } catch(error) {
+    return () => reactUtils.h('pre',{},error.stack)
+  }
 }
 
 await (async () => initReact())()
