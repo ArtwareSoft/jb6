@@ -3,7 +3,7 @@ import { reactUtils } from '@jb6/react'
 import '@jb6/testing'
 const { asArray, logError } = coreUtils
 
-Object.assign(reactUtils, {registerMutObs, prettyPrintNode})
+Object.assign(reactUtils, {registerMutObs, prettyPrintNode, probeReactComp})
 
 const { delay } = coreUtils
 const { 
@@ -13,7 +13,6 @@ const {
   }, 
   react: { ReactComp, HFunc,
     'react-comp': { comp },
-    'h-func': { hFunc }
   },
   common: { Data }
 } = dsls
@@ -188,6 +187,29 @@ UiAction('longPress', {
     }
   })
 })
+
+async function probeReactComp(reactCmp) {
+  const win = globalThis.window
+  if (!win)
+    return {error: 'reactTest: no global window' }
+
+  win.testing = true
+  reactUtils.registerMutObs(win)
+  const testSimulation = win.document.createElement('div')
+  testSimulation.id = 'test-simulation'
+  let hFuncRes
+  try {
+    hFuncRes = reactUtils.h(reactCmp)
+  } catch (error) {
+    return { error: error.stack}
+  }
+
+  reactUtils.createRoot(testSimulation).render(hFuncRes)
+  await win.waitForMutations(10)
+  const res = prettyPrintNode(testSimulation)
+  testSimulation.remove()
+  return res
+}
 
 function registerMutObs(win) {
   win.groupCounter = 0

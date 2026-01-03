@@ -15,13 +15,14 @@ coreUtils.jq = jq
 
 coreUtils.compileJb = jq.compileJb
 
-Data('jq',{
-    params: [
-        {id: 'script', as: 'text', asIs: true}
-    ],
-    impl: (ctx, {}, {script}) => {
-        ctx.jbCtx.compiledJq = ctx.jbCtx.compiledJq || jq.compileJb(script)
-        return [...ctx.jbCtx.compiledJq(ctx)]
-    }
+Data('jq', {
+  moreTypes: 'boolean<common>',
+  params: [
+    {id: 'script', as: 'text', asIs: true}
+  ],
+  impl: (ctx, {}, {script}) => {
+    ctx.jbCtx.compiledJq = ctx.jbCtx.compiledJq || jq.compileJb(script)
+    return [...ctx.jbCtx.compiledJq(ctx)]
+  }
 })
 

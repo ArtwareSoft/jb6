@@ -6,12 +6,11 @@ const {
       'ui-action': { click, longPress, actions, waitForText },
       test: { dataTest, reactTest }
   }, 
-  common: { Data, Action, Boolean,
-    data: { pipeline, filter, join, property, obj, delay }, 
-    Boolean: { contains, equals },
-    Prop: { prop }
+  common: { 
+    data: { asIs },
+    boolean: { contains, equals },
   },
-  react: { ReactComp, HFunc,
+  react: { ReactComp, 
     'react-comp': { comp, compWithAsyncCtx },
   }
 } = dsls
@@ -47,11 +46,18 @@ Test('reactTest.use', {
 
 const compWithP1AndV1 = ReactComp('compWithP1AndV1', {
   params: [
-    {id: 'p1', as: 'string '}
+    {id: 'p1', as: 'string ', type: 'data<common>', $dslType: 'data<common>'}
   ],
   impl: comp({
-    hFunc: ({}, {v1, react: {h}}, {p1}) => () => h('div', {}, `myComp p1: ${p1}, v1: ${v1}`),
+    hFunc: ({}, {v1, react: {h}}) => ({p1}) => h('div', {}, `myComp p1: ${p1}, v1: ${v1}`),
     enrichCtx: ctx => ctx.setVars({v1: 'v1Val'})
+  })
+})
+
+Test('reactTest.usingjbComp', {
+  impl: reactTest({
+    hFunc: (ctx, {react: {h, hh}}) => () => h('div', {}, hh(ctx, compWithP1AndV1, {p1: 'p1Val'})),
+    expectedResult: contains('myComp p1: p1Val, v1: v1Val')
   })
 })
 
@@ -60,80 +66,16 @@ const asyncComp = ReactComp('asyncComp', {
     {id: 'p1', as: 'string '}
   ],
   impl: compWithAsyncCtx({
-    hFunc: ({}, {v1, react: {h}}, {p1}) => () => h('div', {}, `myComp p1: ${p1}, v1: ${v1}`),
+    hFunc: ({}, {v1, react: {h}}) => ({p1}) => h('div', {}, `myComp p1: ${p1}, v1: ${v1}`),
     enrichCtx: ctx => coreUtils.delay(20).then(()=>ctx.setVars({v1: 'v1Val'}))
   })
 })
 
-Test('reactTest.usingjbComp', {
-  impl: reactTest(compWithP1AndV1('p1Val'), contains('myComp p1: p1Val, v1: v1Val'))
-})
-
-Test('reactTest.usingjbCompWithHH', {
-  impl: reactTest({
-    hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, compWithP1AndV1('p1Val')),
-    expectedResult: contains('myComp p1: p1Val, v1: v1Val')
-  })
-})
-
-Test('reactTest.usingjbCompWith$run', {
-  impl: reactTest({
-    hFunc: (ctx, {react: {h}}) => () => h('div', {}, compWithP1AndV1.$runWithCtx(ctx,'p1Val')() ),
-    expectedResult: contains('myComp p1: p1Val, v1: v1Val')
-  })
-})
-
 Test('reactTest.asyncComp', {
-  impl: reactTest(asyncComp('p1Val'), contains('myComp p1: p1Val, v1: v1Val'), {
-    userActions: waitForText('v1Val')
-  })
-})
-
-Test('reactTest.usingAsyncCompWithHH', {
   impl: reactTest({
-    hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, asyncComp('p1Val')),
+    hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, asyncComp, {p1: 'p1Val'}),
     expectedResult: contains('myComp p1: p1Val, v1: v1Val'),
     userActions: waitForText('v1Val')
-  })
-})
-
-Test('reactTest.use.erichCtxAsync', {
-  impl: reactTest({
-    hFunc: (ctx, {react: {h, use}}) => {
-      const ctxPromise = enrichCtx(ctx)
-      return () => {
-        const ctx = use(ctxPromise)
-        const { text } = ctx.vars
-        return h('div', {}, text)
-      }
-
-      function enrichCtx(ctx) {
-        return coreUtils.delay(20).then(() => ctx.setVars({text: 'hello'}))
-      }
-    },
-    expectedResult: contains('hello'),
-    userActions: waitForText('hello')
-  })
-})
-
-Test('reactTest.use.erichCtxAsync.inner', {
-  impl: reactTest({
-    hFunc: (ctx, {react: {h, use}}) => {
-      const ctxPromise = enrichCtx(ctx)
-      const comp1 = () => {
-        const ctx = use(ctxPromise)
-        const { text } = ctx.vars
-        return h('div', {}, text)
-      }
-
-      return () => h(comp1)
-
-      function enrichCtx(ctx) {
-        return coreUtils.delay(20).then(() => ctx.setVars({text: 'hello'}))
-      }
-    },
-    expectedResult: contains('hello'),
-    userActions: waitForText('hello')
   })
 })
 
@@ -227,3 +169,11 @@ Test('reactTest.longPress', {
   })
 })
 
+ReactComp('showMe', {
+  doNotRunInTests: true,
+  impl: comp({
+    hFunc: ({}, {text1, react: {h}}) => ({}) => h('div', {}, text1),
+    enrichCtx: ctx => ctx.setVars({text1: ctx.data.text}),
+    sampleCtxData: asIs({data: {text: 'hello world'}, vars: {v1: 'v1Val'}})
+  })
+})

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="importmap">JB_IMPORT_MAP</script>
+
+<!-- CodeMirror -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/search.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/brace-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/xml-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/indent-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/comment-fold.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/foldgutter.min.css">
+
+<style>
+  html, body { height: 100%; margin: 0; padding: 0; }
+</style>
+</head>
+  
+<body>
+  <div id="show" style="height: 100vh;"></div>
+
+  <script type="module">
+    import { dsls, coreUtils } from '@jb6/core'
+    import '@jb6/core/misc/import-map-services.js'
+    import '@jb6/react/lib/tailwindcss.js'
+
+    import { reactUtils } from '@jb6/react'
+    const urlParams = new URLSearchParams(window.location.search)
+
+    const { importMapsInCli } = JB_IMPORT_MAP
+    jb.coreRegistry.importMapsInCli = importMapsInCli
+
+    const projectRoot = await coreUtils.calcRepoRoot()
+    const filePath = urlParams.get('filePath') || '/packages/react/tests/react-tests.js'
+    await import (filePath)
+
+    const cmpId = urlParams.get('cmpId') || 'showMe'
+    const cmp = reactUtils.wrapReactCompWithSampleData(cmpId)
+    // const ctx = new coreUtils.Ctx().setVars({react: jb.reactUtils})
+    // const jbComp = dsls.react['react-comp'][cmpId][coreUtils.asJbComp]
+    // coreUtils.resolveCompArgs(jbComp)
+    // const ctxData = jbComp.impl.sampleCtxData(ctx)
+    // const ctxWithData = ctx.setData(ctxData.data).setVars(ctxData.vars)
+
+    // const render = (c) => reactUtils.createRoot(document.getElementById('show')).render(c)
+    // const rCmp = dsls.react['react-comp'][cmpId].$runWithCtx(ctxWithData)
+    // render(reactUtils.h(rCmp))
+    reactUtils.createRoot(document.getElementById('show')).render(cmp)
+
+  </script>
+</body>
+</html>

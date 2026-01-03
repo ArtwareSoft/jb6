@@ -1039,31 +1039,56 @@ class SliceNode extends ParseNode {
        return this.lhs.toString() + '[' + this.from.toString() + ':' + this.to.toString() + ']'
    }
 }
+
 class GenericIndex extends ParseNode {
-   constructor(innerNode) {
-       super()
-       this.index = innerNode
-   }
-   * apply(input, conf) {
-       let t = nameType(input)
-       for (let i of this.index.apply(input, conf)) {
-           if (t == 'array' && nameType(i) != 'number')
-               throw 'Cannot index array with ' + nameType(i) + ' ' +
-                   JSON.stringify(i)
-           else if (t == 'object' && nameType(i) != 'string')
-               throw 'Cannot index object with ' + nameType(i) + ' ' +
-                   JSON.stringify(i)
-           if (typeof i == 'number' && i < 0 && nameType(input) == 'array')
-               yield input[input.length + i]
-           else
-               yield typeof input[i] == 'undefined' ? null : input[i]
-       }
-   }
-   * paths(input, conf) {
-       for (let a of this.index.apply(input, conf))
-           yield [a]
-   }
-}
+    constructor(inner){ super(); this.index = inner }
+  
+    *apply(input, conf) {
+      const isArr = Array.isArray(input)
+      for (let k of this.index.apply(input, conf)) {
+        if (isArr) {
+          k = typeof k === 'string' && !isNaN(k) ? +k : k
+          if (typeof k !== 'number') continue
+          if (k < 0) k = input.length + k
+        } else {
+          if (typeof k === 'number') k = String(k)
+          if (typeof k !== 'string') continue
+        }
+        const v = input?.[k]
+        yield v === undefined ? null : v
+      }
+    }
+  
+    *paths(input, conf) {
+      for (let a of this.index.apply(input, conf)) yield [a]
+    }
+  }
+  
+// class GenericIndex extends ParseNode {
+//    constructor(innerNode) {
+//        super()
+//        this.index = innerNode
+//    }
+//    * apply(input, conf) {
+//        let t = nameType(input)
+//        for (let i of this.index.apply(input, conf)) {
+//            if (t == 'array' && nameType(i) != 'number')
+//                throw 'Cannot index array with ' + nameType(i) + ' ' +
+//                    JSON.stringify(i)
+//            else if (t == 'object' && nameType(i) != 'string')
+//                throw 'Cannot index object with ' + nameType(i) + ' ' +
+//                    JSON.stringify(i)
+//            if (typeof i == 'number' && i < 0 && nameType(input) == 'array')
+//                yield input[input.length + i]
+//            else
+//                yield typeof input[i] == 'undefined' ? null : input[i]
+//        }
+//    }
+//    * paths(input, conf) {
+//        for (let a of this.index.apply(input, conf))
+//            yield [a]
+//    }
+// }
 class IdentifierIndex extends GenericIndex {
    constructor(v) {
        super(new StringNode(v))

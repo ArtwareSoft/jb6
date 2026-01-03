@@ -175,7 +175,7 @@ export const commands = {
 
         const config = vscodeNS.workspace.getConfiguration('jbart')
         const jbServerPort = config.get('jbServerPort') || 8083
-        const probeViewPath = config.get('probeViewPath') || 'jb6_packages/core/misc/probe-view.html'
+        const probeViewPath = config.get('probeViewPath') || 'jb6_packages/probe-studio/probe-view.html'
 
         const probeViewUrl = `http://localhost:${jbServerPort}/${probeViewPath}`
         try {

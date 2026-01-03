@@ -93,7 +93,9 @@ async function runProbe(_probePath, {circuitCmpId, timeout, ctx} = {}) {
         if (!comp)
           return { error: `calcCircuitPath : can not find comp ${cmpId} in jb repo` }
 
-        const circuitCmpId = comp.circuit  || comp.impl?.expectedResult && cmpId // test
+        const circuitCmpId = comp.circuit  
+                || comp.impl?.expectedResult && cmpId // test
+                || comp.sampleCtxData && cmpId // react comp
                 || circuitOptions(cmpId)[0]?.id || cmpId
         return circuitCmpId
     }
@@ -116,7 +118,7 @@ class Probe {
     constructor(circuitCmpId) {
         this.circuitCtx = new Ctx().setVars({singleTest: true})
         this.circuitCtx.jbCtx.probe = this
-        this.circuitCtx.jbCtx.path = circuitCmpId
+        this.circuitCmpId = this.circuitCtx.jbCtx.path = circuitCmpId
         this.records = {}
         this.visits = {}
         this.circuitComp = compByFullId(circuitCmpId, jb)[asJbComp]
@@ -132,7 +134,15 @@ class Probe {
 
         try {
             this.active = true
-            const res = await this.circuitComp.runProfile({}, this.circuitCtx)
+            let res
+            if (this.circuitCmpId.match(/^react-comp</)) {
+              const { reactUtils } = await import('@jb6/react')
+              const reactCmp = reactUtils.wrapReactCompWithSampleData(this.circuitCmpId)
+              res = reactUtils.probeReactComp(reactCmp)
+            } else {
+              res = await this.circuitComp.runProfile({}, this.circuitCtx)
+            }
+
             this.circuitRes = await waitForInnerElements(res)
             this.result = this.records[probePath] || []
             this.result = await waitForInnerElements(this.result)
@@ -142,12 +152,12 @@ class Probe {
             this.result.forEach((obj,i)=> { obj.out = calcValue(resolvedOuts[i]) ; obj.in.data = calcValue(obj.in.data)})
 
             return this
-        } catch (e) {
-          if (typeof e.message == 'string' && e.message.match(/Cannot find module/))
-            this.error = e.message
+        } catch (error) {
+          if (typeof error.message == 'string' && error.message.match(/Cannot find module/))
+            this.error = error.stack
           this.result = this.result || []
-          if (e != 'probe tails')
-            logException(e,'probe run',{})
+          if (error != 'probe tails')
+            logException(error,'probe run',{})
         } finally {
             this.totalTime = Date.now()-this.startTime
             this.active = false
@@ -203,6 +213,8 @@ function circuitOptions(compId) {
     function mark(id) {
       if (id.match(/^test<>/) && id.indexOf(shortId) != -1) return 20 // test with cmp name
       if (id.match(/^test</)) return 10 // just a test
+      if (id.match(/^react-comp<react>/)) return 10 // react comp
+
       return 0
     }
 

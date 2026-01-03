@@ -1,49 +1,81 @@
 import { jb, coreUtils, dsls } from '@jb6/core'
-export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh }
+export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, wrapReactCompWithSampleData }
+
+jb.reactRepository = {
+  comps: {},
+  promises: {}
+}
 
 const { tgp: { TgpType }} = dsls
 
 const ReactComp = TgpType('react-comp','react')
-TgpType('h-func','react')
+TgpType('vdom','react')
+const ReactMetadata = TgpType('react-metadata','react')
+const ReactAssert = TgpType('react-assert','react')
+
+ReactAssert('showError', {
+  params: [
+    {id: 'ensureCondition', type: 'boolean', dynamic: true, description: 'runs with the enriched ctx' },
+    {id: 'error', type: 'vdom', dynamic: true },
+  ]
+})
+
+ReactAssert('varsNotEmpty', {
+  params: [
+    {id: 'varNames', as: 'string', description: 'comma separated'}
+  ]
+})
 
 ReactComp('comp', {
   params: [
-    {id: 'hFunc', type: 'h-func', dynamic: true, byName: true },
+    {id: 'hFunc', type: 'vdom', dynamic: true, byName: true},
     {id: 'enrichCtx', dynamic: true, byName: true},
-    {id: 'sampleData'}
+    {id: 'sampleCtxData', dynamic: true, description: '{ data , vars {} }'},
+    {id: 'samplePropsData', dynamic: true, description: '{ data , vars {} }'},
+    {id: 'assert', type: 'react-assert[]', dynamic: true},
+    {id: 'metadata', type: 'react-metadata[]', dynamic: true},
   ],
-  impl: (_ctx, {react: {h} }, { hFunc, enrichCtx }) => () => {
+  impl: (_ctx, {react: {h} }, { hFunc, enrichCtx }) => {
+    const id = _ctx.jbCtx.creatorStack.slice(-1)[0].replace(/react-comp<react>/,'').split('~')[0]
     const ctx = enrichCtx(_ctx) || _ctx
-    return h(hFunc(ctx))
+    if (!jb.reactRepository.comps[id]) {
+      const comp = jb.reactRepository.comps[id] = jb.reactRepository.comps[id] || hFunc(ctx)
+      Object.defineProperty(comp, 'name', { value: id })
+    }
+    return jb.reactRepository.comps[id]
   }
 })
 
-const ctxPromiseCache = {}
 ReactComp('compWithAsyncCtx', {
   params: [
-    {id: 'hFunc', type: 'h-func', dynamic: true, byName: true  },
+    {id: 'hFunc', type: 'vdom', dynamic: true, byName: true  },
     {id: 'enrichCtx', dynamic: true},
+    {id: 'sampleData'},
+    {id: 'whenToUse', as: 'text'},
+    {id: 'abbr', as: 'string'},
+    {id: 'matchData', dynamic: true}
   ],
   impl: (_ctx, {react: {use, h} }, { hFunc, enrichCtx }) => {
-    const id = _ctx.jbCtx.creatorStack?.join('-')
-    const ctxPromise = ctxPromiseCache[id] || ( ctxPromiseCache[id] = enrichCtx(_ctx))
-    const comp = () => {
-      const ctx = use(ctxPromise)
-      const res = h(hFunc(ctx))
-      return res
+    const id = _ctx.jbCtx.creatorStack.slice(-1)[0].replace(/react-comp<react>/,'').split('~')[0]
+    const promiseId = _ctx.jbCtx.creatorStack?.join('-')
+    const ctxPromise = jb.reactRepository.promises[promiseId] || ( jb.reactRepository.promises[promiseId] = enrichCtx(_ctx))
+
+    if (!jb.reactRepository.comps[id]) {
+      const comp = jb.reactRepository.comps[id] = jb.reactRepository.comps[id] || ((args) => {
+        const ctx = use(ctxPromise)
+        return h(hFunc(ctx), args)
+      })
+      Object.defineProperty(comp, 'name', { value: id })
     }
-    return () => h(comp)    
+    return jb.reactRepository.comps[id]
   }
 })
 
-function hh(ctx, t) {
+function hh(ctx, t, p = {}, ...c) {
   if (!(ctx instanceof coreUtils.Ctx))
     console.error('hh: first param of hh must be ctx')
-  if (!(t.$ instanceof coreUtils.jbComp))
-    console.error("hh: second param of hh must be profile e.g., hh(ctx, comp('p1Val')) and not hh(ctx, comp)")
-
-  const hres = ctx.run(t)
-  return hres()
+  t = t[coreUtils.asJbComp] ? t.$runWithCtx(ctx) : t
+  return h(t,p,...c)
 }
 
 function h(t, p = {}, ...c) {
@@ -128,6 +160,18 @@ if (!globalThis.window) {
       })()
     return reactUtils.reactPromise
   }  
+}
+
+function wrapReactCompWithSampleData(cmpId, _ctx) {
+  const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
+  const comp = coreUtils.compByFullId(cmpId, jb)
+  const jbComp = comp[coreUtils.asJbComp]
+  coreUtils.resolveCompArgs(jbComp)
+  const ctxData = jbComp.impl.sampleCtxData(ctx)
+  const ctxWithData = ctx.setData(ctxData.data).setVars(ctxData.vars)
+
+  const cmp = comp.$runWithCtx(ctxWithData)
+  return cmp
 }
 
 await (async () => initReact())()

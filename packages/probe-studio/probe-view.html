@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="importmap">JB_IMPORT_MAP</script>
+
+<style>
+  html, body { height: 100%; margin: 0; padding: 0; }
+  .CodeMirror { height: 100%; font-size: 12px; border: 1px solid #ddd; }
+</style>
+</head>
+  
+<body>
+  <div id="show" style="height: 100vh;"></div>
+
+  <script type="module">
+import { dsls, coreUtils } from '@jb6/core'
+import '@jb6/probe-studio/probe-studio.js'
+
+const { importMapsInCli } = JB_IMPORT_MAP
+
+coreUtils.runProbeStudio(importMapsInCli, document.getElementById('show'))
+
+  </script>
+</body>
+</html>
