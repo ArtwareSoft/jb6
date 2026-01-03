@@ -40,9 +40,9 @@
     const { importMapsInCli } = JB_IMPORT_MAP
     jb.coreRegistry.importMapsInCli = importMapsInCli
 
-    const projectRoot = await coreUtils.calcRepoRoot()
-    const filePath = urlParams.get('filePath') || '/packages/react/tests/react-tests.js'
-    await import (filePath)
+    const urlsToLoad = urlParams.get('urlsToLoad') || ''
+    for (const file of urlsToLoad.split(',')) 
+      await import(file)
 
     const cmpId = urlParams.get('cmpId') || 'showMe'
     const { reactCmp, props } = reactUtils.wrapReactCompWithSampleData(cmpId)

@@ -5,12 +5,7 @@ import '@jb6/core/misc/import-map-services.js'
 import '@jb6/core/misc/probe.js'
 import '@jb6/core/misc/pretty-print.js'
 import '@jb6/jq'
-
-// Browser-only imports
-if (!coreUtils.isNode) {
-  await import('@jb6/react/codemirror-utils.js')
-  await import('@jb6/react/lib/tailwindcss.js')
-}
+import '@jb6/probe-studio/probe-studio-dsl.js'
 
 Object.assign(coreUtils, {runProbeStudio})
 
@@ -20,38 +15,18 @@ const {
     data: { jq, asIs }, 
   },
   react: { ReactComp, ReactMetadata,
-    'react-comp': { comp }
+    'react-comp': { comp },
+    'react-metadata' : { abbr, matchData, priority}
   }
 } = dsls
 
-const abbr = ReactMetadata('abbr', {
-  params: [
-    {id: 'abbr', as: 'string'}
-  ]
-})
-
-const matchData = ReactMetadata('matchData', {
-  params: [
-    {id: 'matchData', type: 'boolean',  dynamic: true}
-  ]
-})
-
-const priority = ReactMetadata('priority', {
-  params: [
-    {id: 'priority', as: 'number'}
-  ]
-})
-
-async function runProbeStudio(importMapsInCli, topElem) {
+async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem, urlsToLoad}) {
   jb.coreRegistry.importMapsInCli = importMapsInCli
   const { h, hh, createRoot, loadLucid05 } = reactUtils
 
   await loadLucid05()
 
-  const projectRoot = await coreUtils.calcRepoRoot()
   const urlParams = new URLSearchParams(window.location.search)
-  const filePath = urlParams.get('filePath') || '/packages/react/tests/react-tests.js'
-  const fullFilePath = `${projectRoot}${filePath}`
   const path = urlParams.get('path') || 'reactTest.HelloWorld~impl~expectedResult'
 
   const root = createRoot(topElem)
@@ -63,9 +38,15 @@ async function runProbeStudio(importMapsInCli, topElem) {
   
   render(hh(ctx, loadingView, {status}))
 
+  for (const file of urlsToLoad || []) {
+    onStatus(`Loading ${file}...`)
+    await import(file)
+  }
+
   let top, error
   try {
-    top = await coreUtils.runProbeCli(path, { entryPointPaths: fullFilePath }, onStatus)
+    const entryPointPaths = urlsToLoad.map(f=>coreUtils.resolveWithImportMap(f, { imports}, staticMappings))
+    top = await coreUtils.runProbeCli(path, { entryPointPaths }, onStatus)
   } catch (e) { error = e.stack }
   error = error || top.error || top.probeRes?.error 
   error = error?.stderr || error
@@ -86,7 +67,7 @@ async function runProbeStudio(importMapsInCli, topElem) {
   const titleShort = (probeRes?.circuitCmpId || '').split('>').pop() || ''
   const probePath = probeRes?.probePath
   
-  const viewCtx = ctx.setVars({top, error, path, filePath, probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath})
+  const viewCtx = ctx.setVars({top, error, path, urlsToLoad, probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath})
   const allViews = coreUtils.globalsOfTypeIds(dsls.react['react-comp'])
     .map(id => {
         const comp = dsls.react['react-comp'][id]
@@ -225,134 +206,6 @@ ReactComp('topView', {
     hFunc: (ctx, {react: {hh}}) => () => hh(ctx, codeMirrorJson, { json: ctx.data }),
     sampleCtxData: '%$sampleProbeRes%',
     metadata: [abbr('ALL'), matchData('%$top%'), priority(5)]
-  })
-})
-
-ReactComp('testIframeView', {
-  impl: comp({
-    hFunc: (ctx, {react: {h}}) => () => {
-      const testId = ctx.data
-      const src = `/packages/testing/tests.html?test=${testId}&spy=all`
-      return h('div:w-full h-full flex flex-col', {},
-        h('div:flex p-1', {},
-          h('a:text-gray-500 hover:text-gray-800', { href: src, target: '_blank', title: 'Open in new tab' }, 
-            h('L:ExternalLink', { className: 'w-4 h-4' })
-          )
-        ),
-        h('iframe:w-full flex-1 min-h-[500px] border-0', { src })
-      )
-    },
-    metadata: [
-      abbr('TST'),
-      matchData(({},{probeRes}) => probeRes.circuitCmpId.startsWith('test<test>') && probeRes.circuitCmpId.split('~')[0]),
-      priority(2)
-    ]
-  })
-})
-
-ReactComp('reactCompView', {
-  impl: comp({
-    hFunc: (ctx, {filePath, react: {h}}) => () => {
-      const cmpId = ctx.data
-      const src = `/jb6_packages/react/react-comp-view.html?cmpId=${encodeURIComponent(cmpId)}&filePath=${encodeURIComponent(filePath)}`
-      return h('div:w-full h-full flex flex-col', {},
-        h('div:flex p-1', {},
-          h('a:text-gray-500 hover:text-gray-800', { href: src, target: '_blank', title: 'Open in new tab' }, 
-            h('L:ExternalLink', { className: 'w-4 h-4' })
-          )
-        ),
-        h('iframe:w-full flex-1 min-h-[500px] border-0', { src })
-      )
-    },
-    metadata: [
-      abbr('CMP'),
-      matchData(({},{probeRes}) => probeRes.circuitCmpId.startsWith('react-comp<react>') && probeRes.circuitCmpId.split('>').pop().split('~')[0]),
-      priority(2)
-    ]
-  })
-})
-
-ReactComp('cmdView', {
-  impl: comp({
-    hFunc: (ctx, {projectDir, react: {h}}) => () => {
-      const cmd = ctx.data
-      return h('div:p-3', {},
-        h('div:mb-2 flex items-center justify-between', {},
-          h('span:font-medium text-purple-800', {}, `cd ${projectDir}`),
-          h('button:text-purple-600 hover:text-purple-800 text-xs px-2 py-1 border border-purple-300 rounded hover:bg-purple-50', {
-            onClick: () => navigator.clipboard.writeText(cmd)
-          }, 'Copy')
-        ),
-        h('pre:bg-gray-900 text-green-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono border border-gray-600 whitespace-pre-wrap', {}, `$ ${cmd}`)
-      )
-    },
-    enrichCtx: (ctx, {top}) => ctx.setVars({projectDir: top.projectDir}),
-    sampleCtxData: jq('$sampleProbeRes | .. | .cmd? | { data: ., vars: {top: $sampleProbeRes}}', {
-      first: true
-    }),
-    metadata: [
-      abbr('CMD'),
-      matchData('%$top/cmd%'),
-      priority(6)
-    ]
-  })
-})
-
-ReactComp('imageView', {
-  impl: comp({
-    hFunc: (ctx, {react: {h}}) => () => h('img', { src: ctx.data, width: 400 }),
-    metadata: [
-      abbr('IMG'),
-      matchData(jq('.. | .imageUrl?')),
-      priority(2)
-    ]
-  })
-})
-
-ReactComp('errorDetailView', {
-  impl: comp({
-    hFunc: (ctx, {react: {h, hh}}) => () => h('div:p-3', {},
-        h('div:mb-2 font-medium text-red-800', {}, 'Error:'),
-        hh(ctx, codeMirrorJson, { json: ctx.data }),
-    ),
-    metadata: [
-      abbr('ERR'),
-      matchData(jq('.. | .error?')),
-      priority(0)
-    ]
-  })
-})
-
-ReactComp('llmFlowView', {
-  impl: comp({
-    hFunc: (ctx, {react: {hh}}) => () => hh(ctx, codeMirrorJson, { json: ctx.data }),
-    metadata: [
-      abbr('FLW'),
-      matchData(jq('.. | .llmFlow?')),
-      priority(3)
-    ]
-  })
-})
-
-ReactComp('systemPromptView', {
-  impl: comp({
-    hFunc: (ctx, {react: {hh}}) => () => hh(ctx, codeMirrorJson, { json: ctx.data }),
-    metadata: [
-      abbr('SYS'),
-      matchData(jq('[.. | objects | select(.role? == "system") | .content?] | join("\\n#####\\n")')),
-      priority(4)
-    ]
-  })
-})
-
-ReactComp('userPromptView', {
-  impl: comp({
-    hFunc: (ctx, {react: {hh}}) => () => hh(ctx, codeMirrorJson, { json: ctx.data }),
-    metadata: [
-      abbr('USR'),
-      matchData(jq('[.. | objects | select(.role? == "user") | .content?] | join("\\n#####\\n")')),
-      priority(4)
-    ]
   })
 })
 
