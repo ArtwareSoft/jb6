@@ -144,7 +144,7 @@ ReactComp('cmdErrorView', {
         priority(1)
     ],
   
-    sampleCtxData: asIs({data: {error: 'Sample error message', cmd: 'node --run test'}})
+    sampleCtxData: asIs({vars: {error: 'Sample error message', cmd: 'node --run test'}})
   })
 })
 
@@ -183,54 +183,15 @@ const probeResultView = ReactComp('probeResultView', {
 
         h('div:text-xs text-gray-600 px-3 py-1 border-b truncate', { title: probePath }),
 
-        // Errors summary strip (when present)
-        (Array.isArray(probeRes?.errors) && probeRes.errors.length) && h('div:bg-red-50 border-l-2 border-red-500 px-3 py-1 text-red-700 max-h-[100px] overflow-auto', {},
-          h('div:font-medium', {}, 'Errors'),
-          h('pre:text-xs mb-1', {}, JSON.stringify(probeRes.errors, null, 1))
-        ),
+        // // Errors summary strip (when present)
+        // (Array.isArray(probeRes?.errors) && probeRes.errors.length) && h('div:bg-red-50 border-l-2 border-red-500 px-3 py-1 text-red-700 max-h-[100px] overflow-auto', {},
+        //   h('div:font-medium', {}, 'Errors'),
+        //   h('pre:text-xs mb-1', {}, JSON.stringify(probeRes.errors, null, 1))
+        // ),
 
         activeComp ? hh(ctx.setData(activeComp.data), activeComp.comp) : h('div:p-4 text-gray-400', {}, 'No view')
       )
-    },
-    // enrichCtx: (ctx, {top}) => {
-    //   const { probeRes, cmd: _cmd, projectDir } = top
-      
-    //   const _firstRes = probeRes?.result?.[0]?.in?.data
-    //   let firstResInput = _firstRes
-    //   try {
-    //     firstResInput = typeof _firstRes == 'string' && _firstRes.trim().match(/^\[{/) ? JSON.parse(_firstRes) : _firstRes
-    //   } catch(e) {}
-      
-    //   // Build command string
-    //   const cmd = [`cd ${projectDir}`, _cmd].join('\n')
-      
-    //   // Status bits
-    //   const success = probeRes?.circuitRes?.success
-    //   const visits = probeRes?.visits?.[probeRes?.probePath] || 0
-    //   const totalTime = probeRes?.totalTime
-    //   const logsCount = probeRes?.logs?.length || 0
-    //   const titleShort = (probeRes?.circuitCmpId || '').split('>').pop() || ''
-    //   const probePath = probeRes?.probePath
-      
-    //   const viewCtx = ctx.setVars({probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath})
-    //   const allViews = coreUtils.globalsOfTypeIds(dsls.react['react-comp'])
-    //     .map(id => {
-    //         const comp = dsls.react['react-comp'][id]
-    //         const jbComp = comp[coreUtils.asJbComp]
-    //         coreUtils.resolveCompArgs(jbComp)
-    //         const metadata = jbComp.impl.metadata 
-    //         if (!metadata) return
-    //         const priority = metadata.find(m=>m.priority)?.priority
-    //         const abbr = metadata.find(m=>m.abbr)?.abbr
-    //         const matchData = metadata.find(m=>m.matchData)?.matchData
-    //         let data
-    //         try { data = matchData && viewCtx.run(matchData) } catch(error) { console.error(error) }
-    //         const emptyArray = Array.isArray(data) && data.length == 0
-    //         return ({ id, data, priority, abbr, comp, emptyArray })
-    //     }).filter(e=>e?.data && !e.emptyArray)
-      
-    //   return viewCtx.setVars({allViews})
-    // },
+    }
   })
 })
 
@@ -403,7 +364,6 @@ const codeMirrorJson = ReactComp('codeMirrorJson', {
   impl: comp({
     hFunc: ({}, {react: {h, useRef, useEffect, use, codeMirrorPromise}}) => ({json}) => {
       const CodeMirror = use(codeMirrorPromise())
-      console.log('js modes', CodeMirror.modes)
       const host = useRef()
       const cm = useRef()
 

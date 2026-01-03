@@ -2317,6 +2317,7 @@ const functions = {
    'join/1': Object.assign(function*(input, conf, args) {
        if (nameType(input) != 'array')
            throw 'can only join array, not ' + nameType(input)
+       if (input.length === 0) return
        let a = input.map(x => {
            if (typeof x == 'number') return '' + x
            if (typeof x == 'string') return x

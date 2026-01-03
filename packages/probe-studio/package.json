@@ -1,18 +1,17 @@
 {
-  "name": "@jb6/rx",
+  "name": "@jb6/probe-studio",
   "version": "1.260103.0",
   "type": "module",
   "exports": {
-    ".": "./index.js",
-    "./rx-common.js": "./rx-common.js",
-    "./rx-misc.js": "./rx-misc.js"
+    "./*.js": "./*.js"
   },
+  "scripts": {},
   "dependencies": {
     "@jb6/core": "1.260103.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Artwaresoft/jb6.git",
-    "directory": "packages/rx"
+    "directory": "packages/probe-studio"
   }
 }
