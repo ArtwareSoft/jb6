@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test CodeMirror 6 - SizeMap Collapse</title>
+<style>
+  html, body { height: 100%; margin: 0; padding: 0; font-family: system-ui; }
+  #editor { height: 500px; border: 1px solid #ccc; margin: 20px; }
+  .controls { padding: 20px; background: #f5f5f5; border-bottom: 1px solid #ddd; }
+  .controls h2 { margin: 0 0 10px 0; font-size: 18px; }
+  button { margin: 5px; padding: 10px 20px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background: white; font-size: 14px; }
+  button:hover { background: #e8e8e8; }
+  .info { padding: 10px 20px; color: #666; font-size: 13px; background: #fffde7; border-bottom: 1px solid #fff59d; }
+</style>
+</head>
+<body>
+  <div class="controls">
+    <h2>CodeMirror 6 - SizeMap Collapse Test</h2>
+    <p style="margin: 0 0 10px 0; color: #666; font-size: 13px;">Each range in sizeMap gets its own collapse/expand button</p>
+    <button onclick="loadWithSizeMap()">Load with SizeMap</button>
+  </div>
+  <div class="info" id="info">Loading CodeMirror 6...</div>
+  <div id="editor"></div>
+
+  <script type="module">
+    const cdn = 'https://esm.sh'
+    const MIN_COLLAPSE_SIZE = 20  // Only collapse ranges > 20 chars
+    
+    let view = null
+    let cm6 = null
+    
+    async function loadCM6() {
+      const [
+        { EditorState, StateEffect, StateField },
+        { EditorView, Decoration, WidgetType },
+        { javascript },
+        { lineNumbers },
+        { syntaxHighlighting, defaultHighlightStyle }
+      ] = await Promise.all([
+        import(`${cdn}/@codemirror/state@6`),
+        import(`${cdn}/@codemirror/view@6`),
+        import(`${cdn}/@codemirror/lang-javascript@6`),
+        import(`${cdn}/@codemirror/view@6`),
+        import(`${cdn}/@codemirror/language@6`)
+      ])
+      
+      cm6 = { EditorState, StateEffect, StateField, EditorView, Decoration, WidgetType, javascript, lineNumbers, syntaxHighlighting, defaultHighlightStyle }
+      updateInfo('CodeMirror 6 loaded! Click the button to load.')
+      return cm6
+    }
+    
+    function createEditorWithSizeMap(text, sizeMap) {
+      const { EditorState, StateEffect, StateField, EditorView, Decoration, WidgetType, javascript, lineNumbers, syntaxHighlighting, defaultHighlightStyle } = cm6
+      
+      if (view) {
+        view.destroy()
+        view = null
+      }
+      
+      // Filter to only collapse ranges larger than MIN_COLLAPSE_SIZE
+      const collapsibleRanges = sizeMap
+        .map((r, i) => ({ ...r, id: i, size: r.to - r.from }))
+        .filter(r => r.size > MIN_COLLAPSE_SIZE)
+      
+      // Effect to expand a specific range by id
+      const expandEffect = StateEffect.define()
+      
+      // Widget for collapsed range
+      class CollapsedWidget extends WidgetType {
+        constructor(range, preview) { 
+          super()
+          this.range = range
+          this.preview = preview
+        }
+        toDOM(editorView) {
+          const btn = document.createElement('span')
+          btn.style.cssText = 'background: #e3f2fd; border: 1px solid #90caf9; border-radius: 3px; padding: 1px 6px; cursor: pointer; font-size: 11px; color: #1976d2; font-family: monospace;'
+          btn.textContent = `${this.preview}...+${this.range.size}`
+          btn.title = `Click to show ${this.range.size} chars`
+          btn.onmouseover = () => btn.style.background = '#bbdefb'
+          btn.onmouseout = () => btn.style.background = '#e3f2fd'
+          btn.onclick = (e) => {
+            e.stopPropagation()
+            editorView.dispatch({ effects: expandEffect.of(this.range.id) })
+          }
+          return btn
+        }
+      }
+      
+      // StateField tracking expanded ranges and providing decorations
+      const collapseField = StateField.define({
+        // State is a Set of expanded range ids
+        create: () => new Set(),
+        
+        update: (expanded, tr) => {
+          for (const effect of tr.effects) {
+            if (effect.is(expandEffect)) {
+              const next = new Set(expanded)
+              next.add(effect.value)
+              return next
+            }
+          }
+          return expanded
+        },
+        
+        provide: field => EditorView.decorations.compute([field], state => {
+          const expanded = state.field(field)
+          const decorations = []
+          
+          for (const range of collapsibleRanges) {
+            if (expanded.has(range.id)) continue  // Skip expanded ranges
+            
+            // Get preview (first few chars of the range)
+            const previewEnd = Math.min(range.from + 8, range.to)
+            const preview = text.slice(range.from, previewEnd)
+            
+            decorations.push(
+              Decoration.replace({
+                widget: new CollapsedWidget(range, preview)
+              }).range(range.from, range.to)
+            )
+          }
+          
+          // Sort by from position (required by CodeMirror)
+          decorations.sort((a, b) => a.from - b.from)
+          return Decoration.set(decorations)
+        })
+      })
+
+      const state = EditorState.create({
+        doc: text,
+        extensions: [
+          lineNumbers(),
+          syntaxHighlighting(defaultHighlightStyle),
+          javascript(),
+          collapseField,
+          EditorView.editable.of(false),
+          EditorView.theme({
+            '&': { height: '100%', fontSize: '13px' },
+            '.cm-scroller': { overflow: 'auto' },
+            '.cm-content': { fontFamily: 'Monaco, Menlo, monospace' },
+            '.cm-gutters': { backgroundColor: '#f8f8f8', borderRight: '1px solid #ddd' }
+          })
+        ]
+      })
+
+      view = new EditorView({ state, parent: document.getElementById('editor') })
+      
+      updateInfo(`📦 Loaded ${text.length.toLocaleString()} chars with ${collapsibleRanges.length} collapsible ranges. Click any [...] to expand.`)
+    }
+    
+    function updateInfo(msg) {
+      document.getElementById('info').textContent = msg
+    }
+    
+    // Sample data
+    window.loadWithSizeMap = () => {
+      // Sample JSON text
+      const sampleData = {
+        id: 12345,
+        name: "Test Workflow",
+        description: "This is a very long description that should be collapsed because it contains too much text for comfortable viewing",
+        items: [
+          { id: 1, value: "short" },
+          { id: 2, value: "another short value" },
+          { id: 3, longField: "This field contains a lot of data that we want to collapse to improve readability" }
+        ],
+        metadata: {
+          created: "2024-01-01T00:00:00Z",
+          tags: ["important", "workflow", "test", "sample", "demo"],
+          payload: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        },
+        logs: Array.from({length: 50}, (_, i) => ({
+          ts: `2024-01-${String(i+1).padStart(2, '0')}`,
+          msg: `Log entry ${i}: Some log message with details about what happened at this time`,
+          level: i % 3 === 0 ? 'error' : 'info'
+        }))
+      }
+      
+      const text = JSON.stringify(sampleData)
+      
+      // Generate sizeMap by finding string values > 20 chars
+      const sizeMap = []
+      const regex = /"([^"\\]|\\.)*"/g
+      let match
+      while ((match = regex.exec(text)) !== null) {
+        if (match[0].length > MIN_COLLAPSE_SIZE) {
+          sizeMap.push({ from: match.index, to: match.index + match[0].length })
+        }
+      }
+      
+      // Also find arrays > 100 chars
+      let depth = 0, arrayStart = -1
+      for (let i = 0; i < text.length; i++) {
+        if (text[i] === '[') {
+          if (depth === 0) arrayStart = i
+          depth++
+        } else if (text[i] === ']') {
+          depth--
+          if (depth === 0 && arrayStart >= 0) {
+            if (i - arrayStart > 100) {
+              sizeMap.push({ from: arrayStart, to: i + 1 })
+            }
+            arrayStart = -1
+          }
+        }
+      }
+      
+      // Sort by from position
+      sizeMap.sort((a, b) => a.from - b.from)
+      
+      // Remove overlapping ranges (keep outer ones)
+      const filtered = []
+      for (const r of sizeMap) {
+        const overlaps = filtered.some(f => r.from >= f.from && r.to <= f.to)
+        if (!overlaps) filtered.push(r)
+      }
+      
+      console.log('sizeMap:', filtered)
+      createEditorWithSizeMap(text, filtered)
+    }
+    
+    // Initialize
+    loadCM6()
+  </script>
+</body>
+</html>

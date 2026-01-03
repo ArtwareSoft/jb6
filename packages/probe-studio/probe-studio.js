@@ -3,7 +3,6 @@ import { reactUtils } from '@jb6/react'
 import '@jb6/react/tests/react-testers.js'
 import '@jb6/core/misc/import-map-services.js'
 import '@jb6/core/misc/probe.js'
-import '@jb6/core/misc/pretty-print.js'
 import '@jb6/jq'
 import '@jb6/probe-studio/probe-studio-dsl.js'
 
@@ -20,7 +19,7 @@ const {
   }
 } = dsls
 
-async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem, urlsToLoad}) {
+async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem, urlsToLoad, summarizer}) {
   jb.coreRegistry.importMapsInCli = importMapsInCli
   const { h, hh, createRoot, loadLucid05 } = reactUtils
 
@@ -58,7 +57,10 @@ async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem
   try {
     firstResInput = typeof _firstRes == 'string' && _firstRes.trim().match(/^\[{/) ? JSON.parse(_firstRes) : _firstRes
   } catch(e) {}
-  
+  if (firstResInput) {
+    firstResInput = probeRes.result[0].in.data = coreUtils.resolveRefs(firstResInput)
+  }
+
   const cmd = [`cd ${projectDir}`, _cmd].join('\n')
   const success = probeRes?.circuitRes?.success
   const visits = probeRes?.visits?.[probeRes?.probePath] || 0
@@ -81,8 +83,10 @@ async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem
         let data
         try { data = matchData && viewCtx.run(matchData) } catch(error) { console.error(error) }
         const emptyArray = Array.isArray(data) && data.length == 0
-        return ({ id, data, priority, abbr, comp, emptyArray })
-    }).filter(e=>e?.data && !e.emptyArray)
+        const useView = data && !emptyArray
+        console.log('view',id, useView)
+        return ({ id, data, priority, abbr, comp, useView })
+    }).filter(e=>e?.useView)
     .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999))
   
 
@@ -98,6 +102,10 @@ ReactComp('loadingView', {
             h('div:text-lg font-semibold mb-2', {}, status),
             h('div:text-sm text-gray-600', {}, path),
             h('div:text-xs text-gray-400 mt-2', {}, 'Please wait...'),
+            h('a:mt-4 px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors inline-block cursor-pointer', 
+              { href: location.href, target: '_blank' }, 
+              '🔗 Open in new tab'
+            ),
           )
         ),
       )
@@ -205,9 +213,28 @@ ReactComp('topView', {
   impl: comp({
     hFunc: (ctx, {react: {hh}}) => () => hh(ctx, codeMirrorJson, { json: ctx.data }),
     sampleCtxData: '%$sampleProbeRes%',
-    metadata: [abbr('ALL'), matchData('%$top%'), priority(5)]
+    metadata: [
+      abbr('ALL'),
+      matchData('%$top%'),
+      priority(5)
+    ]
   })
 })
+
+// ReactComp('dataMap', {
+//   impl: comp({
+//     hFunc: (ctx, {react: {hh}}) => () => hh(ctx, codeMirrorJson, { json: ctx.data }),
+//     sampleCtxData: '%$sampleProbeRes%',
+//     metadata: [
+//       abbr('SIZE'),
+//       matchData((ctx, {top}) => {
+//         const { actionMap } = coreUtils.prettyPrintWithPositions(top, {noMacros: true, newLinesInCode: true})
+//         return actionMap.filter(({from, to}) => to - from > 10).map(({from, to}) => ({from, to}))
+//       }),
+//       priority(5)
+//     ]
+//   })
+// })
 
 function summarizeRecord(record, keepPrefixSize = 1000, maxLength = 4000) {
     const text = record ? JSON.stringify(record) : ''
@@ -249,13 +276,17 @@ function summarizeRecord1(record) { // reuslt.in.vars.workflowDb
     ].join('') : text}
 }
 
+function print(v) {
+  return typeof v === 'object' ? JSON.stringify(v, null, 2)  : String(v)
+}
+
 const codeMirrorJson = ReactComp('codeMirrorJson', {
   impl: comp({
-    hFunc: ({}, {react: {h, useRef, useEffect, use, codeMirrorPromise}}) => ({json}) => {
+    hFunc: ({}, {react: {h, useRef, useEffect, use, codeMirrorPromise}}) => ({json, foldAll}) => {
       if (coreUtils.isNode)
         return h('textarea:h-full w-full font-mono text-xs p-2 border rounded bg-gray-50', { 
           readOnly: true, 
-          value: coreUtils.prettyPrint(json) 
+          value: print(json)  
         })
 
       const CodeMirror = use(codeMirrorPromise())
@@ -263,18 +294,24 @@ const codeMirrorJson = ReactComp('codeMirrorJson', {
       const cm = useRef()
 
       useEffect(() => {
-        cm.current ||= CodeMirror(host.current, {
-          value: coreUtils.prettyPrint(json),
-          mode: 'javascript',
-          readOnly: true,
-          lineNumbers: true,
-          foldGutter: true,
-          gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-        })
+        if (!cm.current) {
+          cm.current = CodeMirror(host.current, {
+            value: print(json) ,
+            mode: 'javascript',
+            readOnly: true,
+            lineNumbers: true,
+            foldGutter: true,
+            gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+          })
+          if (foldAll)
+            CodeMirror.commands.foldAll(cm.current)
+        }
       }, [])
 
       useEffect(() => {
-        cm.current && cm.current.setValue(coreUtils.prettyPrint(json))
+        cm.current && cm.current.setValue(print(json) )
+        if (foldAll)
+          CodeMirror.commands.foldAll(cm.current)
       }, [json])
 
       return h('div:h-full', { ref: host })
@@ -283,12 +320,11 @@ const codeMirrorJson = ReactComp('codeMirrorJson', {
   })
 })
 
-
 const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
   impl: comp({
     samplePropsData: '%$sampleProbeRes/probeRes/result/0%',
     hFunc: ({}, {react: {h, useRef, useEffect, use, codeMirrorPromise}}) => ({in: In, out}) => {
-      const format = v => typeof v === 'object' ? coreUtils.prettyPrint(squeezeLogEntries(v)) : String(v)
+      const format = v => print(v)
       const inputData = In?.data ?? In
 
       if (coreUtils.isNode) {
@@ -355,7 +391,7 @@ Const('sampleProbeRes', {
           }
         },
       ],
-      circuitRes: {id: 'test<test>reactTest', success: true, testRes: '<div>hello world</div>\n', counters: {}},
+      circuitRes: {id: 'test<test>reactTest', success: true, testRes: '<div>\nhello world</div>\n', counters: {}},
       errors: [],
       logs: []
     },

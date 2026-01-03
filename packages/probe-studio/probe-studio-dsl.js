@@ -1,7 +1,6 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/react'
 
-
 const { 
   react: { ReactMetadata,
     'react-comp': { comp }

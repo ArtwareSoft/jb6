@@ -32,6 +32,7 @@
   <script type="module">
     import { dsls, coreUtils } from '@jb6/core'
     import '@jb6/core/misc/import-map-services.js'
+    import '@jb6/react/codemirror-utils.js'
     import '@jb6/react/lib/tailwindcss.js'
 
     import { reactUtils } from '@jb6/react'
@@ -46,7 +47,8 @@
 
     const cmpId = urlParams.get('cmpId') || 'showMe'
     const { reactCmp, props } = reactUtils.wrapReactCompWithSampleData(cmpId)
-    reactUtils.createRoot(document.getElementById('show')).render(reactUtils.hh(new coreUtils.Ctx(), reactCmp, props))
+    const ctx = new coreUtils.Ctx().setVars({react: reactUtils})
+    reactUtils.createRoot(document.getElementById('show')).render(reactUtils.hh(ctx, reactCmp, props))
 
   </script>
 </body>

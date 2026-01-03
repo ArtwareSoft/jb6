@@ -35,7 +35,6 @@ export async function serveMcp(app, { express }) {
   })
 }
 
-
 function serveCli(app) {
   app.post('/run-cli', async (req, res) => {
     if (!req.body) {

@@ -100,7 +100,7 @@ function argsToProfile(prof, comp) {
     }
 }
 
-function compByFullId(id, tgpModel) {
+function compByFullId(id, tgpModel = jb) {
   const [type, dsl, shortId] = (id.match(/^([^<]+)<([^>]+)>(.+)$/)||[]).slice(1)
   return tgpModel.dsls[dsl||'common']?.[type]?.[shortId]
 }

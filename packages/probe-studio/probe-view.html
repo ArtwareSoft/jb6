@@ -17,13 +17,12 @@
 import { dsls, coreUtils } from '@jb6/core'
 //import '@jb6/core/misc/import-map-services.js'
 import '@jb6/probe-studio/probe-studio.js'
+import '@jb6/react/codemirror-utils.js'
+import '@jb6/react/lib/tailwindcss.js'
+
+const { common: { data: { jq }}} = dsls
 
 const urlParams = new URLSearchParams(window.location.search)
-if (!coreUtils.isNode) {
-  await import('@jb6/react/codemirror-utils.js')
-  await import('@jb6/react/lib/tailwindcss.js')
-}
-
 
 const { importMapsInCli, imports, staticMappings} = JB_IMPORT_MAP
 

@@ -46,8 +46,9 @@ function compHeader(compId) {
   return `component('${compId.split('>').pop()}', `
 }
 
-function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros, tgpNoMacros, singleLine, depth, tgpModel, type, resolvedParams, filePath} = {}) {
+function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros, tgpNoMacros, singleLine, depth, tgpModel, type, resolvedParams, filePath, newLinesInCode} = {}) {
   noMacros = noMacros || tgpNoMacros
+  newLinesInCode = newLinesInCode ?? noMacros  // default to true when noMacros is set
   val = (val && val[asJbComp]) || val
   const props = {}
   const startOffset = val.$comp ? compHeader(fullPTId(val)).length : 0
@@ -387,7 +388,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     //if (typeof val === 'function' && val[isMacro]) return '' //calcObjProps(val(), path)
     if (typeof val === 'function') return funcProps(val, path)
 
-    const putNewLinesInString = typeof val === 'string' && val.match(/\n/) && settings?.newLinesInCode
+    const putNewLinesInString = typeof val === 'string' && val.match(/\n/) && (settings?.newLinesInCode ?? newLinesInCode)
     if (typeof val === 'string' && val.indexOf("'") == -1 && !putNewLinesInString)
       return stringValProps(JSON.stringify(val).slice(1,-1).replace(/\\"/g,'"'), "'", path)
     else if (typeof val === 'string')

@@ -1,5 +1,6 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/probe-studio/probe-studio-dsl.js'
+import '@jb6/jq'
 
 const { 
   tgp: { Const},
