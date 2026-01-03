@@ -286,10 +286,13 @@ ReactComp('cmdView', {
         h('pre:bg-gray-900 text-green-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono border border-gray-600 whitespace-pre-wrap', {}, `$ ${cmd}`)
       )
     },
-    sampleCtxData: jq('$sampleProbeRes | .. | .cmd? | { data: ., vars: {projectDir: $sampleProbeRes.projectDir}}', { first: true }),
+    enrichCtx: (ctx, {top}) => ctx.setVars({projectDir: top.projectDir}),
+    sampleCtxData: jq('$sampleProbeRes | .. | .cmd? | { data: ., vars: {projectDir: $sampleProbeRes.projectDir}}', {
+      first: true
+    }),
     metadata: [
       abbr('CMD'),
-      matchData(jq('.. | .cmd?')),
+      matchData('%$top/cmd%'),
       priority(6)
     ]
   })
