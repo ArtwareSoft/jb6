@@ -1,7 +1,7 @@
-import { coreUtils, jb } from '@jb6/core'
+import { coreUtils, jb, dsls } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
 
-const { runNodeCli, runBashScript } = coreUtils
+const { runNodeCli, runBashScript, buildNodeCliCmd } = coreUtils
 
 jb.serverUtils = jb.serverUtils || {}
 Object.assign(jb.serverUtils, {serveCli, serveCliStream, serveMcp})
@@ -69,6 +69,7 @@ function serveCliStream(app) {
   app.post('/run-cli-stream', (req, res) => {
     if (!req.body) return res.json({ error: 'no body in req' })
     const { script, ...options } = req.body
+    const { cmd } = buildNodeCliCmd(script, options)
     const runId = newRunId()
 
     let resolve
@@ -94,6 +95,7 @@ function serveCliStream(app) {
     })()
 
     res.json({
+      cmd,
       runId,
       statusUrl: `/run-cli-stream/${runId}/status`,
       contentUrl: `/run-cli-stream/${runId}/content`

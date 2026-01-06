@@ -390,17 +390,19 @@ function tokenise(str, startAt=0, parenDepth) {
            i++
            ret.push({type: 'op', op: '!=', location})
        } else if (isAlpha(c)) {
-           let tok = ''
-           while (isAlpha(str[i]) || isDigit(str[i]) || str[i] == '_')
-               tok += str[i++]
-           if (tok == 'as' || tok == 'reduce' || tok == 'foreach'
-                   || tok == 'import' || tok == 'include' || tok == 'def'
-                   || tok == 'if' || tok == 'then' || tok == 'else'
-                   || tok == 'end' || tok == 'elif') {
-               ret.push({type: tok, location})
-           } else {
-               ret.push({type: 'identifier', value: tok, location})
-           }
+            let tok = ''
+            while (isAlpha(str[i]) || isDigit(str[i]) || str[i] == '_')
+                tok += str[i++]
+            if (tok == 'as' || tok == 'reduce' || tok == 'foreach'
+                    || tok == 'import' || tok == 'include' || tok == 'def'
+                    || tok == 'if' || tok == 'then' || tok == 'else'
+                    || tok == 'end' || tok == 'elif') {
+                ret.push({type: tok, location})
+            } else if (tok == 'and' || tok == 'or') {
+                ret.push({type: 'op', op: tok, location})
+            } else {
+                ret.push({type: 'identifier', value: tok, location})
+            }
            i--
        } else if (c == ':') {
            ret.push({type: 'colon', location})
@@ -809,8 +811,9 @@ function parseObject(tokens, startAt=0) {
 }
 
 function shuntingYard(stream) {
-   const prec = { '+' : 5, '-' : 5, '*' : 10, '/' : 10, '%' : 10,
-       '//' : 2, '==': 3, '!=': 3, '>': 3, '<': 3, '>=': 3, '<=': 3 }
+   const prec = { 'or': 1, 'and': 2, '//': 3, '==': 4, '!=': 4, 
+        '>': 4, '<': 4, '>=': 4, '<=': 4, '+': 5, '-': 5, 
+        '*': 10, '/': 10, '%': 10 }
    let output = []
    let operators = []
    for (let x of stream) {
@@ -837,6 +840,8 @@ function shuntingYard(stream) {
        '>': GreaterThanOperator,
        '<=': LessEqualsOperator,
        '>=': GreaterEqualsOperator,
+       'and': AndOperator,
+       'or': OrOperator,
    }
    let stack = []
    for (let o of output) {
@@ -1639,6 +1644,38 @@ class NotEqualsOperator extends EqualsOperator {
        return this.l + ' != ' + this.r
    }
 }
+
+class AndOperator extends OperatorNode {
+    constructor(l, r) {
+        super(l, r)
+    }
+    combine(l, r, lt, rt) {
+        // In jq, 'and' returns false if either operand is false or null
+        // Otherwise returns the right operand
+        if (l === false || l === null) return false
+        if (r === false || r === null) return false
+        return r
+    }
+    toString() {
+        return this.l + ' and ' + this.r
+    }
+}
+
+class OrOperator extends OperatorNode {
+    constructor(l, r) {
+        super(l, r)
+    }
+    combine(l, r, lt, rt) {
+        // In jq, 'or' returns the left operand if it's not false/null
+        // Otherwise returns the right operand
+        if (l !== false && l !== null) return l
+        return r
+    }
+    toString() {
+        return this.l + ' or ' + this.r
+    }
+}
+
 class AlternativeOperator extends ParseNode {
    constructor(l, r) {
        super()
@@ -2818,6 +2855,254 @@ function combined(prog, input) {
        return filter
    }
 }
+
+Object.assign(functions, {
+    // Math functions
+    'min/0': function*(input) {
+        if (nameType(input) != 'array') throw 'min/0 requires array'
+        if (input.length === 0) return yield null
+        yield Math.min(...input.filter(x => typeof x === 'number'))
+    },
+    
+    'max/0': function*(input) {
+        if (nameType(input) != 'array') throw 'max/0 requires array'
+        if (input.length === 0) return yield null
+        yield Math.max(...input.filter(x => typeof x === 'number'))
+    },
+    
+    'min_by/1': Object.assign(function*(input, conf, args) {
+        if (nameType(input) != 'array') throw 'min_by/1 requires array'
+        if (input.length === 0) return yield null
+        let minItem = input[0]
+        let minValue = args[0].apply(minItem, conf).next().value
+        for (let item of input) {
+            let value = args[0].apply(item, conf).next().value
+            if (compareValues(value, minValue) < 0) {
+                minValue = value
+                minItem = item
+            }
+        }
+        yield minItem
+    }, {params: [{mode: 'defer'}]}),
+    
+    'max_by/1': Object.assign(function*(input, conf, args) {
+        if (nameType(input) != 'array') throw 'max_by/1 requires array'
+        if (input.length === 0) return yield null
+        let maxItem = input[0]
+        let maxValue = args[0].apply(maxItem, conf).next().value
+        for (let item of input) {
+            let value = args[0].apply(item, conf).next().value
+            if (compareValues(value, maxValue) > 0) {
+                maxValue = value
+                maxItem = item
+            }
+        }
+        yield maxItem
+    }, {params: [{mode: 'defer'}]}),
+    
+    'floor/0': function*(input) {
+        if (nameType(input) != 'number') throw 'floor/0 requires number'
+        yield Math.floor(input)
+    },
+    
+    'ceil/0': function*(input) {
+        if (nameType(input) != 'number') throw 'ceil/0 requires number'
+        yield Math.ceil(input)
+    },
+    
+    'round/0': function*(input) {
+        if (nameType(input) != 'number') throw 'round/0 requires number'
+        yield Math.round(input)
+    },
+    
+    'sqrt/0': function*(input) {
+        if (nameType(input) != 'number') throw 'sqrt/0 requires number'
+        yield Math.sqrt(input)
+    },
+    
+    'abs/0': function*(input) {
+        if (nameType(input) != 'number') throw 'abs/0 requires number'
+        yield Math.abs(input)
+    },
+    
+    'sin/0': function*(input) {
+        if (nameType(input) != 'number') throw 'sin/0 requires number'
+        yield Math.sin(input)
+    },
+    
+    'cos/0': function*(input) {
+        if (nameType(input) != 'number') throw 'cos/0 requires number'
+        yield Math.cos(input)
+    },
+    
+    'tan/0': function*(input) {
+        if (nameType(input) != 'number') throw 'tan/0 requires number'
+        yield Math.tan(input)
+    },
+    
+    'log/0': function*(input) {
+        if (nameType(input) != 'number') throw 'log/0 requires number'
+        yield Math.log(input)
+    },
+    
+    'log10/0': function*(input) {
+        if (nameType(input) != 'number') throw 'log10/0 requires number'
+        yield Math.log10(input)
+    },
+    
+    'exp/0': function*(input) {
+        if (nameType(input) != 'number') throw 'exp/0 requires number'
+        yield Math.exp(input)
+    },
+    
+    'pow/2': function*(input, conf, args) {
+        for (let base of args[0].apply(input, conf)) {
+            for (let exp of args[1].apply(input, conf)) {
+                if (nameType(base) != 'number' || nameType(exp) != 'number') throw 'pow/2 requires numbers'
+                yield Math.pow(base, exp)
+            }
+        }
+    },
+    
+    // String functions
+    'startswith/1': Object.assign(function*(input, conf, args) {
+        if (nameType(input) != 'string') throw 'startswith/1 requires string'
+        for (let prefix of args[0].apply(input, conf)) {
+            if (nameType(prefix) != 'string') throw 'startswith/1 prefix must be string'
+            yield input.startsWith(prefix)
+        }
+    }, {params: [{label: 'prefix'}]}),
+    
+    'endswith/1': Object.assign(function*(input, conf, args) {
+        if (nameType(input) != 'string') throw 'endswith/1 requires string'
+        for (let suffix of args[0].apply(input, conf)) {
+            if (nameType(suffix) != 'string') throw 'endswith/1 suffix must be string'
+            yield input.endsWith(suffix)
+        }
+    }, {params: [{label: 'suffix'}]}),
+    
+    'index/1': Object.assign(function*(input, conf, args) {
+        if (nameType(input) != 'string') throw 'index/1 requires string'
+        for (let needle of args[0].apply(input, conf)) {
+            if (nameType(needle) != 'string') throw 'index/1 needle must be string'
+            let idx = input.indexOf(needle)
+            yield idx === -1 ? null : idx
+        }
+    }, {params: [{label: 'substring'}]}),
+    
+    'rindex/1': Object.assign(function*(input, conf, args) {
+        if (nameType(input) != 'string') throw 'rindex/1 requires string'
+        for (let needle of args[0].apply(input, conf)) {
+            if (nameType(needle) != 'string') throw 'rindex/1 needle must be string'
+            let idx = input.lastIndexOf(needle)
+            yield idx === -1 ? null : idx
+        }
+    }, {params: [{label: 'substring'}]}),
+    
+    'upcase/0': function*(input) {
+        if (nameType(input) != 'string') throw 'upcase/0 requires string'
+        yield input.toUpperCase()
+    },
+    
+    'downcase/0': function*(input) {
+        if (nameType(input) != 'string') throw 'downcase/0 requires string'
+        yield input.toLowerCase()
+    },
+    
+    // Array functions
+    'unique/0': function*(input) {
+        if (nameType(input) != 'array') throw 'unique/0 requires array'
+        let seen = new Set()
+        let result = []
+        for (let item of input) {
+            let key = JSON.stringify(item)
+            if (!seen.has(key)) {
+                seen.add(key)
+                result.push(item)
+            }
+        }
+        yield result
+    },
+    
+    'flatten/0': function*(input) {
+        if (nameType(input) != 'array') throw 'flatten/0 requires array'
+        function flattenDeep(arr) {
+            let result = []
+            for (let item of arr) {
+                if (nameType(item) === 'array') {
+                    result.push(...flattenDeep(item))
+                } else {
+                    result.push(item)
+                }
+            }
+            return result
+        }
+        yield flattenDeep(input)
+    },
+    
+    'transpose/0': function*(input) {
+        if (nameType(input) != 'array') throw 'transpose/0 requires array'
+        if (input.length === 0) return yield []
+        let maxLength = Math.max(...input.map(row => nameType(row) === 'array' ? row.length : 0))
+        let result = []
+        for (let i = 0; i < maxLength; i++) {
+            let column = []
+            for (let row of input) {
+                if (nameType(row) === 'array' && i < row.length) {
+                    column.push(row[i])
+                } else {
+                    column.push(null)
+                }
+            }
+            result.push(column)
+        }
+        yield result
+    },
+    
+    // Utility functions
+    'now/0': function*(input) {
+        yield Math.floor(Date.now() / 1000)
+    },
+    
+    'error/0': function*(input) {
+        throw 'error'
+    },
+    
+    'error/1': Object.assign(function*(input, conf, args) {
+        for (let message of args[0].apply(input, conf)) {
+            throw message
+        }
+    }, {params: [{label: 'message'}]}),
+    
+    'infinite/0': function*(input) {
+        yield Infinity
+    },
+    
+    'nan/0': function*(input) {
+        yield NaN
+    },
+    
+    'isinfinite/0': function*(input) {
+        yield !isFinite(input) && !isNaN(input)
+    },
+    
+    'isnan/0': function*(input) {
+        yield isNaN(input)
+    },
+    
+    'isnormal/0': function*(input) {
+        if (nameType(input) != 'number') yield false
+        yield isFinite(input) && input !== 0
+    },
+    
+    'env/0': function*(input) {
+        if (typeof process !== 'undefined' && process.env) {
+            yield process.env
+        } else {
+            yield {}
+        }
+    }
+})    
 
 const jq = Object.assign(combined, {compileJb, compile, prettyPrint})
 // Delete these two lines for a non-module version (CORS-safe)

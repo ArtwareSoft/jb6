@@ -10,7 +10,14 @@ const {
   common: { Data }
 } = jb.dsls
 const { logException, logError, isNode } = coreUtils
-Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript, runNodeCliStreamViaJbWebServer})
+Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript, runNodeCliStreamViaJbWebServer, buildNodeCliCmd})
+
+function buildNodeCliCmd(script, options = {}) {
+  options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
+  const importParts = options.importMapsInCli ? ['--import', options.importMapsInCli] : []
+  const cmd = `node --inspect-brk --experimental-vm-modules --expose-gc --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
+  return { cmd, importParts }
+}
 
 Data('bash', {
   params: [
@@ -32,9 +39,7 @@ async function runCliInContext(script, options, onStatus) {
 
 async function runNodeCli(script, options = {}, onStatus) {
   const {spawn} = await import('child_process')
-  options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
-  const importParts = options.importMapsInCli ? ['--import',options.importMapsInCli] : []
-  const cmd = `node --inspect-brk --experimental-vm-modules --expose-gc --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
+  const { cmd, importParts } = buildNodeCliCmd(script, options)
   const cwd = options.projectDir
   const scriptToRun = `console.log = () => {};\nconsole.error = () => {};\n${script}`
 
@@ -71,10 +76,7 @@ async function runNodeCli(script, options = {}, onStatus) {
 async function runNodeCliViaJbWebServer(script, options = {}) {
   try { 
     const expressUrl = options.expressUrl || ''
-    
-    options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
-    const importParts = options.importMapsInCli ? ['--import',options.importMapsInCli] : []
-    const cmd = `node --inspect-brk --experimental-vm-modules --expose-gc --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
+    const { cmd } = buildNodeCliCmd(script, options)
     const res = await fetch(`${expressUrl}/run-cli`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -98,9 +100,7 @@ async function runNodeCliViaJbWebServer(script, options = {}) {
 async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
   try {
     const expressUrl = options.expressUrl || ''
-    options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
-    const importParts = options.importMapsInCli ? ['--import',options.importMapsInCli] : []
-    const cmd = `node --inspect-brk --experimental-vm-modules --expose-gc --input-type=module ${importParts.join(' ')} -e "${script.replace(/\$/g, '\\$').replace(/"/g, '\\"')}"`
+    const { cmd } = buildNodeCliCmd(script, options)
 
     const startRes = await fetch(`${expressUrl}/run-cli-stream`, {
       method: 'POST',

@@ -5,7 +5,7 @@ const {
   tgp: { TgpType },
 } = dsls
 
-Object.assign(coreUtils, {bookletContent})
+Object.assign(coreUtils, {bookletContent, docletContent})
 
 // ============================================================================= 
 // DOCLET DSL - 
@@ -296,16 +296,23 @@ Booklet('booklet', {
   ]
 })
 
-function bookletContent(bookletId, ctx, tgpModel = jb) { 
-  const dsls = tgpModel.dsls
-  const booklet = dsls['llm-guide'].booklet[bookletId]
-  const bookletCtx = ctx.setVars({doNotCalcExpression: true})
+function docletContent(docletId, ctx, tgpModel = jb) {
+  const doclet = tgpModel.dsls['llm-guide'].doclet[docletId]
+  if (!doclet) return null
   
-  const docletsRaw = booklet.$run().doclets.split(',').map(doclet => doclet.trim()).filter(doclet => dsls['llm-guide'].doclet[doclet])
-      .map(doclet => coreUtils.prettyPrintComp(dsls['llm-guide'].doclet[doclet] ,{tgpModel: jb} )).join('\n\n')
+  const docletCtx = ctx.setVars({doNotCalcExpression: true})
+  return coreUtils.prettyPrintComp(doclet, {tgpModel})
+    .replace(/<BOOKLET-EVALUATE>%\$([^%]+)%<\/BOOKLET-EVALUATE>/g, 
+      (match, varName) => coreUtils.prettyPrint(docletCtx.vars[varName], {noMacros: true}) ?? match)
+}
 
-  const doclets = docletsRaw.replace(/<BOOKLET-EVALUATE>%\$([^%]+)%<\/BOOKLET-EVALUATE>/g, 
-      (match, varName) => coreUtils.prettyPrint(bookletCtx.vars[varName], {noMacros: true}) ?? match)
+function bookletContent(bookletId, ctx, tgpModel = jb) {
+  const booklet = tgpModel.dsls['llm-guide'].booklet[bookletId]
+  if (!booklet) return null
+  
+  const doclets = booklet.$run().doclets.split(',')
+    .map(id => id.trim()).filter(id => tgpModel.dsls['llm-guide'].doclet[id])
+    .map(docletId => docletContent(docletId, ctx, tgpModel)).filter(Boolean).join('\n\n')
   
   return { bookletId, doclets }
 }

@@ -32,6 +32,7 @@ async function runProbeCli(probePath, resources, onStatus) {
       try {
         ${extraCode || ''}
         await Promise.all(imports.map(f => import(f))) // .catch(e => console.error(e.stack) )
+        jb.workflowUtils?.workflowEvents?.on('status', text => console.error(text))
         const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath)})
         await coreUtils.writeServiceResult(result)
       } catch (e) {

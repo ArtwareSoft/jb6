@@ -69,7 +69,7 @@ async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem
   const titleShort = (probeRes?.circuitCmpId || '').split('>').pop() || ''
   const probePath = probeRes?.probePath
   
-  const viewCtx = ctx.setVars({top, error, path, urlsToLoad, probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath})
+  const viewCtx = ctx.setVars({top, error, path, urlsToLoad, probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath, staticMappings})
   const allViews = coreUtils.globalsOfTypeIds(dsls.react['react-comp'])
     .map(id => {
         const comp = dsls.react['react-comp'][id]
@@ -350,9 +350,9 @@ const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
         const inputMode = isHtml(inputData) ? 'xml' : 'javascript'
         const outMode = isHtml(out) ? 'xml' : 'javascript'
         if (inputRef.current && !inputRef.current.cm)
-          inputRef.current.cm = CodeMirror(inputRef.current, { value: format(inputData), mode: inputMode, readOnly: true, lineNumbers: true })
+          inputRef.current.cm = CodeMirror(inputRef.current, { value: format(inputData), mode: inputMode, readOnly: true, lineNumbers: true, foldGutter: true, gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'] })
         if (outputRef.current && !outputRef.current.cm)
-          outputRef.current.cm = CodeMirror(outputRef.current, { value: format(out), mode: outMode, readOnly: true, lineNumbers: true })
+          outputRef.current.cm = CodeMirror(outputRef.current, { value: format(out), mode: outMode, readOnly: true, lineNumbers: true, foldGutter: true, gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'] })
       }, [In, out, inputData])
 
       return h('div:flex flex-1 min-h-96 border rounded p-2 mb-2 gap-2', {},

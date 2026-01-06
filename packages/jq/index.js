@@ -23,7 +23,9 @@ Data('jq', {
   ],
   impl: (ctx, {}, {script, first}) => {
     const complied = ctx.jbCtx.compiledJq = ctx.jbCtx.compiledJq || jq.compileJb(script)
-    return first ? complied(ctx).next().value : Array.from(complied(ctx))
+    const parentParam = ctx.jbCtx.parentParam
+    const single = first || parentParam?.$dslType == 'boolean<common>' || ['string','text','number','boolean'].indexOf(parentParam?.as) != -1
+    return single ? complied(ctx).next().value : Array.from(complied(ctx))
   }
 })
 
