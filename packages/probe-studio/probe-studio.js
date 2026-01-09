@@ -19,7 +19,7 @@ const {
   }
 } = dsls
 
-async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem, urlsToLoad, summarizer}) {
+async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem, urlsToLoad, cleanseProbResult}) {
   jb.coreRegistry.importMapsInCli = importMapsInCli
   const { h, hh, createRoot, loadLucid05 } = reactUtils
 
@@ -46,6 +46,8 @@ async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem
   try {
     const entryPointPaths = urlsToLoad.map(f=>coreUtils.resolveWithImportMap(f, { imports}, staticMappings))
     top = await coreUtils.runProbeCli(path, { entryPointPaths }, onStatus)
+    if (cleanseProbResult)
+      top = cleanseProbResult(ctx.setData(top))
   } catch (e) { error = e.stack }
   error = error || top.error || top.probeRes?.error 
   error = error?.stderr || error
@@ -69,7 +71,7 @@ async function runProbeStudio({importMapsInCli, imports, staticMappings, topElem
   const titleShort = (probeRes?.circuitCmpId || '').split('>').pop() || ''
   const probePath = probeRes?.probePath
   
-  const viewCtx = ctx.setVars({top, error, path, urlsToLoad, probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath, staticMappings})
+  const viewCtx = ctx.setVars({top, error, path, urlsToLoad, probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath})
   const allViews = coreUtils.globalsOfTypeIds(dsls.react['react-comp'])
     .map(id => {
         const comp = dsls.react['react-comp'][id]
@@ -204,7 +206,7 @@ ReactComp('resultsView', {
     metadata: [
       abbr('RES'),
       matchData('%$top/probeRes/result%'),
-      priority(1)
+      priority(4)
     ]
   })
 })
@@ -220,21 +222,6 @@ ReactComp('topView', {
     ]
   })
 })
-
-// ReactComp('dataMap', {
-//   impl: comp({
-//     hFunc: (ctx, {react: {hh}}) => () => hh(ctx, codeMirrorJson, { json: ctx.data }),
-//     sampleCtxData: '%$sampleProbeRes%',
-//     metadata: [
-//       abbr('SIZE'),
-//       matchData((ctx, {top}) => {
-//         const { actionMap } = coreUtils.prettyPrintWithPositions(top, {noMacros: true, newLinesInCode: true})
-//         return actionMap.filter(({from, to}) => to - from > 10).map(({from, to}) => ({from, to}))
-//       }),
-//       priority(5)
-//     ]
-//   })
-// })
 
 function summarizeRecord(record, keepPrefixSize = 1000, maxLength = 4000) {
     const text = record ? JSON.stringify(record) : ''
@@ -302,6 +289,7 @@ const codeMirrorJson = ReactComp('codeMirrorJson', {
             lineNumbers: true,
             foldGutter: true,
             gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+            extraKeys: {"Ctrl-F": "find", "Ctrl-]": "foldAll", "Ctrl-[": "unfoldAll"}
           })
           if (foldAll)
             CodeMirror.commands.foldAll(cm.current)
@@ -349,10 +337,11 @@ const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
         const isHtml = v => typeof v === 'string' && /^\s*</.test(v)
         const inputMode = isHtml(inputData) ? 'xml' : 'javascript'
         const outMode = isHtml(out) ? 'xml' : 'javascript'
+        const foldKeys = {"Ctrl-F": "find", "Ctrl-]": "foldAll", "Ctrl-[": "unfoldAll"}
         if (inputRef.current && !inputRef.current.cm)
-          inputRef.current.cm = CodeMirror(inputRef.current, { value: format(inputData), mode: inputMode, readOnly: true, lineNumbers: true, foldGutter: true, gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'] })
+          inputRef.current.cm = CodeMirror(inputRef.current, { value: format(inputData), mode: inputMode, readOnly: true, lineNumbers: true, foldGutter: true, gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'], extraKeys: foldKeys })
         if (outputRef.current && !outputRef.current.cm)
-          outputRef.current.cm = CodeMirror(outputRef.current, { value: format(out), mode: outMode, readOnly: true, lineNumbers: true, foldGutter: true, gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'] })
+          outputRef.current.cm = CodeMirror(outputRef.current, { value: format(out), mode: outMode, readOnly: true, lineNumbers: true, foldGutter: true, gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'], extraKeys: foldKeys })
       }, [In, out, inputData])
 
       return h('div:flex flex-1 min-h-96 border rounded p-2 mb-2 gap-2', {},

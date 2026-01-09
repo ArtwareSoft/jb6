@@ -36,7 +36,10 @@ const codeMirrorPromise = () => _codeMirrorPromise ||= (async () => {
     '/addon/fold/foldgutter.min.js',
     '/addon/fold/brace-fold.min.js',
     '/addon/fold/indent-fold.min.js',
-    '/addon/fold/comment-fold.min.js'
+    '/addon/fold/comment-fold.min.js',
+    '/addon/search/searchcursor.min.js',
+    '/addon/search/search.min.js',
+    '/addon/dialog/dialog.min.js'
   ].map(p => loadScript(cdn(p))))
 
   return window.CodeMirror
@@ -52,7 +55,7 @@ ReactComp('CodeMirrorJs', {
         const cm = useRef()
       
         useEffect(() => {
-          cm.current ||= CodeMirror(host.current, { value: code, mode: 'javascript', readOnly: true, lineNumbers: true })
+          cm.current ||= CodeMirror(host.current, { value: code, mode: 'javascript', readOnly: true, lineNumbers: true, extraKeys: {"Ctrl-F": "find"} })
           onCursorActivity && cm.current.on('cursorActivity', () => onCursorActivity(cm.current))
         }, [])
       

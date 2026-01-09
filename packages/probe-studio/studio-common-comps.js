@@ -8,7 +8,7 @@ const {
     data: { jq, asIs }, 
   },
   react: { ReactComp, ReactMetadata,
-    'react-comp': { comp },
+    'react-comp': { comp, codeMirrorJson },
     'react-metadata' : { abbr, matchData, priority}
   }
 } = dsls
@@ -88,7 +88,7 @@ ReactComp('imageView', {
     hFunc: (ctx, {react: {h}}) => () => h('img', { src: ctx.data, width: 400 }),
     metadata: [
       abbr('IMG'),
-      matchData(jq('.. | .imageUrl?')),
+      matchData(jq('$top | .. | .imageUrl?', { first: true })),
       priority(2)
     ]
   })
@@ -102,7 +102,7 @@ ReactComp('errorDetailView', {
     ),
     metadata: [
       abbr('ERR'),
-      matchData(jq('.. | .error?')),
+      matchData(jq('$top | .. | .error?')),
       priority(0)
     ]
   })

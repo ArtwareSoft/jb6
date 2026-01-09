@@ -27,7 +27,7 @@ const Booklet = TgpType('booklet', 'llm-guide') // documentation package for llm
 // =============================================================================
 Doclet('howTo', {
   params: [
-    {id: 'problem', type: 'problemStatement', templateValue: '', mandatory: true},
+    {id: 'problem', type: 'problemStatement', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
     {id: 'outro', as: 'text', description: 'Concluding explanation'},
     {id: 'testLlmUnderstanding', type: 'validation[]'}
@@ -75,6 +75,12 @@ ProblemStatement('problem', {
   params: [
     {id: 'statement', as: 'text', mandatory: true, description: 'The core problem statement'},
     {id: 'intro', as: 'text', description: 'Introductory explanation for the problem'}
+  ]
+})
+
+ProblemStatement('context', {
+  params: [
+    {id: 'description', as: 'text', mandatory: true },
   ]
 })
 

@@ -2089,6 +2089,16 @@ const functions = {
        if (t == 'object') return yield Object.keys(input).length
        throw 'cannot compute length of ' + t
    },
+   'length/1': function*(input, conf, args) {
+        let selector = args[0]
+        for (let selected of selector.apply(input, conf)) {
+            let t = nameType(selected)
+            if (t == 'string' || t == 'array') yield selected.length
+            else if (t == 'null') yield 0
+            else if (t == 'object') yield Object.keys(selected).length
+            else throw 'cannot compute length of ' + t
+        }
+    },
    'keys/0': function*(input) {
        yield* Object.keys(input).sort()
    },
