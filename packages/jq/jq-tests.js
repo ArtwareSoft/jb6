@@ -7,7 +7,7 @@ const {
     var : { Var } 
   },
   common: { Data, Action, Boolean,
-    data: { jq , pipeline, filter, join, property, obj, delay, asIs, first }, 
+    data: { jq , pipeline, list, filter, join, property, obj, delay, asIs, first }, 
     Boolean: { contains, equals, and },
     Prop: { prop }
   },
@@ -47,6 +47,10 @@ Test('jqTest.plusOperator', {
 
 Test('jqTest.arrayConcat', {
   impl: dataTest(jq('. + [3,4] | .[]', {data: [1,2]}), equals([1,2,3,4]))
+})
+
+Test('jqTest.sliceLast', {
+  impl: dataTest(jq('.[-2:] | .[]', {data: [1,2,3,4]}), equals([3,4]))
 })
 
 Test('jqTest.groupBy', {

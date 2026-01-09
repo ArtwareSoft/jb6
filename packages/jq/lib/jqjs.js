@@ -485,7 +485,7 @@ function parse(tokens, startAt=0, until=[]) {
                        r.node = new NumberNode(0)
                    let e = parse(tokens, r.i + 1, ['right-square'])
                    if (e.node.length === 0)
-                       e.node = new NumberNode(-1)
+                       e.node = new BooleanNode(null)
                    ret.push(new SliceNode(lhs, r.node, e.node))
                    r = e
                } else if (r.node.length === 0)
@@ -704,16 +704,18 @@ function parseDotSquare(tokens, startAt=0) {
        return {node: new GenericValueIterator(), i}
    let r = parse(tokens, i, ['right-square', 'colon'])
    if (tokens[r.i].type == 'colon') {
-       // Slice
-       let fr = r
-       if (fr.length === 0)
-           fr.node = new NumberNode(0)
-       r = parse(tokens, r.i + 1, ['right-square'])
-       if (r.length === 0)
-           r.node = new NumberNode(-1)
-       return {node: new GenericSlice(fr.node, r.node), i: r.i}
-   }
-   return {node: new GenericIndex(r.node), i: r.i}
+        // Slice
+        let fr = r
+        if (fr.node.length === 0)
+            fr.node = new NumberNode(0)
+    
+        r = parse(tokens, r.i + 1, ['right-square'])
+        if (r.node.length === 0)
+            r.node = new BooleanNode(null) // sentinel: "to end"
+    
+        return {node: new GenericSlice(fr.node, r.node), i: r.i}
+    }
+    return {node: new GenericIndex(r.node), i: r.i}
 }
 
 // Parse an object literal, expecting to start immediately inside the
@@ -1029,9 +1031,10 @@ class SliceNode extends ParseNode {
            for (let s of this.from.apply(input, conf)) {
                if (s < 0) s += l.length
                for (let e of this.to.apply(input, conf)) {
-                   if (e < 0) e += l.length
-                   yield l.slice(s, e)
-               }
+                    if (e === null) e = l.length
+                    if (e < 0) e += l.length
+                    yield l.slice(s, e)
+                }             
            }
    }
    * paths(input, conf) {
@@ -1112,10 +1115,11 @@ class GenericSlice extends ParseNode {
        for (let l of this.from.apply(input, conf)) {
            if (l < 0) l += input.length
            for (let r of this.to.apply(input, conf)) {
-               if (r < 0)
-                   r += input.length
-               yield input.slice(l, r)
-           }
+                if (r === null) r = input.length
+                if (r < 0)
+                    r += input.length
+                yield input.slice(l, r)
+            }
        }
    }
    * paths(input, conf) {

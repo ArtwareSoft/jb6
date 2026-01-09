@@ -30,7 +30,7 @@ ReactComp('testIframeView', {
     metadata: [
       abbr('TST'),
       matchData(({},{probeRes}) => probeRes.circuitCmpId.startsWith('test<test>') && probeRes.circuitCmpId.split('~')[0]),
-      priority(2)
+      priority(20)
     ]
   })
 })
