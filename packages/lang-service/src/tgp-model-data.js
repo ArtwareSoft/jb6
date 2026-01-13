@@ -174,7 +174,7 @@ function astToTgpObj(node, code) {
         if (!code) return undefined
         let func 
         try {
-          func = eval(code.slice(node.start, node.end))
+          func = '__JS:' + code.slice(node.start, node.end)
         } catch (e) {
           logError('astToTgpObj ArrowFunctionExpression eval exception', {message: e.message, e, code, node})
           func = undefined
@@ -191,7 +191,7 @@ function astToTgpObj(node, code) {
     }
 
     function attachNode(res) {
-      if (res)
+      if (res && typeof res == 'object')
         res[astNode] = node
       return res
     }

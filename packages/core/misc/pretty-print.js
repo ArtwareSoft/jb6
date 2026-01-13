@@ -406,6 +406,8 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
   }
   function stringValProps(_str, delim, path, {putNewLinesInString} = {}) {
     const str = putNewLinesInString ? _str : _str.replace(/\n/g,'\\n')
+    if (str.startsWith('__JS:'))
+      return funcProps(str.split('__JS:').pop(), path)
 
     const parentPath = path.split('~').slice(0,-1).join('~')
     const listBegin = [ {token: '', action: `begin!${path}`}, {token: delim, action1: `addProp!${parentPath}`}, {token: '', action: `edit!${path}`} ]

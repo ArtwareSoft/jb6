@@ -1,12 +1,4 @@
-mcp clients - build tests for mcp
-exprt db
-mixin dsl
-
-write fixProfile mcpService
-
-add profile source code MCP
-add tgpSyntax doclets
-make Const just a type
+add .jb6 files
 
 
 i am shaiby the author is the jb6 repo.

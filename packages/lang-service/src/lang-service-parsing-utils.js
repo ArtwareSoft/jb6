@@ -4,7 +4,7 @@ const { jb, systemParams, astToTgpObj, astNode, logException, logError, findComp
     resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType } = coreUtils
 
 export const langServiceUtils = jb.langServiceUtils = { closestComp, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath, 
-    lineColToOffset, offsetToLineCol, tgpEditorHost, applyCompChange }
+    lineColToOffset, offsetToLineCol, tgpEditorHost, applyCompChange, importJb6File }
 
 function tgpEditorHost() {
     return jb.ext.tgpTextEditor.host
@@ -214,6 +214,27 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
                 .forEach(({id,val}) => calcActionMap(val, `${path}~${id}`, prof[primitivesAst][id] || val[astNode]))
         }
     }
+}
+
+function importJb6File(fileContent, {tgpModel = jb, filePath}) {
+    const topComps = parse(fileContent, { ecmaVersion: 'latest', sourceType: 'module' })
+        .body.map(ast => astToTgpObj(ast, fileContent.slice(ast.from, ast.to)))
+    topComps.forEach((topComp) => {
+        const compDef = findCompDefById({id: topComp.$, tgpModel})
+        topComp.id = topComp[astNode].expression.arguments[0].value
+        topComp.$ = jb.dsls.tgp.tgpComp[coreUtils.asJbComp]
+        const dslType = compDef.dslType
+        const compId = `${dslType}${topComp.id}`
+        const [ type, dsl ] = splitDslType(dslType)
+        Object.assign(topComp, {$dslType: dslType, $$: compId, type, dsl})
+        topComp.$originalParams = topComp.params ? (topComp.params || []).map(p=>({...p})) : undefined // for pretty print
+        try {
+            resolveProfileTypes(topComp, {tgpModel, expectedType: dslType, topComp, tgpPath: topComp?.id, filePath})
+        } catch (error) {
+            return { text: compText, comp: topComp, actionMap: [], error }
+        }
+        tgpModel.dsls[dsl][type][topComp.id] = topComp    
+    })
 }
 
 function closestComp(docText, cursorLine, cursorCol, filePath) {

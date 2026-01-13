@@ -22,8 +22,9 @@ export function resolveProfileTypes(prof, { astFromParent, expectedType, parent,
     if (!dslType || dslType?.indexOf('<') == -1) debugger
     const ast = prof[astNode] || astFromParent
 
-    const comp = prof.$ instanceof jbComp ? prof.$
-        : resolveCompTypeWithId(prof.$$ || prof.$, tgpModel, { dslType, parent, parentParam, topComp, parentType, tgpPath })     
+    const comp1 = prof.$ instanceof jbComp ? prof.$
+        : resolveCompTypeWithId(prof.$$ || prof.$, tgpModel, { dslType, parent, parentParam, topComp, parentType, tgpPath })
+    const comp = comp1?.[asJbComp] || comp1
     if (comp)
       prof.$$ = prof.$ instanceof jbComp ? prof.$ : `${comp.$dslType}${comp.id}`
     if (prof.$$ == 'pipeline') debugger

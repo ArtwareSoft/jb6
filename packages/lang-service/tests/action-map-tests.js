@@ -190,6 +190,24 @@ Test('actionMapTest.funcDefaults', {
   })
 })
 
+Test('importJb6FileTest.twoTests', {
+  impl: dataTest({
+    vars: Var('fileContent' , `Test('aa1', {
+  impl: dataTest(pipeline('a'), equals('a'))
+})
+
+Test('aa2', {
+  impl: dataTest(pipeline('a'), equals('a'))
+})
+`),
+    calculate: (ctx,{fileContent}) => {
+      jb.langServiceUtils.importJb6File(fileContent, {filePath: '/myPath'}) 
+      return jb.dsls.test.test.aa2.impl.calculate.$
+    },
+    expectedResult: equals('pipeline'),
+  })
+})
+
 // Test('prettyPrintTest.forward', {
 //   impl: dataTest({
 //     calculate: () => prettyPrintComp(Data.forward('forward2')[asJbComp],{tgpModel: { dsls: jb.dsls }}),

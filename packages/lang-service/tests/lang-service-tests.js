@@ -195,7 +195,7 @@ Test('completionTest.ns', {
 })
 
 Test('completionTest.prettyPrintFunction', {
-  impl: completionActionTest('dataTest({runBefore: () => {} __})', {
+  impl: completionActionTest('dataTest({runBefore: async () => {} __})', {
     completionToActivate: 'calculate',
     expectedEdit: asIs({range: {start: {line: 1, col: 17}, end: {line: 1, col: 18}}, newText: `'', { `}),
     expectedCursorPos: '1,18'
