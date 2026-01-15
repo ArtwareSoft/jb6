@@ -3107,15 +3107,7 @@ Object.assign(functions, {
     'isnormal/0': function*(input) {
         if (nameType(input) != 'number') yield false
         yield isFinite(input) && input !== 0
-    },
-    
-    'env/0': function*(input) {
-        if (typeof process !== 'undefined' && process.env) {
-            yield process.env
-        } else {
-            yield {}
-        }
-    }
+    },    
 })    
 
 const jq = Object.assign(combined, {compileJb, compile, prettyPrint})
