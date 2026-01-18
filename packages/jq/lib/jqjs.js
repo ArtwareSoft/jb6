@@ -2871,6 +2871,10 @@ function combined(prog, input) {
 }
 
 Object.assign(functions, {
+    'not/0': function*(input) {
+        // jq semantics: only false and null are falsy; everything else is truthy
+        yield (input === false || input === null);
+    },
     // Math functions
     'min/0': function*(input) {
         if (nameType(input) != 'array') throw 'min/0 requires array'

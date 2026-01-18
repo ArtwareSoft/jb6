@@ -37,13 +37,13 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
 
   render(hh(ctx, loadingView, { status }))
 
-  for (const file of urlsToLoad || []) {
-    onStatus(`Loading ${file}...`)
-    await import(file)
-  }
-
-  let top, error
+  let top = {}, error
   try {
+    for (const file of urlsToLoad || []) {
+      onStatus(`Loading ${file}...`)
+      await import(file)
+    }
+  
     const entryPointPaths = urlsToLoad.map(f => coreUtils.resolveWithImportMap(f, { imports }, staticMappings))
     top = await coreUtils.runProbeCli(path, { entryPointPaths }, onStatus)
     if (cleanseProbResult)

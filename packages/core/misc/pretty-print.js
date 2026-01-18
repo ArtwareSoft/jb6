@@ -389,7 +389,9 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     if (typeof val === 'function') return funcProps(val, path)
 
     const putNewLinesInString = typeof val === 'string' && val.match(/\n/) && (settings?.newLinesInCode ?? newLinesInCode)
-    if (typeof val === 'string' && val.indexOf("'") == -1 && !putNewLinesInString)
+    if (typeof val === 'string' && val.indexOf("__JS") == 0)
+      return funcProps(val.split('__JS:').pop(), path)
+    else if (typeof val === 'string' && val.indexOf("'") == -1 && !putNewLinesInString)
       return stringValProps(JSON.stringify(val).slice(1,-1).replace(/\\"/g,'"'), "'", path)
     else if (typeof val === 'string')
       return stringValProps(val.replace(/`/g,'\\`').replace(/\$\{/g, '\\${'), "`", path, {putNewLinesInString})
@@ -406,8 +408,6 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
   }
   function stringValProps(_str, delim, path, {putNewLinesInString} = {}) {
     const str = putNewLinesInString ? _str : _str.replace(/\n/g,'\\n')
-    if (str.startsWith('__JS:'))
-      return funcProps(str.split('__JS:').pop(), path)
 
     const parentPath = path.split('~').slice(0,-1).join('~')
     const listBegin = [ {token: '', action: `begin!${path}`}, {token: delim, action1: `addProp!${parentPath}`}, {token: '', action: `edit!${path}`} ]

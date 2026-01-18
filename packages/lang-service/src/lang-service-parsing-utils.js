@@ -1,4 +1,6 @@
-import { parse } from '../lib/acorn-loose.mjs'
+import { parse } from '../lib/acorn.mjs'
+import { parse as parseLoose } from '../lib/acorn-loose.mjs'
+
 import { coreUtils } from '@jb6/core'
 const { jb, systemParams, astToTgpObj, astNode, logException, logError, findCompDefById,
     resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType } = coreUtils
@@ -83,7 +85,10 @@ function deltaFileContent(compText, newCompText, compPos) {
 }
 
 function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePath, inCompOffset = -1, expectedPath = ''}) {
-    const topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
+    let topComp
+    try {
+        topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
+    } catch {}
     if (!topComp)
         return { text: compText, comp: topComp, actionMap: [], error: 'syntax error' }
     let compId = '', dslTypeId, compDef
@@ -217,8 +222,12 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
 }
 
 function importJb6File(fileContent, {tgpModel = jb, filePath}) {
-    const topComps = parse(fileContent, { ecmaVersion: 'latest', sourceType: 'module' })
-        .body.map(ast => astToTgpObj(ast, fileContent.slice(ast.from, ast.to)))
+    let topComps = []
+    try {
+        topComps = parse(fileContent, { ecmaVersion: 'latest', sourceType: 'module' })
+            .body.map(ast => astToTgpObj(ast, fileContent.slice(ast.from, ast.to)))
+    } catch {}
+
     topComps.forEach((topComp) => {
         const compDef = findCompDefById({id: topComp.$, tgpModel})
         topComp.id = topComp[astNode].expression.arguments[0].value
@@ -238,34 +247,67 @@ function importJb6File(fileContent, {tgpModel = jb, filePath}) {
 }
 
 function closestComp(docText, cursorLine, cursorCol, filePath) {
-    const offset = lineColToOffset(docText,{line: cursorLine, col: cursorCol})
+    // clamp offset to a sane range (cursor can land at EOF / beyond last char)
+    const offsetRaw = lineColToOffset(docText,{line: cursorLine, col: cursorCol})
+    const offset = Math.min(Math.max(offsetRaw, 0), Math.max(docText.length - 1, 0))
     let compText = ''
     let ast
+    let usedLoose = false
     try {
         ast = parse(docText, { ecmaVersion:"latest", sourceType:"module", ranges:true })
     } catch (e) {
-        logException(e, 'closestComp parse exception', {docText, filePath, offset, cursorLine, cursorCol})
-        return { notJbCode: true }
+        try {
+            usedLoose = true
+            ast = parseLoose(docText, { ecmaVersion:"latest", sourceType:"module", ranges:true })
+        } catch (e) {
+            logException(e, 'closestComp parse exception', {docText, filePath, offset, cursorLine, cursorCol})
+            return { notJbCode: true }
+        }
     }
     try {
-        let span = ast.body.find(n => n.start <= offset && offset < n.end)
+        let span =
+            ast.body.find(n => n.start <= offset && offset < n.end) ||
+            // offset can land exactly on node end (end is typically exclusive)
+            ast.body.find(n => n.start <= offset && offset <= n.end) ||
+            // cursor can be in whitespace/comments between top-level nodes; pick closest previous node
+            (() => {
+                let best = null
+                for (const n of ast.body) {
+                    if (n.start <= offset && (!best || n.start > best.start))
+                        best = n
+                }
+                return best
+            })()
+
         if (!span) {
             logError(`closestComp can not find top span`, { docText, offset, cursorLine, cursorCol, filePath})
             return { notJbCode: true }
         }
-        if (span.kind == 'const')
-            span = span.declarations?.[0]?.init
-        compText = docText.slice(span.start, span.end)
-        const shortId = (span.expression || span)?.arguments?.[0]?.value // (compText.match(/^\s*\w+\(\s*(['"`])([\s\S]*?)\1/)||[])[2]
-        if (!shortId) {
-            logError('closestComp no shortId', {compText, filePath, span})
+
+        // loose-parse whitespace/indentation heuristic can turn object props into labels:
+        // Data('x', {}) ; impl: ... ; elems: ...
+        if (usedLoose && span.type == 'LabeledStatement') {
+            logError('closestComp loose parse labeled-statement span (likely misparsed object literal)', {docText, filePath, offset, cursorLine, cursorCol, span})
             return { notJbCode: true }
         }
-        const compPos = offsetToLineCol(docText,span.start)
-        return { compText, compPos, inCompOffset: offset - span.start, shortId, cursorLine, cursorCol, filePath}
+
+        if (span.type == 'VariableDeclaration' && span.kind == 'const')
+            span = span.declarations?.[0]?.init
+
+        const expr = span.expression || span
+        compText = docText.slice(expr.start, expr.end)
+
+        const shortId = expr?.arguments?.[0]?.value // (compText.match(/^\s*\w+\(\s*(['"`])([\s\S]*?)\1/)||[])[2]
+        if (!shortId) {
+            logError('closestComp no shortId', {compText, filePath, span: expr})
+            return { notJbCode: true }
+        }
+        const compPos = offsetToLineCol(docText,expr.start)
+        return { compText, compPos, inCompOffset: offset - expr.start, shortId, cursorLine, cursorCol, filePath, usedLoose }
     } catch (e) {
         logException(e, 'closestComp exception', {compText, docText, filePath, offset, cursorLine, cursorCol})
         return { notJbCode: true }
     }
 }
+
 

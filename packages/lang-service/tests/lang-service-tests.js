@@ -80,7 +80,7 @@ Test('completionTest.typeAdapter', {
 })
 
 Test('completionTest.topLevel', {
-  impl: completionOptionsTest(`ALL:Test('x', {impl: '__')`, ['dataTest'])
+  impl: completionOptionsTest(`ALL:Test('x', {impl: '__'})`, ['dataTest'])
 })
 
 Test('completionTest.mixedSingleArgAsArrayMiddle', {
@@ -467,6 +467,22 @@ Test('completionActionTest.fixUnActivatedMacro', {
     completionToActivate: '🔄 reformat',
     expectedEdit: asIs({range: {start: {line: 0, col: 14}, end: {line: 0, col: 25}}, newText: '\n  impl: asIs()\n'}),
     expectedCursorPos: '0,13'
+  })
+})
+
+Test('completionActionTest.tabBug', {
+  impl: completionActionTest(`Data('x', {__\nimpl: pipeline({ source: '', \nelems: [] })\n})\n`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({range: {start: {line: 1, col: 0}, end: {line: 2, col: 11}}, newText: `  impl: pipeline(''`}),
+    expectedCursorPos: '0,11'
+  })
+})
+
+Test('completionActionTest.NLInJSBug', {
+  impl: completionActionTest(`Data('x', __{\n  impl: pipeline( () => {\n    return 2\n  })\n})\n`, {
+    completionToActivate: '🔄 reformat',
+    expectedEdit: asIs({range: {start: {line: 1, col: 17}, end: {line: 1, col: 18}}, newText: ''}),
+    expectedCursorPos: '0,10'
   })
 })
 
