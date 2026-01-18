@@ -40,7 +40,7 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
   let top = {}, error
   try {
     for (const file of urlsToLoad || []) {
-      onStatus(`Loading ${file}...`)
+      onStatus({ text: `Loading ${file}...`})
       await import(file)
     }
   
@@ -101,7 +101,7 @@ ReactComp('loadingView', {
       return h('div:w-full h-full flex flex-col bg-gray-50', {},
         h('div:flex items-center justify-center py-8', {},
           h('div:text-center', {},
-            h('div:text-lg font-semibold mb-2', {}, status),
+            h('div:text-lg font-semibold mb-2', {}, status.text),
             h('div:text-sm text-gray-600', {}, path),
             h('div:text-xs text-gray-400 mt-2', {}, 'Please wait...'),
             h('a:mt-4 px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors inline-block cursor-pointer',

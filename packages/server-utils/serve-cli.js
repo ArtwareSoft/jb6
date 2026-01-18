@@ -77,12 +77,12 @@ function serveCliStream(app) {
     runs[runId] = { listeners: {}, promise, resolve }
 
     const broadcastStatus = text =>
-        Object.values(runs[runId]?.listeners || {}).forEach(fn => fn({ type: 'status', text }))
-      
-    const broadcastDone = () =>
-        Object.values(runs[runId]?.listeners || {}).forEach(fn => fn({ type: 'done' }))
+      Object.values(runs[runId]?.listeners || {}).forEach(fn => fn({ type: 'status', text }))
 
-    ;(async () => {        
+    const broadcastDone = () =>
+      Object.values(runs[runId]?.listeners || {}).forEach(fn => fn({ type: 'done' }))
+
+    ;(async () => {
       try {
         const final = await runNodeCli(script, options, broadcastStatus)
         runs[runId]?.resolve(final)

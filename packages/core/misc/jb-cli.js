@@ -43,16 +43,27 @@ async function runNodeCli(script, options = {}, onStatus) {
   const cwd = options.projectDir
   const scriptToRun = `console.log = () => {};\nconsole.error = () => {};\n${script}`
 
+  const stream = options.stream || 'stderr' // 'stderr' | 'stdout' | 'both'
+
   return new Promise(resolve => {
     let out = '', err = ''
     try {
       const child = spawn(process.execPath, ['--experimental-vm-modules', '--expose-gc', '--input-type=module', ...importParts, '-e', scriptToRun], {cwd })
-      child.stdout.on('data', d => out += d)
+
+      child.stdout.on('data', d => {
+        const text = '' + d
+        out += text
+        if (onStatus && (stream === 'stdout' || stream === 'both'))
+          onStatus({ stream: 'stdout', text })
+      })
+
       child.stderr.on('data', d => {
         const text = '' + d
         err += text
-        onStatus && onStatus(text)
+        if (onStatus && (stream === 'stderr' || stream === 'both'))
+          onStatus({ stream: 'stderr', text })
       })
+
       child.on('close', code => {
         if (code !== 0) {
           const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
@@ -115,17 +126,19 @@ async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
     const { statusUrl, contentUrl, error } = await startRes.json()
     if (error) return { error, cmd, ...options }
 
-    // stream status (SSE)
     const es = new EventSource(statusUrl)
     es.onmessage = ev => {
       try {
         const msg = JSON.parse(ev.data)
-        if (msg.type === 'status' && onStatus) onStatus(msg.text)
+        if (msg.type === 'status' && onStatus) {
+          const text = typeof msg.text === 'string' ? msg.text : msg.text?.text
+          const stream = typeof msg.text === 'string' ? 'stderr' : msg.text?.stream
+          onStatus({ stream, text })
+        }
         if (msg.type === 'done') es.close()
       } catch (e) {}
     }
 
-    // poll for result
     while (true) {
       const r = await fetch(contentUrl)
       if (r.status === 202) { await new Promise(x => setTimeout(x, 200)); continue }
@@ -142,7 +155,6 @@ async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
     return { error: `runNodeCliStreamViaJbWebServer exception: ${e.message}`, ...options }
   }
 }
-
 
 async function runBashScript(script) {
   if (!isNode) {
