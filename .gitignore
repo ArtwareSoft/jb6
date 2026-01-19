@@ -5,5 +5,5 @@ hosts/vscode-tgp-lang/lib/*.tgz
 package-lock.json
 claude.log
 .llm-db/
-claude.log
+.probe-claude
 

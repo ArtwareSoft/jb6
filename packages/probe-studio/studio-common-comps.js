@@ -108,4 +108,134 @@ ReactComp('errorDetailView', {
   })
 })
 
-  
+ReactComp('claude', {
+  impl: comp({
+    hFunc: (ctx, { claudeDir, react: { h, useRef, useEffect } }) =>
+      ({ cmd = 'claude', args = [], env }) => {
+
+        const host = useRef()
+        const term = useRef()
+        const run = useRef()
+        const fitAddon = useRef()
+        let es, resizeObserver
+
+        useEffect(() => {
+          ;(async () => {
+            const [{ Terminal }, { FitAddon }] = await Promise.all([
+              import('https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/+esm'),
+              import('https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/+esm')
+            ])
+            const link = document.createElement('link')
+            link.rel = 'stylesheet'
+            link.href = 'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css'
+            document.head.appendChild(link)
+
+            term.current = new Terminal({ cursorBlink: true, fontSize: 12 })
+            fitAddon.current = new FitAddon()
+            term.current.loadAddon(fitAddon.current)
+            term.current.open(host.current)
+            fitAddon.current.fit()
+
+            const cols = term.current.cols
+            const rows = term.current.rows
+
+            run.current = await fetch('/run-cli-stream', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ interactive: true, cmd, args, cwd: claudeDir, env, cols, rows })
+            }).then(r => r.json())
+
+            es = new EventSource(run.current.statusUrl)
+            es.onmessage = e => {
+              const msg = JSON.parse(e.data)
+              if (msg.type == 'status') term.current.write(msg.text.text || msg.text)
+              if (msg.type == 'done') es.close()
+            }
+
+            term.current.onData(d => {
+              run.current && fetch(run.current.inputUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ d })
+              })
+            })
+
+            resizeObserver = new ResizeObserver(() => {
+              fitAddon.current?.fit()
+              if (run.current && term.current) {
+                fetch(run.current.resizeUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ cols: term.current.cols, rows: term.current.rows })
+                })
+              }
+            })
+            resizeObserver.observe(host.current)
+          })()
+
+          return () => {
+            es?.close()
+            resizeObserver?.disconnect()
+            term.current?.dispose()
+          }
+        }, [])
+
+        return h('div:h-full min-w-0', { ref: host })
+      },
+    metadata: [abbr('CLAUDE'), matchData('%$claudeDir%'), priority(5)]
+  })
+})
+
+export function runPty({p, extractors = [], triggers = [], stopWhen = [], onAnsi }) {
+
+  function stripAnsi(s) {
+    return s.replace(/\u001b\[[0-9;]*[A-Za-z]/g,'').replace(/\u001b\][^\u0007]*\u0007/g,'')
+  }
+
+  let out = ''
+
+  function stop() {
+    // send ctrl-c a few times
+  }
+
+  function extract(e) {
+    const a = out.indexOf(e.start)
+    const b = out.indexOf(e.end)
+    if (a == -1 || b == -1) return
+    const r = out.slice(a, b + e.end.length)
+    if (e.minLen && r.length < e.minLen) return
+    if (e.ignore && r.includes(e.ignore)) return
+    return r
+  }
+
+  function fire(t) {
+    if (t._fired) return
+    if (!t.when(out)) return
+    t._fired = 1
+    const seq = Array.isArray(t.send) ? t.send : [t.send]
+    seq.forEach(d => p.write(d))
+    if (t.reset) out = ''
+  }
+
+  return {
+    write: function(d) { p.write(d) },
+    stop,
+    promise: new Promise((resolve) => {
+      p.onData(d => {
+        if (onAnsi) onAnsi('' + d)
+        out += stripAnsi('' + d)
+
+        triggers.forEach(fire)
+
+        for (const e of extractors) {
+          const r = extract(e)
+          if (r) return stop(), resolve({ res: r, out })
+        }
+
+        for (const s of stopWhen)
+          if (s.when(out))
+            return stop(), resolve({ res: s.result ? s.result(out) : out, out })
+      })
+    })
+  }
+}

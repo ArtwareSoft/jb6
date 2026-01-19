@@ -1,0 +1,50 @@
+{
+  "circuitCmpId": "test<test>myTests.HelloWorld",
+  "probePath": "test<test>myTests.HelloWorld~impl~expectedResult",
+  "visits": {
+    "test<test>myTests.HelloWorld~impl": 2,
+    "test<test>myTests.HelloWorld~impl~calculate": 2,
+    "test<test>myTests.HelloWorld~impl~expectedResult~text": 1,
+    "test<test>myTests.HelloWorld~impl~expectedResult~allText": 1,
+    "test<test>myTests.HelloWorld~impl~expectedResult": 2
+  },
+  "totalTime": 3,
+  "result": [
+    {
+      "from": null,
+      "out": true,
+      "in": {
+        "data": "hello world",
+        "params": null,
+        "vars": {
+          "singleTest": true,
+          "testID": "test<test>myTests.HelloWorld",
+          "isTest": true,
+          "testSessionId": "test-1768809323671"
+        }
+      }
+    },
+    {
+      "from": null,
+      "out": true,
+      "in": {
+        "data": "hello world",
+        "params": null,
+        "vars": {
+          "singleTest": true,
+          "testID": "test<test>myTests.HelloWorld",
+          "isTest": true,
+          "testSessionId": "test-1768809323671"
+        }
+      }
+    }
+  ],
+  "circuitRes": {
+    "id": "test<test>myTests.HelloWorld",
+    "success": true,
+    "testRes": "hello world",
+    "counters": {}
+  },
+  "errors": [],
+  "logs": []
+}

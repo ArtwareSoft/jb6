@@ -71,6 +71,18 @@ Test('probeCliTest.helloWorld', {
   })
 })
 
+Test('probeCliTest.claudeDir', {
+  impl: dataTest({
+    calculate: async () => {
+      const repoRoot = await coreUtils.calcRepoRoot()
+      const entryPointPaths = `${repoRoot}/hosts/test-project/a-tests.js`
+      return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',{entryPointPaths}, { claudeDir: `${repoRoot}/.probe-claude` })
+    },
+    expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
+    timeout: 1000
+  })
+})
+
 Test('probeCliTest.statusViaStderr', {
   impl: dataTest({
     calculate: async () => {
@@ -78,7 +90,7 @@ Test('probeCliTest.statusViaStderr', {
       const entryPointPaths = `${repoRoot}/hosts/test-project/a-tests.js`
       const status = []
       const onStatus = ({ stream, text }) => stream == 'stderr' && status.push(text)
-      await runProbeCli('test<test>myTests.statusViaStderr~impl~expectedResult',{entryPointPaths}, onStatus)
+      await runProbeCli('test<test>myTests.statusViaStderr~impl~expectedResult',{entryPointPaths}, {onStatus})
       return status
     },
     expectedResult: equals('1,2', join(',')),
@@ -87,6 +99,7 @@ Test('probeCliTest.statusViaStderr', {
 })
 
 Test('probeCliTest.statusViaStdoutAndStderr', {
+  doNotRunInTests: true,
   impl: dataTest({
     calculate: async () => {
       const status = []
@@ -96,7 +109,7 @@ Test('probeCliTest.statusViaStdoutAndStderr', {
         process.stderr.write('2')
         process.stdout.write('"done":true}')
       `
-      await runNodeCli(script, { stream: 'both' }, onStatus)
+      await coreUtils.runCliInContext(script, { stream: 'both' }, onStatus)
       return status.map(x => (x.text.match(/[12]/g) || []).join('')).filter(x=>x).join(',')
     },
     expectedResult: equals('1,2'),

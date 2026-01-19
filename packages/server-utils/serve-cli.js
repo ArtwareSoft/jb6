@@ -1,5 +1,6 @@
 import { coreUtils, jb, dsls } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
+import pty from 'node-pty'
 
 const { runNodeCli, runBashScript, buildNodeCliCmd } = coreUtils
 
@@ -66,21 +67,55 @@ function serveCliStream(app) {
   }
   const sseSend = (res, msg) => res.write(`data: ${JSON.stringify(msg)}\n\n`)
 
+  const broadcast = (runId, msg) =>
+    Object.values(runs[runId]?.listeners || {}).forEach(fn => fn(msg))
+
   app.post('/run-cli-stream', (req, res) => {
     if (!req.body) return res.json({ error: 'no body in req' })
-    const { script, ...options } = req.body
-    const { cmd } = buildNodeCliCmd(script, options)
-    const runId = newRunId()
 
+    const runId = newRunId()
     let resolve
     const promise = new Promise(r => resolve = r)
     runs[runId] = { listeners: {}, promise, resolve }
 
-    const broadcastStatus = text =>
-      Object.values(runs[runId]?.listeners || {}).forEach(fn => fn({ type: 'status', text }))
+    const broadcastStatus = text => broadcast(runId, { type: 'status', text })
+    const broadcastDone = () => broadcast(runId, { type: 'done' })
 
-    const broadcastDone = () =>
-      Object.values(runs[runId]?.listeners || {}).forEach(fn => fn({ type: 'done' }))
+    if (req.body.interactive) {
+      const { cmd = 'bash', args = [], cwd, env, shell, cols = 120, rows = 40 } = req.body
+      const sh = shell || process.env.SHELL || '/bin/bash'
+      const term = (env && env.TERM) || 'xterm-256color'
+      const line = [cmd, ...args].map(x => String(x).replace(/'/g, `'\\''`)).join(' ')
+
+      const p = pty.spawn(sh, ['-lic', line], {
+        cwd,
+        env: { ...process.env, ...env, TERM: term },
+        cols,
+        rows,
+        name: term
+      })
+
+      runs[runId].pty = p
+
+      p.onData(d => broadcastStatus({ stream: 'pty', text: d }))
+
+      p.onExit(({ exitCode, signal }) => {
+        runs[runId]?.resolve({ exitCode, signal })
+        broadcastDone()
+        setTimeout(() => delete runs[runId], 60_000)
+      })
+
+      return res.json({
+        runId,
+        statusUrl: `/run-cli-stream/${runId}/status`,
+        inputUrl: `/run-cli-stream/${runId}/input`,
+        resizeUrl: `/run-cli-stream/${runId}/resize`,
+        contentUrl: `/run-cli-stream/${runId}/content`
+      })
+    }
+
+    const { script, ...options } = req.body
+    const { cmd } = buildNodeCliCmd(script, options)
 
     ;(async () => {
       try {
@@ -111,11 +146,24 @@ function serveCliStream(app) {
     req.on('close', () => delete run.listeners[id])
   })
 
+  app.post('/run-cli-stream/:runId/input', (req, res) => {
+    const run = runs[req.params.runId]
+    if (!run?.pty) return res.status(404).json({ error: 'no such run' })
+    run.pty.write(String(req.body?.d || ''))
+    res.json({ ok: true })
+  })
+
+  app.post('/run-cli-stream/:runId/resize', (req, res) => {
+    const run = runs[req.params.runId]
+    if (!run?.pty) return res.status(404).json({ error: 'no such run' })
+    run.pty.resize(Number(req.body?.cols || 120), Number(req.body?.rows || 40))
+    res.json({ ok: true })
+  })
+
   app.get('/run-cli-stream/:runId/content', async (req, res) => {
     const run = runs[req.params.runId]
     if (!run) return res.status(404).json({ error: 'no such run' })
     res.json(await run.promise)
   })
 }
-
 

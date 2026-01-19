@@ -37,6 +37,9 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
 
   render(hh(ctx, loadingView, { status }))
 
+  const repoRoot = await coreUtils.calcRepoRoot()
+  const claudeDir = `${repoRoot}/.probe-claude`
+
   let top = {}, error
   try {
     for (const file of urlsToLoad || []) {
@@ -45,7 +48,7 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
     }
   
     const entryPointPaths = urlsToLoad.map(f => coreUtils.resolveWithImportMap(f, { imports }, staticMappings))
-    top = await coreUtils.runProbeCli(path, { entryPointPaths }, onStatus)
+    top = await coreUtils.runProbeCli(path, { entryPointPaths }, { onStatus, claudeDir })
     if (cleanseProbResult)
       top = cleanseProbResult(ctx.setData(top))
   } catch (e) { error = e.stack }
@@ -71,7 +74,7 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
   const titleShort = (probeRes?.circuitCmpId || '').split('>').pop() || ''
   const probePath = probeRes?.probePath
 
-  const viewCtx = ctx.setVars({ top, error, path, urlsToLoad, probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath })
+  const viewCtx = ctx.setVars({ top, error, path, urlsToLoad, probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath, claudeDir })
   const allViews = coreUtils.globalsOfTypeIds(dsls.react['react-comp'])
     .map(id => {
       const comp = dsls.react['react-comp'][id]

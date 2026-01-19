@@ -1,0 +1,51 @@
+# Purpose
+This directory is a frozen snapshot of a JB "probe" execution, intended for analysis and debugging in Claude Code.
+
+# What to read first
+1) probe-result.json (primary)
+
+# Ground rules
+- Do NOT modify any JSON files unless explicitly asked.
+- Treat probe-result.json as the source of truth.
+- If something is unclear, infer carefully and state assumptions.
+
+# Task guidance
+- Start by summarizing:
+  - probePath, circuitCmpId, totalTime, and top visited paths
+  - any errors + where they appear in the probe timeline
+- Then produce:
+  - likely root cause(s)
+  - minimal reproduction hints
+  - concrete next steps and what to inspect in codebase
+
+# Probe metadata
+- probePath: test<test>myTests.HelloWorld~impl~expectedResult
+- circuitCmpId: test<test>myTests.HelloWorld
+- createdAt: 2026-01-19T07:55:23.689Z
+- projectDir: /home/shaiby/projects/jb6/hosts/test-project
+- cmd: node --inspect-brk --experimental-vm-modules --expose-gc --input-type=module  -e "
+      import { writeFile } from 'fs/promises'
+      import { jb, dsls, coreUtils } from '@jb6/core'
+      import '@jb6/testing'
+      import '@jb6/core/misc/probe.js'
+      const imports = [\"/home/shaiby/projects/jb6/hosts/test-project/a-tests.js\",\"/home/shaiby/projects/jb6/hosts/test-project/b-test.js\",\"/home/shaiby/projects/jb6/hosts/test-project/tests/c.js\"]
+      try {
+        
+        await Promise.all(imports.map(f => import(f))) // .catch(e => console.error(e.stack) )
+        jb.workflowUtils?.workflowEvents?.on('status', text => console.error(text))
+        const result = await jb.coreUtils.runProbe(\"test<test>myTests.HelloWorld~impl~expectedResult\")
+        await coreUtils.writeServiceResult(result)
+      } catch (e) {
+        await coreUtils.writeServiceResult({error: e.stack})
+        console.error(e)
+      }
+    "
+- imports: /home/shaiby/projects/jb6/hosts/test-project/a-tests.js,/home/shaiby/projects/jb6/hosts/test-project/b-test.js,/home/shaiby/projects/jb6/hosts/test-project/tests/c.js
+
+# Summary
+- hasError: undefined
+- totalTime: 3
+- visitsCount: 5
+- resultEntries: 2
+- errorsCount: 0
+- logsCount: 0
