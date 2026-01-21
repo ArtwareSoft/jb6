@@ -1,5 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
-import '@jb6/lang-service'
+import '@jb6/core/misc/pretty-print.js'
 
 const { 
   tgp: { TgpType },

@@ -156,10 +156,21 @@ function serveCliStream(app) {
   app.post('/run-cli-stream/:runId/resize', (req, res) => {
     const run = runs[req.params.runId]
     if (!run?.pty) return res.status(404).json({ error: 'no such run' })
-    run.pty.resize(Number(req.body?.cols || 120), Number(req.body?.rows || 40))
+  
+    const cols = Math.max(2, Number(req.body?.cols || 120) | 0)
+    const rows = Math.max(2, Number(req.body?.rows || 40) | 0)
+  
+    try {
+      run.pty.resize(cols, rows)
+    } catch (e) {
+      if (e?.code == 'ENOTTY' || e?.code == 'EBADF' || e?.code == 'EPIPE') {
+        run.pty = null
+        return res.json({ ok: false, ignored: e.code })
+      }
+      throw e
+    }
     res.json({ ok: true })
-  })
-
+  })  
   app.get('/run-cli-stream/:runId/content', async (req, res) => {
     const run = runs[req.params.runId]
     if (!run) return res.status(404).json({ error: 'no such run' })

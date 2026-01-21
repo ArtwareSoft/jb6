@@ -13,7 +13,7 @@ const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerE
 jb.probeRepository = {
     probeCounter: 0
 }
-Object.assign(coreUtils, {runProbe, runProbeCli})
+Object.assign(coreUtils, {runProbe, runProbeCli, createClaudeDirForProbe})
 
 async function runProbeCli(probePath, resources, {onStatus = null, claudeDir = ''} = {}) {
     const { extraCode } = resources
@@ -28,12 +28,15 @@ async function runProbeCli(probePath, resources, {onStatus = null, claudeDir = '
       import '@jb6/testing'
       import '@jb6/core/misc/probe.js'
       const imports = ${JSON.stringify(imports)}
+      const claudeDir = '${claudeDir}', probePath = '${probePath}'
       try {
         ${extraCode || ''}
         await Promise.all(imports.map(f => import(f))) // .catch(e => console.error(e.stack) )
         jb.workflowUtils?.workflowEvents?.on('status', text => console.error(text))
-        const result = await jb.coreUtils.runProbe(${JSON.stringify(probePath)})
-        await coreUtils.writeServiceResult(result)
+        const probeRes = await jb.coreUtils.runProbe(probePath)
+        const claudeDirRes = await coreUtils.createClaudeDirForProbe({claudeDir, probePath, probeRes,imports})
+        probeRes.claudeDir = claudeDirRes
+        await coreUtils.writeServiceResult(probeRes)
       } catch (e) {
         await coreUtils.writeServiceResult({error: e.stack})
         console.error(e)
@@ -41,8 +44,6 @@ async function runProbeCli(probePath, resources, {onStatus = null, claudeDir = '
     `
     try {
       const { result, error, cmd } = await coreUtils.runCliInContext(script, {projectDir, importMapsInCli: importMap.importMapsInCli}, onStatus)
-      if (claudeDir)
-        await createClaudeDirForProbe({projectDir, probePath, probeRes: result, cmd, imports, claudeDir, error, importMap })
   
       return { probeRes: result, error, cmd, projectDir }
     } catch (error) {
@@ -104,16 +105,14 @@ async function runProbe(_probePath, {circuitCmpId, timeout } = {}) {
     }
 }
 
-async function createClaudeDirForProbe({ projectDir, probePath, probeRes, cmd, imports, claudeDir, error, importMap } = {}) {
+async function createClaudeDirForProbe({ probePath, probeRes, imports, claudeDir } = {}) {
+  if (!claudeDir) return
+  const repoRoot = await coreUtils.calcRepoRoot()
+  const { entryFiles, importMap } = await coreUtils.calcImportData()
+
   const createdAt = new Date().toISOString()
   const circuitCmpId = probeRes?.circuitCmpId || ''
-  const hasError = !!probeRes?.error || error
-  const totalTime = probeRes?.totalTime ?? 'N/A'
-  const visitsCount = probeRes?.visits ? Object.keys(probeRes.visits).length : 'N/A'
-  const resultEntries = Array.isArray(probeRes?.result) ? probeRes.result.length : 'N/A'
-  const errorsCount = Array.isArray(probeRes?.errors) ? probeRes.errors.length : 'N/A'
-  const logsCount = Array.isArray(probeRes?.logs) ? probeRes.logs.length : 'N/A'
-  const importMapStr = JSON.stringify(importMap,null,2)
+  const hasError = !!probeRes?.error
 
   const files = {
     'probe-result.json': JSON.stringify(probeRes, null, 2),
@@ -124,63 +123,38 @@ This directory is a frozen snapshot of a JB "probe" execution, intended for anal
 1) probe-result.json (primary)
 
 # Ground rules
-- Do NOT modify any JSON files unless explicitly asked.
+- Do NOT modify any files unless explicitly asked.
 - Treat probe-result.json as the source of truth.
 - If something is unclear, infer carefully and state assumptions.
 
 #imports 
-${imports}
-${importMapStr}
+${JSON.stringify(imports,null,2)}
+#importMaps
+${JSON.stringify(importMap,null,2)}
+#entryFiles
+${JSON.stringify(entryFiles,null,2)}
 
-# Task guidance
-- read the relevant source code, use the imports and import map
-- Start by summarizing:
-  - probePath, circuitCmpId, totalTime, and top visited paths
-  - any errors + where they appear in the probe timeline
-- Then produce:
-  - likely root cause(s)
-  - minimal reproduction hints
-  - concrete next steps and what to inspect in codebase
+
+#guidance
+
+to read the relevant source code, use the imports and import map
 
 # Probe metadata
-- probePath: ${probePath}
 - circuitCmpId: ${circuitCmpId}
+- probePath: ${probePath}
 - createdAt: ${createdAt}
-- projectDir: ${projectDir}
-- cmd: ${cmd || ''}
-
-# Summary
+- repoRoot: ${repoRoot}
 - hasError: ${hasError}
-- totalTime: ${totalTime}
-- visitsCount: ${visitsCount}
-- resultEntries: ${resultEntries}
-- errorsCount: ${errorsCount}
-- logsCount: ${logsCount}
 
 `
   }
 
-  if (!coreUtils.isNode) {
-    const script = `
-      const { rm, mkdir, writeFile } = await import('fs/promises')
-      const path = await import('path')
-      const claudeDir = '${claudeDir}'
-      await rm(claudeDir, { recursive: true, force: true })
-      await mkdir(claudeDir, { recursive: true })
-      const files = ${JSON.stringify(files)}
-
-      await Promise.all(Object.entries(files).map(([fname, content]) => writeFile(path.join(claudeDir, fname), content, 'utf8')))
-      process.stdout.write('{"success": true}')
-    `
-    const res = await coreUtils.runCliInContext(script, {projectDir, importMapsInCli: importMap.importMapsInCli})
-    return res
-  } else {
-    const { rm, mkdir, writeFile } = await import('fs/promises')
-    const path = await import('path')
-    await rm(claudeDir, { recursive: true, force: true })
-    await mkdir(claudeDir, { recursive: true })
-    await Promise.all(Object.entries(files).map(([fname, content]) => writeFile(path.join(claudeDir, fname), content, 'utf8')))
-  }
+  const { rm, mkdir, writeFile } = await import('fs/promises')
+  const path = await import('path')
+  await rm(claudeDir, { recursive: true, force: true })
+  await mkdir(claudeDir, { recursive: true })
+  await Promise.all(Object.entries(files).map(([fname, content]) => writeFile(path.join(claudeDir, fname), content, 'utf8')))
+  return claudeDir
 }
 
 

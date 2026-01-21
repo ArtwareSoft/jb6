@@ -22,7 +22,7 @@ Data('langService.completionItems', {
             ({items, paramDef} = await provideCompletionItems(compProps, ctx))
             items.forEach((item, i) => Object.assign(item, {
                 compPos, insertText: '', sortText: '!' + String(i).padStart(3, '0'), command: { command: 'jbart.applyCompChangeOfCompletionItem', 
-                arguments: [item] 
+                arguments: [{...item}] 
             },
             }))
             title = paramDef && `${paramDef.id}: ${(paramDef.$dslType||'').replace('<>','')}`

@@ -38,7 +38,8 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
   render(hh(ctx, loadingView, { status }))
 
   const repoRoot = await coreUtils.calcRepoRoot()
-  const claudeDir = `${repoRoot}/.probe-claude`
+  const id6 = `${String(new Date().getMonth()+1).padStart(2,'0')}${String(new Date().getDate()).padStart(2,'0')}${String(Math.floor(Math.random()*100)).padStart(2,'0')}`
+  const claudeDir = `${repoRoot}/.probe-claude/${id6}`
 
   let top = {}, error
   try {
@@ -300,6 +301,7 @@ const codeMirrorJson = ReactComp('codeMirrorJson', {
           })
           if (foldAll)
             CodeMirror.commands.foldAll(cm.current)
+          cm.current.setSize(null, '100%')
         }
       }, [])
 
@@ -307,6 +309,7 @@ const codeMirrorJson = ReactComp('codeMirrorJson', {
         cm.current && cm.current.setValue(print(json))
         if (foldAll)
           CodeMirror.commands.foldAll(cm.current)
+        cm.current.setSize(null, '100%')
       }, [json])
 
       return h('div:h-full', { ref: host })
