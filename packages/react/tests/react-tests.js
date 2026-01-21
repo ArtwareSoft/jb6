@@ -8,7 +8,7 @@ const {
   }, 
   common: { 
     data: { asIs },
-    boolean: { contains, equals },
+    boolean: { contains, equals, and },
   },
   react: { ReactComp, 
     'react-comp': { comp, compWithAsyncCtx },
@@ -79,6 +79,39 @@ Test('reactTest.asyncComp', {
   })
 })
 
+const userComp = ReactComp('userComp', {
+  impl: comp({ hFunc: ({}, {userName, react: {h}}) => () => h('div', {}, `User: ${userName}`) })
+})
+
+Test('reactTest.strongRefresh', {
+  impl: reactTest({
+    hFunc: (ctx, {react: {h, hh, hhStrongRefresh}}) => () => h('div', {}, [
+        hh(ctx.setVars({userName: 'John'}), userComp),  // Shows: "User: John" (cached)
+        hh(ctx.setVars({ userName: 'Jane' }), userComp),                      // Shows: "User: John" (still cached!)
+        hhStrongRefresh(ctx.setVars({ userName: 'Jane' }), userComp)          // Shows: "User: Jane" (fresh)
+    ]),
+    expectedResult: and(contains('User: John'), contains('User: Jane'))
+  })
+})
+
+const userCompAsync = ReactComp('userCompAsync', {
+  impl: comp({
+    hFunc: ({}, {userName, react: {h}}) => () => h('div', {}, `User: ${userName}`),
+    enrichCtx: ctx => coreUtils.delay(10).then(()=> ctx)
+  })
+})
+
+Test('reactTest.strongRefreshAsync', {
+  impl: reactTest({
+    hFunc: (ctx, {react: {h, hh, hhStrongRefresh}}) => () => h('div', {}, [
+        hh(ctx.setVars({userName: 'John'}), userCompAsync),  // Shows: "User: John" (cached)
+        hh(ctx.setVars({ userName: 'Jane' }), userCompAsync),                      // Shows: "User: John" (still cached!)
+        hhStrongRefresh(ctx.setVars({ userName: 'Jane' }), userCompAsync)          // Shows: "User: Jane" (fresh)
+    ]),
+    expectedResult: and(contains('User: John'), contains('User: Jane'))
+  })
+})
+
 Test('reactTest.buttonClickWithParams', {
   params: [
     {id: 'textAfterClick', as: 'string', defaultValue: 'Clicked!'}
@@ -135,16 +168,6 @@ Test('reactTest.buttonForClick', {
     expectedResult: contains('Click me'),
   })
 })
-
-// Test('reactTest.err', {
-//   impl: reactTest(() => h('div'), contains('Clicked!'), {
-//     userActions: [
-//       waitForSelector('aaaaaaaaaaaaaaaaaaaaaa'),
-//       click(),
-//       waitForText()
-//     ]
-//   })
-// })
 
 Test('reactTest.longPress', {
   impl: reactTest({

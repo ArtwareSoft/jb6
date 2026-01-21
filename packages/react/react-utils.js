@@ -1,5 +1,5 @@
 import { jb, coreUtils, dsls } from '@jb6/core'
-export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, wrapReactCompWithSampleData }
+export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, wrapReactCompWithSampleData }
 
 jb.reactRepository = {
   comps: {},
@@ -10,21 +10,7 @@ const { tgp: { TgpType }} = dsls
 
 const ReactComp = TgpType('react-comp','react')
 TgpType('vdom','react')
-const ReactMetadata = TgpType('react-metadata','react')
-const ReactAssert = TgpType('react-assert','react')
-
-ReactAssert('showError', {
-  params: [
-    {id: 'ensureCondition', type: 'boolean', dynamic: true, description: 'runs with the enriched ctx' },
-    {id: 'error', type: 'vdom', dynamic: true },
-  ]
-})
-
-ReactAssert('varsNotEmpty', {
-  params: [
-    {id: 'varNames', as: 'string', description: 'comma separated'}
-  ]
-})
+TgpType('react-metadata','react')
 
 ReactComp('comp', {
   params: [
@@ -35,8 +21,8 @@ ReactComp('comp', {
     {id: 'assert', type: 'react-assert[]', dynamic: true},
     {id: 'metadata', type: 'react-metadata[]', dynamic: true},
   ],
-  impl: (_ctx, {react: {h} }, { hFunc, enrichCtx }) => {
-    const id = _ctx.jbCtx.creatorStack.slice(-1)[0].replace(/react-comp<react>/,'').split('~')[0]
+  impl: (_ctx, {}, { hFunc, enrichCtx }) => {
+    const id = _ctx.jbCtx.creatorStack.slice(-2)[0]
     const ctx = enrichCtx(_ctx) || _ctx
     if (!jb.reactRepository.comps[id]) {
       const comp = jb.reactRepository.comps[id] = jb.reactRepository.comps[id] || hFunc(ctx)
@@ -56,13 +42,12 @@ ReactComp('compWithAsyncCtx', {
     {id: 'matchData', dynamic: true}
   ],
   impl: (_ctx, {react: {use, h} }, { hFunc, enrichCtx }) => {
-    const id = _ctx.jbCtx.creatorStack.slice(-1)[0].replace(/react-comp<react>/,'').split('~')[0]
-    const promiseId = _ctx.jbCtx.creatorStack?.join('-')
-    const ctxPromise = jb.reactRepository.promises[promiseId] || ( jb.reactRepository.promises[promiseId] = enrichCtx(_ctx))
+    const id = _ctx.jbCtx.creatorStack.slice(-2)[0]
+    const ctxPromise = jb.reactRepository.promises[id] || ( jb.reactRepository.promises[id] = enrichCtx(_ctx))
 
     if (!jb.reactRepository.comps[id]) {
       const comp = jb.reactRepository.comps[id] = jb.reactRepository.comps[id] || ((args) => {
-        const ctx = use(ctxPromise)
+        const ctx = use(Promise.resolve(ctxPromise))
         return h(hFunc(ctx), args)
       })
       Object.defineProperty(comp, 'name', { value: id })
@@ -75,6 +60,20 @@ function hh(ctx, t, p = {}, ...c) {
   if (!(ctx instanceof coreUtils.Ctx))
     console.error('hh: first param of hh must be ctx')
   t = t[coreUtils.asJbComp] ? t.$runWithCtx(ctx) : t
+  return h(t,p,...c)
+}
+
+function hhStrongRefresh(ctx, t, p = {}, ...c) {
+  if (!(ctx instanceof coreUtils.Ctx))
+    console.error('hhStrongRefresh: first param of hh must be ctx')
+  if (t[coreUtils.asJbComp]) {
+    const id = ctx.jbCtx.path
+    if (id) {
+      delete jb.reactRepository.comps[id]
+      delete jb.reactRepository.promises[id]
+    }
+    t = t.$runWithCtx(ctx)
+  }
   return h(t,p,...c)
 }
 

@@ -15,7 +15,7 @@ ReactMetadata('abbr', {
 
 ReactMetadata('matchData', {
   params: [
-    {id: 'matchData', type: 'boolean',  dynamic: true}
+    {id: 'matchData', dynamic: true}
   ]
 })
 
