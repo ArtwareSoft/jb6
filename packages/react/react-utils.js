@@ -41,15 +41,25 @@ ReactComp('compWithAsyncCtx', {
     {id: 'abbr', as: 'string'},
     {id: 'matchData', dynamic: true}
   ],
-  impl: (_ctx, {react: {use, h} }, { hFunc, enrichCtx }) => {
+  impl: (_ctx, {react: {useState, useEffect, h} }, { hFunc, enrichCtx }) => {
     const id = _ctx.jbCtx.creatorStack.slice(-2)[0]
     const ctxPromise = jb.reactRepository.promises[id] || ( jb.reactRepository.promises[id] = enrichCtx(_ctx))
 
     if (!jb.reactRepository.comps[id]) {
-      const comp = jb.reactRepository.comps[id] = jb.reactRepository.comps[id] || ((args) => {
-        const ctx = use(Promise.resolve(ctxPromise))
+      const comp = jb.reactRepository.comps[id] = (args) => {
+        const [ctx, setCtx] = useState(null)
+
+        useEffect(() => {
+          let mounted = true
+          ctxPromise.then(resolvedCtx => {
+            if (mounted) setCtx(resolvedCtx)
+          })
+          return () => { mounted = false }
+        }, [])
+
+        if (ctx === null) return null
         return h(hFunc(ctx), args)
-      })
+      }
       Object.defineProperty(comp, 'name', { value: id })
     }
     return jb.reactRepository.comps[id]

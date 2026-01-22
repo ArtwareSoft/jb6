@@ -95,7 +95,7 @@ Test('reactTest.strongRefresh', {
 })
 
 const userCompAsync = ReactComp('userCompAsync', {
-  impl: comp({
+  impl: compWithAsyncCtx({
     hFunc: ({}, {userName, react: {h}}) => () => h('div', {}, `User: ${userName}`),
     enrichCtx: ctx => coreUtils.delay(10).then(()=> ctx)
   })
@@ -108,7 +108,29 @@ Test('reactTest.strongRefreshAsync', {
         hh(ctx.setVars({ userName: 'Jane' }), userCompAsync),                      // Shows: "User: John" (still cached!)
         hhStrongRefresh(ctx.setVars({ userName: 'Jane' }), userCompAsync)          // Shows: "User: Jane" (fresh)
     ]),
-    expectedResult: and(contains('User: John'), contains('User: Jane'))
+    expectedResult: and(contains('User: John'), contains('User: Jane')),
+    userActions: waitForText('Jane')
+  })
+})
+
+const refreshMainInner = ReactComp('refreshMainInner', {
+  impl: comp({
+    hFunc: ({}, {userName, react: {h}}) => ({refreshMain}) => h('div', {}, [
+      h('div', {}, `User: ${userName}`),
+      h('button', { onClick: () => refreshMain({userName: 'Jane'}) }, 'Change to Jane')
+    ]),
+    enrichCtx: ctx => coreUtils.delay(10).then(()=> ctx)
+  })
+})
+
+Test('reactTest.refreshMainWithNewVars', {
+  impl: reactTest({
+    hFunc: (ctx, {react: { hhStrongRefresh, useState}}) => () => {
+        const [vars, setVars] = useState({userName: 'John'})
+        return hhStrongRefresh(ctx.setVars(vars), refreshMainInner, { refreshMain: (vars) => setVars(vars) })
+    },
+    expectedResult: contains('User: Jane'),
+    userActions: click()
   })
 })
 
