@@ -21,46 +21,41 @@ ReactComp('comp', {
     {id: 'assert', type: 'react-assert[]', dynamic: true},
     {id: 'metadata', type: 'react-metadata[]', dynamic: true},
   ],
-  impl: (_ctx, {}, { hFunc, enrichCtx }) => {
+  impl: (_ctx, {react: {useState, useEffect} }, { hFunc, enrichCtx }) => {
     const id = _ctx.jbCtx.creatorStack.slice(-2)[0]
-    const ctx = enrichCtx(_ctx) || _ctx
-    if (!jb.reactRepository.comps[id]) {
-      const comp = jb.reactRepository.comps[id] = jb.reactRepository.comps[id] || hFunc(ctx)
-      Object.defineProperty(comp, 'name', { value: id })
-    }
-    return jb.reactRepository.comps[id]
-  }
-})
+    const ctxOrPromise = enrichCtx(_ctx) || _ctx
+    const isPromise = coreUtils.isPromise(ctxOrPromise)
 
-ReactComp('compWithAsyncCtx', {
-  params: [
-    {id: 'hFunc', type: 'vdom', dynamic: true, byName: true  },
-    {id: 'enrichCtx', dynamic: true},
-    {id: 'sampleData'},
-    {id: 'whenToUse', as: 'text'},
-    {id: 'abbr', as: 'string'},
-    {id: 'matchData', dynamic: true}
-  ],
-  impl: (_ctx, {react: {useState, useEffect, h} }, { hFunc, enrichCtx }) => {
-    const id = _ctx.jbCtx.creatorStack.slice(-2)[0]
-    const ctxPromise = jb.reactRepository.promises[id] || ( jb.reactRepository.promises[id] = enrichCtx(_ctx))
+    if (isPromise) {
+      const ctxPromise = jb.reactRepository.promises[id] || (jb.reactRepository.promises[id] = ctxOrPromise)
+      if (!jb.reactRepository.comps[id]) {
+        const comp = jb.reactRepository.comps[id] = (args) => {
+          const [ctx, setCtx] = useState(null)
+          const [loading, setLoading] = useState(true)
 
-    if (!jb.reactRepository.comps[id]) {
-      const comp = jb.reactRepository.comps[id] = (args) => {
-        const [ctx, setCtx] = useState(null)
+          useEffect(() => {
+            let mounted = true
+            ctxPromise.then(resolvedCtx => {
+              if (mounted) {
+                setCtx(resolvedCtx)
+                setLoading(false)
+              }
+            })
+            return () => { mounted = false }
+          }, [])
 
-        useEffect(() => {
-          let mounted = true
-          ctxPromise.then(resolvedCtx => {
-            if (mounted) setCtx(resolvedCtx)
-          })
-          return () => { mounted = false }
-        }, [])
-
-        if (ctx === null) return null
-        return h(hFunc(ctx), args)
+          if (loading)
+            return h('div:flex items-center justify-center h-full w-full', {}, h(L('Loader'), { className: 'animate-spin w-4 h-4' }))
+          return h(hFunc(ctx), args)
+        }
+        Object.defineProperty(comp, 'name', { value: id })
       }
-      Object.defineProperty(comp, 'name', { value: id })
+    } else {
+      const ctx = ctxOrPromise
+      if (!jb.reactRepository.comps[id]) {
+        const comp = jb.reactRepository.comps[id] = hFunc(ctx)
+        Object.defineProperty(comp, 'name', { value: id })
+      }
     }
     return jb.reactRepository.comps[id]
   }

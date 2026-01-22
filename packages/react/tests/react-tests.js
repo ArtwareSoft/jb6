@@ -11,7 +11,7 @@ const {
     boolean: { contains, equals, and },
   },
   react: { ReactComp, 
-    'react-comp': { comp, compWithAsyncCtx },
+    'react-comp': { comp },
   }
 } = dsls
 
@@ -65,7 +65,7 @@ const asyncComp = ReactComp('asyncComp', {
   params: [
     {id: 'p1', as: 'string '}
   ],
-  impl: compWithAsyncCtx({
+  impl: comp({
     hFunc: ({}, {v1, react: {h}}) => ({p1}) => h('div', {}, `myComp p1: ${p1}, v1: ${v1}`),
     enrichCtx: ctx => coreUtils.delay(20).then(()=>ctx.setVars({v1: 'v1Val'}))
   })
@@ -95,7 +95,7 @@ Test('reactTest.strongRefresh', {
 })
 
 const userCompAsync = ReactComp('userCompAsync', {
-  impl: compWithAsyncCtx({
+  impl: comp({
     hFunc: ({}, {userName, react: {h}}) => () => h('div', {}, `User: ${userName}`),
     enrichCtx: ctx => coreUtils.delay(10).then(()=> ctx)
   })
@@ -119,7 +119,7 @@ const refreshMainInner = ReactComp('refreshMainInner', {
       h('div', {}, `User: ${userName}`),
       h('button', { onClick: () => refreshMain({userName: 'Jane'}) }, 'Change to Jane')
     ]),
-    enrichCtx: ctx => coreUtils.delay(10).then(()=> ctx)
+    enrichCtx: ctx => coreUtils.delay(1).then(()=> ctx)
   })
 })
 
@@ -130,7 +130,7 @@ Test('reactTest.refreshMainWithNewVars', {
         return hhStrongRefresh(ctx.setVars(vars), refreshMainInner, { refreshMain: (vars) => setVars(vars) })
     },
     expectedResult: contains('User: Jane'),
-    userActions: click()
+    userActions: actions(waitForText('Change to Jane'), click(), waitForText('Jane'))
   })
 })
 
