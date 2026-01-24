@@ -4,7 +4,7 @@ import '@jb6/llm-guide'
 import '@jb6/core/misc/pretty-print.js'
 
 const { 
-  tgp: { Const, TgpType, 
+  tgp: { Const, TgpType, Component,
     var : { Var } 
   },
   common: { Data, Action, Boolean,
@@ -85,7 +85,8 @@ Test('coreTest.propertyPassive', {
   impl: dataTest(property('name', obj(prop('name', 'homer')), { useRef: true }), equals('homer'))
 })
 
-const withDefaultValueComp = Data('withDefaultValueComp', {
+const withDefaultValueComp = Component('withDefaultValueComp', {
+  type: 'data<common>',
   params: [
     {id: 'val', defaultValue: pipeline('5')}
   ],

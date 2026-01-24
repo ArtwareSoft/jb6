@@ -5,6 +5,18 @@ const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asA
 
 Object.assign(coreUtils, { globalsOfType, globalsOfTypeIds, toCapitalType, findCompDefById, CompDefByDslType })
 
+function Component(id, comp) {
+  const {type} = comp
+  let [_type,_dsl] = ['data','common']
+  if (type && type.indexOf('<') != -1)
+    [_type, _dsl] = splitDslType(type)
+  try {
+    return jb.dsls[_dsl][toCapitalType(_type)](id,comp)
+  } catch(error) {
+    console.error(`error while defing comp ${id}`,error.stack)
+  }
+}  
+
 const CompDef = comp => jbCompProxy(new jbComp(resolveProfileTop(comp)))
 
 const tgpComp = CompDef({ // bootstraping
@@ -28,7 +40,7 @@ const tgpComp = CompDef({ // bootstraping
   ]
 })
 
-Object.assign(jb.dsls.tgp, { TgpType, TgpTypeModifier, DefComponents, tgpComp })
+Object.assign(jb.dsls.tgp, { TgpType, TgpTypeModifier, DefComponents, tgpComp, ProfileTemplate: Component, Component })
 
 function TgpTypeModifier(id, extraCompProps, tgpModel = jb) {
   return TgpType(extraCompProps.type, extraCompProps.dsl, {modifierId: id, ...extraCompProps}, tgpModel)

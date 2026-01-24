@@ -2,6 +2,7 @@ import { dsls, coreUtils, jb } from '@jb6/core'
 import '@jb6/rx'
 
 const {
+  tgp: { ProfileTemplate },
   rx: { ReactiveSource }
 } = dsls
 
@@ -57,7 +58,8 @@ async function createAnimatedPage({ html, width = 400, height = 300 }) {
   return { page, browser }
 }
 
-const zoomInOutStream = ReactiveSource('zoomInOutStream', {
+const zoomInOutStream = ProfileTemplate('zoomInOutStream', {
+  type: 'reactive-source<rx>',
   params: [
     {id: 'html', as: 'text', mandatory: true},
     {id: 'cssVariable', as: 'string', mandatory: true},
@@ -171,7 +173,8 @@ ReactiveSource('mjpeg.helloWorldZoom', {
 })
 
 
-const exploreItems = ReactiveSource('exploreItems', {
+const exploreItems = ProfileTemplate('exploreItems', {
+  type: 'reactive-source<rx>',
   params: [
     {id: 'html', as: 'text', mandatory: true},
     {id: 'itemsSelector', as: 'string', mandatory: true},
