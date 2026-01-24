@@ -2,17 +2,18 @@ import { coreUtils, dsls, ns } from '@jb6/core'
 
 const { toArray, jb, logError, isPromise, isCallbag, log } = coreUtils
 const {
-  tgp: { TgpType, any: { If } },
+  tgp: { TgpType, any: { If }, Component },
   rx: { ReactiveOperator, ReactiveSource },
 } = dsls
 
 const ReactiveFlow = TgpType('reactive-flow', 'rx')
 
-ReactiveFlow('rx.flow', {
+Component('rx.flow', {
+  type: 'reactive-flow<rx>',
   moreTypes: 'action<common>',
   description: 'pipline with sink action',
   params: [
-    {id: 'source', type: 'reactive-source', dynamic: true, mandatory: true, templateValue: '', composite: true },
+    {id: 'source', type: 'reactive-source', dynamic: true, mandatory: true, templateValue: '', composite: true},
     {id: 'sink', type: 'action', dynamic: true, mandatory: true},
     {id: 'onError', type: 'action', dynamic: true},
     {id: 'onComplete', type: 'action', dynamic: true}
@@ -22,11 +23,12 @@ ReactiveFlow('rx.flow', {
 const { rx } = ns
 
 
-ReactiveSource('rx.pipe', {
+Component('rx.pipe', {
+  type: 'reactive-source<rx>',
   moreTypes: 'data<common>',
   description: 'pipeline of reactive observables with source',
   params: [
-    {id: 'source', type: 'reactive-source', dynamic: true, mandatory: true, templateValue: '', composite: true },
+    {id: 'source', type: 'reactive-source', dynamic: true, mandatory: true, templateValue: '', composite: true},
     {id: 'elems', type: 'reactive-operator[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
   impl: (ctx, {}, {source, elems}) => {

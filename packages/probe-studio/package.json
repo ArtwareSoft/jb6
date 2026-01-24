@@ -1,13 +1,13 @@
 {
   "name": "@jb6/probe-studio",
-  "version": "1.260117.0",
+  "version": "1.260124.0",
   "type": "module",
   "exports": {
     "./*.js": "./*.js"
   },
   "scripts": {},
   "dependencies": {
-    "@jb6/core": "1.260117.0"
+    "@jb6/core": "1.260124.0"
   },
   "repository": {
     "type": "git",

@@ -2,7 +2,7 @@ import { dsls, coreUtils, jb } from '@jb6/core'
 import '@jb6/rx'
 
 const {
-  tgp: { ProfileTemplate },
+  tgp: { Component },
   rx: { ReactiveSource }
 } = dsls
 
@@ -58,23 +58,25 @@ async function createAnimatedPage({ html, width = 400, height = 300 }) {
   return { page, browser }
 }
 
-const zoomInOutStream = ProfileTemplate('zoomInOutStream', {
+const zoomInOutStream = Component('zoomInOutStream', {
   type: 'reactive-source<rx>',
   params: [
     {id: 'html', as: 'text', mandatory: true},
     {id: 'cssVariable', as: 'string', mandatory: true},
     {id: 'zoomMin', as: 'number', defaultValue: 1},
     {id: 'zoomMax', as: 'number', defaultValue: 3},
+    {id: 'fps', as: 'number', defaultValue: 2},
+    {id: 'totalTime', as: 'number', defaultValue: 10},
     {id: 'width', as: 'number', defaultValue: 400},
     {id: 'height', as: 'number', defaultValue: 300}
   ],
-  impl: (ctx, {}, { html, cssVariable, zoomMin, zoomMax, width, height }) => {
+  impl: (ctx, {}, { html, cssVariable, zoomMin, zoomMax, fps, totalTime, width, height }) => {
     return (start, sink) => {
       if (start !== 0) return
       
       let scale = zoomMin
       let direction = 1
-      const step = (zoomMax - zoomMin) / 80
+      const step = (zoomMax - zoomMin) / (fps * 2)
       let stopped = false
       let pageContext = null
       let endSent = false
@@ -82,7 +84,8 @@ const zoomInOutStream = ProfileTemplate('zoomInOutStream', {
       const sendEnd = () => {
         if (!endSent) {
           endSent = true
-          sink(1, { type: 'mjpeg_end'})
+          sink(1, ctx.dataObj({ type: 'mjpeg_end'}))
+          sink(2)
         }
       }
       
@@ -101,7 +104,7 @@ const zoomInOutStream = ProfileTemplate('zoomInOutStream', {
           if (stopped) return
           pageContext = context
           
-          sink(1, { type: 'mjpeg_headers' })
+          sink(1, ctx.dataObj({ type: 'mjpeg_headers', fps }))
           
           let totalFrames = 0
           let currentScale = zoomMin
@@ -109,22 +112,25 @@ const zoomInOutStream = ProfileTemplate('zoomInOutStream', {
           
           // Simple loop - capture and send one frame at a time
           const streamLoop = async () => {
-            while (!stopped) {
+            const framesToProduce = totalTime * fps
+
+            while (!stopped && totalFrames < framesToProduce) {
               await pageContext.page.evaluate((varName, val) => {
                 document.documentElement.style.setProperty('--' + varName, val)
               }, cssVariable, currentScale)
               const jpegBuffer = await pageContext.page.screenshot({ type: 'jpeg', quality: 60 })
               
               totalFrames++
-              sink(1, { type: 'mjpeg_frame', jpegBuffer })
+              sink(1, ctx.dataObj({ type: 'mjpeg_frame', jpegBuffer }))
               
               // Update scale for next frame
               currentScale += step * direction
               if (currentScale >= zoomMax || currentScale <= zoomMin) {
-                direction *= -1
-                currentScale = Math.max(zoomMin, Math.min(zoomMax, currentScale))
+                  direction *= -1
+                  currentScale = Math.max(zoomMin, Math.min(zoomMax, currentScale))
               }
             }
+            if (totalFrames >= framesToProduce) sendEnd()
           }
           
           streamLoop()
@@ -173,18 +179,19 @@ ReactiveSource('mjpeg.helloWorldZoom', {
 })
 
 
-const exploreItems = ProfileTemplate('exploreItems', {
+const exploreItems = Component('exploreItems', {
   type: 'reactive-source<rx>',
   params: [
     {id: 'html', as: 'text', mandatory: true},
     {id: 'itemsSelector', as: 'string', mandatory: true},
     {id: 'zoomOut', as: 'number', defaultValue: 1},
     {id: 'zoomIn', as: 'number', defaultValue: 3},
-    {id: 'stepsPerTransition', as: 'number', defaultValue: 30},
+    {id: 'fps', as: 'number', defaultValue: 1},
+    {id: 'totalTime', as: 'number', defaultValue: 10},
     {id: 'width', as: 'number', defaultValue: 400},
     {id: 'height', as: 'number', defaultValue: 300}
   ],
-  impl: (ctx, {}, { html, itemsSelector, zoomOut, zoomIn, stepsPerTransition, width, height }) => {
+  impl: (ctx, {}, { html, itemsSelector, zoomOut, zoomIn, fps, totalTime, width, height }) => {
     return (start, sink) => {
       if (start !== 0) return
       
@@ -195,7 +202,8 @@ const exploreItems = ProfileTemplate('exploreItems', {
       const sendEnd = () => {
         if (!endSent) {
           endSent = true
-          sink(1, { type: 'mjpeg_end'})
+          sink(1, ctx.dataObj({ type: 'mjpeg_end'}))
+          sink(2)
         }
       }
       
@@ -267,7 +275,7 @@ const exploreItems = ProfileTemplate('exploreItems', {
           const route = buildRoute()
           console.log('Animation route:', route)
           
-          sink(1, { type: 'mjpeg_headers' })
+          sink(1, ctx.dataObj({ type: 'mjpeg_headers', fps }))
           
           // Stage 3: Animate through the route
           let routeIndex = 0
@@ -276,12 +284,15 @@ const exploreItems = ProfileTemplate('exploreItems', {
           const lerp = (a, b, t) => a + (b - a) * t
           
           const streamLoop = async () => {
-            while (!stopped) {
+            const framesToProduce = totalTime * fps
+            let totalFrames = 0
+
+            while (!stopped && totalFrames < framesToProduce) {
               const current = route[routeIndex]
               const next = route[(routeIndex + 1) % route.length]
               
               // Interpolate between current and next keyframe
-              const t = stepInTransition / stepsPerTransition
+              const t = stepInTransition / fps
               const zoom = lerp(current.zoom, next.zoom, t)
               const panX = lerp(current.panX, next.panX, t)
               const panY = lerp(current.panY, next.panY, t)
@@ -294,15 +305,17 @@ const exploreItems = ProfileTemplate('exploreItems', {
               }, zoom, panX, panY)
               
               const jpegBuffer = await pageContext.page.screenshot({ type: 'jpeg', quality: 60 })
-              sink(1, { type: 'mjpeg_frame', jpegBuffer })
+              sink(1, ctx.dataObj({ type: 'mjpeg_frame', jpegBuffer }))
               
+              totalFrames++
               // Advance animation
               stepInTransition++
-              if (stepInTransition >= stepsPerTransition) {
-                stepInTransition = 0
+              while (stepInTransition >= fps) {
+                stepInTransition -= fps
                 routeIndex = (routeIndex + 1) % route.length
               }
             }
+            if (totalFrames >= framesToProduce) sendEnd()
           }
           
           streamLoop()
@@ -360,7 +373,6 @@ ReactiveSource('mjpeg.itemsView', {
 </html>`,
     itemsSelector: '.item',
     zoomOut: 1,
-    zoomIn: 2.5,
-    stepsPerTransition: 25
+    zoomIn: 2.5
   })
 })

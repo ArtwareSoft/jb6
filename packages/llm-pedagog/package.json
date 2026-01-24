@@ -1,13 +1,13 @@
 {
   "name": "@jb6/llm-pedagog",
-  "version": "1.260117.0",
+  "version": "1.260124.0",
   "type": "module",
   "exports": {
     ".": "./index.js"
   },
   "dependencies": {
-    "@jb6/core": "1.260117.0",
-    "@jb6/rx": "1.260117.0"
+    "@jb6/core": "1.260124.0",
+    "@jb6/rx": "1.260124.0"
   },
   "repository": {
     "type": "git",

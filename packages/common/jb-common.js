@@ -2,7 +2,7 @@ import { coreUtils, dsls } from '@jb6/core'
 const { asArray, log, logError, waitForInnerElements, toArray, toString, isPromise, calcValue, toJstype, objectDiff, toSingle, sessionStorage, delay } = coreUtils
 
 const { 
-  tgp: { Any, DefComponents, Const, TgpType, TgpTypeModifier,
+  tgp: { Any, DefComponents, Const, TgpType, TgpTypeModifier, Component,
     var : { Var }, 
     any: { If } 
   },
@@ -11,7 +11,7 @@ const {
   }
 } = dsls
 
-Data('log', {
+Component('log', {
   moreTypes: 'action',
   params: [
     {id: 'logName', as: 'string', mandatory: 'true'},
@@ -20,19 +20,19 @@ Data('log', {
   impl: (ctx, {}, {logName,logObj}) => { log(logName,{...logObj,ctx}); return ctx.data }
 })
 
-Data('pipeline', {
+Component('pipeline', {
   description: 'flat map data arrays one after the other, does not wait for promises and rx',
   params: [
-    {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
+    {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true},
     {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
   impl: (ctx, {}, { operators, source }) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
 })
 
-Data('pipe', {
+Component('pipe', {
   description: 'synch data, wait for promises and reactive (callbag) data',
   params: [
-    {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true },
+    {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true},
     {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
   impl: async (ctx, {}, {operators,source}) => waitForInnerElements(asArray(operators.profile).reduce(async (dataArrayPromise, profile,index) => {
@@ -71,7 +71,7 @@ Aggregator('first', {
   impl: ({}, {}, {items}) => items[0]
 })
 
-Data('list', {
+Component('list', {
   description: 'list definition, flatten internal arrays',
   params: [
     {id: 'items', type: 'data[]', as: 'array', composite: true}

@@ -229,7 +229,12 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       const index = path.match(/([0-9]+)~defaultValue$/)[1]
       const resolvedParam = resolvedParams[index]
       const topComp = compByFullId(path.split('~')[0], tgpModel)
-      resolveProfileTypes(profile, {tgpModel, expectedType: resolvedParam.$dslType, topComp, filePath})
+      try {
+        resolveProfileTypes(profile, {tgpModel, expectedType: resolvedParam.$dslType, topComp, filePath})
+      } catch (error) {
+        if (error.syntaxError)
+          profile.syntaxError = error.syntaxError
+      }
     }
 
     if (profile.$comp) {
@@ -247,8 +252,16 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     const comp = profile.$ instanceof jbComp ? profile.$ : compByFullId(fullptId, tgpModel)
     if (!comp) 
       return asIsProps(profile,path)
-    const id = fullptId == 'comp<tgp>tgpComp' ? (profile.$?.id || profile.$) : fullptId.split('>').pop()
-    if (typeof id != 'string') debugger
+    let id = fullptId.split('>').pop()
+    if (fullptId == 'comp<tgp>tgpComp') {
+      if (profile.$?.type == 'comp') {
+        const isComp = (profile.params || []).length > 0
+        id =  isComp ? 'Component' : coreUtils.toCapitalType(profile.$dslType.split('<')[0])
+        if (isComp && profile.$dslType != 'data<common>')
+          profile.type = profile.$dslType
+      } else if (profile.$?.id)
+        id = profile.$?.id
+    }
 
     const params = (comp.params || []).slice(0)
     const param0 = params[0] || {}

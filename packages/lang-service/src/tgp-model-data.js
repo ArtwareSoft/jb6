@@ -55,24 +55,8 @@ export async function calcTgpModelData(resources) {
     logError(error)
     return { tgpModel, error }
   }
-  // const entryFileNames = new Set(coreUtils.asArray(resources.entryPointPaths).filter(Boolean).map(p=>p.split('/').pop()))
-  // logVsCode('calcTgpModelData entryPointPaths', resources.entryPointPaths, JSON.stringify([...entryFileNames]))
-
-  // const compDefs = Object.fromEntries(Object.values(dsls).flatMap(dsl => Object.values(dsl)).filter(x => x?.capitalLetterId)
-  //     .sort((a,b)=> entryFileNames.has(a.fileName) - entryFileNames.has(b.fileName))
-  //     .map(x => [x.capitalLetterId, x]))
-
-// .forEach(x => {
-//   if (compDefs[x.capitalLetterId])
-//     logVsCode(`calcTgpModelData overriding ${x.capitalLetterId} ${compDefs[x.capitalLetterId].dslType} with ${x.dslType}`)
-//   compDefs[x.capitalLetterId] = x
-// })
-//  const compDefs = Object.fromEntries(Object.values(dsls).flatMap(dsl=>Object.values(dsl)).map(x=>[x.capitalLetterId,x]).filter(x=>x[0]))
-
-//  Object.assign(dsls.tgp.comp, compDefs)
   dsls.tgp.var.Var = jb.dsls.tgp.var.Var[asJbComp]
   dsls.tgp.comp.tgpComp = jb.dsls.tgp.tgpComp[asJbComp]
-  // dsls.tgp.tgpComp = jb.dsls.tgp.tgpComp[asJbComp]
 
   // 3) Phase 2a: non-exported in the entry files only
   rootFilePaths.forEach(filePath=> {
@@ -103,8 +87,13 @@ export async function calcTgpModelData(resources) {
 
   function parseCompDec({exportName, decl, filePath, src, compDefs}) {
     if (!decl) return
-    if ( decl.type !== 'CallExpression' || decl.callee.type !== 'Identifier' || !compDefs[decl.callee.name]) return
-	  const tgpType = decl.callee.name
+    if (decl.type !== 'CallExpression' || decl.callee.type !== 'Identifier') return
+    let compDef = decl.callee.name
+    if (decl.callee.name == 'Component') {
+      const dslType = astToTgpObj(decl).$unresolvedArgs[1]?.type || 'data<common>'
+      compDef = coreUtils.toCapitalType(dslType.split('<')[0])
+    }
+    if (!compDefs[compDef]) return
 
     let shortId, comp
     if (decl.arguments[0].type === 'Literal') {
@@ -120,7 +109,7 @@ export async function calcTgpModelData(resources) {
       logError(`calcTgpModelData no id mismatch`,{ filePath, ...offsetToLineCol(src, decl) })
 
     const $location = { path: filePath, ...offsetToLineCol(src, decl.start), to: offsetToLineCol(src, decl.end) }
-    const _comp = compDefs[tgpType](shortId, {...comp, $location})
+    const _comp = compDefs[compDef](shortId, {...comp, $location})
     const jbComp = _comp[asJbComp] // remove the proxy
     delete jbComp.$
     dsls[jbComp.dsl][jbComp.type][shortId] = jbComp 

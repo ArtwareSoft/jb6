@@ -15,6 +15,25 @@ const {
   },
 } = dsls
 
+Test('completionTest.componentWithParams', {
+  impl: completionOptionsTest(`ALL:Component('cmp1', {__
+  type: 'reactive-source<rx>',
+  params: [
+    {id: 'param1', as: 'string'}
+  ]
+})`, ['moreTypes'], {
+    notInSuggstions: '🔄 reformat'
+  })
+})
+
+Test('completionTest.profileWithoutParams', {
+  impl: completionOptionsTest(`ALL:ReactiveSource('cmp1', {__
+  impl: ''
+})`, ['moreTypes'], {
+    notInSuggstions: '🔄 reformat'
+  })
+})
+
 Test('completionTest.param1', {
   impl: completionOptionsTest(`uiTest(text(__'hello world', ''), contains('hello world'))`, ['style'])
 })
@@ -452,13 +471,13 @@ Test('completionTest.multiLineFeatures', {
 */
 
 Test('completionActionTest.defaultValueAsProfile', {
-  impl: completionActionTest(`ALL:Data('cmp1', __{ params: [{id: 'x', defaultValue: list()}] })`, {
+  impl: completionActionTest(`ALL:Component('cmp1', __{ params: [{id: 'x', defaultValue: list()}] })`, {
     completionToActivate: '🔄 reformat',
     expectedEdit: asIs({
-        range: {start: {line: 0, col: 14}, end: {line: 0, col: 57}},
+        range: {start: {line: 0, col: 19}, end: {line: 0, col: 62}},
         newText: `\n  params: [\n    {id: 'x', defaultValue: list()}\n  ]\n`
     }),
-    expectedCursorPos: '0,13'
+    expectedCursorPos: '0,18'
   })
 })
 
@@ -486,25 +505,14 @@ Test('completionActionTest.NLInJSBug', {
   })
 })
 
-Test('completionActionTest.defaultValueWithDslType', {
-  impl: completionActionTest(`ALL:Control('ctrl1', __{ params: [{id: 'f', type: 'feature', defaultValue: method()}] })`, {
-    completionToActivate: '🔄 reformat',
-    expectedEdit: asIs({
-        range: {start: {line: 0, col: 18}, end: {line: 0, col: 80}},
-        newText: `\n  params: [\n    {id: 'f', type: 'feature', defaultValue: method()}\n  ]\n`
-    }),
-    expectedCursorPos: '0,17'
-  })
-})
-
 Test('completionActionTest.macroByValue', {
-  impl: completionActionTest(`ALL:Data('cmp1', __{ macroByValue: true, params: [{id: 'p'}] })`, {
+  impl: completionActionTest(`ALL:Component('cmp1', __{ macroByValue: true, params: [{id: 'p'}] })`, {
     completionToActivate: '🔄 reformat',
     expectedEdit: asIs({
-        range: {start: {line: 0, col: 14}, end: {line: 0, col: 55}},
+        range: {start: {line: 0, col: 19}, end: {line: 0, col: 60}},
         newText: `\n  macroByValue: true,\n  params: [\n    {id: 'p'}\n  ]\n`
     }),
-    expectedCursorPos: '0,13'
+    expectedCursorPos: '0,18'
   })
 })
 
@@ -539,14 +547,26 @@ Test('completionActionTest.keepName', {
 })
 
 Test('completionActionTest.defaultValueWithDslType', {
-  impl: completionActionTest(`ALL:Control('ctrl1', __{ params: [{id: 'f', type: 'feature', defaultValue: method()}] })`, {
+  impl: completionActionTest(`ALL:Component('ctrl1', __{ type: 'control<ui>',  params: [{id: 'f', type: 'feature', defaultValue: method()}] })`, {
     completionToActivate: '🔄 reformat',
     filePath: 'packages/testing/ui-dsl-for-tests.js',
     expectedEdit: asIs({
-        range: {start: {line: 0, col: 18}, end: {line: 0, col: 80}},
-        newText: `\n  params: [\n    {id: 'f', type: 'feature', defaultValue: method()}\n  ]\n`
+        range: {start: {line: 0, col: 20}, end: {line: 0, col: 104}},
+        newText: `\n  type: 'control<ui>',\n  params: [\n    {id: 'f', type: 'feature', defaultValue: method()}\n  ]\n`
     }),
-    expectedCursorPos: '0,17'
+    expectedCursorPos: '0,19'
+  })
+})
+
+Test('completionActionTest.defaultValueWithDslTypeNoTypeError', {
+  impl: completionActionTest(`ALL:Component('ctrl1', __{ params: [{id: 'f', type: 'feature', defaultValue: method()}] })`, {
+    completionToActivate: '🔄 reformat',
+    filePath: 'packages/testing/ui-dsl-for-tests.js',
+    expectedEdit: asIs({
+        range: {start: {line: 0, col: 20}, end: {line: 0, col: 82}},
+        newText: `\n  params: [\n    {id: 'f', type: 'feature', defaultValue: {\n      $: 'method',\n      syntaxError: 'can not find comp method of type feature<common> in path  read core/llm-guide/tgp-primer to understand tgp types'\n    }}\n  ]\n`
+    }),
+    expectedCursorPos: '0,19'
   })
 })
 

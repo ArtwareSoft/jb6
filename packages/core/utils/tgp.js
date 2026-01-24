@@ -33,6 +33,7 @@ const tgpComp = CompDef({ // bootstraping
     {id: 'descriptionForLLM', as: 'text'},
     {id: 'whenToUse', as: 'text'},
     {id: 'HeavyTest', as: 'boolean' },
+    {id: 'aggregator', as: 'boolean' },
     {id: 'doNotRunInTests', as: 'boolean' },
     {id: 'circuit', as: 'string' },
     {id: 'params', type: 'param[]'},
@@ -51,8 +52,9 @@ const nsProxy = (ns) => new Proxy(() => 0, {
     const res = (...args) => ({ $: '__', $delayed: () => {
       const comp = jb.nsRepo[ns][id]
       if (!comp) {
+        debugger
         logError(`delayed ns profile. can not find profile ${ns}.${id}`)
-        return 'missing ${ns}.${id}'
+        return `missing ${ns}.${id}`
       }
       return comp(...args) 
     }} )
@@ -204,11 +206,8 @@ function globalsOfType(tgpType, ctx, filter) {
   return Object.entries(tgpType).filter(e => filterGlobal(e[1], filter)).map(([id,val]) => ({id, ...val.$runWithCtx(ctx)}))
 }
 
-function findCompDefById({id, tgpModel, filePath}) {
-  if (!filePath)
-    return Object.values(tgpModel.dsls).flatMap(dsl=>Object.values(dsl)).find(t=>t.capitalLetterId == id)
-  if (filePath[0] != '/') debugger
-  return tgpModel.compDefsByFilePaths[filePath][id]
+function findCompDefById({id, tgpModel, dslType}) {
+  return Object.values(tgpModel.dsls).flatMap(dsl=>Object.values(dsl)).find(t=>t.capitalLetterId == id && (!dslType || dslType == t.dslType))
 }
 
 function CompDefByDslType({dslType, tgpModel, filePath}) {

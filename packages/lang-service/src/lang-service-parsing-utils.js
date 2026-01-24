@@ -93,10 +93,18 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
         return { text: compText, comp: topComp, actionMap: [], error: 'syntax error' }
     let compId = '', dslTypeId, compDef
     if (tgpType == 'comp<tgp>') {
-        compDef = findCompDefById({id: topComp.$, tgpModel, filePath})
+        let dslType
+        let compDefId = topComp[coreUtils.astNode].expression?.callee?.name // topComp.$
+        if (compDefId == 'Component' || compDefId == 'ProfileTemplate') {
+            dslType = topComp.$unresolvedArgs[1].type || 'data<common>'
+            const [_type, _dsl] = splitDslType(dslType)
+            compDefId = coreUtils.toCapitalType(_type)
+        }
+
+        compDef = findCompDefById({id: compDefId, tgpModel, dslType})
         topComp.id = topComp[astNode].expression.arguments[0].value
         topComp.$ = jb.dsls.tgp.tgpComp[coreUtils.asJbComp]
-        const dslType = compDef.dslType
+        dslType = compDef.dslType
         compId = `${dslType}${topComp.id}`
         const [ type, dsl ] = splitDslType(dslType)
         dslTypeId = [ dsl, type, topComp.id]

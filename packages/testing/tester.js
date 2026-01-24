@@ -7,14 +7,15 @@ jb.testingUtils = {runTest, runTests, runTestCli, runTestVm, runTestInVm}
 jb.testingRepository = {}
 
 const { 
-  tgp: {TgpType}
+  tgp: {TgpType, Component}
 } = dsls
 
 const Test = TgpType('test', 'test')
 
-Test('dataTest', {
+Component('dataTest', {
+  type: 'test<test>',
   params: [
-    {id: 'calculate', type:'data', dynamic: true},
+    {id: 'calculate', type: 'data', dynamic: true},
     {id: 'expectedResult', type: 'boolean', dynamic: true},
     {id: 'runBefore', type: 'action', dynamic: true},
     {id: 'timeout', as: 'number', defaultValue: 200},
@@ -22,7 +23,7 @@ Test('dataTest', {
     {id: 'cleanUp', type: 'action', dynamic: true},
     {id: 'expectedCounters', as: 'single'},
     {id: 'spy', as: 'string'},
-    {id: 'logger', as: 'string', description: 'e.g dbLogger'},
+    {id: 'logger', as: 'string', description: 'e.g dbLogger'}
   ],
   impl: async (ctx,{}, { calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy, logger }) => {
         const loggerObj = logger && dsls.test.logger[logger] && { [logger] : dsls.test.logger[logger].$runWithCtx(ctx) } || {}

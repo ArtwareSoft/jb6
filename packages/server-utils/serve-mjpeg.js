@@ -1,17 +1,20 @@
-import { coreUtils, jb, dsls } from '@jb6/core'
+import { coreUtils, jb, dsls, ns } from '@jb6/core'
 import '@jb6/react/mjpeg-utils.js'
 import { spawn } from 'child_process'
+import '@jb6/common'
+import '@jb6/rx'
+import '@jb6/rx/rx-common.js'
 
 const {
-  rx: { ReactiveSource }
+  common: { data : { pipe }},
+  rx: { ReactiveSource },
 } = dsls
+const { rx } = ns
 
 jb.serverUtils = jb.serverUtils || {}
 Object.assign(jb.serverUtils, {serveMjpeg})
 
 const MJPEG_BOUNDARY = 'frame'
-const MP4_DURATION = 10 // seconds
-const MP4_FPS = 25
 
 function formatMjpegFrame(jpegBuffer) {
   const frameHeader = Buffer.from(
@@ -26,17 +29,62 @@ function formatMjpegEnd() {
   return Buffer.from(`--${MJPEG_BOUNDARY}--\r\n`)
 }
 
+const mjpegThrottle = ReactiveSource('mjpegThrottle', {
+    impl: (ctx) => source => (start, sink) => {
+        if (start !== 0) return
+        let fps = 0
+        let lastFrameTime = 0
+        let timerId = null
+        const queue = []
+
+        const deliver = () => {
+            timerId = null
+            if (queue.length === 0) return
+
+            const { t, d } = queue[0]
+            const message = d && d.data
+
+            if (t === 1 && message?.type === 'mjpeg_frame' && fps) {
+                const now = performance.now()
+                const wait = Math.max(0, lastFrameTime + (1000 / fps) - now)
+                if (wait > 1) {
+                    timerId = setTimeout(deliver, wait)
+                    return
+                }
+                lastFrameTime = performance.now()
+            }
+
+            queue.shift()
+            if (t === 1 && message?.type === 'mjpeg_headers' && message.fps) fps = message.fps
+            sink(t, d)
+            
+            if (t !== 2 && queue.length > 0) {
+                timerId = setTimeout(deliver, 0)
+            }
+        }
+
+        source(0, (t, d) => {
+            if (t === 0) {
+                sink(0, t2 => d(t2))
+            } else {
+                queue.push({ t, d })
+                if (!timerId) timerId = setTimeout(deliver, 0)
+            }
+        })
+    }
+})
+
 async function serveMjpeg(app) {
     coreUtils.globalsOfTypeIds(ReactiveSource).filter(id=>id.indexOf('mjpeg') == 0).forEach(mjpegSrcId => {
         app.get(`/${mjpegSrcId}`, async (req, res) => {
             try {
                 console.log(`Starting MJPEG stream: ${mjpegSrcId}`)
-                
-                dsls.rx['reactive-source'][mjpegSrcId].$run()(0, (t, data) => {
+                const source = rx.pipe.$run(dsls.rx['reactive-source'][mjpegSrcId](), mjpegThrottle())
+                source(0, async (t, _ctx) => {
                     if (req.destroyed) return // Client already disconnected
-                    
                     try {
                         if (t === 1) {
+                            const { data }  = _ctx
                             // Data received
                             if (data.type === 'mjpeg_headers') {
                                 console.log(`Sending headers for: ${mjpegSrcId}`)
@@ -64,7 +112,6 @@ async function serveMjpeg(app) {
                         }
                     } catch (writeError) {
                         console.error('Error writing to response:', writeError)
-                        handleDisconnect()
                     }
                 })
             } catch (err) {
@@ -75,115 +122,70 @@ async function serveMjpeg(app) {
         
         console.log(`MJPEG endpoint registered: /${mjpegSrcId}`)
         
-        // MP4 download endpoint - captures 10 seconds and converts to MP4
+        // MP4 download endpoint - captures frames and then converts to MP4
         const mp4Endpoint = mjpegSrcId.replace('mjpeg.', 'mp4.')
         app.get(`/${mp4Endpoint}`, async (req, res) => {
             try {
                 console.log(`Starting MP4 generation: ${mp4Endpoint}`)
-                
-                const totalFrames = MP4_DURATION * MP4_FPS
-                let frameCount = 0
-                let ffmpegClosed = false
                 const startTime = performance.now()
-                
-                // Create temp file for proper MP4 structure
+                const rxPipe = rx.pipe(dsls.rx['reactive-source'][mjpegSrcId](), rx.toArray())
+                const collectedMessages = (await pipe.$run(rxPipe))[0]
+
+                console.log(`Collected ${collectedMessages.length} messages, starting FFmpeg`)
+                const headers = collectedMessages.find(m => m.type === 'mjpeg_headers')
+                const frames = collectedMessages.filter(m => m.type === 'mjpeg_frame').map(m => m.jpegBuffer)
+
+                if (frames.length === 0) {
+                    return res.status(500).send('No frames collected')
+                }
+
+                const outFps = headers.fps
+                console.log(`Using FPS: ${outFps}`)
+
+                // 2. Process with FFmpeg
                 const os = await import('os')
                 const path = await import('path')
                 const fs = await import('fs')
                 const tempFile = path.join(os.tmpdir(), `${mp4Endpoint.replace(/mp4\./,'')}-${Date.now()}.mp4`)
-                console.log(`MP4 temp file: ${tempFile}`)
                 
-                // Spawn FFmpeg to convert JPEG frames to MP4 file
                 const ffmpeg = spawn('ffmpeg', [
                     '-y',
                     '-f', 'image2pipe',
                     '-c:v', 'mjpeg',
-                    '-framerate', String(MP4_FPS),
+                    '-framerate', String(outFps),
                     '-i', '-',
                     '-c:v', 'libx264',
-                    '-profile:v', 'baseline',    // Better compatibility
+                    '-profile:v', 'baseline',
                     '-level', '3.0',
                     '-pix_fmt', 'yuv420p',
                     '-preset', 'fast',
-                    '-movflags', '+faststart',   // Move moov atom to start for streaming
+                    '-movflags', '+faststart',
                     tempFile
                 ])
-                
+
                 let ffmpegError = ''
-                ffmpeg.stderr.on('data', (data) => {
-                    ffmpegError += data.toString()
-                })
+                ffmpeg.stderr.on('data', (data) => ffmpegError += data.toString())
                 
                 ffmpeg.on('close', (code) => {
-                    ffmpegClosed = true
                     if (code !== 0) {
                         console.error(`FFmpeg closed with code ${code}:`, ffmpegError.slice(-500))
-                        if (!res.headersSent) {
-                            res.status(500).send('FFmpeg error')
-                        }
+                        if (!res.headersSent) res.status(500).send('FFmpeg error')
                     } else {
                         const elapsed = ((performance.now() - startTime) / 1000).toFixed(1)
                         console.log(`mp4 completed in ${elapsed}s: ${tempFile}`)
-                        // Send the file
                         res.setHeader('Content-Type', 'video/mp4')
                         res.setHeader('Content-Disposition', `attachment; filename="${mp4Endpoint}.mp4"`)
-                        const fileStream = fs.createReadStream(tempFile)
-                        fileStream.pipe(res)
+                        fs.createReadStream(tempFile).pipe(res)
                     }
                 })
-                
-                ffmpeg.on('error', (err) => {
-                    ffmpegClosed = true
-                    console.error('FFmpeg spawn error:', err)
-                    if (!res.headersSent) {
-                        res.status(500).send('FFmpeg error')
-                    }
-                })
-                
-                // Handle stdin errors
-                ffmpeg.stdin.on('error', (err) => {
-                    if (err.code !== 'EPIPE') {
-                        console.error('FFmpeg stdin error:', err)
-                    }
-                })
-                
-                // Capture frames from the stream
-                let stopSource = null
-                let sourceStopped = false
-                dsls.rx['reactive-source'][mjpegSrcId].$run()(0, (t, data) => {
-                    if (ffmpegClosed || frameCount >= totalFrames || sourceStopped) {
-                        if (stopSource && !sourceStopped) {
-                            sourceStopped = true
-                            try { stopSource() } catch {}
-                        }
-                        return
-                    }
-                    
-                    if (t === 0) {
-                        // Save the talkback to stop the source
-                        stopSource = () => data(2)
-                    } else if (t === 1) {
-                        if (data.type === 'mjpeg_frame') {
-                            frameCount++
-                            try {
-                                ffmpeg.stdin.write(data.jpegBuffer)
-                            } catch (e) {
-                                // Ignore write errors if FFmpeg closed
-                            }
-                            
-                            if (frameCount >= totalFrames) {
-                                console.log(`MP4 complete: ${frameCount} frames`)
-                                sourceStopped = true
-                                try { ffmpeg.stdin.end() } catch {}
-                                try { if (stopSource) stopSource() } catch {}
-                            }
-                        }
-                    }
-                })
+
+                // Pipe all collected frames to ffmpeg
+                frames.forEach(frame => ffmpeg.stdin.write(frame))
+                ffmpeg.stdin.end()
                 
             } catch (err) {
                 console.error('MP4 generation error:', err)
-                res.status(500).send('Internal server error')
+                if (!res.headersSent) res.status(500).send('Internal server error')
             }
         })
         
