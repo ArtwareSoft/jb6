@@ -3,9 +3,10 @@ import path from 'path'
 import { readFile } from 'fs/promises'
 import { coreUtils } from '@jb6/core'
 import { serverUtils } from '@jb6/server-utils'
+import '@jb6/server-utils/serve-mjpeg.js'
 
 const { calcRepoRoot }  = coreUtils
-const { serveImportMap, serveCli, serveCliStream, serveGotoSource, serveMcp}  = serverUtils
+const { serveImportMap, serveCli, serveCliStream, serveGotoSource, serveMcp, serveMjpeg}  = serverUtils
 
 export async function expressTestServices(app) {
   app.use(express.json({ limit: '10mb' }))
@@ -16,6 +17,7 @@ export async function expressTestServices(app) {
   serveCli(app)
   serveCliStream(app)
   serveGotoSource(app)
+  serveMjpeg(app)
 
   const repoRoot = await calcRepoRoot()
   app.get('/repoRoot', async (req, res) => {

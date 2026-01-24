@@ -28,7 +28,6 @@ function createElement(type, props = {}, ...children) {
   return vdom
 }
 
-
 Data('compileTailwindCSS', {
   params: [
     {id: 'html', as: 'text', defaultValue: '%%'},

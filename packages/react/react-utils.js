@@ -21,15 +21,19 @@ ReactComp('comp', {
     {id: 'assert', type: 'react-assert[]', dynamic: true},
     {id: 'metadata', type: 'react-metadata[]', dynamic: true},
   ],
-  impl: (_ctx, {react: {useState, useEffect} }, { hFunc, enrichCtx }) => {
-    const id = _ctx.jbCtx.creatorStack.slice(-2)[0]
-    const ctxOrPromise = enrichCtx(_ctx) || _ctx
+  impl: (_ctx, {strongRefresh, react: {useState, useEffect} }, { hFunc, enrichCtx }) => {
+    const ctx = _ctx.setVars({strongRefresh: false})
+    const id = strongRefresh ? '' : ctx.jbCtx.creatorStack?.join('-')
+    const ctxOrPromise = enrichCtx(ctx) || ctx
     const isPromise = coreUtils.isPromise(ctxOrPromise)
 
+    const repo = jb.reactRepository
     if (isPromise) {
-      const ctxPromise = jb.reactRepository.promises[id] || (jb.reactRepository.promises[id] = ctxOrPromise)
-      if (!jb.reactRepository.comps[id]) {
-        const comp = jb.reactRepository.comps[id] = (args) => {
+      const ctxPromise = (id && repo.promises[id]) || ctxOrPromise
+      if (id && !repo.promises[id])
+        repo.promises[id] = ctxPromise
+      if (!id || !repo.comps[id]) {
+        const comp = (args) => {
           const [ctx, setCtx] = useState(null)
           const [loading, setLoading] = useState(true)
 
@@ -48,16 +52,21 @@ ReactComp('comp', {
             return h('div:flex items-center justify-center h-full w-full', {}, h(L('Loader'), { className: 'animate-spin w-4 h-4' }))
           return h(hFunc(ctx), args)
         }
+        if (id && !repo.comps[id])
+          repo.comps[id] = comp
         Object.defineProperty(comp, 'name', { value: id })
+        return comp
       }
     } else {
-      const ctx = ctxOrPromise
-      if (!jb.reactRepository.comps[id]) {
-        const comp = jb.reactRepository.comps[id] = hFunc(ctx)
+      if (!id || !repo.comps[id]) {
+        const comp = hFunc(ctxOrPromise)
+        if (id && !repo.comps[id])
+          repo.comps[id] = comp
         Object.defineProperty(comp, 'name', { value: id })
+        return comp
       }
     }
-    return jb.reactRepository.comps[id]
+    return id ? repo.comps[id] : null
   }
 })
 
@@ -72,12 +81,12 @@ function hhStrongRefresh(ctx, t, p = {}, ...c) {
   if (!(ctx instanceof coreUtils.Ctx))
     console.error('hhStrongRefresh: first param of hh must be ctx')
   if (t[coreUtils.asJbComp]) {
-    const id = ctx.jbCtx.path
-    if (id) {
-      delete jb.reactRepository.comps[id]
-      delete jb.reactRepository.promises[id]
-    }
-    t = t.$runWithCtx(ctx)
+    // const id = ctx.jbCtx.path
+    // if (id) {
+    //   delete jb.reactRepository.comps[id]
+    //   delete jb.reactRepository.promises[id]
+    // }
+    t = t.$runWithCtx(ctx.setVars({strongRefresh: true}))
   }
   return h(t,p,...c)
 }
