@@ -3,20 +3,19 @@ import '@jb6/testing'
 import '@jb6/common'
 
 const { 
-    common: { Data },
-    tgp: { TgpType},
+  tgp: { TgpType, Component},
+  common: { Data },
     test: { Test }
 } = dsls
 
 const Control = TgpType('control','ui')
 const Feature = TgpType('feature','ui')
-
-const Action = TgpType('action','ui') // check collision with common dsl
-
+TgpType('action','ui')
 TgpType('ui-action','test')
 TgpType('jbm','jbm')
 
-Control('group', {
+Component('group', {
+  type: 'control<ui>',
   params: [
     {id: 'controls', type: 'control[]', mandatory: true, dynamic: true, composite: true},
     {id: 'title', as: 'string', dynamic: true, byName: true},
@@ -26,7 +25,8 @@ Control('group', {
   ]
 })
 
-Control('button', {
+Component('button', {
+  type: 'control<ui>',
   params: [
     {id: 'title', as: 'ref', mandatory: true, templateValue: 'click me', dynamic: true},
     {id: 'action', type: 'action<common>', mandatory: true, dynamic: true},
@@ -37,11 +37,16 @@ Control('button', {
   ]
 })
 
-Action('uiAct', {
-  impl: []
+Component('uiAct', {
+  type: 'action<ui>',
+  params: [
+    {id: 'action'}
+  ],
+  impl: ''
 })
 
-const button2 = Control('button2', {
+const button2 = Component('button2', {
+  type: 'control<ui>',
   params: [
     {id: 'action', type: 'action<ui>', mandatory: true, dynamic: true}
   ]
@@ -51,7 +56,8 @@ Control('checkActionCollision', {
   impl: button2()
 })
 
-Control('controlWithCondition', {
+Component('controlWithCondition', {
+  type: 'control<ui>',
   macroByValue: true,
   params: [
     {id: 'condition', type: 'boolean', dynamic: true, mandatory: true, as: 'boolean'},
@@ -60,7 +66,8 @@ Control('controlWithCondition', {
   ]
 })
 
-Control('text', {
+Component('text', {
+  type: 'control<ui>',
   params: [
     {id: 'text', as: 'ref', mandatory: true, templateValue: 'my text', dynamic: true},
     {id: 'title', as: 'ref', dynamic: true},
@@ -69,7 +76,8 @@ Control('text', {
   ]
 })
 
-Control('html', {
+Component('html', {
+  type: 'control<ui>',
   params: [
     {id: 'html', as: 'text', dynamic: true},
     {id: 'title', as: 'ref', dynamic: true},
@@ -78,7 +86,8 @@ Control('html', {
   ]
 })
 
-Test('uiTest', {
+Component('uiTest', {
+  type: 'test<test>',
   params: [
     {id: 'control', type: 'control<ui>', dynamic: true, mandatory: true},
     {id: 'expectedResult', type: 'boolean', dynamic: true, mandatory: true},
@@ -95,7 +104,8 @@ Test('uiTest', {
   ]
 })
 
-Feature('method', {
+Component('method', {
+  type: 'feature<ui>',
   description: 'define backend event handler',
   params: [
     {id: 'id', as: 'string', mandatory: true, description: 'if using the pattern onXXHandler, or onKeyXXHandler automaticaly binds to UI event XX, assuming on-XX:true is defined at the template'},
@@ -103,7 +113,8 @@ Feature('method', {
   ]
 })
 
-Feature('id', {
+Component('id', {
+  type: 'feature<ui>',
   description: 'adds id to html element',
   params: [
     {id: 'id', mandatory: true, as: 'string', dynamic: true}
@@ -111,7 +122,7 @@ Feature('id', {
 })
 
 // for testing action map
-Data('singleParamByNameComp', {
+Component('singleParamByNameComp', {
   params: [
     {id: 'p1', as: 'boolean', type: 'boolean<common>', byName: true}
   ]

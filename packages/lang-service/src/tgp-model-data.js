@@ -88,12 +88,14 @@ export async function calcTgpModelData(resources) {
   function parseCompDec({exportName, decl, filePath, src, compDefs}) {
     if (!decl) return
     if (decl.type !== 'CallExpression' || decl.callee.type !== 'Identifier') return
-    let compDef = decl.callee.name
+    let compDefId = decl.callee.name
     if (decl.callee.name == 'Component') {
       const dslType = astToTgpObj(decl).$unresolvedArgs[1]?.type || 'data<common>'
-      compDef = coreUtils.toCapitalType(dslType.split('<')[0])
+      const [_type, _dsl] = coreUtils.splitDslType(dslType)
+      compDefId = coreUtils.toCapitalType(_type)
+      compDefs[compDefId] = dsls[_dsl][compDefId]
     }
-    if (!compDefs[compDef]) return
+    if (!compDefs[compDefId]) return
 
     let shortId, comp
     if (decl.arguments[0].type === 'Literal') {
@@ -109,7 +111,7 @@ export async function calcTgpModelData(resources) {
       logError(`calcTgpModelData no id mismatch`,{ filePath, ...offsetToLineCol(src, decl) })
 
     const $location = { path: filePath, ...offsetToLineCol(src, decl.start), to: offsetToLineCol(src, decl.end) }
-    const _comp = compDefs[compDef](shortId, {...comp, $location})
+    const _comp = compDefs[compDefId](shortId, {...comp, $location})
     const jbComp = _comp[asJbComp] // remove the proxy
     delete jbComp.$
     dsls[jbComp.dsl][jbComp.type][shortId] = jbComp 

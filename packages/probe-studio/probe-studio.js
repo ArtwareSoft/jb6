@@ -116,8 +116,8 @@ ReactComp('loadingView', {
         ),
       )
     },
-    sampleCtxData: asIs({ vars: { path: 'test.path~impl' } }),
-    samplePropsData: asIs({ status: 'Loading...' })
+    sampleCtxData: asIs({vars: {path: 'test.path~impl'}}),
+    samplePropsData: asIs({status: 'Loading...'})
   })
 })
 
