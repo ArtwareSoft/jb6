@@ -17,7 +17,7 @@ ReactComp('comp', {
     {id: 'hFunc', type: 'vdom', dynamic: true, byName: true},
     {id: 'enrichCtx', dynamic: true, byName: true},
     {id: 'sampleCtxData', dynamic: true, description: '{ data , vars {} }'},
-    {id: 'samplePropsData', dynamic: true, description: '{ data , vars {} }'},
+    {id: 'samplePropsData', dynamic: true, description: '{ status: "hello" }'},
     {id: 'assert', type: 'react-assert[]', dynamic: true},
     {id: 'metadata', type: 'react-metadata[]', dynamic: true},
   ],
@@ -175,21 +175,21 @@ if (!globalThis.window) {
   }  
 }
 
-function wrapReactCompWithSampleData(cmpId, _ctx) {
+async function wrapReactCompWithSampleData(cmpId, _ctx) {
+  const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
   try {
-    const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
     const fullId = cmpId.indexOf('<') == -1 ? `react-comp<react>${cmpId}` : cmpId
     const comp = coreUtils.compByFullId(fullId, jb)
     const jbComp = comp[coreUtils.asJbComp]
     coreUtils.resolveCompArgs(jbComp)
-    const ctxData = jbComp.impl.sampleCtxData && ctx.run(jbComp.impl.sampleCtxData)
-    const props = jbComp.impl.samplePropsData && ctx.run(jbComp.impl.samplePropsData)
+    const ctxData = jbComp.impl.sampleCtxData && await ctx.run(jbComp.impl.sampleCtxData)
+    const props = jbComp.impl.samplePropsData && await ctx.run(jbComp.impl.samplePropsData)
     const ctxWithData = ctxData ? ctx.setData(ctxData.data).setVars(ctxData.vars) : ctx
 
     const reactCmp = comp.$runWithCtx(ctxWithData)
-    return { reactCmp, props }
+    return { ctx: ctxWithData, reactCmp, props }
   } catch(error) {
-    return { reactCmp: () => reactUtils.h('pre',{},error.stack) }
+    return { ctx, reactCmp: () => reactUtils.h('pre',{},error.stack) }
   }
 }
 

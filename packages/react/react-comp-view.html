@@ -46,8 +46,8 @@
       await import(file)
 
     const cmpId = urlParams.get('cmpId') || 'showMe'
-    const { reactCmp, props } = reactUtils.wrapReactCompWithSampleData(cmpId)
-    const ctx = new coreUtils.Ctx().setVars({react: reactUtils})
+    const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(cmpId)
+    //const ctx = new coreUtils.Ctx().setVars({react: reactUtils})
     reactUtils.createRoot(document.getElementById('show')).render(reactUtils.hh(ctx, reactCmp, props))
 
   </script>

@@ -194,8 +194,8 @@ class Probe {
             let res
             if (this.circuitCmpId.match(/^react-comp</)) {
               const { reactUtils } = await import('@jb6/react')
-              const { reactCmp, props } = reactUtils.wrapReactCompWithSampleData(this.circuitCmpId)
-              res = reactUtils.probeReactComp(this.circuitCtx, reactCmp, props)
+              const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(this.circuitCmpId, this.circuitCtx)
+              res = reactUtils.probeReactComp(ctx, reactCmp, props)
             } else {
               res = await this.circuitComp.runProfile({}, this.circuitCtx)
             }

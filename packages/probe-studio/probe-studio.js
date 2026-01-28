@@ -81,7 +81,7 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
       const comp = dsls.react['react-comp'][id]
       const jbComp = comp[coreUtils.asJbComp]
       coreUtils.resolveCompArgs(jbComp)
-      const metadata = jbComp.impl.metadata
+      const metadata = coreUtils.asArray(jbComp.impl.metadata)
       if (!metadata) return
       const priority = metadata.find(m => m.priority)?.priority
       const abbr = metadata.find(m => m.abbr)?.abbr
