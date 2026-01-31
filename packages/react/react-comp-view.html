@@ -42,7 +42,7 @@
     jb.coreRegistry.importMapsInCli = importMapsInCli
 
     const urlsToLoad = urlParams.get('urlsToLoad') || ''
-    for (const file of urlsToLoad.split(',')) 
+    for (const file of urlsToLoad.split(',').filter(Boolean)) 
       await import(file)
 
     const cmpId = urlParams.get('cmpId') || 'showMe'

@@ -12,6 +12,7 @@ const {
   },
   react: { ReactComp, 
     'react-comp': { comp },
+    'react-metadata': { containerComp }
   }
 } = dsls
 
@@ -219,5 +220,19 @@ ReactComp('showMe', {
     hFunc: ({}, {text1, v1, react: {h}}) => ({}) => h('div', {}, text1, v1),
     enrichCtx: ctx => ctx.setVars({text1: ctx.data.text}),
     sampleCtxData: asIs({data: {text: 'hello world'}, vars: {v1: 'v1Val'}})
+  })
+})
+
+ReactComp('test.sampleContainer', {
+  impl: comp({
+    hFunc: (ctx, {testedComp, react: {h, hh}}) => ({}) => 
+      h('div', {}, 'container', hh(ctx, dsls.react['react-comp'][testedComp]))
+  })
+})
+
+ReactComp('test.inContainer', {
+  impl: comp({
+    hFunc: ({}, {react: {h}}) => ({}) => h('div', {}, 'hello'),
+    metadata: containerComp('test.sampleContainer')
   })
 })

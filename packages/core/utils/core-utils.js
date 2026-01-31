@@ -286,11 +286,14 @@ function logVsCode(...args) {
 
 const isNode = globalThis.process?.versions?.node
 
+const ignorePaths = ['vars.react']
+
 function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, reshowVisited } = {}) {  
   const visited = new WeakMap()
   return _strip(value, 0, '')
 
   function _strip(data, depth, path) {
+    if (ignorePaths.some(x => path.endsWith(x))) return
     if (data == null) return data
     if (isPrimitiveValue(data))
       return data
@@ -311,7 +314,7 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, resho
     }
     if (data instanceof Error)
       return { $$: 'Error', message: data.message }
-    if (typeof data === 'object' && data.constructor?.name !== 'Object')
+    if (typeof data === 'object' && data.constructor && data.constructor?.name !== 'Object')
       return { $$: data.constructor.name }
     if (typeof data === 'object') {
       return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, _strip(v, depth + 1, path ? `${path}.${k}` : k) ]))

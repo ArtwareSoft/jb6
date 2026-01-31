@@ -10,7 +10,7 @@ const { tgp: { TgpType }} = dsls
 
 const ReactComp = TgpType('react-comp','react')
 TgpType('vdom','react')
-TgpType('react-metadata','react')
+const ReactMetadata = TgpType('react-metadata','react')
 
 ReactComp('comp', {
   params: [
@@ -81,12 +81,11 @@ function hhStrongRefresh(ctx, t, p = {}, ...c) {
   if (!(ctx instanceof coreUtils.Ctx))
     console.error('hhStrongRefresh: first param of hh must be ctx')
   if (t[coreUtils.asJbComp]) {
-    // const id = ctx.jbCtx.path
-    // if (id) {
-    //   delete jb.reactRepository.comps[id]
-    //   delete jb.reactRepository.promises[id]
-    // }
+    const id = 'react:' + t[coreUtils.asJbComp].id
     t = t.$runWithCtx(ctx.setVars({strongRefresh: true}))
+    // set wrapper function name to jbComp id - so it shows in the debugger
+    const f = id ? ({ [id]: () => h(t,p,...c) })[id] : (() => h(t,p,...c))
+    return f()
   }
   return h(t,p,...c)
 }
@@ -175,6 +174,13 @@ if (!globalThis.window) {
   }  
 }
 
+ReactMetadata('containerComp', {
+  params: [
+    {id: 'containerComp', as: 'string'},
+    {id: 'importPath', as: 'string'},
+  ]
+})
+
 async function wrapReactCompWithSampleData(cmpId, _ctx) {
   const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
   try {
@@ -182,11 +188,20 @@ async function wrapReactCompWithSampleData(cmpId, _ctx) {
     const comp = coreUtils.compByFullId(fullId, jb)
     const jbComp = comp[coreUtils.asJbComp]
     coreUtils.resolveCompArgs(jbComp)
+    const metadata = coreUtils.asArray(jbComp.impl.metadata)
+    const containerComp = metadata.find(m => m.containerComp)?.containerComp
+    const importPath = metadata.find(m => m.importPath)?.importPath
+    if (importPath)
+      await import(importPath)
+    const compToRun = containerComp && dsls.react['react-comp'][containerComp] || comp
+
     const ctxData = jbComp.impl.sampleCtxData && await ctx.run(jbComp.impl.sampleCtxData)
     const props = jbComp.impl.samplePropsData && await ctx.run(jbComp.impl.samplePropsData)
-    const ctxWithData = ctxData ? ctx.setData(ctxData.data).setVars(ctxData.vars) : ctx
+    let ctxWithData = ctxData ? ctx.setData(ctxData.data).setVars(ctxData.vars) : ctx
+    if (containerComp)
+      ctxWithData = ctxWithData.setVars({testedComp: cmpId})
 
-    const reactCmp = comp.$runWithCtx(ctxWithData)
+    const reactCmp = compToRun.$runWithCtx(ctxWithData)
     return { ctx: ctxWithData, reactCmp, props }
   } catch(error) {
     return { ctx, reactCmp: () => reactUtils.h('pre',{},error.stack) }

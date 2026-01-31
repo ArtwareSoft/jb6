@@ -4,6 +4,7 @@ import { readFile } from 'fs/promises'
 import { coreUtils } from '@jb6/core'
 import { serverUtils } from '@jb6/server-utils'
 import '@jb6/server-utils/serve-mjpeg.js'
+import '@jb6/server-utils/serve-mcp.js'
 
 const { calcRepoRoot }  = coreUtils
 const { serveImportMap, serveCli, serveCliStream, serveGotoSource, serveMcp, serveMjpeg}  = serverUtils
