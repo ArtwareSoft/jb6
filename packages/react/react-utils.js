@@ -24,7 +24,8 @@ ReactComp('comp', {
   ],
   impl: (_ctx, {strongRefresh, react: {useState, useEffect} }, { hFunc, enrichCtx }) => {
     const ctx = _ctx.setVars({strongRefresh: false})
-    const id = strongRefresh ? '' : ctx.jbCtx.creatorStack?.join(';')
+    const jbid = ctx.jbCtx.creatorStack?.join(';')
+    const id = strongRefresh ? '' : jbid
     const ctxOrPromise = enrichCtx(ctx) || ctx
     const isPromise = coreUtils.isPromise(ctxOrPromise)
 
@@ -56,13 +57,13 @@ ReactComp('comp', {
         if (id && !repo.comps[id])
           repo.comps[id] = comp
         Object.defineProperty(comp, 'name', { value: id })
-        comp.jbId = id
+        comp.jbid = jbid
         return comp
       }
     } else {
       if (!id || !repo.comps[id]) {
         const comp = hFunc(ctxOrPromise)
-        comp.jbId = id
+        comp.jbid = jbid
         if (id && !repo.comps[id])
           repo.comps[id] = comp
         Object.defineProperty(comp, 'name', { value: id })
@@ -104,8 +105,8 @@ function h(t, p = {}, ...c) {
 
   const className=[p.className,cls].filter(Boolean).join(' ').trim()
   let vdom = reactUtils.createElement(tag,className ? {...p,className} : p,...c)
-  if (typeof t == 'function' && t.jbId)
-    return h('div', { jbid: t.jbId, style: { display: 'contents' } }, vdom)
+  if (typeof t == 'function' && t.jbid)
+    return h('div', { jbid: t.jbid, style: { display: 'contents' } }, vdom)
   return vdom
 }
 

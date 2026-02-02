@@ -20,9 +20,13 @@ const JbPickBox = ReactComp('JbPickBox', {
       const [rect, setRect] = useState(null)
       const [label, setLabel] = useState('')
       const [targetEl, setTargetEl] = useState(null)
+      const [candidates, setCandidates] = useState([])
+      const [pickIdx, setPickIdx] = useState(0)
+      const [pickPos, setPickPos] = useState({ x: 0, y: 0 })
 
       const rafId = useRef(0)
       const lastMouse = useRef({ x: 0, y: 0 })
+      const menuRef = useRef(null)
 
       const summarizeFn = useMemo(() => {
         if (summarize) return summarize
@@ -33,8 +37,7 @@ const JbPickBox = ReactComp('JbPickBox', {
           const last = parts[parts.length - 1] || s
           const m = last.match(/>([^~]+)/)
           const name = m ? m[1] : last
-          const trimmed = name.length > 80 ? name.slice(0, 77) + '…' : name
-          return attr + ': ' + trimmed
+          return name.length > 80 ? name.slice(0, 77) + '…' : name
         }
       }, [summarize, attr])
 
@@ -68,9 +71,39 @@ const JbPickBox = ReactComp('JbPickBox', {
         return el
       }
 
+      function collectCandidates(x, y) {
+        const els = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [document.elementFromPoint(x, y)].filter(Boolean)
+        const seenPath = new Set()
+        const seenEl = new Set()
+        const res = []
+        for (const el0 of els) {
+          let el = el0
+          while (isElement(el)) {
+            if (el.hasAttribute && el.hasAttribute(attr)) {
+              if (!seenEl.has(el)) {
+                seenEl.add(el)
+                const raw = el.getAttribute(attr) || ''
+                raw.split(';').filter(Boolean).forEach(tgpPath => {
+                  if (seenPath.has(tgpPath)) return
+                  seenPath.add(tgpPath)
+                  const summary = String(summarizeFn(tgpPath, el) || '') || tgpPath
+                  res.push({ el, tgpPath, summary })
+                })
+              }
+            }
+            el = el.parentElement
+          }
+        }
+        return res
+      }
+
       function setFromPoint(x, y) {
-        const elUnder = document.elementFromPoint(x, y)
-        const attrEl = findAttrElement(elUnder)
+        const all = collectCandidates(x, y)
+        setCandidates(all)
+        setPickIdx(0)
+        setPickPos({ x, y })
+        const cand = all[0]
+        const attrEl = cand?.el
 
         if (!attrEl) {
           setTargetEl(null)
@@ -89,10 +122,25 @@ const JbPickBox = ReactComp('JbPickBox', {
           return
         }
 
-        const id = attrEl.getAttribute(attr) || ''
         setTargetEl(attrEl)
         setRect({ left: r.left, top: r.top, width: r.width, height: r.height })
-        setLabel(summarizeFn(id, attrEl, boxEl))
+        setLabel(cand?.summary || '')
+      }
+
+      function pick(i) {
+        const cand = candidates[i] || candidates[0]
+        cand?.el && onPick(cand.el, { id: cand.tgpPath, tgpPath: cand.tgpPath, summary: cand.summary })
+      }
+
+      function movePick(delta) {
+        if (candidates.length < 2) return
+        setPickIdx(i => {
+          const n = (i + delta + candidates.length) % candidates.length
+          requestAnimationFrame(() =>
+            menuRef.current?.querySelector?.(`[data-jb-pick-item="${n}"]`)?.scrollIntoView?.({ block: 'nearest' })
+          )
+          return n
+        })
       }
 
       function scheduleUpdate(x, y) {
@@ -116,20 +164,28 @@ const JbPickBox = ReactComp('JbPickBox', {
         }
 
         function onClickCapture(e) {
-          const elUnder = document.elementFromPoint(e.clientX, e.clientY)
-          const attrEl = findAttrElement(elUnder)
-          if (!attrEl) return
+          if (e.target?.closest?.('[data-jb-pick-menu]')) return
+          if (!candidates.length) return
 
           e.preventDefault()
           e.stopPropagation()
 
-          const id = attrEl.getAttribute(attr) || ''
-          const boxEl = resolveBoxElement(attrEl)
-          onPick(attrEl, { id, summary: summarizeFn(id, attrEl, boxEl) })
+          pick(pickIdx)
         }
 
         function onKeyDown(e) {
           if (e.key === 'Escape') onStop()
+          if (e.key === 'Enter') return pick(pickIdx)
+          if (e.key === 'ArrowDown') return (e.preventDefault(), movePick(1))
+          if (e.key === 'ArrowUp') return (e.preventDefault(), movePick(-1))
+          const n = e.key?.match(/^[1-9]$/) ? Number(e.key) - 1 : -1
+          if (n >= 0 && n < candidates.length) return (e.preventDefault(), pick(n))
+        }
+
+        function onWheel(e) {
+          if (!candidates.length) return
+          e.preventDefault()
+          movePick(e.deltaY > 0 ? 1 : -1)
         }
 
         function onScrollOrResize() {
@@ -143,6 +199,7 @@ const JbPickBox = ReactComp('JbPickBox', {
         window.addEventListener('mousemove', onMove, true)
         window.addEventListener('click', onClickCapture, true)
         window.addEventListener('keydown', onKeyDown, true)
+        window.addEventListener('wheel', onWheel, { capture: true, passive: false })
         window.addEventListener('scroll', onScrollOrResize, true)
         window.addEventListener('resize', onScrollOrResize, true)
 
@@ -153,12 +210,13 @@ const JbPickBox = ReactComp('JbPickBox', {
           window.removeEventListener('mousemove', onMove, true)
           window.removeEventListener('click', onClickCapture, true)
           window.removeEventListener('keydown', onKeyDown, true)
+          window.removeEventListener('wheel', onWheel, true)
           window.removeEventListener('scroll', onScrollOrResize, true)
           window.removeEventListener('resize', onScrollOrResize, true)
 
           document.documentElement.classList.remove('cursor-crosshair')
         }
-      }, [enabled, attr, onStop, onPick, summarizeFn, targetEl])
+      }, [enabled, attr, onStop, onPick, summarizeFn, targetEl, candidates, pickIdx])
 
       if (!enabled || !rect) return null
 
@@ -183,6 +241,30 @@ const JbPickBox = ReactComp('JbPickBox', {
             top: Math.round(tipTop) + 'px'
           }
         }, label)
+        ,
+        candidates.length > 1 && h('div:fixed pointer-events-auto rounded-md border border-white/15 bg-black/85 text-white text-xs font-mono shadow-lg', {
+          ref: menuRef,
+          'data-jb-pick-menu': '1',
+          style: {
+            left: Math.min(window.innerWidth - 240, Math.max(margin, pickPos.x + 10)) + 'px',
+            top: Math.min(window.innerHeight - 200, Math.max(margin, pickPos.y + 10)) + 'px',
+            width: '240px',
+            maxHeight: '200px',
+            overflow: 'auto',
+          }
+        },
+          candidates.map((c, i) => h('div:px-2 py-1 cursor-pointer', {
+            key: c.tgpPath,
+            'data-jb-pick-item': String(i),
+            className: i === pickIdx ? 'bg-white/50' : '',
+            onMouseEnter: () => setPickIdx(i),
+            onMouseDown: (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              pick(i)
+            }
+          }, `${i + 1}. ${c.summary}`))
+        )
       )
     }
   })
