@@ -2,15 +2,18 @@ import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
 import '@jb6/llm-guide/guide-generator.js'
 import '@jb6/core/misc/import-map-services.js'
+import '@jb6/react'
+import '@jb6/mcp'
 
 const {
     common: { Data,
-       data: { pipeline, split, first, list, dslDocs, tgpModel, bookletsContent, pipe, keys,filter, join }
+       data: { pipeline, split, first, list, dslDocs, tgpModel, bookletsContent, pipe, keys,filter, join, asIs }
     },
-    tgp: { any: { typeAdapter }},
+    tgp: { Component },
     mcp: { Tool, 
       tool: { mcpTool }
-     }
+     },
+     react: { 'react-comp': { comp }}
 } = dsls
 
 Tool('setupInfo', {
@@ -81,4 +84,17 @@ Tool('scrambleText', {
     ({data}, {}, { unscramble }) => unscramble.toLowerCase() == 'true' ? atob(data.split('').reverse().join('')) : btoa(data).split('').reverse().join(''),
     join('##\n')
   ))
+})
+
+Component('helloMcp', {
+  type: 'react-comp<react>',
+  moreTypes: 'tool<mcp>',
+  params: [
+    {id: 'textToShowAfter', defaultValue: 'after text'}
+  ],
+  impl: comp({
+    hFunc: ({}, {text1, v1, react: {h}}, {textToShowAfter}) => ({}) => h('div', {}, text1, v1, textToShowAfter),
+    enrichCtx: ctx => ctx.setVars({text1: ctx.data?.text}),
+    sampleCtxData: asIs({data: {text: 'hello world'}, vars: {v1: 'v1Val'}})
+  })
 })

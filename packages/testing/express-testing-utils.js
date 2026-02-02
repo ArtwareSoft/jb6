@@ -7,14 +7,14 @@ import '@jb6/server-utils/serve-mjpeg.js'
 import '@jb6/server-utils/serve-mcp.js'
 
 const { calcRepoRoot }  = coreUtils
-const { serveImportMap, serveCli, serveCliStream, serveGotoSource, serveMcp, serveMjpeg}  = serverUtils
+const { serveImportMap, serveCli, serveCliStream, serveGotoSource, serveMcpViaCli, serveMjpeg}  = serverUtils
 
 export async function expressTestServices(app) {
   app.use(express.json({ limit: '10mb' }))
   app.use(express.urlencoded({ extended: true, limit: '10mb' }))  
 
   serveImportMap(app, {express})
-  serveMcp(app, {express})
+  serveMcpViaCli(app, {express})
   serveCli(app)
   serveCliStream(app)
   serveGotoSource(app)

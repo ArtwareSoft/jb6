@@ -34,8 +34,15 @@
     import '@jb6/core/misc/import-map-services.js'
     import '@jb6/react/codemirror-utils.js'
     import '@jb6/react/lib/tailwindcss.js'
+    import '@jb6/react/jb-pick-box.js'
+
+    const {
+      react: { 'react-comp': {JbPickerStarter} }
+    } = dsls
 
     import { reactUtils } from '@jb6/react'
+    const { h, hh, loadLucid05 } = reactUtils
+    loadLucid05()
     const urlParams = new URLSearchParams(window.location.search)
 
     const { importMapsInCli } = JB_IMPORT_MAP
@@ -48,7 +55,11 @@
     const cmpId = urlParams.get('cmpId') || 'showMe'
     const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(cmpId)
     //const ctx = new coreUtils.Ctx().setVars({react: reactUtils})
-    reactUtils.createRoot(document.getElementById('show')).render(reactUtils.hh(ctx, reactCmp, props))
+    reactUtils.createRoot(document.getElementById('show')).render(
+      h('div', {}, 
+      hh(ctx, JbPickerStarter), 
+      hh(ctx, reactCmp, props))
+    )
 
   </script>
 </body>

@@ -24,6 +24,9 @@ function jbCompProxy(jbComp) {
           return (...args) => jbComp.runProfile(resolveProfileArgs(calcArgs(jbComp, args)))
         if (p == '$runWithCtx')
           return (ctx,...args) => jbComp.runProfile(resolveProfileArgs(calcArgs(jbComp, args)), ctx)
+        if (p == '$location')
+          return jbComp.$location
+
     
         return p === asJbComp && jbComp
       },

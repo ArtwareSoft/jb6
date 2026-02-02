@@ -29,6 +29,7 @@ if (coreUtils.isNode) {
         else 
             jb.coreRegistry.repoRoot = await coreUtils.calcRepoRoot()
         await coreUtils.calcJb6RepoRootAndImportMapsInCli()
+        const { importMap } = await coreUtils.calcImportData()
         const extraMcp = `${jb.coreRegistry.repoRoot}/.jb6/mcp.js`
 
 
@@ -41,7 +42,7 @@ if (coreUtils.isNode) {
                 .map(id=>({id, toolComp: dsls.mcp.tool[id][coreUtils.asJbComp] }))
         
             const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js")     
-            await startMcpServer(new StdioServerTransport(), allTools)
+            await startMcpServer(new StdioServerTransport(), { allTools, importMap })
         } catch(error) {
             console.error("jb6 Server error:", error)
             process.exit(1)

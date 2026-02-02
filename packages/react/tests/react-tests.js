@@ -2,6 +2,7 @@ import { coreUtils, dsls, ns } from '@jb6/core'
 import './react-testers.js'
 
 const { 
+  tgp: { Component }, 
   test: { Test, 
       'ui-action': { click, longPress, actions, waitForText },
       test: { dataTest, reactTest }
@@ -215,9 +216,13 @@ Test('reactTest.longPress', {
   })
 })
 
-ReactComp('showMe', {
+Component('showMe', {
+  type: 'react-comp<react>',
+  params: [
+    {id: 'textToShowAfter', defaultValue: 'after text' }
+  ],
   impl: comp({
-    hFunc: ({}, {text1, v1, react: {h}}) => ({}) => h('div', {}, text1, v1),
+    hFunc: ({}, {text1, v1, react: {h}}, {textToShowAfter}) => ({}) => h('div', {}, text1, v1, textToShowAfter),
     enrichCtx: ctx => ctx.setVars({text1: ctx.data.text}),
     sampleCtxData: asIs({data: {text: 'hello world'}, vars: {v1: 'v1Val'}})
   })

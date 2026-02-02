@@ -92,6 +92,10 @@ function toCapitalType(type) {
 function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
   const {ns, dsls, nsRepo} = tgpModel
   const capitalLetterId = extraCompProps?.modifierId || toCapitalType(type)
+  dsls[dsl] = dsls[dsl] || {}
+  if (dsls[dsl][capitalLetterId])
+    return dsls[dsl][capitalLetterId]
+
   const dslType = `${type}<${dsl}>`
   const tgpType = (arg0,arg1) => {
     let [id,comp] = ['',null]
@@ -121,7 +125,6 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
 
   const forward = id => forwardProxy(dsl,type,id)
   Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward})
-  dsls[dsl] = dsls[dsl] || {}
   dsls[dsl][type] = dsls[dsl][type] || {}
   dsls[dsl][capitalLetterId] = tgpType
   return tgpType
@@ -179,11 +182,11 @@ function DefComponents(items,def) { items.split(',').forEach(item=>def(item)) } 
 
 function calcSourceLocation(errStack) {
   try {
-      const takeOutHostNameAndPort = /\/\/[^\/:]+(:\d+)?\//
+      const takeOutHostNameAndPort = /https?:\/\/[^\/:]+(:\d+)?\//
       const line = errStack.map(x=>x.trim().replace(takeOutHostNameAndPort,'/'))
           .filter(x=>x && !x.match(/^Error/) && !x.match(/tgp.js/)).shift()
       const location = line ? (line.split('at ').pop().split('eval (').pop().split(' (').pop().match(/\\?([^:]+):([^:]+):[^:]+$/) || ['','','','']).slice(1,3) : ['','']
-      location[0] = location[0].split('?')[0]
+      location[0] = location[0].split('?')[0].replace(/^\/\/\//,'/')
       const path = location[0]
       return { path, line: location[1] }
   } catch(e) {

@@ -6,11 +6,12 @@ jb.reactRepository = {
   promises: {}
 }
 
-const { tgp: { TgpType }} = dsls
+const { tgp: { TgpType, Component }} = dsls
 
 const ReactComp = TgpType('react-comp','react')
 TgpType('vdom','react')
 const ReactMetadata = TgpType('react-metadata','react')
+TgpType('tool','mcp')
 
 ReactComp('comp', {
   params: [
@@ -23,7 +24,7 @@ ReactComp('comp', {
   ],
   impl: (_ctx, {strongRefresh, react: {useState, useEffect} }, { hFunc, enrichCtx }) => {
     const ctx = _ctx.setVars({strongRefresh: false})
-    const id = strongRefresh ? '' : ctx.jbCtx.creatorStack?.join('-')
+    const id = strongRefresh ? '' : ctx.jbCtx.creatorStack?.join(';')
     const ctxOrPromise = enrichCtx(ctx) || ctx
     const isPromise = coreUtils.isPromise(ctxOrPromise)
 
@@ -55,11 +56,13 @@ ReactComp('comp', {
         if (id && !repo.comps[id])
           repo.comps[id] = comp
         Object.defineProperty(comp, 'name', { value: id })
+        comp.jbId = id
         return comp
       }
     } else {
       if (!id || !repo.comps[id]) {
         const comp = hFunc(ctxOrPromise)
+        comp.jbId = id
         if (id && !repo.comps[id])
           repo.comps[id] = comp
         Object.defineProperty(comp, 'name', { value: id })
@@ -100,7 +103,10 @@ function h(t, p = {}, ...c) {
     c = [...c[0],...c.slice(1)]
 
   const className=[p.className,cls].filter(Boolean).join(' ').trim()
-  return reactUtils.createElement(tag,className ? {...p,className} : p,...c)
+  let vdom = reactUtils.createElement(tag,className ? {...p,className} : p,...c)
+  if (typeof t == 'function' && t.jbId)
+    return h('div', { jbid: t.jbId, style: { display: 'contents' } }, vdom)
+  return vdom
 }
 
 const toPascal = s => s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')
@@ -174,14 +180,16 @@ if (!globalThis.window) {
   }  
 }
 
-ReactMetadata('containerComp', {
+Component('containerComp', {
+  type: 'react-metadata<react>',
   params: [
     {id: 'containerComp', as: 'string'},
-    {id: 'importPath', as: 'string'},
+    {id: 'importPath', as: 'string'}
   ]
 })
 
-async function wrapReactCompWithSampleData(cmpId, _ctx) {
+
+async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
   const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
   try {
     const fullId = cmpId.indexOf('<') == -1 ? `react-comp<react>${cmpId}` : cmpId
@@ -201,10 +209,10 @@ async function wrapReactCompWithSampleData(cmpId, _ctx) {
     if (containerComp)
       ctxWithData = ctxWithData.setVars({testedComp: cmpId})
 
-    const reactCmp = compToRun.$runWithCtx(ctxWithData)
+    const reactCmp = args != null ? compToRun.$runWithCtx(ctxWithData,args) : compToRun.$runWithCtx(ctxWithData)
     return { ctx: ctxWithData, reactCmp, props }
   } catch(error) {
-    return { ctx, reactCmp: () => reactUtils.h('pre',{},error.stack) }
+    return { ctx, reactCmp: () => reactUtils.h('pre',{},error.stack), props: {} }
   }
 }
 

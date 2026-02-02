@@ -4,7 +4,7 @@ import './mcp-testers.js'
 const {
   tgp: { Const},
   test: { Test,
-    test: { dataTest, mcpToolTest }
+    test: { dataTest, mcpToolTest, mcpHttpTest, mcpUiResourceTest, mcpReactTest }
   },
   common: { Data, Action, Boolean,
     data: { pipe, pipeline, asIs, tgpModel, keys, join, filter }, 
@@ -16,7 +16,7 @@ const { json } = ns
 
 Test('mcpTest.scrambleText', {
   HeavyTest: true,
-  impl: mcpToolTest('scrambleText', asIs({texts: 'hello world##test text'}), {
+  impl: mcpHttpTest('scrambleText', asIs({texts: 'hello world##test text'}), {
     expectedResult: equals('=QGby92dg8GbsVGa##\n0hXZ0BCdzVGd')
   })
 })
@@ -123,5 +123,17 @@ Test('mcpTest.snippet', {
     }),
     expectedResult: contains('Homer')
   })
+})
+
+Test('mcpReactTest.helloMcp', {
+  HeavyTest: true,
+  doNotRunInTests: true,
+  impl: mcpUiResourceTest('helloMcp', contains('html'))
+})
+
+Test('mcpReactTest.helloMcp.react', {
+  HeavyTest: true,
+  doNotRunInTests: true,
+  impl: mcpReactTest('helloMcp', ()=>({ textToShowAfter: '--hello mcp--' }))
 })
 

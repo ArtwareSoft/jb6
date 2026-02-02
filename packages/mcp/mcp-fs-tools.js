@@ -1,4 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
+import './mcp-utils.js'
 const { pathJoin } = coreUtils
   
 const {
