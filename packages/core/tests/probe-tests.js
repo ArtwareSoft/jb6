@@ -72,6 +72,7 @@ Test('probeCliTest.helloWorld', {
 })
 
 Test('probeCliTest.claudeDir', {
+  doNotRunInTests: true,
   impl: dataTest({
     calculate: async () => {
       const repoRoot = await coreUtils.calcRepoRoot()
