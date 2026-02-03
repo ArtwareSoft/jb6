@@ -144,9 +144,11 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
             actionMap.push({ action: `endToken!${path}`, from: ast.end, to: ast.end })
             actionMap.push({ action: `end!${path}`, from: ast.end, to: ast.end })
             if (typeof prof == 'string') {
+                const isEmpty = prof === ''
                 actionMap.push({ action: `setPT!${path}`, from: ast.start+1, to: ast.start+2 })
                 actionMap.push({ action: `edit!${path}`, from: ast.start+1, to: ast.start+1 })
-                actionMap.push({ action: `insideText!${path}`, from: ast.start+2, to: ast.end });
+                const insideTextPos = isEmpty ? ast.start+1 : ast.start+2
+                actionMap.push({ action: `insideText!${path}`, from: insideTextPos, to: isEmpty ? ast.start+1 : ast.end });
             } else { // token (number or bool)
                 actionMap.push({ action: `setPT!${path}`, from: ast.start, to: ast.start+1 })
                 actionMap.push({ action: `edit!${path}`, from: ast.start, to: ast.start })

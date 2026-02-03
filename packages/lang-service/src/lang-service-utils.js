@@ -84,9 +84,9 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
 
     function addArrayItemOp(path, { toAdd, index, srcCtx } = {}) {
         const val = tgpModel.valOfPath(path)
-        toAdd = toAdd === undefined ? { $$: 'any<tgp>TBD' } : toAdd
+        toAdd = toAdd === undefined ? '' : toAdd
         if (Array.isArray(val)) {
-            if (val[index]?.$ == 'TBD')
+            if (val[index] === '')
                 return { ...setOp(`${path}~${index}`, toAdd, srcCtx), resultPath: `${path}~${index}` }
             else if (index === undefined || index == -1)
                 return { path, op: { $push: [toAdd] }, srcCtx, resultPath: `${path}~${val.length}` }
@@ -109,6 +109,8 @@ function newProfile(comp, {basedOnPath, basedOnVal} = {}) {
 	const result = { $$: `${comp.$dslType}${comp.id}`, $dslType: comp.$dslType }
 	let cursorPath = '', whereToLand = 'edit'
 	const composite = compParams(comp).find(p=>p.composite)
+	let emptyStringPath = ''
+	
 	compParams(comp).forEach(p=>{
 		if (p.composite && currentVal != null) {
 			result[p.id] = currentVal
@@ -119,9 +121,23 @@ function newProfile(comp, {basedOnPath, basedOnVal} = {}) {
 			result[p.id] = cloneProfile(p.templateValue)
 		else if (currentVal && currentVal[p.id] !== undefined && !composite)
 			result[p.id] = currentVal[p.id]
+        else if (p.mandatory && currentVal == null) {
+			result[p.id] = ''
+			// Track empty string params for TBD cursor positioning
+			if (!emptyStringPath) {
+				emptyStringPath = p.secondParamAsArray ? `${p.id}~0` : p.id
+			}
+		}
 
 		cursorPath = cursorPath || (result[p.id] != null && p.id)
 	})
+	
+	// Prioritize empty string parameters for cursor positioning (TBD behavior)
+	if (emptyStringPath) {
+		cursorPath = emptyStringPath
+		whereToLand = 'begin'
+	}
+	
 	return { result, cursorPath, whereToLand }
 }
 
@@ -146,7 +162,7 @@ function paramCompletions(path, compProps) {
         const paramType = tgpModel.paramType(path)
         const result = param.templateValue ? JSON.parse(JSON.stringify(param.templateValue))
             : paramType == 'boolean<common>' ? true
-            : paramType.indexOf('data') != -1 ? '' : { $$: 'any<tgp>TBD' }
+            : ''
 
         return setOp(path, result, srcCtx)
     }

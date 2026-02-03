@@ -221,11 +221,15 @@ Test('completionTest.prettyPrintFunctionAsIs', {
   })
 })
 
+// Test('a', {
+//   impl: dataTest(enrichGroupProps(group.count()))
+// })
+
 Test('completionTest.ns', {
   impl: completionActionTest('dataTest(enrichGroupProps(__))', {
     completionToActivate: 'group.count',
     expectedEdit: {range: {start: {line: 1, col: 34}, end: {line: 1, col: 34}}, newText: 'group.count()'},
-    expectedCursorPos: '1,34'
+    expectedCursorPos: '1,33'
   })
 })
 

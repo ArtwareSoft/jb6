@@ -135,12 +135,13 @@ Data('langService.editAndCursorOfCompletionItem', {
     return { edit, cursorPos }
 
     function calcNewPos(compText) {
-        const TBD = item.compId == 'any<tgp>TBD' || calcPath(itemProps, 'op.$set.$$') == 'any<tgp>TBD'
-        const _whereToLand = TBD ? 'begin' : (whereToLand || 'edit')
+        const TBD = item.compId == '' || calcPath(itemProps, 'op.$set.$$') == '' || 
+                   calcPath(itemProps, 'op.$set') === ''
+        const _whereToLand = TBD ? 'insideText' : (whereToLand || 'edit')
         const expectedPath = resultPath || path
-        const { line, col } = getPosOfPath(expectedPath, [_whereToLand,'prependPT','appendPT'], {compText, tgpModel})
+        const { line, col } = getPosOfPath(expectedPath, [_whereToLand, 'begin', 'prependPT','appendPT'], {compText, tgpModel})
         return { TBD, line: line + compPos.line, col }
-    }    
+    }
   }
 })
 
