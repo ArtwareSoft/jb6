@@ -76,7 +76,7 @@ function newPTCompletions(path, opKind, compProps) { // opKind: set,insert,appen
     function setPTOp(path, opKind, compId, ctx) {
         const index = opKind == 'append' ? -1 : opKind == 'insert' ? (+path.split('~').pop() + 1) : opKind == 'prepend' && 0
         const basePath = opKind == 'insert' ? path.split('~').slice(0, -1).join('~') : path
-        const basedOnVal = opKind == 'set' && tgpModel.valOfPath(path)
+        const basedOnVal = opKind == 'set' ? tgpModel.valOfPath(path) : null
         const { result, cursorPath, whereToLand } = newProfile(compByFullId(compId, tgpModel), {basedOnVal})
         const res = opKind == 'set' ? setOp(path, result, ctx) : addArrayItemOp(basePath, { toAdd: result, index, ctx })
         return {...res, resultPath: [res.resultPath || path,cursorPath].filter(x=>x).join('~'), whereToLand }
@@ -109,7 +109,6 @@ function newProfile(comp, {basedOnPath, basedOnVal} = {}) {
 	const result = { $$: `${comp.$dslType}${comp.id}`, $dslType: comp.$dslType }
 	let cursorPath = '', whereToLand = 'edit'
 	const composite = compParams(comp).find(p=>p.composite)
-	let emptyStringPath = ''
 	
 	compParams(comp).forEach(p=>{
 		if (p.composite && currentVal != null) {
@@ -121,22 +120,11 @@ function newProfile(comp, {basedOnPath, basedOnVal} = {}) {
 			result[p.id] = cloneProfile(p.templateValue)
 		else if (currentVal && currentVal[p.id] !== undefined && !composite)
 			result[p.id] = currentVal[p.id]
-        else if (p.mandatory && currentVal == null) {
+        else if (p.mandatory && currentVal?.[p.id] == null)
 			result[p.id] = ''
-			// Track empty string params for TBD cursor positioning
-			if (!emptyStringPath) {
-				emptyStringPath = p.secondParamAsArray ? `${p.id}~0` : p.id
-			}
-		}
 
 		cursorPath = cursorPath || (result[p.id] != null && p.id)
 	})
-	
-	// Prioritize empty string parameters for cursor positioning (TBD behavior)
-	if (emptyStringPath) {
-		cursorPath = emptyStringPath
-		whereToLand = 'begin'
-	}
 	
 	return { result, cursorPath, whereToLand }
 }

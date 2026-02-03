@@ -157,8 +157,8 @@ Test('completionTest.secondParamAsArray1', {
 Test('completionTest.createPipelineFromComp', {
   impl: completionActionTest(`uiTest(text(__split()))`, {
     completionToActivate: 'pipeline',
-    expectedEdit: asIs({range: {start: {line: 1, col: 20}, end: {line: 1, col: 26}}, newText: 'pipeline(split()'}),
-    expectedCursorPos: '1,36'
+    expectedEdit: asIs({range: {start: {line: 1, col: 20}, end: {line: 1, col: 26}}, newText: "pipeline(split(), ''"}),
+    expectedCursorPos: '1,39'
   })
 })
 
@@ -187,7 +187,7 @@ Test('completionTest.singleArgAsArray.begin', {
 Test('completionTest.singleArgAsArray.end', {
   impl: completionActionTest(`uiTest(group(text('')__))`, {
     completionToActivate: 'button',
-    expectedEdit: asIs({range: {start: {line: 1, col: 29}, end: {line: 1, col: 29}}, newText: `, button('click me')`}),
+    expectedEdit: asIs({range: {start: {line: 1, col: 29}, end: {line: 1, col: 29}}, newText: `, button('click me', '')`}),
     expectedCursorPos: '1,39'
   })
 })
@@ -195,7 +195,7 @@ Test('completionTest.singleArgAsArray.end', {
 Test('completionTest.singleArgAsArray.middle', {
   impl: completionActionTest(`uiTest(group(text(''),__ text('2')))`, {
     completionToActivate: 'button',
-    expectedEdit: asIs({range: {start: {line: 1, col: 31}, end: {line: 1, col: 31}}, newText: `button('click me'), `}),
+    expectedEdit: asIs({range: {start: {line: 1, col: 31}, end: {line: 1, col: 31}}, newText: `button('click me', ''), `}),
     expectedCursorPos: '1,39'
   })
 })
@@ -222,7 +222,7 @@ Test('completionTest.prettyPrintFunctionAsIs', {
 })
 
 // Test('a', {
-//   impl: dataTest(enrichGroupProps(group.count()))
+//   impl: dataTest(obj(prop('aa', 'asa'), prop()))
 // })
 
 Test('completionTest.ns', {
@@ -244,16 +244,16 @@ Test('completionTest.prettyPrintFunction', {
 Test('completionTest.createPipelineFromString', {
   impl: completionActionTest(`uiTest(text('__aa'))`, {
     completionToActivate: 'pipeline',
-    expectedEdit: asIs({range: {start: {line: 1, col: 20}, end: {line: 1, col: 24}}, newText: `pipeline('aa')`}),
-    expectedCursorPos: '1,33'
+    expectedEdit: asIs({range: {start: {line: 1, col: 20}, end: {line: 1, col: 24}}, newText: `pipeline('aa', '')`}),
+    expectedCursorPos: '1,36'
   })
 })
 
 Test('completionTest.createPipelineFromEmptyString', {
   impl: completionActionTest(`uiTest(text('hello world', '__'))`, {
     completionToActivate: 'pipeline',
-    expectedEdit: asIs({range: {start: {line: 1, col: 35}, end: {line: 1, col: 37}}, newText: `pipeline('')`}),
-    expectedCursorPos: '1,46'
+    expectedEdit: asIs({range: {start: {line: 1, col: 35}, end: {line: 1, col: 37}}, newText: `pipeline('', '')`}),
+    expectedCursorPos: '1,45'
   })
 })
 
@@ -262,9 +262,9 @@ Test('completionTest.insideVar', {
     completionToActivate: 'pipeline',
     expectedEdit: asIs({
         range: {start: {line: 1, col: 26}, end: {line: 1, col: 39}},
-        newText: `\n    Var('a', pipeline('b'))\n  `
+        newText: `\n    Var('a', pipeline('b', ''))\n  `
     }),
-    expectedCursorPos: '2,25'
+    expectedCursorPos: '2,28'
   })
 })
 
@@ -420,10 +420,46 @@ Test('completionTest.multiLine', {
   impl: completionActionTest({
     compText: `group(__\n    text('hello'),\n    group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n    text('world')\n  )`,
     completionToActivate: 'button',
-    expectedEdit: asIs({range: {start: {line: 2, col: 4}, end: {line: 2, col: 4}}, newText: `button('click me'),\n    `}),
+    expectedEdit: asIs({
+        range: {start: {line: 2, col: 4}, end: {line: 2, col: 4}},
+        newText: `button('click me', ''),\n    `
+    }),
     expectedCursorPos: '2,12'
   })
 })
+
+Test('completionTest.multiLine.middle', {
+  impl: completionActionTest({
+    compText: `group(\n    text('hello'),__\n    group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n    text('world')\n  )`,
+    completionToActivate: 'button',
+    expectedEdit: asIs({
+        range: {start: {line: 3, col: 4}, end: {line: 3, col: 4}},
+        newText: `button('click me', ''),\n    `
+    }),
+    expectedCursorPos: '3,12'
+  })
+})
+
+Test('completionTest.multiLine.secondParamAsArray', {
+  impl: completionActionTest({
+    compText: `dataTest(pipeline(
+    obj(),
+    bookletsContent(),__
+    obj(),
+    singleParamByNameComp(),
+    singleParamByNameComp(),
+    bookletsContent(),
+    bookletsContent()
+  ))`,
+    completionToActivate: 'pipeline',
+    expectedEdit: asIs({
+        range: {start: {line: 2, col: 4}, end: {line: 2, col: 4}},
+        newText: `pipeline('', '')`
+    }),
+    expectedCursorPos: '3,12'
+  })
+})
+
 
 Test('completionTest.multiLineInArray', {
   impl: completionOptionsTest({
@@ -443,7 +479,7 @@ Test('completionTest.multiLineWithConstVar', {
   impl: completionActionTest({
     compText: `ALL:const aa = Test('x', {\n  impl: uiTest(group(__\n    text('hello'),\n    group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n    text('world')\n  ))\n})`,
     completionToActivate: 'button',
-    expectedEdit: asIs({range: {start: {line: 2, col: 4}, end: {line: 2, col: 4}}, newText: `button('click me'),\n    `}),
+    expectedEdit: asIs({range: {start: {line: 2, col: 4}, end: {line: 2, col: 4}}, newText: `button('click me', ''),\n    `}),
     expectedCursorPos: '2,12'
   })
 })

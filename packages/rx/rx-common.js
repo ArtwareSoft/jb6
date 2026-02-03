@@ -2,7 +2,7 @@ import { coreUtils, dsls, ns, jb } from '@jb6/core'
 
 const { toArray, logError, log } = coreUtils
 const {
-  tgp: { TgpType },
+  tgp: { TgpType, Component },
   rx: { ReactiveOperator, ReactiveSource },
   common: { Data, Action, Boolean, 
   },  
@@ -74,10 +74,11 @@ ReactiveOperator('rx.distinctUntilChanged',{
   impl: (ctx, {}, {equalsFunc}) => jb.rxUtils.distinctUntilChanged((prev, cur) => equalsFunc(ctx.setData(cur.data).setVars({prev:prev.data})), ctx)
 })
 
-ReactiveOperator('rx.debounceTime',{
+Component('rx.debounceTime', {
+  type: 'reactive-operator<rx>',
   description: 'waits for a cooldown period, them emits the last arrived',
   params: [
-    {id: 'cooldownPeriod', dynamic: true, description: 'can be dynamic'},
+    {id: 'cooldownPeriod', dynamic: true, description: 'can be dynamic', mandatory: {$: 'mandatory'}, byName: true},
     {id: 'immediate', as: 'boolean', description: 'emits the first event immediately, default is true'}
   ],
   impl: (ctx, {}, {cooldownPeriod, immediate}) => jb.rxUtils.debounceTime(cooldownPeriod, immediate)

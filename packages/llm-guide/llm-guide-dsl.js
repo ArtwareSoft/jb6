@@ -82,7 +82,7 @@ Component('outputFormat', {
 
 Concept('concept', {
   params: [
-    {id: 'title', as: 'string' },
+    {id: 'title', as: 'string', mandatory: true },
     {id: 'explanation', type: 'explanationPoint[]', byName: true },
     {id: 'guidance', type: 'guidance[]' },
   ]
@@ -132,29 +132,36 @@ Step('step', {
 
 Guidance('mustDo', {
   params: [
-    {id: 'do', as: 'text', mandatory: true, templateValue: '' },
-    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true }
+    {id: 'do', as: 'text', mandatory: true },
+    {id: 'points', type: 'explanationPoint[]' }
   ]
 })
 
 Guidance('Do', {
   params: [
     {id: 'do', as: 'text', mandatory: true },
-    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true }
+    {id: 'points', type: 'explanationPoint[]' }
   ]
 })
 
 Guidance('option', {
   params: [
     {id: 'do', as: 'text', mandatory: true },
-    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true }
+    {id: 'points', type: 'explanationPoint[]' }
+  ]
+})
+
+Guidance('example', {
+  params: [
+    {id: 'example', as: 'text', mandatory: true },
+    {id: 'points', type: 'explanationPoint[]' }
   ]
 })
 
 Guidance('solution', {
   params: [
     {id: 'code', as: 'text', mandatory: true, byName: true},
-    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true}
+    {id: 'points', type: 'explanationPoint[]'}
   ]
 })
 

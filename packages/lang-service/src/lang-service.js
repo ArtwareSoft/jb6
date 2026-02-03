@@ -135,11 +135,14 @@ Data('langService.editAndCursorOfCompletionItem', {
     return { edit, cursorPos }
 
     function calcNewPos(compText) {
-        const TBD = item.compId == '' || calcPath(itemProps, 'op.$set.$$') == '' || 
-                   calcPath(itemProps, 'op.$set') === ''
-        const _whereToLand = TBD ? 'insideText' : (whereToLand || 'edit')
-        const expectedPath = resultPath || path
-        const { line, col } = getPosOfPath(expectedPath, [_whereToLand, 'begin', 'prependPT','appendPT'], {compText, tgpModel})
+        debugger
+        const op = itemProps.op?.$set
+        const propWithEmptyVal = Object.entries(op || {}).find(x=>x[1] == '')?.[0]
+        const TBD = item.compId == '' || propWithEmptyVal
+        const _whereToLand = TBD ? ['insideText','prependPT'] : [whereToLand || 'edit']
+        const innerProp = item.compId && TBD ? propWithEmptyVal : null
+        const expectedPath = innerProp ? [path,innerProp].join('~') : (resultPath || path)
+        const { line, col } = getPosOfPath(expectedPath, [..._whereToLand, 'begin', 'prependPT','appendPT'], {compText, tgpModel})
         return { TBD, line: line + compPos.line, col }
     }
   }

@@ -20,7 +20,7 @@ Component('group', {
     {id: 'controls', type: 'control[]', mandatory: true, dynamic: true, composite: true},
     {id: 'title', as: 'string', dynamic: true, byName: true},
     {id: 'layout', type: 'layout'},
-    {id: 'style', type: 'group-style', mandatory: true, dynamic: true},
+    {id: 'style', type: 'group-style', dynamic: true},
     {id: 'features', type: 'feature[]', dynamic: true}
   ]
 })
@@ -127,3 +127,16 @@ Component('singleParamByNameComp', {
     {id: 'p1', as: 'boolean', type: 'boolean<common>', byName: true}
   ]
 })
+
+// Data('tst', {
+//   impl: pipeline(
+//     obj(),
+//     bookletsContent(),
+//     obj(),
+//     pipeline(false, ''),
+//     singleParamByNameComp(),
+//     singleParamByNameComp(),
+//     bookletsContent(),
+//     bookletsContent()
+//   )
+// })

@@ -23,7 +23,7 @@ Component('log', {
 Component('pipeline', {
   description: 'flat map data arrays one after the other, does not wait for promises and rx',
   params: [
-    {id: 'source', type: 'data', dynamic: true, mandatory: true, templateValue: '', composite: true},
+    {id: 'source', type: 'data', dynamic: true, mandatory: true, composite: true},
     {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
   impl: (ctx, {}, { operators, source }) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
