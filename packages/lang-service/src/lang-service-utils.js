@@ -119,8 +119,6 @@ function newProfile(comp, {basedOnPath, basedOnVal} = {}) {
 			result[p.id] = cloneProfile(p.templateValue)
 		else if (currentVal && currentVal[p.id] !== undefined && !composite)
 			result[p.id] = currentVal[p.id]
-        else if (p.mandatory)
-			result[p.id] = ''
 
 		cursorPath = cursorPath || (result[p.id] != null && p.id)
 	})
