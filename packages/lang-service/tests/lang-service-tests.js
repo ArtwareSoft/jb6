@@ -3,8 +3,7 @@ import './lang-service-testers.js'
 const { langService } = ns
 
 const {
-  tgp: { Const
-  },
+  tgp: { Const, Component },
   test: { Test,
     test: { dataTest, completionOptionsTest, completionActionTest }
   },
@@ -30,6 +29,23 @@ Test('completionTest.profileWithoutParams', {
   impl: completionOptionsTest(`ALL:ReactiveSource('cmp1', {__
   impl: ''
 })`, ['moreTypes'], {
+    notInSuggstions: '🔄 reformat'
+  })
+})
+
+Component('escBackTickHelperComp', {
+  params: [
+    {id: 'text', as: 'text'}
+  ]
+})
+
+Test('completionTest.escBackTic', {
+  impl: completionOptionsTest(`ALL:Data('escBackTickHelperProfile', {__
+  impl: escBackTickHelperComp(\`\\\`\\\`\\\`javascript
+\\\`\\\`\\\`\`)
+})
+`, ['moreTypes'], {
+    filePath: 'packages/lang-service/tests/lang-service-tests.js',
     notInSuggstions: '🔄 reformat'
   })
 })
@@ -469,6 +485,7 @@ Test('completionTest.multiLineFeatures', {
   })
 })
 */
+
 
 Test('completionActionTest.defaultValueAsProfile', {
   impl: completionActionTest(`ALL:Component('cmp1', __{ params: [{id: 'x', defaultValue: list()}] })`, {

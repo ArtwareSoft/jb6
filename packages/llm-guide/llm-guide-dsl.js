@@ -2,7 +2,7 @@ import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/pretty-print.js'
 
 const { 
-  tgp: { TgpType },
+  tgp: { TgpType, Component },
 } = dsls
 
 Object.assign(coreUtils, {bookletContent, docletContent})
@@ -20,12 +20,14 @@ const Evidence = TgpType('evidence', 'llm-guide')
 const ExplanationPoint = TgpType('explanationPoint', 'llm-guide') // Individual explanation components
 const ProblemStatement = TgpType('problemStatement', 'llm-guide') // New: Problem statement container
 const Validation = TgpType('validation', 'llm-guide')
+const Concept = TgpType('concept', 'llm-guide')
 const Booklet = TgpType('booklet', 'llm-guide') // documentation package for llm prompt
 
 // =============================================================================
 // TYPE: doclet - Main documentation container
 // =============================================================================
-Doclet('howTo', {
+Component('howTo', {
+  type: 'doclet<llm-guide>',
   params: [
     {id: 'problem', type: 'problemStatement', mandatory: true},
     {id: 'guidance', type: 'guidance[]', secondParamAsArray: true},
@@ -34,18 +36,20 @@ Doclet('howTo', {
   ]
 })
 
-Doclet('principle', {
+Component('principle', {
+  type: 'doclet<llm-guide>',
   description: 'Fundamental principle for effective LLM documentation',
   params: [
-    { id: 'importance', as: 'text', mandatory: true, options: 'critical,high,medium,low' },
-    { id: 'rule', as: 'text', mandatory: true, description: 'The principle statement' },
-    { id: 'rationale', as: 'text', mandatory: true, description: 'Why this principle matters' },
-    { id: 'guidance', type: 'guidance[]' },
-    { id: 'testLlmUnderstanding', type: 'validation[]'},
+    {id: 'importance', as: 'text', mandatory: true, options: 'critical,high,medium,low'},
+    {id: 'rule', as: 'text', mandatory: true, description: 'The principle statement'},
+    {id: 'rationale', as: 'text', mandatory: true, description: 'Why this principle matters'},
+    {id: 'guidance', type: 'guidance[]'},
+    {id: 'testLlmUnderstanding', type: 'validation[]'}
   ]
 })
 
-Doclet('fundamentalLlmMethodology', {
+Component('fundamentalLlmMethodology', {
+  type: 'doclet<llm-guide>',
   description: 'Fundamental methodology for LLM guide writing process',
   params: [
     {id: 'importance', as: 'text', mandatory: true, options: 'critical,high,medium,low'},
@@ -57,16 +61,32 @@ Doclet('fundamentalLlmMethodology', {
   ]
 })
 
-Doclet('situationalAwareness', {
-  description: 'Foundational environmental and operational context knowledge',
+Component('situationalAwareness', {
+  type: 'doclet<llm-guide>',
   params: [
-    {id: 'environment', as: 'text', mandatory: true, description: 'Operational environment and core concepts'},
-    {id: 'capabilities', as: 'text', description: 'Available tools, data structures, and system capabilities'},  
+    {id: 'youAre', as: 'text', mandatory: true, byName: true},
+    {id: 'yourGoal', as: 'text', mandatory: true },
+    {id: 'concepts', type: 'concept[]' },
     {id: 'context', as: 'text', description: 'Situational context, constraints, and operational modes'},
-    {id: 'implications', type: 'explanationPoint[]', description: 'What this knowledge means for effective operation'}
   ]
 })
 
+Component('outputFormat', {
+  type: 'doclet<llm-guide>',
+  params: [
+    {id: 'YOU_MUST_REPLY_WITH_THIS_OUTPUT_FORMAT', as: 'text', mandatory: true, byName: true},
+    {id: 'Do', type: 'guidance[]' },
+    {id: 'explanation', type: 'explanationPoint[]' }
+  ]
+})
+
+Concept('concept', {
+  params: [
+    {id: 'title', as: 'string' },
+    {id: 'explanation', type: 'explanationPoint[]', byName: true },
+    {id: 'guidance', type: 'guidance[]' },
+  ]
+})
 // =============================================================================
 // TYPE: problemStatement - Problem statement components
 // =============================================================================
@@ -107,6 +127,27 @@ Step('step', {
     {id: 'validation', type: 'validation[]', description: 'How to verify step completion - can be text or validation object'},
     {id: 'mcpTool', type: 'tool<mcp>', description: 'Optional MCP tool to execute as part of this step'},
     {id: 'points', type: 'explanationPoint[]', description: 'Detailed explanations for this step'}
+  ]
+})
+
+Guidance('mustDo', {
+  params: [
+    {id: 'do', as: 'text', mandatory: true, templateValue: '' },
+    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true }
+  ]
+})
+
+Guidance('Do', {
+  params: [
+    {id: 'do', as: 'text', mandatory: true },
+    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true }
+  ]
+})
+
+Guidance('option', {
+  params: [
+    {id: 'do', as: 'text', mandatory: true },
+    {id: 'points', type: 'explanationPoint[]', secondParamAsArray: true }
   ]
 })
 
@@ -164,6 +205,13 @@ ExplanationPoint('explanation', {
     {id: 'text', as: 'text', mandatory: true},
   ]
 })
+
+ExplanationPoint('implication', {
+  params: [
+    {id: 'implication', as: 'text', mandatory: true },
+  ]
+})
+
 
 ExplanationPoint('syntax', {
   params: [
@@ -297,7 +345,7 @@ Validation('buildQuiz', {
 
 Booklet('booklet', {
   params: [
-    {id: 'doclets', as: 'string', description: 'comma delimited names of doclets', madatory: true},
+    {id: 'doclets', as: 'string', description: 'comma delimited names of doclets', mandatory: true},
     {id: 'whenToUse', as: 'text'}
   ]
 })

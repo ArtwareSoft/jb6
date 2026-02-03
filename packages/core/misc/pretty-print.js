@@ -407,7 +407,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     else if (typeof val === 'string' && val.indexOf("'") == -1 && !putNewLinesInString)
       return stringValProps(JSON.stringify(val).slice(1,-1).replace(/\\"/g,'"'), "'", path)
     else if (typeof val === 'string')
-      return stringValProps(val.replace(/`/g,'\\`').replace(/\$\{/g, '\\${'), "`", path, {putNewLinesInString})
+      return stringValProps(val.replace(/(?<!\\)`/g,'\\`').replace(/(?<!\\)\$\{/g, '\\${'), "`", path, {putNewLinesInString})
     else if (typeof val === 'boolean')
       return tokenProps(val ? 'true' : 'false',path)
     else if (typeof val === 'number')
