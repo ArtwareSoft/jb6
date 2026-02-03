@@ -79,7 +79,7 @@ __    ]
 })
 
 Test('completionTest.typeCollision', {
-  impl: completionOptionsTest(`uiTest(button2(__TBD()))`, ['uiAct'])
+  impl: completionOptionsTest(`uiTest(button2('__'))`, ['uiAct'])
 })
 
 Test('completionTest.simple', {
@@ -179,8 +179,8 @@ Test('completionTest.groupInGroup', {
 Test('completionTest.singleArgAsArray.begin', {
   impl: completionActionTest(`uiTest(group(text('')__))`, {
     completionToActivate: 'features',
-    expectedEdit: asIs({range: {start: {line: 1, col: 29}, end: {line: 1, col: 29}}, newText: ', { features: TBD() }'}),
-    expectedCursorPos: '1,43'
+    expectedEdit: asIs({range: {start: {line: 1, col: 29}, end: {line: 1, col: 29}}, newText: ", { features: '' }"}),
+    expectedCursorPos: '1,44'
   })
 })
 
@@ -274,8 +274,8 @@ Test('completionTest.dynamicFormat', {
   impl: completionActionTest({
     compText: `uiTest(text('my text')__, contains('hello world'))`,
     completionToActivate: 'uiAction',
-    expectedEdit: asIs({range: {start: {line: 1, col: 55}, end: {line: 1, col: 55}}, newText: ', { uiAction: TBD() }'}),
-    expectedCursorPos: '1,69'
+    expectedEdit: asIs({range: {start: {line: 1, col: 55}, end: {line: 1, col: 55}}, newText: ", { uiAction: '' }"}),
+    expectedCursorPos: '1,70'
   })
 })
 
@@ -332,32 +332,13 @@ Test('completionTest.singleParamAsArray.data', {
   impl: completionOptionsTest(`dataTest('', contains(__))`, ['split'])
 })
 
-Test('completionTest.actionReplaceTBD', {
-  impl: completionActionTest(`uiTest(button('x', runActions(__TBD())))`, {
+Test('completionTest.actionReplaceEmpty', {
+  impl: completionActionTest(`uiTest(button('x', runActions('__')))`, {
     completionToActivate: 'delay',
-    expectedEdit: asIs({range: {start: {line: 1, col: 38}, end: {line: 1, col: 41}}, newText: 'delay'}),
+    expectedEdit: asIs({range: {start: {line: 1, col: 38}, end: {line: 1, col: 40}}, newText: 'delay()'}),
     expectedCursorPos: '1,44'
   })
 })
-/*
-Data('completionTest.fixEditedSample', {
-  impl: pipeline()
-})
-
-Test('completionTest.fixEditedCompSpaces', {
-  impl: fixEditedCompTest({
-    compText: `Data('fixEditedSample', {\n   impl:     split(__)\n})`,
-    expectedFixedComp: '{\n  impl: split()\n}'
-  })
-})
-
-Test('completionTest.fixEditedCompWrongName', {
-  impl: fixEditedCompTest({
-    compText: `Data('fixEditedSample' ,{\n  impl: split(__a)\n})`,
-    expectedFixedComp: `{\n  impl: split(TBD())\n}`
-  })
-})
-*/
 
 Const('peopleArray', {
     people: [
@@ -448,7 +429,7 @@ Test('completionTest.multiLineInArray', {
       group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),
       text('world')__
 __    __],
-    features: TBD()
+    features: ''
   })`,
     expectedSelections: ['text','text','text','text','text']
   })
@@ -469,9 +450,9 @@ Test('completionTest.multiLineAddProp', {
     completionToActivate: 'features',
     expectedEdit: asIs({
         range: {start: {line: 1, col: 21}, end: {line: 5, col: 2}},
-        newText: `{\n    controls: [\n      text('hello'),\n      group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n      text('world')\n    ],\n    features: TBD()\n  }`
+        newText: `{\n    controls: [\n      text('hello'),\n      group(text('-1-'), controlWithCondition('1==2', text('-1.5-')), text('-2-')),\n      text('world')\n    ],\n    features: ''\n  }`
     }),
-    expectedCursorPos: '7,14'
+    expectedCursorPos: '7,15'
   })
 })
 
