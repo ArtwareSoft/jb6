@@ -80,13 +80,22 @@ Component('outputFormat', {
   ]
 })
 
-Concept('concept', {
+Component('concept', {
+  type: 'concept<llm-guide>',
   params: [
-    {id: 'title', as: 'string', mandatory: true },
-    {id: 'explanation', type: 'explanationPoint[]', byName: true },
-    {id: 'guidance', type: 'guidance[]' },
+    {id: 'title', as: 'string', mandatory: true},
+    {id: 'explanation', type: 'explanationPoint[]', byName: true},
+    {id: 'guidance', type: 'guidance[]'}
   ]
 })
+
+Component('instruction', {
+  type: 'doclet<llm-guide>',
+  params: [
+    {id: 'instruction', as: 'text', mandatory: true}
+  ]
+})
+
 // =============================================================================
 // TYPE: problemStatement - Problem statement components
 // =============================================================================

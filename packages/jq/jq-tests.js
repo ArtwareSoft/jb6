@@ -53,6 +53,10 @@ Test('jqTest.sliceLast', {
   impl: dataTest(jq('.[-2:] | .[]', {data: [1,2,3,4]}), equals([3,4]))
 })
 
+Test('jqTest.pipeAs.min', {
+  impl: dataTest(jq('.[0] | as $x | $x', { data: [5] }), equals([5]))
+})
+
 Test('jqTest.groupBy', {
   impl: dataTest({
     calculate: pipeline(

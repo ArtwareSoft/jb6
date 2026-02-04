@@ -537,17 +537,38 @@ function parse(tokens, startAt=0, until=[]) {
                ret = [new CommaNode(commaAccum)]
                commaAccum = []
            }
+           // --- NEW: support "| as $x" as sugar for "(EXPR as $x | .)"
+           if (t.type === 'pipe' && tokens[i + 1] && tokens[i + 1].type === 'as') {
+                const nameTok = tokens[i + 2]
+                if (!nameTok || nameTok.type !== 'variable') {
+                    throw 'expected variable after as at ' + describeLocation(nameTok)
+                }
+        
+                // Bind value of the LHS expression, but pass through original input.
+                const lhsExpr = makeFilterNode(ret)
+                ret = [new VariableBinding(lhsExpr, nameTok.name)]
+        
+                // consume: pipe, as, $var
+                i += 2
+                // continue parsing from the token after $var
+                t = tokens[++i]
+                continue
+            }
            let lhs = makeFilterNode(ret)
+
            if (t.type == 'as') {
-               let nameTok = tokens[i+1]
+               let nameTok = tokens[i + 1]
+               if (!nameTok || nameTok.type !== 'variable') {
+                   throw 'expected variable after as at ' + describeLocation(nameTok)
+               }
                lhs = new VariableBinding(lhs, nameTok.name)
                i += 2
            }
+       
            let r = parse(tokens, i + 1, until)
            let rhs = r.node
            i = r.i
-           if (tokens[i] && until.indexOf(tokens[i].type) != -1)
-               i--
+           if (tokens[i] && until.indexOf(tokens[i].type) != -1) i--
            ret = [new PipeNode(lhs, rhs)]
        // Question mark suppresses errors on the preceding filter
        } else if (t.type == 'question') {
