@@ -1,10 +1,11 @@
 import { coreUtils, dsls } from '@jb6/core'
 import { update } from '../lib/immutable.js'
 
-const { jb, resolveCompArgs, prettyPrint, prettyPrintComp, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique, calcHash } = coreUtils
-const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems, filePosOfPath, getPosOfPath } = jb.langServiceUtils
+const { jb, resolveCompArgs, prettyPrint, prettyPrintComp, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique, calcHash, splitDslType, calcExpectedDslsSection } = coreUtils
+const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems, filePosOfPath, getPosOfPath, tgpEditorHost, tgpModelForLangService } = jb.langServiceUtils
+const { calcTgpModelData } = coreUtils
 
-const { 
+const {
    common: { Data }
 } = dsls
 
@@ -14,15 +15,22 @@ Data('langService.completionItems', {
         { id: 'compTextAndCursor', defaultValue: '%%' }
     ],
     impl: async (ctx, {}, { compTextAndCursor }) => {
-        const compProps = await calcCompProps(compTextAndCursor)
-        const { actionMap, compText, compPos, errors, cursorPos, compId, tgpModel, comp, filePath } = compProps
+        const _compTextAndCursor = compTextAndCursor ? await compTextAndCursor : tgpEditorHost().compTextAndCursor()
+        const { dslsSection, compText, compPos, cursorLine, cursorCol, filePath } = _compTextAndCursor
+
+        if (dslsSection) {
+            return dslsSectionCompletion({ compText, compPos, cursorLine, cursorCol, filePath })
+        }
+
+        const compProps = await calcCompProps(_compTextAndCursor)
+        const { actionMap, errors, cursorPos, compId, tgpModel, comp } = compProps
         let items = [], title = '', paramDef
 
         if (actionMap) {
             ({items, paramDef} = await provideCompletionItems(compProps, ctx))
             items.forEach((item, i) => Object.assign(item, {
-                compPos, insertText: '', sortText: '!' + String(i).padStart(3, '0'), command: { command: 'jbart.applyCompChangeOfCompletionItem', 
-                arguments: [{...item}] 
+                compPos, insertText: '', sortText: '!' + String(i).padStart(3, '0'), command: { command: 'jbart.applyCompChangeOfCompletionItem',
+                arguments: [{...item}]
             },
             }))
             title = paramDef && `${paramDef.id}: ${(paramDef.$dslType||'').replace('<>','')}`
@@ -48,6 +56,31 @@ Data('langService.completionItems', {
         return { items, title, paramDef, errors }
     }
 })
+
+async function dslsSectionCompletion({ compText, compPos, cursorLine, cursorCol, filePath }) {
+    // Ensure tgpModel is loaded
+    if (!jb.langServiceRegistry.tgpModels[filePath]) {
+        jb.langServiceRegistry.tgpModels[filePath] = await calcTgpModelData({entryPointPaths: filePath})
+            .then(v => new tgpModelForLangService(v))
+    }
+    const tgpModel = jb.langServiceRegistry.tgpModels[filePath]
+    if (!tgpModel) return { items: [], title: 'dsls section' }
+
+    const expectedDslsSection = await calcExpectedDslsSection(tgpModel, filePath)
+    let items = [], title = 'dsls section'
+
+    if (expectedDslsSection && expectedDslsSection != compText) {
+        const reformatEdits = deltaFileContent(compText, expectedDslsSection, compPos)
+        const cursorPos = { line: cursorLine, col: cursorCol }
+        const item = {
+            kind: 4, id: 'reformat', insertText: '', label: '🔄 reformat dsls', sortText: '!!01', edit: reformatEdits,
+            command: { command: 'jbart.applyCompChangeOfCompletionItem', arguments: [{ edit: reformatEdits, cursorPos }] },
+        }
+        title = 'reformat dsls'
+        items.push(item)
+    }
+    return { items, title }
+}
 
 Data('langService.compReferences', {
     params: [

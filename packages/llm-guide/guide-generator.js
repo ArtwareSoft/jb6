@@ -5,21 +5,22 @@ import '@jb6/common'
 import '@jb6/core/misc/jb-cli.js'
 import '@jb6/lang-service'
 
-const { 
-  common: { Data,
-    data: { pipeline, split, join, first, list, pipe, bash }
+const {
+  tgp: { Component,
+    var: { Var }
   },
-  tgp: { TgpType, any: {}, var: {Var } },
+  common: { Data,
+    data: { bash, pipe }
+  }
 } = dsls
+
 const { calcImportData, calcTgpModelData, logError, fetchByEnv, deepMapValues, omitProps, calcRepoRoot} = coreUtils
 
 Data('filesContent', {
-  impl: pipe(
-    bash(`for f in $(echo '%$fileNames%' | tr ',' ' '); do printf "==> %s <==\n" "$f"; cat "${jb.coreRegistry.repoRoot}/$f"; done`)
-  )
+  impl: pipe(bash(`for f in $(echo '%$fileNames%' | tr ',' ' '); do printf "==> %s <==\n" "$f"; cat "/$f"; done`))
 })
 
-const bookletsContent = Data('bookletsContent', {
+const bookletsContent = Component('bookletsContent', {
   params: [
     {id: 'booklets', as: 'text', description: 'comma delimited names'}
   ],
@@ -49,9 +50,9 @@ const bookletsContent = Data('bookletsContent', {
   }
 })
 
-const tgpModel = Data('tgpModel', {
+const tgpModel = Component('tgpModel', {
   params: [
-    {id: 'forDsls', as: 'string', mandatory: true, description: 'e.g: llm-guide,test,common,llm-api'},
+    {id: 'forDsls', as: 'string', mandatory: true, description: 'e.g: llm-guide,test,common,llm-api'}
   ],
   impl: async (ctx, {}, { forDsls }) => {
     const repoRoot = jb.coreRegistry.repoRoot || await calcRepoRoot()
@@ -104,3 +105,4 @@ Data('dslDocs', {
     ({},{tgpModel, booklet}) => ({tgpModel,booklet})
   )
 })
+

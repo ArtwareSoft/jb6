@@ -6,14 +6,16 @@ import '@jb6/react'
 import '@jb6/mcp'
 
 const {
-    common: { Data,
-       data: { pipeline, split, first, list, dslDocs, tgpModel, bookletsContent, pipe, keys,filter, join, asIs }
-    },
-    tgp: { Component },
-    mcp: { Tool, 
-      tool: { mcpTool }
-     },
-     react: { 'react-comp': { comp }}
+  tgp: { Component },
+  common: { 
+    data: { asIs, bookletsContent, dslDocs, filter, join, keys, pipe, pipeline, split, tgpModel }
+  },
+  mcp: { Tool,
+    tool: { mcpTool }
+  },
+  react: { ReactComp,
+    'react-comp': { comp }
+  }
 } = dsls
 
 Tool('setupInfo', {

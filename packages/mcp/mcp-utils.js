@@ -158,7 +158,7 @@ const squeezeText = Data('squeezeText', {
 })
 
 Component('mcpTool', {
-  moreTypes: 'tool<mcp>',
+  type: 'tool<mcp>',
   description: 'wrap text as mcp result',
   params: [
     {id: 'text', dynamic: true},

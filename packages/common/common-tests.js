@@ -3,9 +3,7 @@ import '@jb6/testing'
 import '@jb6/common'
 
 const { 
-  tgp: { Const, 
-    var : { Var } 
-  },
+  tgp: { Const },
   common: { Data, Action, Boolean,
     data: { splitByPivot, enrichGroupProps, pipeline, filter, property, obj, prefix, suffix, removePrefix, removeSuffix, 
            toUpperCase, toLowerCase, capitalize, replace, extractPrefix, extractSuffix,
@@ -33,7 +31,13 @@ Const('employees', [
 Const('testDate', new Date('2023-01-15T10:30:00'))
 Const('testObject', {name: 'test', value: 42, items: [1, 2, 3]})
 
-// ===== GROUPBY TESTS =====
+Data('test.test1', { // used for lang-service tests
+  impl: ''
+})
+
+const myCompForTest = Data('myCompForTest', { // used for lang-service tests
+  impl: ''
+})
 
 Test('splitByPivot.basic', {
   impl: dataTest({

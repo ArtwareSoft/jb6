@@ -1,14 +1,10 @@
 import { dsls, coreUtils } from '@jb6/core'
 
-const { 
-  common: { Data,
-    data: {asIs}
-  },
-  tgp: { TgpType },
+const {
   'llm-guide': { Doclet,
     doclet: { howTo },
-    guidance: { solution, doNot, bestPractice, mechanismUnderTheHood }, 
-    explanationPoint: { whenToUse, performance, comparison, syntax, explanation, methodology, evidence, impact },
+    explanationPoint: { explanation, syntax },
+    guidance: { bestPractice, doNot, solution },
     problemStatement: { problem }
   }
 } = dsls

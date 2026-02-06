@@ -2,18 +2,14 @@ import { dsls, ns } from '@jb6/core'
 import './lang-service-testers.js'
 
 const {
-  tgp: { Const
+  common: { 
+    boolean: { contains, equals }
   },
   test: { Test,
-    test: { snippetTest, dataTest }
-  },
-  common: { Data, Action, Boolean,
-    data: { calcCompTextAndCursor, pipeline, list, filter, join, property, obj, delay, pipe, first, slice, asIs }, 
-    boolean: { equals, contains, notContains, and, not },
-    prop: { prop },
-  },
+    test: { snippetTest }
+  }
 } = dsls
-const { json }  = ns
+const { json } = ns
 
 Test('snippet.Data', {
   HeavyTest: true,

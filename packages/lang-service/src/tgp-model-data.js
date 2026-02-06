@@ -1,14 +1,16 @@
 import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
+import { langServiceUtils } from './lang-service-parsing-utils.js'
 
-const { jb, astNode, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData, calcRepoRoot } = coreUtils
+const { jb, astToTgpObj, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData, calcRepoRoot, toCapitalType } = coreUtils
+const { calcProfileActionMap, lineColToOffset } = langServiceUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
 } = dsls
 
-Object.assign(coreUtils, {astToTgpObj, calcTgpModelData})
+Object.assign(coreUtils, { calcTgpModelData, calcExpectedDslsSection})
 
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
@@ -143,52 +145,6 @@ export async function calcTgpModelData(resources) {
   }
 }
 
-function astToTgpObj(node, code) {
-	if (!node) return undefined
-  return toObj(node)
-
-  function toObj(node) {
-    switch (node.type) {
-      case 'TemplateLiteral': return node.quasis.map(q=>q.value.raw).join('')
-      case 'Literal': return node.value
-      case 'ObjectExpression': return attachNode(
-        Object.fromEntries(node.properties.map(p=>[p.key.type === 'Identifier' ? p.key.name : p.key.value, toObj(p.value)])))
-      case 'ArrayExpression': return attachNode(node.elements.map(el => toObj(el)))
-      case 'UnaryExpression': return attachNode(node.operator === '-' ? -toObj(node.argument) : toObj(node.argument))
-      case 'ExpressionStatement': return attachNode(toObj(node.expression))
-      case 'CallExpression': {
-        const $unresolvedArgs = node.arguments.map(x=> toObj(x))
-        const callee = node.callee
-        return attachNode({$: callee.name || [callee.object?.name,callee.property?.name].join('.'), $unresolvedArgs})
-      }
-      case 'ArrowFunctionExpression': {
-        if (!code) return undefined
-        let func 
-        try {
-          func = '__JS:' + code.slice(node.start, node.end)
-        } catch (e) {
-          logError('astToTgpObj ArrowFunctionExpression eval exception', {message: e.message, e, code, node})
-          func = undefined
-        }
-        return attachNode(func)
-      }
-      case 'Identifier': {
-        // fixing identifier to be like CallExpression
-        node.arguments = []
-        return attachNode({$: node.name || [node.object?.name,node.property?.name].join('.'), $unresolvedArgs: []})
-      }
-
-      default: return undefined
-    }
-
-    function attachNode(res) {
-      if (res && typeof res == 'object')
-        res[astNode] = node
-      return res
-    }
-  }
-}
-
 function astToObj(node) {
   if (!node) return undefined
   switch (node.type) {
@@ -268,4 +224,79 @@ function extractCompDefs({dsls, ast, tgpModel, filePath}) {
   )
 
   return compDefsByFilePaths[filePath] = compDefs
+}
+
+async function calcExpectedDslsSection(tgpModel, filePath) {
+  const src = await fetchByEnv(filePath, tgpModel.staticMappings)
+  if (!src) return null
+
+  const allComps = Object.values(tgpModel.dsls).flatMap(types =>
+    Object.values(types).filter(x => typeof x == 'object').flatMap(type => Object.values(type))
+  ).filter(comp => comp.id)
+  const compsInFile = allComps.filter(comp => comp.$location?.path == filePath)
+  if (compsInFile.length == 0) return null
+
+  // Sort by file position and compile params so comps can reference each other
+  compsInFile.sort((a, b) => lineColToOffset(src, a.$location) - lineColToOffset(src, b.$location))
+
+  const _items = []
+  const compDefsUsed = new Set()
+
+  // Detect tgp dsl compDefs (Component, Const, TgpType, TgpTypeModifier) used in the file
+  const tgpCompDefIds = new Set(['Component', 'Const', 'TgpType', 'TgpTypeModifier'])
+  const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+  ast.body.forEach(n => {
+    const callee = n?.expression?.callee?.name || n?.declarations?.[0]?.init?.callee?.name
+    if (callee && tgpCompDefIds.has(callee))
+      compDefsUsed.add(JSON.stringify({ dsl: 'tgp', id: callee }))
+  })
+
+  for (const comp of compsInFile) {
+    const compDefId = toCapitalType(comp.type)
+    compDefsUsed.add(JSON.stringify({ dsl: comp.dsl, id: compDefId }))
+
+    const loc = comp.$location
+    const startOffset = lineColToOffset(src, loc)
+    const endOffset = lineColToOffset(src, loc.to)
+    const compText = src.slice(startOffset, endOffset)
+
+    try {
+      const { comp: resolvedComp } = calcProfileActionMap(compText, { tgpModel, filePath })
+      if (resolvedComp) calcItems(resolvedComp)
+    } catch (e) {}
+  }
+
+  function calcItems(node) {
+    if (typeof node?.$$ == 'string') {
+      const match = node.$$.match(/([^<]+)<([^>]+)>(.+)/)
+      if (match) _items.push(match.slice(1)) // [type, dsl, id]
+    }
+    if (node && typeof node == 'object')
+      Object.values(node).filter(x => x).forEach(x => calcItems(x))
+  }
+
+  const compIdsInFile = new Set(compsInFile.map(c => `${c.type},${c.dsl},${c.id}`))
+  const items = unique(_items.filter(x => !compIdsInFile.has(`${x[0]},${x[1]},${x[2]}`)), x => x.join(','))
+  const compDefs = [...compDefsUsed].map(x => JSON.parse(x))
+  const allDsls = unique([...items.map(x => x[1]), ...compDefs.map(c => c.dsl)]).sort((a, b) => a === 'tgp' ? -1 : b === 'tgp' ? 1 : a.localeCompare(b))
+
+  const dslsStr = allDsls.map(dsl => {
+    const types = unique(items.filter(x => x[1] == dsl).map(x => x[0])).sort().map(type => {
+      const comps = unique(items.filter(x => x[1] == dsl && x[0] == type).map(x => x[2]))
+        .filter(x => x.indexOf('.') == -1).sort().join(', ')
+      const typeStr = type.indexOf('-') == -1 ? type : `'${type}'`
+      return comps && `${typeStr}: { ${comps} }`
+    }).filter(Boolean).join(',\n    ')
+
+    const compDefsIds = unique(compDefs.filter(c => c.dsl == dsl).map(c => c.id))
+    const compDefsStr = compDefsIds.length ? compDefsIds.join(', ') + (types ? ',' : '') : ''
+    const dslStr = dsl.indexOf('-') == -1 ? dsl : `'${dsl}'`
+    if (!types) return `  ${dslStr}: { ${compDefsStr} }`
+    return `  ${dslStr}: { ${compDefsStr}\n    ${types}\n  }`
+  }).join(',\n')
+
+  const ns = unique(items.filter(item => item[2].indexOf('.') != -1).map(item => item[2].split('.')[0]))
+  const nsStr = ns.length ? `\nconst { ${ns.join(', ')} } = ns` : ''
+
+  return `const {\n${dslsStr}\n} = dsls${nsStr}`
 }

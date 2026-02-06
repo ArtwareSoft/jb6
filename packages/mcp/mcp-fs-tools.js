@@ -3,13 +3,11 @@ import './mcp-utils.js'
 const { pathJoin } = coreUtils
   
 const {
-    common: { Data, Action,
-       data: { runNodeScript, pipeline, split, join, first, asIs }
-    },
-    tgp: { any: { typeAdapter }},
-    mcp: { Tool, 
-      tool: { mcpTool, doclet }
-     }
+  tgp: { Component },
+  common: { Data, Action, data: { asIs } },
+  mcp: { Tool,
+    tool: { mcpTool }
+  }
 } = dsls
 
  
@@ -288,11 +286,12 @@ Tool('listRepoFiles', {
   }
 })
 
-const createDirectoryStructure = Tool('createDirectoryStructure', {
+const createDirectoryStructure = Component('createDirectoryStructure', {
+  type: 'tool<mcp>',
   description: 'Create a directory structure with files based on JSON input. Directories are objects, files are strings with content.',
   params: [
-    { id: 'dirPath', as: 'string', mandatory: true, description: 'Relative path within repo where to create the structure' },
-    { id: 'structure', as: 'object', mandatory: true, description: 'JSON describing directory structure. Objects are directories, strings are file contents.' }
+    {id: 'dirPath', as: 'string', mandatory: true, description: 'Relative path within repo where to create the structure'},
+    {id: 'structure', as: 'object', mandatory: true, description: 'JSON describing directory structure. Objects are directories, strings are file contents.'}
   ],
   impl: async (ctx, {}, {dirPath, structure}) => {
     const repoRoot = jb.coreRegistry.repoRoot
@@ -338,11 +337,10 @@ const createDirectoryStructure = Tool('createDirectoryStructure', {
   }
 })
 
-Tool('createResearchDir', {
+Component('createResearchDir', {
+  type: 'tool<mcp>',
   params: [
     {id: 'researchId', as: 'string', mandatory: true}
   ],
-  impl: createDirectoryStructure('research/%$researchId%', {
-    structure: asIs({theory: { }, examples: {}, tests: {}})
-  })
+  impl: createDirectoryStructure('research/%$researchId%', asIs({theory: {}, examples: {}, tests: {}}))
 })

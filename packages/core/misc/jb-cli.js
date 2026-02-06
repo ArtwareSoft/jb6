@@ -7,6 +7,7 @@ import '../utils/tgp.js'
 const { coreUtils } = jb
 
 const {
+  tgp: { Component },
   common: { Data }
 } = jb.dsls
 const { logException, logError, isNode } = coreUtils
@@ -19,9 +20,9 @@ function buildNodeCliCmd(script, options = {}) {
   return { cmd, importParts }
 }
 
-Data('bash', {
+Component('bash', {
   params: [
-    {id: 'script', as: 'text' }
+    {id: 'script', as: 'text'}
   ],
   impl: (ctx, {}, {script}) => runBashScript(script)
 })

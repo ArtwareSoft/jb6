@@ -6,16 +6,15 @@ import './mock-workspace.js'
 import '@jb6/core/misc/import-map-services.js'
 
 const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, runSnippet, runSnippetCli, prettyPrint } = coreUtils
-const { langService } = ns
 const { tgpEditorHost, tgpModelForLangService, offsetToLineCol, applyCompChange, calcProfileActionMap} = jb.langServiceUtils 
 
-const { 
-  tgp: { var: { Var }},
-  test: { Test, 
+const {
+  common: { Data },
+  test: { Test,
     test: { dataTest }
-  }, 
-  common: { Data }
+  }
 } = dsls
+const { langService } = ns
 
 jb.langServiceTestRegistry = {
   uniqueNameCounter: 0,
@@ -107,7 +106,7 @@ Test('completionOptionsTest', {
   
 Test('completionActionTest', {
   params: [
-    {id: 'compText', as: 'string', description: 'use __ for completion point'},
+    {id: 'compText', as: 'text', description: 'use __ for completion point'},
     {id: 'completionToActivate', as: 'string', dynamic: true, description: 'label of completion to activate', byName: true},
     {id: 'expectedEdit', description: '{ range: , newText:}'},
     {id: 'expectedTextAtSelection', description: '{ start: , end: }'},

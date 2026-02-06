@@ -9,10 +9,9 @@ const {
   },
   ui: { Control,
     control: { group, text, html }
-
   },
   common: { Data, Action, Boolean,
-    data: { pipeline, list, filter, join, property, obj, delay, split }, 
+    data: { pipeline, list, split }, 
     boolean: { equals, contains, notContains, and, not },
     prop: { prop },
   },

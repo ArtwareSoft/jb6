@@ -2,8 +2,9 @@ import { parse } from '../lib/acorn.mjs'
 import { parse as parseLoose } from '../lib/acorn-loose.mjs'
 
 import { coreUtils } from '@jb6/core'
-const { jb, systemParams, astToTgpObj, astNode, logException, logError, findCompDefById,
-    resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType } = coreUtils
+const { jb, systemParams, astNode, logException, logError, findCompDefById,
+    resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType, resolveProfileTop } = coreUtils
+Object.assign(coreUtils, {astToTgpObj})
 
 export const langServiceUtils = jb.langServiceUtils = { closestComp, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath, 
     lineColToOffset, offsetToLineCol, tgpEditorHost, applyCompChange, importJb6File }
@@ -112,6 +113,7 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
         topComp.$originalParams = topComp.params ? (topComp.params || []).map(p=>({...p})) : undefined // for pretty print
         try {
             resolveProfileTypes(topComp, {tgpModel, expectedType: dslType, topComp, tgpPath: topComp?.id, filePath})
+            resolveProfileTop(topComp)
         } catch (error) {
             return { text: compText, comp: topComp, actionMap: [], error }
         }
@@ -249,6 +251,7 @@ function importJb6File(fileContent, {tgpModel = jb, filePath}) {
         topComp.$originalParams = topComp.params ? (topComp.params || []).map(p=>({...p})) : undefined // for pretty print
         try {
             resolveProfileTypes(topComp, {tgpModel, expectedType: dslType, topComp, tgpPath: topComp?.id, filePath})
+            resolveProfileTop(topComp)
         } catch (error) {
             return { text: compText, comp: topComp, actionMap: [], error }
         }
@@ -301,8 +304,25 @@ function closestComp(docText, cursorLine, cursorCol, filePath) {
             return { notJbCode: true }
         }
 
-        if (span.type == 'VariableDeclaration' && span.kind == 'const')
-            span = span.declarations?.[0]?.init
+        // Handle dsls/ns destructuring section as a single block
+        {
+            const isDslsOrNs = n => n.type == 'VariableDeclaration' && n.kind == 'const'
+                && n.declarations?.[0]?.init?.type == 'Identifier'
+                && (n.declarations[0].init.name == 'dsls' || n.declarations[0].init.name == 'ns')
+            if (isDslsOrNs(span) || span.type == 'VariableDeclaration' && span.kind == 'const' && span.declarations?.[0]?.init?.type == 'Identifier') {
+                const dslsSpan = ast.body.find(n => isDslsOrNs(n) && n.declarations[0].init.name == 'dsls')
+                const nsSpan = ast.body.find(n => isDslsOrNs(n) && n.declarations[0].init.name == 'ns')
+                if (dslsSpan && isDslsOrNs(span)) {
+                    const startSpan = dslsSpan
+                    const endSpan = nsSpan || dslsSpan
+                    compText = docText.slice(startSpan.start, endSpan.end)
+                    const compPos = offsetToLineCol(docText, startSpan.start)
+                    return { compText, compPos, inCompOffset: offset - startSpan.start, shortId: 'dsls', cursorLine, cursorCol, filePath, usedLoose, dslsSection: true }
+                }
+            }
+            if (span.type == 'VariableDeclaration' && span.kind == 'const')
+                span = span.declarations?.[0]?.init
+        }
 
         const expr = span.expression || span
         compText = docText.slice(expr.start, expr.end)
@@ -321,3 +341,48 @@ function closestComp(docText, cursorLine, cursorCol, filePath) {
 }
 
 
+function astToTgpObj(node, code) {
+	if (!node) return undefined
+  return toObj(node)
+
+  function toObj(node) {
+    switch (node.type) {
+      case 'TemplateLiteral': return node.quasis.map(q=>q.value.raw).join('')
+      case 'Literal': return node.value
+      case 'ObjectExpression': return attachNode(
+        Object.fromEntries(node.properties.map(p=>[p.key.type === 'Identifier' ? p.key.name : p.key.value, toObj(p.value)])))
+      case 'ArrayExpression': return attachNode(node.elements.map(el => toObj(el)))
+      case 'UnaryExpression': return attachNode(node.operator === '-' ? -toObj(node.argument) : toObj(node.argument))
+      case 'ExpressionStatement': return attachNode(toObj(node.expression))
+      case 'CallExpression': {
+        const $unresolvedArgs = node.arguments.map(x=> toObj(x))
+        const callee = node.callee
+        return attachNode({$: callee.name || [callee.object?.name,callee.property?.name].join('.'), $unresolvedArgs})
+      }
+      case 'ArrowFunctionExpression': {
+        if (!code) return undefined
+        let func 
+        try {
+          func = '__JS:' + code.slice(node.start, node.end)
+        } catch (e) {
+          logError('astToTgpObj ArrowFunctionExpression eval exception', {message: e.message, e, code, node})
+          func = undefined
+        }
+        return attachNode(func)
+      }
+      case 'Identifier': {
+        // fixing identifier to be like CallExpression
+        node.arguments = []
+        return attachNode({$: node.name || [node.object?.name,node.property?.name].join('.'), $unresolvedArgs: []})
+      }
+
+      default: return undefined
+    }
+
+    function attachNode(res) {
+      if (res && typeof res == 'object')
+        res[astNode] = node
+      return res
+    }
+  }
+}

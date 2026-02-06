@@ -1,18 +1,17 @@
 import { dsls, ns } from '@jb6/core'
 import './lang-service-testers.js'
-const { langService } = ns
 
 const {
-  tgp: { Const, Component },
+  tgp: { Component, Const },
+  common: { Data,
+    boolean: { contains, equals },
+    data: { asIs, calcCompTextAndCursor }
+  },
   test: { Test,
-    test: { dataTest, completionOptionsTest, completionActionTest }
-  },
-  common: { Data, Action, Boolean,
-    data: { calcCompTextAndCursor, pipeline, list, filter, join, property, obj, delay, pipe, first, slice, asIs }, 
-    boolean: { equals, contains, notContains, and, not },
-    prop: { prop },
-  },
+    test: { completionActionTest, completionOptionsTest, dataTest }
+  }
 } = dsls
+const { langService } = ns
 
 Test('completionTest.componentWithParams', {
   impl: completionOptionsTest(`ALL:Component('cmp1', {__
@@ -437,6 +436,51 @@ Test('completionTest.multiLine.middle', {
         newText: `button('click me', ''),\n    `
     }),
     expectedCursorPos: '3,12'
+  })
+})
+
+Test('completionTest.dslsSection', {
+  impl: completionActionTest({
+    compText: `ALL:import { dsls } from '@jb6/core'
+import '@jb6/testing'
+import '@jb6/common'
+
+const { 
+  test: { Test,__
+    test: { dataTest }
+  }
+} = dsls
+
+Test('splitByPivot.basic', {
+  impl: dataTest({
+    calculate: pipeline('%$employees%', splitByPivot('dept'), '%dept%'),
+    expectedResult: equals(asIs(['sales', 'tech', 'hr']))
+  })
+})
+`,
+    completionToActivate: '🔄 reformat dsls',
+    expectedEdit: asIs({
+        range: {start: {line: 4, col: 7}, end: {line: 8, col: 7}},
+        newText: `\n  tgp: { Const },\n  common: { Data,\n    boolean: { equals },\n    data: { asIs, enrichGroupProps, list, pipeline, splitByPivot, sum }\n  },\n  test: { Test,\n    test: { dataTest }\n  }\n} = dsls\nconst { group } = n`
+    }),
+    expectedCursorPos: '5,15',
+    filePath: 'packages/common/common-tests.js'
+  })
+})
+
+Test('completionTest.dslsSectionCompileParamsInside', {
+  impl: completionActionTest({
+    compText: `ALL:import { dsls } from '@jb6/core'
+const { __
+} = dsls
+`,
+    completionToActivate: '🔄 reformat dsls',
+    expectedEdit: asIs({
+        range: {start: {line: 1, col: 7}, end: {line: 1, col: 8}},
+        newText: `\n  tgp: { Component },\n  common: { Data, Action,\n    data: { asIs }\n  },\n  mcp: { Tool,\n    tool: { mcpTool }\n  }`
+    }),
+    expectedCursorPos: '1,8',
+    filePath: 'packages/mcp/mcp-fs-tools.js'
   })
 })
 

@@ -183,9 +183,8 @@ Guidance('doNot', {
 
 Guidance('bestPractice', {
   params: [
-    { id: 'suboptimalCode', as: 'text', mandatory: true, byName: true },
-    { id: 'better', as: 'text', mandatory: true, byName: true },
-    { id: 'reason', as: 'text', mandatory: true, byName: true }
+    { id: 'better', as: 'text', mandatory: true },
+    { id: 'reason', as: 'text', mandatory: true }
   ]
 })
 
