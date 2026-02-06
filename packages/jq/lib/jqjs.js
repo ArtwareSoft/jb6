@@ -396,7 +396,8 @@ function tokenise(str, startAt=0, parenDepth) {
             if (tok == 'as' || tok == 'reduce' || tok == 'foreach'
                     || tok == 'import' || tok == 'include' || tok == 'def'
                     || tok == 'if' || tok == 'then' || tok == 'else'
-                    || tok == 'end' || tok == 'elif') {
+                    || tok == 'end' || tok == 'elif'
+                    || tok == 'try' || tok == 'catch') {
                 ret.push({type: tok, location})
             } else if (tok == 'and' || tok == 'or') {
                 ret.push({type: 'op', op: tok, location})
@@ -672,6 +673,23 @@ function parse(tokens, startAt=0, until=[]) {
            if (!tokens[i] || tokens[i].type != 'end')
                throw 'expected end at ' + describeLocation(tokens[i]) + ' from if at ' + t.location
            ret.push(new IfNode(conds, trueExprs, falseExpr))
+       // try EXPR catch HANDLER / try EXPR
+       } else if (t.type == 'try') {
+           let r = parse(tokens, i + 1, ['catch', 'pipe', 'comma',
+               'right-paren', 'right-square', 'right-brace',
+               '<end-of-program>'].concat(until))
+           let tryExpr = r.node
+           let catchExpr = null
+           if (tokens[r.i] && tokens[r.i].type == 'catch') {
+               let c = parse(tokens, r.i + 1, ['pipe', 'comma',
+                   'right-paren', 'right-square', 'right-brace',
+                   '<end-of-program>'].concat(until))
+               catchExpr = c.node
+               i = c.i - 1
+           } else {
+               i = r.i - 1
+           }
+           ret.push(new TryCatchNode(tryExpr, catchExpr))
        } else if (t.type == '<end-of-program>' && until.length == 0) {
            break
        } else {
@@ -1882,6 +1900,28 @@ class ErrorSuppression extends ParseNode {
    }
    toString() {
        return this.inner + '?'
+   }
+}
+class TryCatchNode extends ParseNode {
+   constructor(tryExpr, catchExpr) {
+       super()
+       this.tryExpr = tryExpr
+       this.catchExpr = catchExpr // null means catch empty
+   }
+   * apply(input, conf) {
+       try {
+           yield* this.tryExpr.apply(input, conf)
+       } catch (e) {
+           if (this.catchExpr) {
+               let errMsg = typeof e === 'string' ? e : String(e)
+               yield* this.catchExpr.apply(errMsg, conf)
+           }
+       }
+   }
+   toString() {
+       if (this.catchExpr)
+           return 'try ' + this.tryExpr + ' catch ' + this.catchExpr
+       return 'try ' + this.tryExpr
    }
 }
 class VariableBinding extends ParseNode {

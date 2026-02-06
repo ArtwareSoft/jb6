@@ -75,7 +75,24 @@ Tool('runSnippet', {
     }
   })
 })
-  
+
+Tool('runTest', {
+  description: 'Run a jb6 test by its test ID. Wraps the test as a snippet and executes it.',
+  params: [
+    {id: 'testId', as: 'string', mandatory: true, description: 'The test ID to run (e.g., "jqTest.tryCatch")'},
+  ],
+  impl: mcpTool({
+    text: async (ctx, {}, {testId}) => {
+      try {
+        await import('@jb6/lang-service')
+        return coreUtils.runSnippetCli({profileText: `test<test>:${testId}()`})
+      } catch (error) {
+        return `Error running test: ${error.message || error}`
+      }
+    }
+  })
+})
+
 Tool('scrambleText', {
   description: 'Hide/reveal learning content for predict-then-verify methodology. Encodes text to prevent accidental answer viewing during quiz preparation.',
   params: [

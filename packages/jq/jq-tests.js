@@ -2,14 +2,13 @@ import { dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/testing'
 import '@jb6/jq'
 
-const { 
-  tgp: { Const, TgpType, 
-    var : { Var } 
+const {
+  tgp: { 
+    var: { Var }
   },
-  common: { Data, Action, Boolean,
-    data: { jq , pipeline, list, filter, join, property, obj, delay, asIs, first }, 
-    Boolean: { contains, equals, and },
-    Prop: { prop }
+  common: { 
+    boolean: { equals },
+    data: { asIs, first, jq, pipeline }
   },
   test: { Test,
     test: { dataTest }
@@ -55,6 +54,18 @@ Test('jqTest.sliceLast', {
 
 Test('jqTest.pipeAs.min', {
   impl: dataTest(jq('.[0] | as $x | $x', { data: [5] }), equals([5]))
+})
+
+Test('jqTest.tryCatch', {
+  impl: dataTest(jq('try fromjson catch {error: "failed"}', {data: 'not valid json'}), equals([{error: "failed"}]))
+})
+
+Test('jqTest.tryCatchSuccess', {
+  impl: dataTest(jq('try fromjson catch {error: "failed"}', {data: '"hello"'}), equals(["hello"]))
+})
+
+Test('jqTest.tryWithoutCatch', {
+  impl: dataTest(jq('[.[] | try fromjson]', {data: ['1', '"hi"', 'bad']}), equals([[1, "hi"]]))
 })
 
 Test('jqTest.groupBy', {
