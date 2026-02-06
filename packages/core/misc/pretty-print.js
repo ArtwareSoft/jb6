@@ -24,7 +24,12 @@ const emptyLineWithSpaces = Array.from(new Array(200)).map(_=>' ').join('')
 function prettyPrintComp(comp,settings={}) {
   const { tgpModel, filePath } = settings
   comp = comp[asJbComp] ? comp[asJbComp] : comp
-  const originalParams = comp.params ? (comp.params || []).map(p=>({...p})) : undefined
+  const originalParams = comp.params ? (comp.params || []).map(p=> {
+    const cleaned = {...p}
+    delete cleaned.$dslType
+    if (cleaned.type == 'data<common>') delete cleaned.type
+    return cleaned
+  }) : undefined
   resolveProfileTop(comp)
   const resolvedParams = comp.params || []
   const id = CompDefByDslType({tgpModel, filePath, dslType: comp.$dslType })
