@@ -30,15 +30,13 @@ async function calcRepoRoot(options) {
     const res = await coreUtils.runNodeCliViaJbWebServer(script,options)
     return jb.coreRegistry.repoRoot = res.result
   }
-  const { execSync } = await import('child_process')
   const { fileURLToPath } = await import('url')
   const path = await import('path')
-  const __filename = path.resolve(fileURLToPath(import.meta.url))
-  const cwd = __filename.indexOf('node_modules') == -1 ? '.' : __filename.split('/node_modules')[0]
-
-  try {
-    return jb.coreRegistry.repoRoot = execSync('git rev-parse --show-toplevel', { cwd, encoding: 'utf8' }).trim()
-  } catch (gitError) {}
+  let dir = path.dirname(path.resolve(fileURLToPath(import.meta.url)))
+  while (dir !== path.dirname(dir)) {
+    if (await exists(path.join(dir, '.git'))) return jb.coreRegistry.repoRoot = dir
+    dir = path.dirname(dir)
+  }
 }
 
 async function calcJb6RepoRootAndImportMapsInCli() {

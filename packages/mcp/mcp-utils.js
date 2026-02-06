@@ -14,11 +14,12 @@ TgpType('tool', 'mcp', {
 })
 
 export function renderReactCompToHtml(compId, importMap = {}, urlsToLoad = []) {
+  const browserImportMap = importMap.imports ? { imports: importMap.imports } : importMap
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script type="importmap">${JSON.stringify(importMap, null, 2)}</script>
+<script type="importmap">${JSON.stringify(browserImportMap, null, 2)}</script>
 <style>
   html, body { height: 100%; margin: 0; padding: 0; }
 </style>
@@ -26,40 +27,54 @@ export function renderReactCompToHtml(compId, importMap = {}, urlsToLoad = []) {
 <body>
   <div id="show" style="height: 100vh;">waiting for tool result...</div>
   <script type="module">
+    console.log('[mcp-iframe] module start')
     import { App } from '@jb6/mcp/mcp-iframe-app.js'
+    console.log('[mcp-iframe] App imported', App)
+
     import { dsls, coreUtils } from '@jb6/core'
+    console.log('[mcp-iframe] core imported')
     import '@jb6/react/lib/tailwindcss.js'
     import { reactUtils } from '@jb6/react'
+    console.log('[mcp-iframe] react imported, reactUtils:', !!reactUtils)
 
     const urlsToLoad = ${JSON.stringify(urlsToLoad)}
-    for (const file of urlsToLoad.filter(Boolean))
+    for (const file of urlsToLoad.filter(Boolean)) {
+      console.log('[mcp-iframe] loading', file)
       await import(file)
+    }
+    console.log('[mcp-iframe] all urlsToLoad done')
 
     const cmpId = '${compId}'
     const root = reactUtils.createRoot(document.getElementById('show'))
+    console.log('[mcp-iframe] root created for', cmpId)
 
-    const app = new App({ name: cmpId, version: '1.0.0' })
-    app.connect()
+    const app = globalThis.mcpApp = new App({ name: cmpId, version: '1.0.0' })
 
     async function render(compArgs) {
+      console.log('[mcp-iframe] render called with', compArgs)
       const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(cmpId, null, compArgs)
       root.render(reactUtils.hh(ctx, reactCmp, props))
     }
 
-    // Handle initial tool result from host
+    // tool-input: host sends tool arguments after initialized
+    app.ontoolinput = (params) => {
+      console.log('[mcp-iframe] ontoolinput', params)
+      render(params.arguments || null)
+    }
+
+    // tool-result: host sends tool execution result
     app.ontoolresult = (result) => {
+      console.log('[mcp-iframe] ontoolresult', result)
       const textContent = result.content?.find(c => c.type === 'text')?.text
       let toolResultData = null
       if (textContent) {
-        try {
-          toolResultData = JSON.parse(textContent)
-        } catch (e) {
-          // If not JSON, use as raw data
-          toolResultData = { data: textContent }
-        }
+        try { toolResultData = JSON.parse(textContent) } catch (e) { toolResultData = { data: textContent } }
       }
       render(toolResultData)
     }
+
+    console.log('[mcp-iframe] calling connect()')
+    app.connect().then(() => console.log('[mcp-iframe] connected')).catch(e => console.error('[mcp-iframe] connect error', e))
   </script>
 </body>
 </html>`

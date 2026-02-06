@@ -134,25 +134,6 @@ await coreUtils.writeServiceResult(result)
       if (method === 'resources/read') {
         const uri = params.uri
 
-  // Add simple test app
-  if (true) {
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: sans-serif; padding: 20px; background: #e8f4e8; }
-    h1 { color: green; }
-  </style>
-</head>
-<body>
-  <h1>MCP App Works!</h1>
-  <p>If you see this, the UI rendering is working.</p>
-</body>
-</html>`;
-    return res.json({ jsonrpc: '2.0', id, result: { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: html }] } })
-  }
-
         const match = uri.match(/^ui:\/\/react-comp\/(.+)$/)
         if (match) {
           const compId = match[1]
