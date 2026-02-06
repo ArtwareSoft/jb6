@@ -4,7 +4,9 @@ const { pathJoin } = coreUtils
   
 const {
   tgp: { Component },
-  common: { Data, Action, data: { asIs } },
+  common: { Data, Action,
+    data: { asIs }
+  },
   mcp: { Tool,
     tool: { mcpTool }
   }

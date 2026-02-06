@@ -2,10 +2,10 @@ import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
 
 const {
-    tgp: { TgpType, Component },
-    common: { Data,
-      data: { pipeline, pipe, first}
-    }
+  tgp: { TgpType, Component },
+  common: { Data,
+    data: { first, pipe }
+  }
 } = dsls
 
 // Define core types
@@ -158,7 +158,7 @@ const squeezeText = Data('squeezeText', {
 })
 
 Component('mcpTool', {
-  type: 'tool<mcp>',
+  moreTypes: 'tool<mcp>',
   description: 'wrap text as mcp result',
   params: [
     {id: 'text', dynamic: true},

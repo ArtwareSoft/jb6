@@ -477,7 +477,7 @@ const { __
     completionToActivate: '🔄 reformat dsls',
     expectedEdit: asIs({
         range: {start: {line: 1, col: 7}, end: {line: 1, col: 8}},
-        newText: `\n  tgp: { Component },\n  common: { Data, Action,\n    data: { asIs }\n  },\n  mcp: { Tool,\n    tool: { mcpTool }\n  }`
+        newText: `\n  tgp: { Component },\n  common: { Data, Action,\n    data: { asIs, mcpTool }\n  },\n  mcp: { Tool }`
     }),
     expectedCursorPos: '1,8',
     filePath: 'packages/mcp/mcp-fs-tools.js'
