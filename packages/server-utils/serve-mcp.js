@@ -109,12 +109,16 @@ async function serveMcpViaCli(app, { express }) {
           return res.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Tool not found: ${toolId}` } })
         }
         const _toolPath = toolComp.$location?.path
-        const toolPath = coreUtils.absPathToImportUrl?.(_toolPath, importMap.imports, staticMappings)
+        const mapped = coreUtils.absPathToImportUrl?.(_toolPath, importMap.imports, staticMappings)
+        const toolPath = mapped && !mapped.startsWith('undefined') ? mapped : ('file://' + _toolPath)
 
         const argsJson = JSON.stringify(args || {})
 
         const script = `
-import { dsls, coreUtils } from '@jb6/core'
+import { jb, dsls, coreUtils } from '@jb6/core'
+jb.coreRegistry.repoRoot = '${repoRoot}'
+jb.coreRegistry.jb6Root = '${jb.coreRegistry.jb6Root}'
+await import('@jb6/mcp/mcp-jb-tools.js')
 await import('${toolPath}')
 const result = await dsls.mcp?.tool?.['${toolId}']?.$run(${argsJson})
 await coreUtils.writeServiceResult(result)
@@ -142,7 +146,9 @@ await coreUtils.writeServiceResult(result)
           const reactComp = dsls.react?.['react-comp']?.[compId]
           const jbComp = reactComp?.[coreUtils.asJbComp]
           const _sourceFile = jbComp?.$location?.path
-          const sourceFile = coreUtils.absPathToImportUrl?.(_sourceFile, importMap.imports, staticMappings)
+          const mapped = coreUtils.absPathToImportUrl?.(_sourceFile, importMap.imports, staticMappings)
+          const sourceFile = mapped && !mapped.startsWith('undefined') ? mapped
+            : _sourceFile?.startsWith(repoRoot) ? `/genie${_sourceFile.slice(repoRoot.length)}` : null
           const urlsToLoad = sourceFile ? [sourceFile] : []
 
           const { renderReactCompToHtml } = await import('@jb6/mcp/mcp-utils.js')

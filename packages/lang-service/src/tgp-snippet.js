@@ -10,17 +10,19 @@ Object.assign(coreUtils,{runSnippetCli, runSnippet})
 async function calcSnippetScript({profileText, setupCode = '', forBrowser, repoRoot: repoRootParam, fetchByEnvHttpServer } = {}) {
   // fetchByEnvHttpServer for genieTest
   const repoRoot = repoRootParam || await calcRepoRoot()
-  const tgpModel = await calcTgpModelData({forRepo: repoRoot, fetchByEnvHttpServer }) // getting a full model
+  const forDsls = profileText.match(/^[^<]+<([^>]+)>/)?.[1] || 'common'
+  const cleanProfileText = profileText.replace(/^[^<]+<[^>]+>:?/, '')
+  const tgpModel = await calcTgpModelData({forRepo: repoRoot, forDsls, fetchByEnvHttpServer }) // getting a full model
   const { importMap, staticMappings } = tgpModel
 
   if (tgpModel.error) return { error: tgpModel.error }
   const projectDir  = tgpModel.projectDir || repoRoot
-  const compNames = compNamesInProfile(profileText)
+  const compNames = compNamesInProfile(cleanProfileText)
   const comps = Object.values(tgpModel.dsls).flatMap(type=>Object.values(type)).filter(x=>typeof x == 'object').flatMap(x=>Object.values(x))
     .filter(x => compNames.includes(x.id))
-  
+
   const { type } = comps.find(c=> c.id === compNames[0]) || { type: 'data' }
-  const profText = comps.length ? profileText : JSON.stringify(profileText) 
+  const profText = comps.length ? cleanProfileText : JSON.stringify(cleanProfileText)
   const origCompText = `${toCapitalType(type)}('noName',{impl: ${profText}})`    
   const isProbeMode = origCompText.split('__').length > 1
       

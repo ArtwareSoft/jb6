@@ -396,20 +396,14 @@ async function writeServiceResult(result, _httpReqId) {
   if (res.length < 40000)
     return process.exit(0)
 
-  const { once } = await import('events')
-  const withTimeout = (p, ms, label) =>
-    Promise.race([
-      p,
-      new Promise((_, r) =>
-        setTimeout(() => r(new Error(`timeout waiting for ${label}`)), ms)
-      )
+  const timeout = 5000 // Math.max(5000, res.length / 10) // wait time defined by res size ~10KB/s worst case
+  if (!writeRes) {
+    const { once } = await import('events')
+    await Promise.race([
+      once(process.stdout, 'drain'),
+      new Promise(r => setTimeout(r, timeout))
     ])
-
-  if (!writeRes)
-    await withTimeout(once(process.stdout, 'drain'), 5000, 'drain')
-
-  process.stdout.end()
-  await withTimeout(once(process.stdout, 'finish'), 5000, 'finish')
+  }
 
   process.exit(0)
 }
