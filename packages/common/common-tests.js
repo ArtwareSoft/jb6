@@ -2,15 +2,11 @@ import { dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/testing'
 import '@jb6/common'
 
-const { 
-  tgp: { Const },
-  common: { Data, Action, Boolean,
-    data: { splitByPivot, enrichGroupProps, pipeline, filter, property, obj, prefix, suffix, removePrefix, removeSuffix, 
-           toUpperCase, toLowerCase, capitalize, replace, extractPrefix, extractSuffix,
-           formatNumber, formatDate, split, groupBy, asIs, list, sum
-            }, 
-    Boolean: { contains, equals, and, startsWith, endsWith },
-    Prop: { prop },
+const {
+  tgp: { Const, TgpType },
+  common: { Data,
+    boolean: { equals },
+    data: { asIs, enrichGroupProps, list, pipeline, splitByPivot, sum }
   },
   test: { Test,
     test: { dataTest }
@@ -31,13 +27,21 @@ Const('employees', [
 Const('testDate', new Date('2023-01-15T10:30:00'))
 Const('testObject', {name: 'test', value: 42, items: [1, 2, 3]})
 
-Data('test.test1', { // used for lang-service tests
+// ******** do not delete - used for lang-service tests
+const Hello = TgpType('hello','common')
+Hello('hi', {
+  impl: ''
+})
+
+Data('test.test1', {
   impl: ''
 })
 
 const myCompForTest = Data('myCompForTest', { // used for lang-service tests
   impl: ''
 })
+
+// ********** end of lang-service tests
 
 Test('splitByPivot.basic', {
   impl: dataTest({

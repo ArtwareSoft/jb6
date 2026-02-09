@@ -461,7 +461,7 @@ Test('splitByPivot.basic', {
     completionToActivate: '🔄 reformat dsls',
     expectedEdit: asIs({
         range: {start: {line: 4, col: 7}, end: {line: 8, col: 7}},
-        newText: `\n  tgp: { Const },\n  common: { Data,\n    boolean: { equals },\n    data: { asIs, enrichGroupProps, list, pipeline, splitByPivot, sum }\n  },\n  test: { Test,\n    test: { dataTest }\n  }\n} = dsls\nconst { group } = n`
+        newText: `\n  tgp: { Const, TgpType },\n  common: { Data,\n    boolean: { equals },\n    data: { asIs, enrichGroupProps, list, pipeline, splitByPivot, sum }\n  },\n  test: { Test,\n    test: { dataTest }\n  }\n} = dsls\nconst { group } = n`
     }),
     expectedCursorPos: '5,15',
     filePath: 'packages/common/common-tests.js'

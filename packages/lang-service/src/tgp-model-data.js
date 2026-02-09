@@ -3,7 +3,7 @@ import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
 
-const { jb, astToTgpObj, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData, calcRepoRoot, toCapitalType } = coreUtils
+const { jb, astToTgpObj, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData, calcRepoRoot, toCapitalType, absPathToImportUrl } = coreUtils
 const { calcProfileActionMap, lineColToOffset } = langServiceUtils
 const { 
   tgp: { TgpType, TgpTypeModifier },
@@ -233,7 +233,17 @@ async function calcExpectedDslsSection(tgpModel, filePath) {
   const allComps = Object.values(tgpModel.dsls).flatMap(types =>
     Object.values(types).filter(x => typeof x == 'object').flatMap(type => Object.values(type))
   ).filter(comp => comp.id)
-  const compsInFile = allComps.filter(comp => comp.$location?.path == filePath)
+  const filePathAliases = new Set([filePath])
+  const sm = tgpModel.staticMappings || []
+  sm.filter(x => x.diskPath != x.urlPath && filePath.indexOf(x.diskPath) == 0)
+    .forEach(x => filePathAliases.add(filePath.replace(x.diskPath, x.urlPath)))
+  const imports = tgpModel.importMap?.imports
+  if (imports) {
+    const importUrl = absPathToImportUrl(filePath, imports, sm)
+    if (importUrl) filePathAliases.add(importUrl)
+  }
+  const compsInFile = allComps.filter(comp => filePathAliases.has(comp.$location?.path))
+  globalThis.detailedjbVSCodeLog && logVsCode('calcExpectedDslsSection', { filePath, compsInFile: compsInFile.length, filePathAliases: [...filePathAliases] })
   if (compsInFile.length == 0) return null
 
   // Sort by file position and compile params so comps can reference each other
@@ -251,9 +261,21 @@ async function calcExpectedDslsSection(tgpModel, filePath) {
       compDefsUsed.add(JSON.stringify({ dsl: 'tgp', id: callee }))
   })
 
+  // Collect compDef IDs that are defined in this file via TgpType/TgpTypeModifier
+  const compDefsDefinedInFile = new Set()
+  ast.body.forEach(n => n?.type === 'VariableDeclaration' && n.declarations.forEach(d => {
+    if (d.id?.type === 'Identifier' && d.init?.type === 'CallExpression'
+        && (d.init.callee.name === 'TgpType' || d.init.callee.name === 'TgpTypeModifier')) {
+      const dsl = d.init.callee.name === 'TgpType' ? d.init.arguments[1]?.value : astToObj(d.init.arguments[1])?.dsl
+      if (dsl) compDefsDefinedInFile.add(JSON.stringify({ dsl, id: d.id.name }))
+    }
+  }))
+
   for (const comp of compsInFile) {
     const compDefId = toCapitalType(comp.type)
-    compDefsUsed.add(JSON.stringify({ dsl: comp.dsl, id: compDefId }))
+    const compDefKey = JSON.stringify({ dsl: comp.dsl, id: compDefId })
+    if (!compDefsDefinedInFile.has(compDefKey))
+      compDefsUsed.add(compDefKey)
 
     const loc = comp.$location
     const startOffset = lineColToOffset(src, loc)

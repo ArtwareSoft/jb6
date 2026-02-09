@@ -44,20 +44,47 @@ async function serveMcpViaCli(app, { express }) {
   await import('@jb6/mcp/mcp-jb-tools.js')
   await import('@jb6/mcp/mcp-fs-tools.js')
 
+  app.get("/mcp-ui", async (req, res) => {
+    try {
+      const compId = req.query.compId
+      const reactComp = dsls.react?.['react-comp']?.[compId]
+      const jbComp = reactComp?.[coreUtils.asJbComp]
+      const _sourceFile = jbComp?.$location?.path
+      const mapped = coreUtils.absPathToImportUrl?.(_sourceFile, importMap.imports, staticMappings)
+      const sourceFile = mapped && !mapped.startsWith('undefined') ? mapped
+        : _sourceFile?.startsWith(repoRoot) ? `/genie${_sourceFile.slice(repoRoot.length)}` : null
+      const urlsToLoad = sourceFile ? [sourceFile] : []
+      const { renderReactCompToHtml } = await import('@jb6/mcp/mcp-utils.js')
+      res.type('html').send(renderReactCompToHtml(compId, importMap, urlsToLoad))
+    } catch(e) { res.status(500).send(e.message) }
+  })
+
   app.post("/mcp", express.json({ type: "application/json" }), async (req, res) => {
+    const origin = `${req.get('x-forwarded-proto') || req.protocol}://${req.get('x-forwarded-host') || req.get('host')}`
+    const wantsSSE = (req.headers.accept || '').includes('text/event-stream')
+    const sendJson = (data) => {
+      if (wantsSSE) {
+        res.setHeader('Content-Type', 'text/event-stream')
+        res.write(`event: message\ndata: ${JSON.stringify(data)}\n\n`)
+        res.end()
+      } else {
+        res.json(data)
+      }
+    }
     try {
       const { method, params, id } = req.body
 
       // Handle initialize - required for MCP handshake
       if (method === 'initialize') {
-        return res.json({
+        return sendJson({
           jsonrpc: '2.0',
           id,
           result: {
-            protocolVersion: '2024-11-05',
+            protocolVersion: '2025-06-18',
             capabilities: {
               tools: {},
-              resources: {}
+              resources: {},
+              extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: ['text/html;profile=mcp-app'] } }
             },
             serverInfo: {
               name: 'jb6_mcp',
@@ -69,7 +96,7 @@ async function serveMcpViaCli(app, { express }) {
 
       // Handle initialized notification
       if (method === 'initialized') {
-        return res.json({ jsonrpc: '2.0', id, result: {} })
+        return sendJson({ jsonrpc: '2.0', id, result: {} })
       }
 
       // Handle tools/list
@@ -91,10 +118,10 @@ async function serveMcpViaCli(app, { express }) {
                 }, {}),
                 required: (toolComp.params || []).filter(p => p.mandatory).map(p => p.id)
               },
-              ...(isAlsoReactComp && { _meta: { ui: { resourceUri: `ui://react-comp/${id}` } } })
+              ...(isAlsoReactComp && { _meta: { ui: { resourceUri: `ui://react-comp/${id}`, csp: { resourceDomains: [origin], connectDomains: [origin] } } } })
             }
           })
-        return res.json({ jsonrpc: '2.0', id, result: { tools } })
+        return sendJson({ jsonrpc: '2.0', id, result: { tools } })
       }
 
       // Handle tools/call - run the tool via CLI for dynamic code reloading
@@ -102,11 +129,11 @@ async function serveMcpViaCli(app, { express }) {
         const { name: toolId, arguments: args } = params
         const isAlsoReactComp = dsls.react?.['react-comp']?.[toolId] != null
         if (isAlsoReactComp)
-          return res.json({ jsonrpc: '2.0', id, result: {  content: [{ type: 'text', text: JSON.stringify(args) }],  isError: false} })
+          return sendJson({ jsonrpc: '2.0', id, result: {  content: [{ type: 'text', text: JSON.stringify(args) }],  isError: false} })
 
         const toolComp = dsls.mcp?.tool?.[toolId]?.[coreUtils.asJbComp]
         if (!toolComp) {
-          return res.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Tool not found: ${toolId}` } })
+          return sendJson({ jsonrpc: '2.0', id, error: { code: -32601, message: `Tool not found: ${toolId}` } })
         }
         const _toolPath = toolComp.$location?.path
         const mapped = coreUtils.absPathToImportUrl?.(_toolPath, importMap.imports, staticMappings)
@@ -126,12 +153,12 @@ await coreUtils.writeServiceResult(result)
         const cliResult = await coreUtils.runCliInContext(script, {projectDir, importMapsInCli: importMap?.importMapsInCli})
         console.log('mcp result', cliResult)
         const mcpResult = cliResult?.result || { content: [{ type: 'text', text: cliResult?.error?.message || 'CLI error' }], isError: true }
-        return res.json({ jsonrpc: '2.0', id, result: mcpResult })
+        return sendJson({ jsonrpc: '2.0', id, result: mcpResult })
       }
 
       // Handle resources/list
       if (method === 'resources/list') {
-        return res.json({ jsonrpc: '2.0', id, result: { resources: [] } })
+        return sendJson({ jsonrpc: '2.0', id, result: { resources: [] } })
       }
 
       // Handle resources/read - for UI resources
@@ -152,22 +179,23 @@ await coreUtils.writeServiceResult(result)
           const urlsToLoad = sourceFile ? [sourceFile] : []
 
           const { renderReactCompToHtml } = await import('@jb6/mcp/mcp-utils.js')
-          const html = renderReactCompToHtml(compId, importMap, urlsToLoad)
-          return res.json({ jsonrpc: '2.0', id, result: { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: html }] } })
+          const html = renderReactCompToHtml(compId, importMap, urlsToLoad, { origin })
+          const csp = { resourceDomains: [origin], connectDomains: [origin] }
+          return sendJson({ jsonrpc: '2.0', id, result: { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: html, _meta: { ui: { csp } } }] } })
         }
-        return res.json({ jsonrpc: '2.0', id, error: { code: -32002, message: `Resource not found: ${uri}` } })
+        return sendJson({ jsonrpc: '2.0', id, error: { code: -32002, message: `Resource not found: ${uri}` } })
       }
 
       // Handle ping (optional but good to have)
       if (method === 'ping') {
-        return res.json({ jsonrpc: '2.0', id, result: {} })
+        return sendJson({ jsonrpc: '2.0', id, result: {} })
       }
 
       // Unknown method
-      res.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not supported: ${method}` } })
+      sendJson({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not supported: ${method}` } })
     } catch (error) {
       console.error(error?.stack || error)
-      if (!res.headersSent) res.status(500).json({ jsonrpc: '2.0', id: req.body?.id, error: { code: -32603, message: error.stack } })
+      if (!res.headersSent) sendJson({ jsonrpc: '2.0', id: req.body?.id, error: { code: -32603, message: error.stack } })
     }
   })
 }
