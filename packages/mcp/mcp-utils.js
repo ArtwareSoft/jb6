@@ -14,19 +14,21 @@ TgpType('tool', 'mcp', {
 })
 
 export function renderReactCompToHtml(compId, importMap = {}, urlsToLoad = [], { origin = '' } = {}) {
-  const abs = v => origin && v.startsWith('/') ? origin + v : v
-  const imports = importMap.imports ? Object.fromEntries(Object.entries(importMap.imports).map(([k, v]) => [k, abs(v)])) : {}
+  const fix = v => origin && v.startsWith('/') ? origin + v.replace(/^\/jb6_packages/, '/genie/public/3rd-party/@jb6') : v
+  const imports = importMap.imports ? Object.fromEntries(Object.entries(importMap.imports).map(([k, v]) => [k, fix(v)])) : {}
   const importMapJson = JSON.stringify({ imports })
-  const urlsJson = JSON.stringify(urlsToLoad.map(abs))
+  const urlsJson = JSON.stringify(urlsToLoad.map(fix))
   return `<!DOCTYPE html>
 <html>
 <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
+${origin ? `<base href="${origin}/">` : ''}
 <script type="importmap">${importMapJson}</script>
 <style>html, body { height: 100%; margin: 0; padding: 0; }</style>
 </head>
 <body>
   <div id="show"></div>
   <script type="module">
+    ${origin ? `const _fetch = globalThis.fetch; globalThis.fetch = (url, ...args) => _fetch(typeof url === 'string' && url.startsWith('/') ? '${origin}' + url : url, ...args)` : ''}
     const PROTOCOL_VERSION = '2026-01-26'
     let requestId = 0
     class App {
@@ -62,23 +64,24 @@ export function renderReactCompToHtml(compId, importMap = {}, urlsToLoad = [], {
 
     import { dsls, coreUtils } from '@jb6/core'
     import { reactUtils } from '@jb6/react'
+    import '@jb6/react/lib/tailwindcss.js'
+    import '@jb6/react/codemirror-utils.js'
+    reactUtils.loadLucid05()
     const { h, hh } = reactUtils
 
     for (const file of ${urlsJson}) await import(file)
 
+    const ctx = new coreUtils.Ctx().setVars({react: reactUtils, isLocalHost: true})
     const root = reactUtils.createRoot(document.getElementById('show'))
-    const { reactCmp, ctx } = await reactUtils.wrapReactCompWithSampleData('${compId}')
-    const render = (props = {}) => root.render(h('div', {}, hh(ctx, reactCmp, props)))
+    const render = async (args) => {
+      const { reactCmp, props, ctx: rCtx } = await reactUtils.wrapReactCompWithSampleData('${compId}', ctx, args)
+      root.render(h('div', {}, hh(rCtx, reactCmp, props)))
+    }
 
     await app.connect()
-    app.ontoolresult = (params) => {
-      const text = params?.content?.find(c => c.type === 'text')?.text
-      if (text) try { render(JSON.parse(text)) } catch(e) {}
-    }
-    app.ontoolinput = (params) => {
-      const text = params?.content?.find(c => c.type === 'text')?.text
-      if (text) try { render(JSON.parse(text)) } catch(e) {}
-    }
+    const parse = (params) => { try { return JSON.parse(params?.content?.find(c => c.type === 'text')?.text) } catch(e) {} }
+    app.ontoolresult = (params) => { const args = parse(params); if (args) render(args) }
+    app.ontoolinput = (params) => { const args = parse(params); if (args) render(args) }
     render()
     new ResizeObserver(() => app.requestSize({ height: document.body.scrollHeight })).observe(document.body)
   </script>

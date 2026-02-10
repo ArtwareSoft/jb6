@@ -1,4 +1,4 @@
-import { dsls, coreUtils } from '@jb6/core'
+import { dsls, coreUtils, jb } from '@jb6/core'
 import { reactUtils } from '@jb6/react'
 import '@jb6/react/tests/react-testers.js'
 import '@jb6/core/misc/import-map-services.js'
@@ -15,7 +15,7 @@ const {
   },
   react: { ReactComp, ReactMetadata,
     'react-comp': { comp },
-    'react-metadata': { abbr, matchData, priority }
+    'react-metadata': { abbr, matchData, priority, importUrl }
   }
 } = dsls
 
@@ -275,53 +275,64 @@ function print(v) {
   return typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v)
 }
 
+const CM6_IMPORT = '@jb6/react/lib/codemirror6/codemirror6-bundle.mjs'
+
+function createCm6Editor(parent, text, extraExtensions = []) {
+  const { EditorState, EditorView, javascript, lineNumbers, syntaxHighlighting, defaultHighlightStyle, foldGutter, foldAll, unfoldAll, search, openSearchPanel, keymap } = jb.reactRepository.importCache[CM6_IMPORT]
+  const view = new EditorView({
+    parent,
+    state: EditorState.create({
+      doc: text,
+      extensions: [
+        lineNumbers(), foldGutter(), syntaxHighlighting(defaultHighlightStyle), javascript(), search(),
+        keymap.of([{ key: 'Ctrl-f', run: openSearchPanel }, { key: 'Ctrl-]', run: foldAll }, { key: 'Ctrl-[', run: unfoldAll }]),
+        EditorState.readOnly.of(true),
+        EditorView.theme({ '&': { height: '100%', fontSize: '12px' }, '.cm-scroller': { overflow: 'auto' }, '.cm-content': { fontFamily: 'monospace' } }),
+        ...extraExtensions
+      ]
+    })
+  })
+  return view
+}
+
+function updateCm6Editor(view, text) {
+  const current = view.state.doc.toString()
+  if (current !== text) view.dispatch({ changes: { from: 0, to: current.length, insert: text } })
+}
+
 const codeMirrorJson = ReactComp('codeMirrorJson', {
   impl: comp({
-    hFunc: ({ }, { react: { h, useRef, useEffect, use, codeMirrorPromise } }) => ({ json, foldAll }) => {
+    hFunc: ({ }, { react: { h, useRef, useEffect } }) => ({ json, foldAll: shouldFoldAll }) => {
       if (coreUtils.isNode)
-        return h('textarea:h-full w-full font-mono text-xs p-2 border rounded bg-gray-50', {
-          readOnly: true,
-          value: print(json)
-        })
+        return h('textarea:h-full w-full font-mono text-xs p-2 border rounded bg-gray-50', { readOnly: true, value: print(json) })
 
-      const CodeMirror = use(codeMirrorPromise())
       const host = useRef()
-      const cm = useRef()
+      const viewRef = useRef()
 
       useEffect(() => {
-        if (!cm.current) {
-          cm.current = CodeMirror(host.current, {
-            value: print(json),
-            mode: 'javascript',
-            readOnly: true,
-            lineNumbers: true,
-            foldGutter: true,
-            gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-            extraKeys: { "Ctrl-F": "find", "Ctrl-]": "foldAll", "Ctrl-[": "unfoldAll" }
-          })
-          if (foldAll)
-            CodeMirror.commands.foldAll(cm.current)
-          cm.current.setSize(null, '100%')
-        }
+        if (!host.current || viewRef.current) return
+        viewRef.current = createCm6Editor(host.current, print(json))
+        if (shouldFoldAll) jb.reactRepository.importCache[CM6_IMPORT].foldAll(viewRef.current)
+        return () => { viewRef.current?.destroy(); viewRef.current = null }
       }, [])
 
       useEffect(() => {
-        cm.current && cm.current.setValue(print(json))
-        if (foldAll)
-          CodeMirror.commands.foldAll(cm.current)
-        cm.current.setSize(null, '100%')
+        if (!viewRef.current) return
+        updateCm6Editor(viewRef.current, print(json))
+        if (shouldFoldAll) jb.reactRepository.importCache[CM6_IMPORT].foldAll(viewRef.current)
       }, [json])
 
       return h('div:h-full', { ref: host })
     },
-    samplePropsData: asIs({ json: { hello: 'world' } })
+    samplePropsData: asIs({ json: { hello: 'world' } }),
+    metadata: importUrl(CM6_IMPORT)
   })
 })
 
 const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
   impl: comp({
     samplePropsData: '%$sampleProbeRes/probeRes/result/0%',
-    hFunc: ({ }, { react: { h, useRef, useEffect, use, codeMirrorPromise } }) => ({ in: In, out }) => {
+    hFunc: ({ }, { react: { h, useRef, useEffect } }) => ({ in: In, out }) => {
       const format = v => print(v)
       const inputData = In?.data ?? In
 
@@ -338,33 +349,33 @@ const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
         )
       }
 
-      const CodeMirror = use(codeMirrorPromise())
-
-      const inputRef = useRef()
-      const outputRef = useRef()
+      const { html: htmlLang } = jb.reactRepository.importCache[CM6_IMPORT]
+      const isHtml = v => typeof v === 'string' && /^\s*</.test(v)
+      const inputHost = useRef(), outputHost = useRef(), inputView = useRef(), outputView = useRef()
 
       useEffect(() => {
-        const isHtml = v => typeof v === 'string' && /^\s*</.test(v)
-        const inputMode = isHtml(inputData) ? 'xml' : 'javascript'
-        const outMode = isHtml(out) ? 'xml' : 'javascript'
-        const foldKeys = { "Ctrl-F": "find", "Ctrl-]": "foldAll", "Ctrl-[": "unfoldAll" }
-        if (inputRef.current && !inputRef.current.cm)
-          inputRef.current.cm = CodeMirror(inputRef.current, { value: format(inputData), mode: inputMode, readOnly: true, lineNumbers: true, foldGutter: true, gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'], extraKeys: foldKeys })
-        if (outputRef.current && !outputRef.current.cm)
-          outputRef.current.cm = CodeMirror(outputRef.current, { value: format(out), mode: outMode, readOnly: true, lineNumbers: true, foldGutter: true, gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'], extraKeys: foldKeys })
+        if (inputHost.current && !inputView.current)
+          inputView.current = createCm6Editor(inputHost.current, format(inputData), isHtml(inputData) ? [htmlLang()] : [])
+        if (outputHost.current && !outputView.current)
+          outputView.current = createCm6Editor(outputHost.current, format(out), isHtml(out) ? [htmlLang()] : [])
+        return () => {
+          inputView.current?.destroy(); inputView.current = null
+          outputView.current?.destroy(); outputView.current = null
+        }
       }, [In, out, inputData])
 
       return h('div:flex flex-1 min-h-96 border rounded p-2 mb-2 gap-2', {},
         h('div:flex-1 flex flex-col min-w-0', {},
           h('span:font-medium text-gray-600 mb-1', {}, 'Input:'),
-          h('div:flex-1 overflow-hidden', { ref: inputRef })
+          h('div:flex-1 overflow-hidden', { ref: inputHost })
         ),
         h('div:flex-1 flex flex-col min-w-0', {},
           h('span:font-medium text-gray-600 mb-1', {}, 'Output:'),
-          h('div:flex-1 overflow-hidden', { ref: outputRef })
+          h('div:flex-1 overflow-hidden', { ref: outputHost })
         )
       )
-    }
+    },
+    metadata: importUrl(CM6_IMPORT)
   })
 })
 

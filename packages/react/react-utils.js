@@ -3,33 +3,51 @@ export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefre
 
 jb.reactRepository = {
   comps: {},
-  promises: {}
+  promises: {},
+  importCache: {}
 }
+const repo = jb.reactRepository
 
 const { tgp: { TgpType, Component }} = dsls
 
-const ReactComp = TgpType('react-comp','react')
-TgpType('vdom','react')
-const ReactMetadata = TgpType('react-metadata','react')
-TgpType('tool','mcp')
+const ReactComp = TgpType('react-comp','react') // actually jb-react-comp
+TgpType('vdom','react') // actually react-comp
+TgpType('react-metadata','react') // actually jb-metadata-for-react-comp
+
+Component('importUrl', {
+  description: 'importUrls for the component, will make the comp async',
+  type: 'react-metadata<react>',
+  params: [
+    {id: 'importUrl', as: 'string'}
+  ]
+})
+
+function resolveImportUrl(url) {
+  if (repo.importCache[url]) return repo.importCache[url] // sync - 99%
+  return import(url).then(m => repo.importCache[url] = m)
+}
 
 ReactComp('comp', {
   params: [
     {id: 'hFunc', type: 'vdom', dynamic: true, byName: true},
-    {id: 'enrichCtx', dynamic: true, byName: true},
+    {id: 'enrichCtx', dynamic: true, byName: true, description: 'enrich the react comp ctx at the *first time*. to run on every refresh use hhStrongRefresh'},
     {id: 'sampleCtxData', dynamic: true, description: '{ data , vars {} }'},
     {id: 'samplePropsData', dynamic: true, description: '{ status: "hello" }'},
-    {id: 'assert', type: 'react-assert[]', dynamic: true},
     {id: 'metadata', type: 'react-metadata[]', dynamic: true},
   ],
-  impl: (_ctx, {strongRefresh, react: {useState, useEffect} }, { hFunc, enrichCtx }) => {
+  impl: (_ctx, {strongRefresh, react: {useState, useEffect} }, { hFunc, enrichCtx, metadata }) => {
     const ctx = _ctx.setVars({strongRefresh: false})
     const jbid = ctx.jbCtx.creatorStack?.join(';')
     const id = strongRefresh ? '' : jbid
-    const ctxOrPromise = enrichCtx(ctx) || ctx
+
+    // resolve importUrls - sync if cached, promise if first time
+    const importUrls = coreUtils.asArray(metadata()).map(m => m.importUrl).filter(Boolean)
+    const pendingImport = importUrls.map(importUrl => resolveImportUrl(importUrl)).find(r => coreUtils.isPromise(r))
+
+    const enrichedCtx = enrichCtx(ctx) || ctx
+    const ctxOrPromise = pendingImport ? pendingImport.then(() => enrichedCtx) : enrichedCtx
     const isPromise = coreUtils.isPromise(ctxOrPromise)
 
-    const repo = jb.reactRepository
     if (isPromise) {
       const ctxPromise = (id && repo.promises[id]) || ctxOrPromise
       if (id && !repo.promises[id])
@@ -129,7 +147,7 @@ async function loadLucid05() {
 }
 
 let initReact = () => {}
-if (!globalThis.window) {
+if (!globalThis.window) { // used in nodejs
   initReact = async () => {
     const cli = Object.fromEntries(process.argv.slice(2).filter(a=>a.startsWith('--')).map(a=>a.slice(2).split('=')))
     const url = globalThis.builtIn?.window?.url || cli.url || 'http://localhost'
@@ -182,13 +200,13 @@ if (!globalThis.window) {
 }
 
 Component('containerComp', {
+  description: 'certain react comps need containers to run in. containers usually provide ctx.vars',
   type: 'react-metadata<react>',
   params: [
-    {id: 'containerComp', as: 'string'},
-    {id: 'importPath', as: 'string'}
+    {id: 'containerComp', as: 'string', description: 'will run by wrapReactCompWithSampleData for preview'},
+    {id: 'cntrImportPath', as: 'string', description: 'wrapReactCompWithSampleData will load the container from there' }
   ]
 })
-
 
 async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
   const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
@@ -199,9 +217,9 @@ async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
     coreUtils.resolveCompArgs(jbComp)
     const metadata = coreUtils.asArray(jbComp.impl.metadata)
     const containerComp = metadata.find(m => m.containerComp)?.containerComp
-    const importPath = metadata.find(m => m.importPath)?.importPath
-    if (importPath)
-      await import(importPath)
+    const cntrImportPath = metadata.find(m => m.containerComp)?.cntrImportPath
+    if (cntrImportPath)
+      await import(cntrImportPath)
     const compToRun = containerComp && dsls.react['react-comp'][containerComp] || comp
 
     const ctxData = jbComp.impl.sampleCtxData && await ctx.run(jbComp.impl.sampleCtxData)
@@ -210,7 +228,7 @@ async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
     if (containerComp)
       ctxWithData = ctxWithData.setVars({testedComp: cmpId})
 
-    const reactCmp = args != null ? compToRun.$runWithCtx(ctxWithData,args) : compToRun.$runWithCtx(ctxWithData)
+    const reactCmp = args != null ? compToRun.$runWithCtx(ctxWithData,args) : compToRun.$runWithCtx(ctxWithData, args)
     return { ctx: ctxWithData, reactCmp, props }
   } catch(error) {
     return { ctx, reactCmp: () => reactUtils.h('pre',{},error.stack), props: {} }

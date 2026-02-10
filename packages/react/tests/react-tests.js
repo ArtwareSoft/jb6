@@ -13,7 +13,7 @@ const {
   },
   react: { ReactComp, 
     'react-comp': { comp },
-    'react-metadata': { containerComp }
+    'react-metadata': { containerComp, importUrl }
   }
 } = dsls
 
@@ -239,5 +239,20 @@ ReactComp('test.inContainer', {
   impl: comp({
     hFunc: ({}, {react: {h}}) => ({}) => h('div', {}, 'hello'),
     metadata: containerComp('test.sampleContainer')
+  })
+})
+
+const compWithImportUrl = ReactComp('compWithImportUrl', {
+  impl: comp({
+    hFunc: ({}, {react: {h}}) => () => h('div', {}, 'importUrl loaded'),
+    metadata: importUrl('./tests/test-import-module.mjs')
+  })
+})
+
+Test('reactTest.importUrl', {
+  impl: reactTest({
+    hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, compWithImportUrl),
+    expectedResult: contains('importUrl loaded'),
+    userActions: waitForText('importUrl loaded')
   })
 })

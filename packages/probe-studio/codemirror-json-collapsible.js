@@ -1,69 +1,49 @@
-import { dsls, coreUtils } from '@jb6/core'
+import { dsls, coreUtils, jb } from '@jb6/core'
 
-const { 
+const {
   common: {
-    data: { asIs }, 
+    data: { asIs },
   },
   react: { ReactComp,
     'react-comp': { comp },
+    'react-metadata': { importUrl }
   }
 } = dsls
 
 // ============ CodeMirror 6 Collapsible JSON Viewer ============
 
-// Load CodeMirror 6 modules from ESM CDN
-let _cm6Promise
-const loadCodeMirror6 = () => _cm6Promise ||= (async () => {
-  const cdn = 'https://esm.sh'
-  const [
-    { EditorState, StateEffect, StateField },
-    { EditorView, Decoration, WidgetType, keymap },
-    { javascript },
-    { lineNumbers, highlightActiveLineGutter },
-    { syntaxHighlighting, defaultHighlightStyle },
-    { oneDark }
-  ] = await Promise.all([
-    import(/* webpackIgnore: true */ `${cdn}/@codemirror/state@6`),
-    import(/* webpackIgnore: true */ `${cdn}/@codemirror/view@6`),
-    import(/* webpackIgnore: true */ `${cdn}/@codemirror/lang-javascript@6`),
-    import(/* webpackIgnore: true */ `${cdn}/@codemirror/view@6`),
-    import(/* webpackIgnore: true */ `${cdn}/@codemirror/language@6`),
-    import(/* webpackIgnore: true */ `${cdn}/@codemirror/theme-one-dark@6`)
-  ])
-  return { EditorState, StateEffect, StateField, EditorView, Decoration, WidgetType, keymap, javascript, lineNumbers, highlightActiveLineGutter, syntaxHighlighting, defaultHighlightStyle, oneDark }
-})()
-
+const CM6_IMPORT = '@jb6/react/lib/codemirror6/codemirror6-bundle.mjs'
 const MAX_VISIBLE_CHARS = 50000
 
 export const codeMirrorJsonCollapsible = ReactComp('codeMirrorJsonCollapsible', {
   impl: comp({
-    hFunc: ({}, {react: {h, useRef, useEffect, useState, use}}) => ({json}) => {
+    hFunc: ({}, {react: {h, useRef, useEffect, useState}}) => ({json}) => {
       if (coreUtils.isNode)
-        return h('textarea:h-full w-full font-mono text-xs p-2 border rounded bg-gray-50', { 
-          readOnly: true, 
-          value: coreUtils.prettyPrint(json, {noMacros: true}) 
+        return h('textarea:h-full w-full font-mono text-xs p-2 border rounded bg-gray-50', {
+          readOnly: true,
+          value: coreUtils.prettyPrint(json, {noMacros: true})
         })
 
-      const cm6 = use(loadCodeMirror6())
+      const cm6 = jb.reactRepository.importCache[CM6_IMPORT]
       const host = useRef()
       const viewRef = useRef()
 
       useEffect(() => {
         if (!host.current || viewRef.current) return
-        
+
         const { EditorState, StateEffect, StateField, EditorView, Decoration, WidgetType, javascript, lineNumbers, syntaxHighlighting, defaultHighlightStyle } = cm6
-        
+
         const text = coreUtils.prettyPrint(json, {noMacros: true})
         const needsCollapse = text.length > MAX_VISIBLE_CHARS
-        
+
         // Effect to expand content
         const expandEffect = StateEffect.define()
-        
+
         // Widget for "Show more" button
         class ShowMoreWidget extends WidgetType {
-          constructor(hiddenCount) { 
+          constructor(hiddenCount) {
             super()
-            this.hiddenCount = hiddenCount 
+            this.hiddenCount = hiddenCount
           }
           toDOM(view) {
             const btn = document.createElement('button')
@@ -74,7 +54,7 @@ export const codeMirrorJsonCollapsible = ReactComp('codeMirrorJsonCollapsible', 
             return btn
           }
         }
-        
+
         // StateField to manage collapsed state
         const collapsedField = StateField.define({
           create: (state) => {
@@ -87,7 +67,7 @@ export const codeMirrorJsonCollapsible = ReactComp('codeMirrorJsonCollapsible', 
           },
           update: (decorations, tr) => {
             // If expand effect received, remove decorations
-            if (tr.effects.some(e => e.is(expandEffect))) 
+            if (tr.effects.some(e => e.is(expandEffect)))
               return Decoration.none
             return decorations.map(tr.changes)
           },
@@ -102,7 +82,7 @@ export const codeMirrorJsonCollapsible = ReactComp('codeMirrorJsonCollapsible', 
             syntaxHighlighting(defaultHighlightStyle),
             javascript(),
             collapsedField,
-            EditorView.editable.of(false),
+            EditorState.readOnly.of(true),
             EditorView.theme({
               '&': { height: '100%', fontSize: '12px' },
               '.cm-scroller': { overflow: 'auto' },
@@ -124,7 +104,7 @@ export const codeMirrorJsonCollapsible = ReactComp('codeMirrorJsonCollapsible', 
         if (!viewRef.current) return
         const { EditorState } = cm6
         const text = coreUtils.prettyPrint(json, {noMacros: true})
-        
+
         // Recreate state with new content (simpler than transactions for now)
         const newState = EditorState.create({
           doc: text,
@@ -138,7 +118,7 @@ export const codeMirrorJsonCollapsible = ReactComp('codeMirrorJsonCollapsible', 
     samplePropsData: asIs({json: {
       hello: 'world',
       items: Array.from({length: 100}, (_, i) => ({ id: i, name: `Item ${i}` }))
-    }})
+    }}),
+    metadata: importUrl(CM6_IMPORT)
   })
 })
-

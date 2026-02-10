@@ -118,7 +118,7 @@ async function serveMcpViaCli(app, { express }) {
                 }, {}),
                 required: (toolComp.params || []).filter(p => p.mandatory).map(p => p.id)
               },
-              ...(isAlsoReactComp && { _meta: { ui: { resourceUri: `ui://react-comp/${id}`, csp: { resourceDomains: [origin], connectDomains: [origin] } } } })
+              ...(isAlsoReactComp && { _meta: { ui: { resourceUri: `ui://react-comp/${id}`, csp: { resourceDomains: [origin], connectDomains: [origin], baseUriDomains: [origin] } } } })
             }
           })
         return sendJson({ jsonrpc: '2.0', id, result: { tools } })
@@ -180,7 +180,7 @@ await coreUtils.writeServiceResult(result)
 
           const { renderReactCompToHtml } = await import('@jb6/mcp/mcp-utils.js')
           const html = renderReactCompToHtml(compId, importMap, urlsToLoad, { origin })
-          const csp = { resourceDomains: [origin], connectDomains: [origin] }
+          const csp = { resourceDomains: [origin], connectDomains: [origin], baseUriDomains: [origin] }
           return sendJson({ jsonrpc: '2.0', id, result: { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: html, _meta: { ui: { csp } } }] } })
         }
         return sendJson({ jsonrpc: '2.0', id, error: { code: -32002, message: `Resource not found: ${uri}` } })

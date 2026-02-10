@@ -1,68 +1,50 @@
-import { dsls } from '@jb6/core'
-import { reactUtils } from '@jb6/react'
+import { dsls, jb } from '@jb6/core'
+
+const CM6_IMPORT = './lib/codemirror6/codemirror6-bundle.mjs'
 
 const {
     react : { ReactComp ,
-        'react-comp': { comp }
+        'react-comp': { comp },
+        'react-metadata': { importUrl }
     }
 } = dsls
 
-const CM_VER = '5.65.2'
-const cdn = p => `https://cdnjs.cloudflare.com/ajax/libs/codemirror/${CM_VER}${p}`
-
-const loadCss = h =>
-  document.querySelector(`link[href="${h}"]`) ||
-  document.head.appendChild(Object.assign(document.createElement('link'), {
-    rel: 'stylesheet', href: h
-  }))
-
-const loadScript = s => new Promise(r => {
-  if (document.querySelector(`script[src="${s}"]`)) return r()
-  document.head.appendChild(Object.assign(document.createElement('script'), {
-    src: s, async: false, onload: r
-  }))
-})
-
-let _codeMirrorPromise
-const codeMirrorPromise = () => _codeMirrorPromise ||= (async () => {
-  ['/codemirror.min.css','/addon/dialog/dialog.min.css','/addon/fold/foldgutter.min.css']
-    .forEach(p => loadCss(cdn(p)))
-
-  await loadScript(cdn('/codemirror.min.js'))
-  await Promise.all([
-    '/mode/javascript/javascript.min.js',
-    '/mode/xml/xml.min.js',
-    '/addon/fold/foldcode.min.js',
-    '/addon/fold/foldgutter.min.js',
-    '/addon/fold/brace-fold.min.js',
-    '/addon/fold/indent-fold.min.js',
-    '/addon/fold/comment-fold.min.js',
-    '/addon/search/searchcursor.min.js',
-    '/addon/search/search.min.js',
-    '/addon/dialog/dialog.min.js'
-  ].map(p => loadScript(cdn(p))))
-
-  return window.CodeMirror
-})()
-
-Object.assign(reactUtils, { codeMirrorPromise })
-
 ReactComp('CodeMirrorJs', {
   impl: comp({
-    hFunc: (ctx, {react: {h, use, useRef, useEffect}}) => ({ code, onCursorActivity }) => {
-        const CodeMirror = use(codeMirrorPromise())
+    hFunc: (ctx, {react: {h, useRef, useEffect}}) => ({ code, onCursorActivity }) => {
+        const { EditorState, EditorView, javascript, lineNumbers, syntaxHighlighting, defaultHighlightStyle, keymap, search, openSearchPanel } = jb.reactRepository.importCache[CM6_IMPORT]
         const host = useRef()
-        const cm = useRef()
-      
+        const viewRef = useRef()
+
         useEffect(() => {
-          cm.current ||= CodeMirror(host.current, { value: code, mode: 'javascript', readOnly: true, lineNumbers: true, extraKeys: {"Ctrl-F": "find"} })
-          onCursorActivity && cm.current.on('cursorActivity', () => onCursorActivity(cm.current))
+          if (!host.current || viewRef.current) return
+          viewRef.current = new EditorView({
+            parent: host.current,
+            state: EditorState.create({
+              doc: code || '',
+              extensions: [
+                lineNumbers(), syntaxHighlighting(defaultHighlightStyle), javascript(), search(),
+                keymap.of([{ key: 'Ctrl-f', run: openSearchPanel }]),
+                EditorState.readOnly.of(true),
+                EditorView.theme({ '&': { height: '100%', fontSize: '12px' }, '.cm-scroller': { overflow: 'auto' }, '.cm-content': { fontFamily: 'monospace' } }),
+                ...(onCursorActivity ? [EditorView.updateListener.of(update => {
+                  if (update.selectionSet) onCursorActivity(update.view)
+                })] : [])
+              ]
+            })
+          })
+          return () => { viewRef.current?.destroy(); viewRef.current = null }
         }, [])
-      
-        useEffect(() => { cm.current?.setValue(code) }, [code])
-      
-        return h('div:h-full', { ref: host })    
-      }
+
+        useEffect(() => {
+          if (!viewRef.current) return
+          const current = viewRef.current.state.doc.toString()
+          if (current !== (code || ''))
+            viewRef.current.dispatch({ changes: { from: 0, to: current.length, insert: code || '' } })
+        }, [code])
+
+        return h('div:h-full', { ref: host })
+      },
+    metadata: importUrl(CM6_IMPORT)
   })
 })
-  
