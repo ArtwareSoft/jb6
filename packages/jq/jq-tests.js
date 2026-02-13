@@ -68,6 +68,14 @@ Test('jqTest.tryWithoutCatch', {
   impl: dataTest(jq('[.[] | try fromjson]', {data: ['1', '"hi"', 'bad']}), equals([[1, "hi"]]))
 })
 
+Test('jqTest.varShadowing', {
+  impl: dataTest(jq('5 as $x | (10 as $x | $x) as $inner | {inner: $inner, outer: $x}', {data: null}), equals([{inner: 10, outer: 5}]))
+})
+
+Test('jqTest.reducePreservesOuterVar', {
+  impl: dataTest(jq('5 as $x | reduce .[] as $x (0; . + $x) | . + $x', {data: [1,2,3]}), equals([11]))
+})
+
 Test('jqTest.groupBy', {
   impl: dataTest({
     calculate: pipeline(

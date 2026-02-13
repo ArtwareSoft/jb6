@@ -61,6 +61,13 @@ Component('fundamentalLlmMethodology', {
   ]
 })
 
+Component('concpets', {
+  type: 'doclet<llm-guide>',
+  params: [
+    {id: 'concepts', type: 'concept[]' },
+  ]
+})
+
 Component('situationalAwareness', {
   type: 'doclet<llm-guide>',
   params: [

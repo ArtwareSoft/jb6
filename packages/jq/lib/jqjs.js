@@ -1931,11 +1931,15 @@ class VariableBinding extends ParseNode {
        this.name = name
    }
    * apply(input, conf) {
-       for (let v of this.value.apply(input, conf)) {
+       const values = [...this.value.apply(input, conf)]
+       const prev = conf.variables[this.name]
+       const had = this.name in conf.variables
+       for (let v of values) {
            conf.variables[this.name] = v
            yield input
        }
-       delete conf.variables[this.name]
+       if (had) conf.variables[this.name] = prev
+       else delete conf.variables[this.name]
    }
    toString() {
        return this.value + ' as $' + this.name
@@ -1962,17 +1966,16 @@ class ReduceNode extends ParseNode {
        this.expr = expr
    }
    * apply(input, conf) {
-       // This uses all values of the initialiser, but only the
-       // last value of the reduction expression is retained. This
-       // seems to match jq proper's behaviour, but jq has odd
-       // errors in mixed cases that seem unnecessary.
+       const prev = conf.variables[this.name]
+       const had = this.name in conf.variables
        for (let accum of this.init.apply(input, conf)) {
            for (let v of this.generator.apply(input, conf)) {
                conf.variables[this.name] = v
                for (let a of this.expr.apply(accum, conf))
                    accum = a
            }
-           delete conf.variables[this.name]
+           if (had) conf.variables[this.name] = prev
+           else delete conf.variables[this.name]
            yield accum
        }
    }
