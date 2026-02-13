@@ -27,6 +27,16 @@ function resolveImportUrl(url) {
   return import(url).then(m => repo.importCache[url] = m)
 }
 
+/*  hFunc signature: (ctx, ctxVars, compParams) => (reactProps) => vdom
+      ctx        – jb context object
+      ctxVars    – ctx.vars destructured, e.g. {react: {h, useState}, myVar}
+      compParams – resolved component params from the params[] definition
+      reactProps – React props passed by parent / ontoolresult render(args)
+
+    Example:
+      hFunc: (ctx, {react: {h}}, {testId}) => ({success, error}) =>
+        h('div', {}, testId, success ? 'PASSED' : error)
+*/
 ReactComp('comp', {
   params: [
     {id: 'hFunc', type: 'vdom', dynamic: true, byName: true},
