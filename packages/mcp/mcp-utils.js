@@ -1,5 +1,6 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
+import '@jb6/react'
 
 const {
   tgp: { TgpType, Component },
@@ -28,6 +29,7 @@ ${origin ? `<base href="${origin}/">` : ''}
 <body>
   <div id="show"></div>
   <script type="module">
+    const origin = '${origin}'
     ${origin ? `const _fetch = globalThis.fetch; globalThis.fetch = (url, ...args) => _fetch(typeof url === 'string' && url.startsWith('/') ? '${origin}' + url : url, ...args)` : ''}
     const PROTOCOL_VERSION = '2026-01-26'
     let requestId = 0
@@ -71,8 +73,9 @@ ${origin ? `<base href="${origin}/">` : ''}
 
     for (const file of ${urlsJson}) await import(file)
 
-    const ctx = new coreUtils.Ctx().setVars({react: reactUtils, isLocalHost: true})
+    let ctx = new coreUtils.Ctx().setVars({react: reactUtils, isLocalHost: true, dbCategories: {sandboxed: true}, localhostServer: origin || 'http://localhost:3000'})
     const root = reactUtils.createRoot(document.getElementById('show'))
+    let compArgs = null
     const render = async (args) => {
       const { reactCmp, props, ctx: rCtx } = await reactUtils.wrapReactCompWithSampleData('${compId}', ctx, args)
       root.render(h('div', {}, hh(rCtx, reactCmp, props)))
@@ -80,9 +83,10 @@ ${origin ? `<base href="${origin}/">` : ''}
 
     await app.connect()
     const parse = (params) => { try { return JSON.parse(params?.content?.find(c => c.type === 'text')?.text) } catch(e) {} }
-    app.ontoolresult = (params) => { const args = parse(params); if (args) render(args) }
-    app.ontoolinput = (params) => { const args = parse(params); if (args) render(args) }
-    render()
+
+    app.ontoolinput = (args) => { debugger; compArgs = args.arguments; if (compArgs) render(compArgs) }
+    app.ontoolresult = (params) => { debugger; const data = parse(params); if (data) { ctx = ctx.setVars({llmInput: data}); if (compArgs) render(compArgs) } }
+    render({})
     new ResizeObserver(() => app.requestSize({ height: document.body.scrollHeight })).observe(document.body)
   </script>
 </body>
@@ -124,6 +128,16 @@ export async function startMcpServer(transport, { allTools, importMap } = {}) {
   mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params
     const toolComp = allTools.find(({id}) => id == name)?.toolComp
+    const reactComp = dsls.react?.['react-comp']?.[name]
+    const jbComp = reactComp?.[coreUtils.asJbComp]
+    if (jbComp) coreUtils.resolveCompArgs(jbComp)
+    const calcData = jbComp && coreUtils.asArray(jbComp.impl.metadata).find(m => m.calcData)?.calcData
+    if (calcData) {
+      const ctx = new coreUtils.Ctx().setJbCtx(new coreUtils.JBCtx({args}))
+      const data = await ctx.run(calcData)
+      const text = typeof data === 'string' ? data : JSON.stringify(data)
+      return { content: [{ type: 'text', text }], _meta: { ui: { resourceUri: `ui://react-comp/${name}` } } }
+    }
     const result = await new coreUtils.Ctx().run({$: toolComp, ...args})
     return result
   })
@@ -179,6 +193,13 @@ const squeezeText = Data('squeezeText', {
       text.slice(text.length-maxLength+keepPrefixSize)
     ].join('') : text
   }
+})
+
+Component('mcpUi', {
+  type: 'react-metadata<react>',
+  params: [
+    {id: 'calcData', dynamic: true}
+  ]
 })
 
 Component('mcpTool', {
