@@ -207,7 +207,9 @@ async function getStaticConfig(repoRoot, pkgJson) {
       { urlPath: '/jb6_packages', diskPath: pkgsDir },
       { urlPath: '/hosts', diskPath: path.resolve(repoRoot, 'hosts') }
     ] : [
-      { urlPath: `/${repoName}`, diskPath: repoRoot },
+      ...pkgJson.staticMappings
+        ? Object.entries(pkgJson.staticMappings).map(([urlPath, rel]) => ({ urlPath, diskPath: path.resolve(repoRoot, rel) }))
+        : [{ urlPath: `/${repoName}`, diskPath: repoRoot }],
       { urlPath: '/jb6_packages', diskPath: pkgsDir },
     ]
     const importMapsInCli = pkgJson.importMapsInCli && path.resolve(repoRoot,pkgJson.importMapsInCli)
@@ -331,13 +333,13 @@ function resolveWithImportMap(specifier, importMap, staticMappings) {
   const target = imports[winner]
   const rest = specifier.slice(winner.length)
   const urlToBeServed = target.endsWith('/') ? target + rest : target
-  const dirEntry = staticMappings.find(({urlPath}) => urlToBeServed.startsWith(urlPath))
+  const dirEntry = staticMappings.reduce((best, m) => urlToBeServed.startsWith(m.urlPath) && m.urlPath.length > (best?.urlPath.length||0) ? m : best, null)
   if (dirEntry) return pathJoin(dirEntry.diskPath, urlToBeServed.slice(dirEntry.urlPath.length))
   return urlToBeServed
 }
 
 function absPathToUrl(path, staticMappings = []) {
-  const servedEntry = staticMappings.find(x => x.diskPath != x.urlPath && path.indexOf(x.diskPath) == 0)
+  const servedEntry = staticMappings.reduce((best, x) => x.diskPath != x.urlPath && path.indexOf(x.diskPath) == 0 && x.diskPath.length > (best?.diskPath.length||0) ? x : best, null)
   return servedEntry ? path.replace(servedEntry.diskPath, servedEntry.urlPath) : path
 }
 

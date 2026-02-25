@@ -238,7 +238,7 @@ async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
     if (containerComp)
       ctxWithData = ctxWithData.setVars({testedComp: cmpId})
 
-    const reactCmp = args != null ? compToRun.$runWithCtx(ctxWithData,args) : compToRun.$runWithCtx(ctxWithData, args)
+    const reactCmp = args != null ? compToRun.$runWithCtx(ctxWithData,args) : compToRun.$runWithCtx(ctxWithData, {})
     return { ctx: ctxWithData, reactCmp, props }
   } catch(error) {
     return { ctx, reactCmp: () => reactUtils.h('pre',{},error.stack), props: {} }

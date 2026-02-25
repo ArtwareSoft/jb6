@@ -1,4 +1,5 @@
 import { dsls, jb } from '@jb6/core'
+import '@jb6/react'
 
 const CM6_IMPORT = './lib/codemirror6/codemirror6-bundle.mjs'
 

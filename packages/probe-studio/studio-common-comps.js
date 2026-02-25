@@ -29,7 +29,7 @@ ReactComp('testIframeView', {
     },
     metadata: [
       abbr('TST'),
-      matchData(({},{probeRes}) => probeRes.circuitCmpId.startsWith('test<test>') && probeRes.circuitCmpId.split('~')[0]),
+      matchData(({},{probeRes}) => probeRes?.circuitCmpId?.startsWith('test<test>') && probeRes?.circuitCmpId?.split('~')[0]),
       priority(20)
     ]
   })
@@ -51,7 +51,7 @@ ReactComp('reactCompView', {
     },
     metadata: [
       abbr('CMP'),
-      matchData(({},{probeRes}) => probeRes.circuitCmpId.startsWith('react-comp<react>') && probeRes.circuitCmpId.split('>').pop().split('~')[0]),
+      matchData(({},{probeRes}) => probeRes?.circuitCmpId?.startsWith('react-comp<react>') && probeRes?.circuitCmpId?.split('>').pop().split('~')[0]),
       priority(2)
     ]
   })

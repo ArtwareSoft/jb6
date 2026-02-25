@@ -45,14 +45,15 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
   try {
     for (const file of urlsToLoad || []) {
       onStatus({ text: `Loading ${file}...`})
-      await import(file)
+      try { await import(file) } catch (error) { 
+        console.error(`Failed to load ${file}: ${error.stack}`) 
+      }
     }
-  
     const entryPointPaths = urlsToLoad.map(f => coreUtils.resolveWithImportMap(f, { imports }, staticMappings))
     top = await coreUtils.runProbeCli(path, { entryPointPaths }, { onStatus, claudeDir })
     if (cleanseProbResult)
       top = cleanseProbResult(ctx.setData(top))
-  } catch (e) { error = e.stack }
+  } catch (e) { error = e.stack || e.message }
   error = error || top.error || top.probeRes?.error
   error = error?.stderr || error
 
@@ -90,7 +91,7 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
       try { data = matchData && viewCtx.run(matchData) } catch (error) { console.error(error) }
       const emptyArray = Array.isArray(data) && data.length == 0
       const useView = data && !emptyArray
-      console.log('view', id, useView)
+      //console.log('view', id, useView)
       return ({ id, data, priority, abbr, comp, useView })
     }).filter(e => e?.useView)
     .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999))

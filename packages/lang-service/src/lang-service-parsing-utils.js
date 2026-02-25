@@ -1,5 +1,6 @@
 import { parse } from '../lib/acorn.mjs'
 import { parse as parseLoose } from '../lib/acorn-loose.mjs'
+import '@jb6/core/misc/resolve-types.js'
 
 import { coreUtils } from '@jb6/core'
 const { jb, systemParams, astNode, logException, logError, findCompDefById,

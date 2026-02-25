@@ -392,3 +392,22 @@ function bookletContent(bookletId, ctx, tgpModel = jb) {
   
   return { bookletId, doclets }
 }
+
+Doclet('TGP', {
+  impl: `
+// TGP: TgpType (abstract type), Component (generic def), Profile (concrete JSON instance)
+TgpType('color', 'css')
+
+Component('rgb', { type: 'color<css>', params: [{id: 'r', as: 'number'}, {id: 'g', as: 'number'}, {id: 'b', as: 'number'}] })
+Component('hsl', { type: 'color<css>', ... })
+
+TgpType('gradient', 'css')
+Component('linearGradient', { type: 'gradient<css>', params: [{id: 'direction', as: 'string'}, {id: 'stops', type: 'color<css>[]'}] })
+Component('radialGradient', { type: 'gradient<css>', ... })
+...
+
+// Profile: linear-gradient(to right, rgb(255,99,71), hsl(45,100,50))
+{$: 'gradient<css>linearGradient', direction: 'to right', stops: [{$: 'color<css>rgb', r: 255, g: 99, b: 71}, {$: 'color<css>hsl', h: 45, s: 100, l: 50}]}
+
+`
+})
