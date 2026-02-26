@@ -11,7 +11,7 @@ const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
 const systemParams = [ {id: 'data', $dslType: 'data<common>'}, {id: 'vars', $dslType: 'var<tgp>'}] 
 
 function asComp(pt) {
-    const jbComp = pt[asJbComp] || pt
+    const jbComp = (typeof pt === 'string' ? compByFullId(pt)?.[asJbComp] || compByFullId(pt) : null) || pt[asJbComp] || pt
     if (!jbComp?.$resolvedInner)
         resolveCompArgs(jbComp)
     return jbComp
@@ -165,5 +165,23 @@ function resolveProfileArgs(prof) {
   return prof
 }
 
-Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, asJbComp, OrigArgs, sysProps, systemParams, 
-  asComp, jbCompProxy, compByFullId})
+function lexicalProfileOfDefaultValue(ctx) {
+  const path = ctx.jbCtx.lexicalStack.filter(x => x && !x.match('~defaultValue')).slice(-1)[0] || ''
+  const parts = path.split('~').slice(0,-1)
+  return coreUtils.calcPath(compByFullId(parts[0])?.[asJbComp], parts.slice(1)) || {}
+}
+
+function tgpProfileToJson(prof) {
+    resolveProfileArgs(prof)
+    return cleanVal(prof)
+}
+
+function cleanVal(v) {
+    if (v == null || typeof v !== 'object') return v
+    if (Array.isArray(v)) return v.map(cleanVal)
+    return Object.fromEntries(Object.keys(v).filter(k => k !== '$$' && (k === '$' || k[0] !== '$')).map(k =>
+        [k, k === '$' && v.$.$dslType ? `${v.$.$dslType}${v.$.id}` : cleanVal(v[k])]))
+}
+
+Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, asJbComp, OrigArgs, sysProps, systemParams,
+  asComp, jbCompProxy, compByFullId, lexicalProfileOfDefaultValue, tgpProfileToJson})
