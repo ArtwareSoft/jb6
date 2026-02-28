@@ -47,7 +47,7 @@ ReactComp('comp', {
   ],
   impl: (_ctx, {strongRefresh, react: {useState, useEffect} }, { hFunc, enrichCtx, metadata }) => {
     const ctx = _ctx.setVars({strongRefresh: false})
-    const jbid = ctx.jbCtx.creatorStack?.join(';')
+    const jbid = ctx.jbCtx.lexicalStack?.join(';')
     const id = strongRefresh ? '' : jbid
 
     // resolve importUrls - sync if cached, promise if first time

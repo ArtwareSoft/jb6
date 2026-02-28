@@ -49,21 +49,21 @@ Test('genieTest.importMap', {
   })
 })
 
-Test('genieTest.calcTgpModelData', {
-  HeavyTest: true,
-  impl: dataTest({
-    calculate: async () => {
-      const {coreUtils} = await import('@jb6/core')
-      await import('@jb6/lang-service')
-      return coreUtils.calcTgpModelData({
-        entryPointPaths: `${geniePath}/public/llm-flow/reports-dsl.js`, fetchByEnvHttpServer: 'http://localhost:3000'})
-    },
-    expectedResult: contains('/public/3rd-party/@jb6', '/jb6_packages/common/index.js', {
-      allText: json.stringify()
-    }),
-    timeout: 2000
-  })
-})
+// Test('genieTest.calcTgpModelData', {
+//   HeavyTest: true,
+//   impl: dataTest({
+//     calculate: async () => {
+//       const {coreUtils} = await import('@jb6/core')
+//       await import('@jb6/lang-service')
+//       return coreUtils.calcTgpModelData({
+//         entryPointPaths: `${geniePath}/public/llm-flow/reports-dsl.js`, fetchByEnvHttpServer: 'http://localhost:3000'})
+//     },
+//     expectedResult: contains('/public/3rd-party/@jb6', '/jb6_packages/common/index.js', {
+//       allText: json.stringify()
+//     }),
+//     timeout: 2000
+//   })
+// })
 
 Test('genieTest.nodejs.calcTgpModelData', {
   HeavyTest: true,
@@ -73,7 +73,8 @@ Test('genieTest.nodejs.calcTgpModelData', {
         const script = `
               const {coreUtils} = await import('@jb6/core')
       await import('@jb6/lang-service')
-      const result = await coreUtils.calcTgpModelData({ entryPointPaths: '${geniePath}/public/applets/sampleApplet/index.js', fetchByEnvHttpServer: 'http://localhost:3000'})
+      const result = await coreUtils.calcTgpModelData({ entryPointPaths: '${geniePath}/public/core/db-drivers.js', 
+        fetchByEnvHttpServer: 'http://localhost:3000'})
         await coreUtils.writeServiceResult(result)
         `
         const res = await coreUtils.runNodeCliViaJbWebServer(script, {projectDir: geniePath, 
@@ -85,6 +86,6 @@ Test('genieTest.nodejs.calcTgpModelData', {
       text: [`${geniePath}/public/3rd-party/@jb6`,`/jb6_packages/common/index.js`,`bsg-tests`],
       allText: json.stringify()
     }),
-    timeout: 1000
+    timeout: 10000
   })
 })

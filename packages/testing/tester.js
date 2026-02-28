@@ -27,7 +27,7 @@ Component('dataTest', {
   ],
   impl: async (ctx,{}, { calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy, logger }) => {
         const loggerObj = logger && dsls.test.logger[logger] && { [logger] : dsls.test.logger[logger].$runWithCtx(ctx) } || {}
-        const testID = ctx.vars.testID || (ctx.jbCtx.creatorStack.slice(-1)[0]||'').split('~')[0]
+        const testID = ctx.vars.testID || (ctx.jbCtx.lexicalStack.slice(-1)[0]||'').split('~')[0]
 		const ctxToUse = ctx.setVars({testID, isTest: true, testSessionId: `test-${Date.now()}`, ...loggerObj})
 		const {singleTest}  = ctxToUse.vars
 		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 5000 : null

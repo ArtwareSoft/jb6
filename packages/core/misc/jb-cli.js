@@ -42,7 +42,7 @@ async function runNodeCli(script, options = {}, onStatus) {
   const {spawn} = await import('child_process')
   const { cmd, importParts } = buildNodeCliCmd(script, options)
   const cwd = options.projectDir
-  const scriptToRun = `console.log = () => {};\nconsole.error = () => {};\n${script}`
+  const scriptToRun = `console.log = () => {};\n${script}`
 
   const stream = options.stream || 'stderr' // 'stderr' | 'stdout' | 'both'
 
@@ -128,30 +128,22 @@ async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
     if (error) return { error, cmd, ...options }
 
     const es = new EventSource(statusUrl)
-    es.onmessage = ev => {
-      try {
-        const msg = JSON.parse(ev.data)
-        if (msg.type === 'status' && onStatus) {
-          const text = typeof msg.text === 'string' ? msg.text : msg.text?.text
-          const stream = typeof msg.text === 'string' ? 'stderr' : msg.text?.stream
-          onStatus({ stream, text })
-        }
-        if (msg.type === 'done') es.close()
-      } catch (e) {}
-    }
-
-    while (true) {
-      const r = await fetch(contentUrl)
-      if (r.status === 202) { await new Promise(x => setTimeout(x, 200)); continue }
-      if (!r.ok) {
-        const text = await r.text()
-        es.close()
-        return { error: `runNodeCliStreamViaJbWebServer result failed: ${r.status} – ${text}`, cmd, ...options }
+    await new Promise(resolve => {
+      es.onmessage = ev => {
+        try {
+          const msg = JSON.parse(ev.data)
+          if (msg.type === 'status' && onStatus) {
+            const text = typeof msg.text === 'string' ? msg.text : msg.text?.text
+            const stream = typeof msg.text === 'string' ? 'stderr' : msg.text?.stream
+            onStatus({ stream, text })
+          }
+          if (msg.type === 'done') { es.close(); resolve() }
+        } catch (e) { es.close(); resolve() }
       }
-      const final = await r.json()
-      es.close()
-      return { ...final, cmd }
-    }
+    })
+    const r = await fetch(contentUrl)
+    if (!r.ok) return { error: `runNodeCliStreamViaJbWebServer result failed: ${r.status} – ${await r.text()}`, cmd, ...options }
+    return { ...await r.json(), cmd }
   } catch (e) {
     return { error: `runNodeCliStreamViaJbWebServer exception: ${e.message}`, ...options }
   }

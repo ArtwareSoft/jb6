@@ -58,17 +58,45 @@ Tool('tgpModel', {
   impl: mcpTool(tgpModel('%$forDsls%'))
 })
 
-Tool('runSnippet', {
-  description: 'Execute TGP component snippets in context. Essential for testing component behavior, debugging data flow, and validating logic before implementation.',
+Tool('macroToJson', {
+  description: 'Convert TGP macro syntax to JSON profile. e.g. pipeline([1,2,3], join("-")) → {$: "data<common>pipeline", ...}. Use tgpModel tool to discover available components.',
   params: [
-    {id: 'profileText', as: 'string', asIs: true, mandatory: true, description: `profile text to execute (e.g., "pipeline('%$data%', filter('%active%'), count())")`},
-    {id: 'setupCode', as: 'string', description: `Helper components or imports (e.g., "Const('data', [{active: true}])") or const { h, L, useState, useEffect, useRef, useContext, reactUtils } = await import('@jb6/react')`},
+    {id: 'macroText', as: 'string', asIs: true, mandatory: true, description: `macro expression, e.g. pipeline([1,2,3], join('-')). Prefix with type<dsl>: for non-common dsls`},
+  ],
+  impl: mcpTool({
+    text: async (ctx, {}, {macroText}) => {
+      try {
+        await import('@jb6/lang-service')
+        const forDsls = macroText.match(/^[^<]+<([^>]+)>/)?.[1] || 'common'
+        const tgpModel = await coreUtils.calcTgpModelData({forRepo: await coreUtils.calcRepoRoot(), forDsls })
+        if (tgpModel.error) return `Error: ${tgpModel.error}`
+        const result = coreUtils.macroToJson(macroText, tgpModel)
+        return result.error ? `Error: ${result.error}` : JSON.stringify(result, null, 2)
+      } catch (error) {
+        return `Error: ${error.message}`
+      }
+    }
+  })
+})
+
+Tool('runTgpSnippet', {
+  description: `Execute a TGP profile. TGP: TgpType (abstract type), Component (concrete impl), Profile (JSON instance to run).
+TgpType('color', 'css')
+Component('rgb', { type: 'color<css>', params: [{id: 'r', as: 'number'}, {id: 'g', as: 'number'}, {id: 'b', as: 'number'}] })
+Component('hsl', { type: 'color<css>', ... })
+TgpType('gradient', 'css')
+Component('linearGradient', { type: 'gradient<css>', params: [{id: 'direction', as: 'string'}, {id: 'stops', type: 'color<css>[]'}] })
+Profile: {$: 'gradient<css>linearGradient', direction: 'to right', stops: [{$: 'color<css>rgb', r: 255, g: 99, b: 71}, {$: 'color<css>hsl', h: 45, s: 100, l: 50}]}
+Use tgpModel tool to discover available components and their params.`,
+  params: [
+    {id: 'profileText', as: 'string', asIs: true, mandatory: true, description: `JSON profile to execute, e.g. {$: 'data<common>pipeline', items: [...]}`},
   ],
   impl: mcpTool({
     text: async (ctx, {}, args) => {
       try {
         await import('@jb6/lang-service')
-        return coreUtils.runSnippetCli(args)
+        const res = await coreUtils.runSnippetCli(args)
+        return JSON.stringify(res, null, 2)
       } catch (error) {
         return `Error running snippet: ${error.message}`
       }
@@ -85,7 +113,7 @@ Tool('runTest', {
     text: async (ctx, {}, {testId}) => {
       try {
         await import('@jb6/lang-service')
-        return coreUtils.runSnippetCli({profileText: `test<test>:${testId}()`})
+        return coreUtils.runSnippetCli({profileText: `{$: 'test<test>${testId}'}`})
       } catch (error) {
         return `Error running test: ${error.message || error}`
       }

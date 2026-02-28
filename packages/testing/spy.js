@@ -65,7 +65,7 @@ function log(logNames, _record, {takeFrom} = {}) {
     if (!shouldLog(logNames, _record)) return
     const now = new Date()
     const index = logs.length
-    const { jbCtx: { callerStack, creatorStack }} = _record?.ctx || {jbCtx:{}}
+    const { jbCtx: { dynamicStack, lexicalStack }} = _record?.ctx || {jbCtx:{}}
     const record = {
         logNames,
         ..._record,
@@ -73,7 +73,7 @@ function log(logNames, _record, {takeFrom} = {}) {
         source: source(takeFrom),
         _time: `${now.getSeconds()}:${now.getMilliseconds()}`,
         mem: memoryUsage() / 1000000,
-        callerStack, creatorStack,
+        dynamicStack, lexicalStack,
         activeElem: globalThis.document?.activeElement,
         $attsOrder: _record && Object.keys(_record),
         time: now.getTime()

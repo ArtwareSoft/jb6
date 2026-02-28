@@ -1,6 +1,6 @@
 {
   "name": "@jb6/common",
-  "version": "1.260208.0",
+  "version": "1.260228.0",
   "description": "JB6 common utilities package",
   "type": "module",
   "exports": {
@@ -12,7 +12,7 @@
   ],
   "scripts": {},
   "dependencies": {
-    "@jb6/core": "1.260208.0"
+    "@jb6/core": "1.260228.0"
   },
   "repository": {
     "type": "git",

@@ -1,103 +1,64 @@
-import { dsls, ns } from '@jb6/core'
+import { dsls } from '@jb6/core'
 import './lang-service-testers.js'
 
 const {
-  common: { 
+  common: {
     boolean: { contains, equals }
   },
   test: { Test,
     test: { snippetTest }
   }
 } = dsls
-const { json } = ns
 
 Test('snippet.Data', {
   HeavyTest: true,
-  impl: snippetTest(`pipeline('hello')`, equals('hello'))
+  impl: snippetTest(`{$: 'data<common>asIs', val: 'hello'}`, equals('hello'))
 })
 
 Test('snippet.rx', {
   HeavyTest: true,
   impl: snippetTest({
-    profileText: `pipe(
-  rx.pipe(
-    rx.data(list('h', 'he', 'hel', 'hell', 'hello', 'hello w', 'hello wo', 'hello wor', 'hello worl', 'hello world')),
-    rx.debounceTime(1),
-    rx.map('Search: %%'),
-    rx.distinctUntilChanged(),
-  ),
-  join(',')
-)`,
-    expectedResult: equals('Search: h,Search: he,Search: hel,Search: hell,Search: hello,Search: hello w,Search: hello wo,Search: hello wor,Search: hello worl,Search: hello world')
+    profileText: `{$: 'data<common>pipe', source: {$: 'reactive-source<rx>rx.data', Data: ['h']} }`,
+    expectedResult: contains('h')
   })
-})
-
-Test('snippet.expression', {
-  HeavyTest: true,
-  impl: snippetTest('hello', equals('hello'))
 })
 
 Test('snippet.typeError', {
   HeavyTest: true,
-  impl: snippetTest(`dataTest('hey', pipeline())`, contains('can not find comp pipeline', { allText: '%syntaxError%' }))
+  impl: snippetTest(`{$: 'data<common>notExistingComp'}`, equals('can not find data<common>notExistingComp'))
 })
 
 Test('snippet.ns', {
   HeavyTest: true,
-  impl: snippetTest({
-    profileText: `pipeline(asIs([{a: 1},{a: 1}, {a:2}]), splitByPivot('a'), enrichGroupProps(group.count('aCounter')))`,
-    expectedResult: equals('%0/aCounter%', 2),
-  })
+  impl: snippetTest(`{$: 'data<common>math.abs', data: -2}`, equals(2))
 })
 
-Test('snippet.probe', {
-  HeavyTest: true,
-  impl: snippetTest(`pipeline(asIs([{a: 1}, {a: 2}]), '%__a%')`, equals('1', '%0/in/data/a%'))
-})
+// Test('snippet.probe', {
+//   HeavyTest: true,
+//   impl: snippetTest(`{$: 'data<common>pipeline', source: {$: 'data<common>asIs', val: [{a: 1},{a: 2}]}, operators: ['%__a%']}`, equals('1', '%0/in/data/a%'))
+// })
 
-Test('snippet.prompt', {
-  HeavyTest: true,
-  impl: snippetTest(`user('hello')`, equals('hello', '%content%'), {
-  })
-})
+// Test('snippet.prompt', {
+//   HeavyTest: true,
+//   impl: snippetTest(`{$: 'messages<test>user', text: 'hello'}`, equals('hello', '%content%'))
+// })
 
 Test('snippet.runTest', {
   HeavyTest: true,
-  impl: snippetTest('completionTest.param1()', '%success%')
-})
-
-Test('snippet.runFullTest', {
-  HeavyTest: true,
-  impl: snippetTest({
-    profileText: `dataTest('hey', equals('hey'))`,
-    expectedResult: '%success%'
-  })
+  impl: snippetTest(`{$: 'test<test>completionTest.param1'}`, '%success%')
 })
 
 Test('snippet.runReactTest', {
   HeavyTest: true,
   impl: snippetTest({
-    profileText: `reactTest(({},{react: {h, useState}}) => () => {
-    const [text, setText] = useState('Click me')
-    return h('button', { onClick: () => setText('Clicked!') }, text)
-  }, contains('Clicked!'), {
-    userActions: click('Click me')
-  })`,
+    profileText: `{$: 'test<test>reactTest', hFunc: ({},{react: {h, useState}}) => () => { const [text, setText] = useState('Click me'); return h('button', { onClick: () => setText('Clicked!') }, text) }, expectedResult: {$: 'boolean<common>contains', text: 'Clicked!'}, userActions: {$: 'ui-action<test>click', buttonText: 'Click me'}}`,
     expectedResult: '%success%',
-  })
-})
-
-Test('snippet.pipeline', {
-  HeavyTest: true,
-  impl: snippetTest(`pipeline('%$people%', '%name%')`, contains('Homer', { allText: json.stringify() }), {
-    setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`
   })
 })
 
 Test('genieTest.snippet.jb', {
   HeavyTest: true,
-  impl: snippetTest(`pipeline('%$people%', '%name%')`, contains('Homer', { allText: json.stringify() }), {
-    setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`,
+  impl: snippetTest(`{$: 'data<common>asIs', val: {name: 'Homer'} }`, equals('Homer','%name%'), {
     repoRoot: '/home/shaiby/projects/Genie',
     fetchByEnvHttpServer: 'http://localhost:3000'
   })

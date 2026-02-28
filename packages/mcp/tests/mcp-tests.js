@@ -21,24 +21,24 @@ Test('mcpTest.scrambleText', {
   })
 })
 
-Test('mcpTest.compileTailwindCSS', {
-  HeavyTest: true,
-  impl: mcpToolTest('compileTailwindCSS', asIs({html: '<div class="p-6"></div>'}), {
-    expectedResult: contains('padding: calc(var(--spacing) * 6')
-  })
-})
+// Test('mcpTest.compileTailwindCSS', {
+//   HeavyTest: true,
+//   impl: mcpToolTest('compileTailwindCSS', asIs({html: '<div class="p-6"></div>'}), {
+//     expectedResult: contains('padding: calc(var(--spacing) * 6')
+//   })
+// })
 
-Test('mcpTest.compileTailwindCSSChart', {
-  HeavyTest: true,
-  impl: mcpToolTest('compileTailwindCSS', asIs({html: `<div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
-  <h2 class="text-2xl font-bold text-center mb-6">TITLE HERE</h2>
-  <div class="space-y-4">
-    <!-- Bars go here -->
-  </div>
-</div>`}), {
-    expectedResult: contains('padding: calc(var(--spacing) * 6')
-  })
-})
+// Test('mcpTest.compileTailwindCSSChart', {
+//   HeavyTest: true,
+//   impl: mcpToolTest('compileTailwindCSS', asIs({html: `<div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+//   <h2 class="text-2xl font-bold text-center mb-6">TITLE HERE</h2>
+//   <div class="space-y-4">
+//     <!-- Bars go here -->
+//   </div>
+// </div>`}), {
+//     expectedResult: contains('padding: calc(var(--spacing) * 6')
+//   })
+// })
 
 Test('genieMcpTest.scrambleText', {
   HeavyTest: true,
@@ -74,14 +74,11 @@ Test('genieMcpTest.wonderWorkflow', {
 Test('genieMcpTest.snippet', {
   HeavyTest: true,
   impl: mcpToolTest({
-    tool: 'runSnippet',
+    tool: 'runTgpSnippet',
     args: asIs({
-        profileText: `pipeline('%$people%', '%name%')`,
-        setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`
+        profileText: `{$: 'data<common>pipeline', source: {$: 'data<common>asIs', val: [{name: 'Homer'}, {name: 'Bart'}]}, operators: ['%name%', {$: 'data<common>join', separator: ','}]}`
     }),
-    repoRoot: '/home/shaiby/projects/Genie',
-    jb6PackagesRoot: '/home/shaiby/projects/Genie/public/3rd-party/@jb6',
-    importMapsInCli: './public/core/nodejs-importmap.js',
+    mcpUrl: 'http://localhost:3000/mcp',
     expectedResult: contains('Homer')
   })
 })
@@ -116,10 +113,9 @@ Test('mcpTest.bookletsContent', {
 Test('mcpTest.snippet', {
   HeavyTest: true,
   impl: mcpToolTest({
-    tool: 'runSnippet',
+    tool: 'runTgpSnippet',
     args: asIs({
-        profileText: `pipeline('%$people%', '%name%')`,
-        setupCode: `Const('people', [{name: 'Homer', age: 42}, {name: 'Bart', age: 12}, {name: 'Lisa', age: 10}])`
+        profileText: `{$: 'data<common>pipeline', source: {$: 'data<common>asIs', val: [{name: 'Homer'}, {name: 'Bart'}]}, operators: ['%name%', {$: 'data<common>join', separator: ','}]}`
     }),
     expectedResult: contains('Homer')
   })

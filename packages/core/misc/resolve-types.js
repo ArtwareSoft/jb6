@@ -184,7 +184,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, pare
     return fromAllTypes
 
   if (id && !silent) {
-    const error = `can not find comp ${id} of type ${dslType} in path ${tgpPath} read core/llm-guide/tgp-primer to understand tgp types`
+    const error = `can not find comp ${id} of type ${dslType} in path ${tgpPath}`
     globalThis.showUserMessage && globalThis.showUserMessage('error', error)
     logError(error,{id, tgpModel, topComp, parent, parentType, allTypes, dslType})
     throw { syntaxError: error }

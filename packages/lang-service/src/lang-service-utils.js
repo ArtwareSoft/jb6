@@ -270,7 +270,7 @@ class tgpModelForLangService {
 async function dataCompletions(compProps, path, ctx) {
     const { actionMap, inCompOffset, text: compText, filePath: entryPointPaths, compPos, tgpModel } = compProps
 
-    const inCompletionTest = ctx.jbCtx?.creatorStack?.find(x=> x && x.indexOf('completionTest') != -1)
+    const inCompletionTest = ctx.jbCtx?.lexicalStack?.find(x=> x && x.indexOf('completionTest') != -1)
     const extraCode = inCompletionTest ? `
 const { test: { Test, test: { dataTest } } } = dsls
 ${compText}

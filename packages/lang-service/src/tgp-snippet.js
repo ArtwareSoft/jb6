@@ -4,165 +4,109 @@ import '@jb6/core/misc/import-map-services.js'
 const { calcProfileActionMap } = langServiceUtils
 import { parse } from '../lib/acorn-loose.mjs'
 
-const { unique, calcTgpModelData, runCliInContext,pathJoin,toCapitalType, calcRepoRoot, discoverDslEntryPoints, isNode, absPathToImportUrl } = coreUtils
-Object.assign(coreUtils,{runSnippetCli, runSnippet})
+const { unique, calcTgpModelData, runCliInContext, toCapitalType, calcRepoRoot, discoverDslEntryPoints } = coreUtils
+Object.assign(coreUtils, { runSnippetCli, macroToJson })
 
-async function calcSnippetScript({profileText, setupCode = '', forBrowser, repoRoot: repoRootParam, fetchByEnvHttpServer } = {}) {
-  // fetchByEnvHttpServer for genieTest
-  const repoRoot = repoRootParam || await calcRepoRoot()
-  const forDsls = profileText.match(/^[^<]+<([^>]+)>/)?.[1] || 'common'
-  const cleanProfileText = profileText.replace(/^[^<]+<[^>]+>:?/, '')
-  const tgpModel = await calcTgpModelData({forRepo: repoRoot, forDsls, fetchByEnvHttpServer }) // getting a full model
-  const { importMap, staticMappings } = tgpModel
+function macroToJson(macroText, tgpModel) {
+  const cleanText = macroText.replace(/^[^<]+<[^>]+>:?/, '')
+  const allComps = Object.values(tgpModel.dsls).flatMap(type => Object.values(type)).filter(x => typeof x == 'object').flatMap(x => Object.values(x))
+  const firstCallee = parse(cleanText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0]?.expression?.callee
+  const firstName = firstCallee?.name || [firstCallee?.object?.name, firstCallee?.property?.name].join('.')
+  const { type } = allComps.find(c => c.id === firstName) || { type: 'data' }
+  const compText = `${toCapitalType(type)}('noName',{impl: ${cleanText}})`
+  const { comp, error } = calcProfileActionMap(compText, { tgpModel })
+  if (error) return { error }
+  return toJson(comp.impl)
+}
 
-  if (tgpModel.error) return { error: tgpModel.error }
-  const projectDir  = tgpModel.projectDir || repoRoot
-  const compNames = compNamesInProfile(cleanProfileText)
-  const comps = Object.values(tgpModel.dsls).flatMap(type=>Object.values(type)).filter(x=>typeof x == 'object').flatMap(x=>Object.values(x))
-    .filter(x => compNames.includes(x.id))
+function toJson(v) {
+  if (v == null || typeof v !== 'object') return v
+  if (Array.isArray(v)) return v.map(toJson)
+  return Object.fromEntries(Object.keys(v).filter(k => k[0] !== '$' || k === '$').map(k =>
+    [k, k === '$' ? (v.$$ || v.$) : toJson(v[k])]))
+}
 
-  const { type } = comps.find(c=> c.id === compNames[0]) || { type: 'data' }
-  const profText = comps.length ? cleanProfileText : JSON.stringify(cleanProfileText)
-  const origCompText = `${toCapitalType(type)}('noName',{impl: ${profText}})`    
-  const isProbeMode = origCompText.split('__').length > 1
-      
-  let compText = origCompText, parts
-  if (isProbeMode) {
-    parts = origCompText.replace(/,\s*__\s*,/g,',__').split('__')
-    compText = parts.join('')
+async function runSnippetCli(args) {
+  const repoRoot = args.repoRoot || await calcRepoRoot()
+  const res = await calcJsonProfileScript({...args, repoRoot})
+  const { ecmScript, projectDir, importMapsInCli, topLevelImports, error } = res
+  if (error) return res
+  try {
+    const result = await runCliInContext(`${ecmScript}\n await coreUtils.writeServiceResult(await calc())`, {projectDir, importMapsInCli})
+    return { ...result.result, topLevelImports }
+  } catch (error) {
+    return { error, ecmScript, projectDir, importMapsInCli }
   }
-  
-  const {dslTypeId, path: probePath, comp, compDef, error} = parseProfile({compText, tgpModel, inCompOffset : parts?.[0].length})
-  if (error)
-    return { error, compText, isProbeMode, origCompText }
-  if (!comp.id)
-    return { error : 'runSnippet: profileText must be prefixed with type<dsl>. e.g. test<test>:dataTest(...)' }
-  const dslsSection = calcDslsSection([comp],compDef)
-  const compPath = `dsls['${dslTypeId[0]}']['${dslTypeId[1]}']['${dslTypeId[2]}']`
+}
 
-  const dslsEntryPoints = await discoverDslEntryPoints({ forDsls: unique(comps.map(c=>c.dsl)), repoRoot})   // repoRoot for genieTest
-  const entryFiles = unique(comps.map(c=>c.$location.path))
-  const importsStr = [...dslsEntryPoints,...entryFiles].map(f=>forBrowser ? absPathToImportUrl(f, importMap.imports, staticMappings) : f).map(f=>`\tawait import('${f}')`).join('\n')
+async function calcJsonProfileScript({profileText, repoRoot, fetchByEnvHttpServer}) {
+  const allFullIds = unique([...profileText.matchAll(/\$\s*:\s*'([^']+)'/g)].map(m => m[1]))
+  const parsed = allFullIds.map(id => { const m = id.match(/^([^<]+)<([^>]+)>(.+)$/); return m && { type: m[1], dsl: m[2], shortId: m[3], fullId: id } }).filter(Boolean)
+  if (!parsed.length) return { error: `no valid {$: 'type<dsl>id'} found in profile` }
+  const allDsls = unique(parsed.map(p => p.dsl))
+  const tgpModel = await calcTgpModelData({forRepo: repoRoot, forDsls: allDsls.join(','), fetchByEnvHttpServer })
+  if (tgpModel.error) return { error: tgpModel.error }
+  const { importMap } = tgpModel
+  const projectDir = tgpModel.projectDir || repoRoot
+  const comps = parsed.map(p => tgpModel.dsls[p.dsl]?.[p.type]?.[p.shortId]).filter(Boolean)
+  if (!comps.length) return { error: `can not find ${allFullIds.join(', ')}` }
+
+  const allComps = collectTransitiveComps(comps, tgpModel)
+  const allCompDsls = unique([...allDsls, ...allComps.map(c => c.dsl)])
+  const dslsEntryPoints = await discoverDslEntryPoints({ forDsls: allCompDsls, repoRoot })
+  const entryFiles = unique(allComps.map(c => c.$location?.path).filter(Boolean))
+  const topLevelImports = calcMinimalImports([...dslsEntryPoints, ...entryFiles], tgpModel.importGraph)
+  const importsStr = topLevelImports.map(f => `\tawait import('${f}')`).join('\n')
   const ecmScript = `
   // dir: ${projectDir}
-import { jb, dsls, coreUtils, ns } from '@jb6/core'
-import '@jb6/core/misc/probe.js'
+import { coreUtils } from '@jb6/core'
 export async function calc() {
   ${importsStr}
-
-  ${dslsSection}
-
   try {
-    ${setupCode}
-    ${compText}
-    if (${isProbeMode}) {
-        return jb.coreUtils.runProbe(${JSON.stringify(probePath || '')})
-    } else {
-        const result = await ${compPath}.$run()
-        return {result: coreUtils.stripData(result)}
-    }
+    const result = await coreUtils.run(${profileText})
+    return {result: coreUtils.stripData(result)}
   } catch (e) {
     return coreUtils.stripData(e)
   }
 }
 `
-
-  return { ecmScript, projectDir, importMapsInCli: importMap.importMapsInCli}
-
-  function parseProfile({compText,tgpModel,inCompOffset}) {
-    try {
-      return calcProfileActionMap(compText, {tgpModel, inCompOffset})
-    } catch(error) {
-      return { error }
-    }
-  }
+  return { ecmScript, projectDir, importMapsInCli: importMap.importMapsInCli, topLevelImports }
 }
 
-async function runSnippetCli(args) { // {profileText, setupCode = '' }
-    const res = await calcSnippetScript(args)
-    const { ecmScript, projectDir, importMapsInCli, error } = res
-    if (error)
-      return res
-    try {
-      const toRun = `${ecmScript}\n await coreUtils.writeServiceResult(await calc())`
-      const result = await runCliInContext(toRun, {projectDir, importMapsInCli})
-      return result.result
-    } catch (error) {
-      return { error, ecmScript, projectDir, importMapsInCli }
-    }
-}
-
-async function runSnippet(args) {
-  const res = await calcSnippetScript({...args, forBrowser: !isNode})
-  const { ecmScript, error } = res
-  if (error)
-    return res
-  const namedScript = `${ecmScript}\n//# sourceURL=snippet-${args.profileText.slice(0,20).replace(/\s/g,'_')}:runSnippet.js`
-  const blob = new Blob([namedScript], { type: 'text/javascript' })
-  let scriptUrl
-  try {
-    scriptUrl = URL.createObjectURL(blob)
-    const mod = await import(scriptUrl)
-    const result = await mod.calc()
-    return result
-  } catch (error) {
-    return { error: { name: error?.name, message: error?.message, stack: error?.stack }, script: ecmScript }
-  } finally {
-    if (scriptUrl) URL.revokeObjectURL(scriptUrl)
-  }
-}
-
-function calcDslsSection(comps, compDef) {
-    const _items = [['data', 'common', 'asIs']]
-    const compDefs = [{ dsl: 'tgp', id: 'Const'}, { dsl: compDef.dsl, id: compDef.capitalLetterId }] // { dsl: 'common', id: 'Data'}]
-    // const compDefs = [...defaultCompDefs, ...comps.filter(comp=>comp.impl?.$$)
-    //   .filter(comp=>typeof comp.$ == 'string')
-    //   .map(comp=>({ dsl: comp.impl?.$$?.match(/([^<]+)<([^>]+)>(.+)/)[2], id: comp.$ }))]
-    comps.forEach(calcItems)
-    const items = unique(_items.filter(x=>x))
-    const ns = unique(items.filter(item=>item[2].indexOf('.') != -1).map(item =>item[2].split('.')[0]))
-    const dsls = unique([...items.map(x=>x[1]), ...compDefs.map(c=>c.dsl) ] ).sort()
-    const ns_str = ns.length ? `const { ${ns.join(', ')} } = ns` : ''
-
-    const dslsStr = dsls.map(dsl=>{
-        const types = unique(items.filter(x=>x[1] == dsl).map(x=>x[0])).sort().map(type=> {
-            const comps = unique(items.filter(x=>x[1] == dsl && x[0] == type).map(x=>x[2])).filter(x=>x.indexOf('.') == -1).sort().join(', ')
-            const typeStr = type.indexOf('-') == -1 ? type : `'${type}'`
-            return `${typeStr}: { ${comps} }`
-        }).join(',\n\t\t')
-
-        const compDefsIds = unique(compDefs.map(compDef => compDef.dsl == dsl && compDef.id).filter(Boolean))
-        const compDefsStr = compDefsIds.length ? compDefsIds.map(compDef=>`${compDef} ,`).join() : ''
-        const dslStr = dsl.indexOf('-') == -1 ? dsl : `'${dsl}'`
-        return `\t${dslStr}:{ ${compDefsStr}\n\t\t${types}\n\t}`
-    }).join(',\n')
-    return [`const {\n${dslsStr}\n} = dsls`, ns_str].filter(Boolean).join('\n')
-
-
-    function calcItems(node) {
-        if (typeof node.$$ == 'string') _items.push(node.$$.match(/([^<]+)<([^>]+)>(.+)/).slice(1))
-        if (typeof node == 'object') Object.values(node).filter(x=>x).forEach(x=>calcItems(x))
-    }
-}
-
-function compNamesInProfile(profileText) {
-  const visitedNodes = new Set()
+function collectTransitiveComps(initialComps, tgpModel) {
+  const visited = new Set()
   const result = []
-  search(parse(profileText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0])
+  initialComps.forEach(comp => walkComp(comp))
   return result
 
-  function search(node) {
-    if (typeof node != 'object' || visitedNodes.has(node)) return
-    visitedNodes.add(node)
-
-    if (node.callee)
-      result.push(nameFromCallee(node.callee))
-    Object.values(node).filter(Boolean).forEach(n => search(n))
+  function walkComp(comp) {
+    if (!comp || visited.has(comp)) return
+    visited.add(comp)
+    result.push(comp)
+    if (typeof comp.impl == 'object') walkImpl(comp.impl)
   }
-
-  function nameFromCallee(callee) {
-    if (callee.name) return callee.name
-    return nameFromCallee(callee.object) + '.' + callee.property.name
+  function walkImpl(node) {
+    if (!node || typeof node != 'object' || visited.has(node)) return
+    visited.add(node)
+    if (typeof node.$ == 'string') {
+      const m = node.$.match(/^([^<]+)<([^>]+)>(.+)$/)
+      if (m) walkComp(tgpModel.dsls[m[2]]?.[m[1]]?.[m[3]])
+    }
+    Object.values(node).forEach(v => walkImpl(v))
   }
 }
 
+function calcMinimalImports(allFiles, importGraph) {
+  const imported = new Set()
+  allFiles.forEach(f => collectImported(f, importGraph, imported, new Set([f])))
+  return allFiles.filter(f => !imported.has(f))
+}
+
+function collectImported(file, importGraph, imported, visited) {
+  for (const dep of importGraph[file] || []) {
+    if (visited.has(dep)) continue
+    visited.add(dep)
+    imported.add(dep)
+    collectImported(dep, importGraph, imported, visited)
+  }
+}

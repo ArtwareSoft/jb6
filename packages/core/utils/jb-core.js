@@ -22,7 +22,7 @@ DataFunc and Action are core types in the '' dsl
 types are organized in DSLs.
 so a full comp id is in the format: type<dsl>id
 
-dynamic function 'hold' and keeps the args until called by client with ctx. it has the creator jbCtx, the creator ctx and the caller ctx to merge.
+dynamic function 'hold' and keeps the args until called by client with ctx. it has the lexical jbCtx, the lexical ctx and the dynamic ctx to merge.
 }
 */
 import { jb } from '@jb6/repo'
@@ -99,15 +99,15 @@ class JBCtx {
         return new JBCtx({...this, path: `${this.path}~${parentParam.id}`, parentParam, profile: profile[parentParam.id]})
     }
     paramDefaultValue(path, parentParam) {
-        return new JBCtx({...this, creatorStack: [...(this.creatorStack || []), this.path, path], path, parentParam, profile: parentParam.defaultValue})
+        return new JBCtx({...this, lexicalStack: [...(this.lexicalStack || []), this.path, path], path, parentParam, profile: parentParam.defaultValue})
     }
-    callCtx(callerCtx) {
-        return new JBCtx({...this, callerStack: [...(this.callerStack||[]), callerCtx]})
+    callCtx(dynamicCtx) {
+        return new JBCtx({...this, dynamicStack: [...(this.dynamicStack||[]), dynamicCtx]})
     }
     newComp(comp, args) {
         return new JBCtx({...this, 
             path: `${comp.$dslType}${comp.id}~impl`, 
-            creatorStack: [...(this.creatorStack || []), this.path],
+            lexicalStack: [...(this.lexicalStack || []), this.path],
             args
         })
     }
@@ -182,7 +182,7 @@ class paramRunner {
         Object.assign(this,_param)
         this.path = `${compFullPath}~params~${_param.id}`
     }
-    resolve(profile, creatorCtx, settings) {
+    resolve(profile, lexicalCtx, settings) {
         if (this.asIs == true) return toRTType(this, profile[this.id])
         const doResolve = ctxToUse => {
             const innerProfile = ctxToUse.jbCtx.profile
@@ -192,38 +192,38 @@ class paramRunner {
                 : run(innerProfile, ctxToUse, settings )
             return toRTType(this, value)
         }
-        const creatorProfile = creatorCtx.jbCtx.profile
-        const funcName = typeof creatorProfile == 'string' && creatorProfile.slice(0,30) 
-            || creatorProfile?.$?.id || typeof creatorProfile == 'function' && 'js' || ''
-        Object.defineProperty(doResolve, 'name', { value: `${funcName} ${creatorCtx.jbCtx.path}` })
+        const lexicalProfile = lexicalCtx.jbCtx.profile
+        const funcName = typeof lexicalProfile == 'string' && lexicalProfile.slice(0,30) 
+            || lexicalProfile?.$?.id || typeof lexicalProfile == 'function' && 'js' || ''
+        Object.defineProperty(doResolve, 'name', { value: `${funcName} ${lexicalCtx.jbCtx.path}` })
 
         if (this.dynamic == true) {
-            const res = (callerCtx, arrayIndex) => {
+            const res = (dynamicCtx, arrayIndex) => {
                 if (arrayIndex && typeof arrayIndex != 'number') {
-                    logError('tgp core error: use single ctx param when invoking dynamic:true funcs, vars are taken from the ctx. second param can only be arrayIndex of array profile. ', {secondParam: arrayIndex, ctx: callerCtx})
+                    logError('tgp core error: use single ctx param when invoking dynamic:true funcs, vars are taken from the ctx. second param can only be arrayIndex of array profile. ', {secondParam: arrayIndex, ctx: dynamicCtx})
                     arrayIndex = null
                 }
-                const _creatorCtx = arrayIndex != null ? creatorCtx.setJbCtx(creatorCtx.jbCtx.innerArrayPath(arrayIndex)) : creatorCtx
-                return doResolve(mergeDataCtx(_creatorCtx, callerCtx))
+                const _lexicalCtx = arrayIndex != null ? lexicalCtx.setJbCtx(lexicalCtx.jbCtx.innerArrayPath(arrayIndex)) : lexicalCtx
+                return doResolve(mergeDataCtx(_lexicalCtx, dynamicCtx))
             }
             res.profile = profile[this.id] // use by pipeline
-            res.creatorCtx = creatorCtx
+            res.lexicalCtx = lexicalCtx
             return res
         }                
-        return doResolve(creatorCtx)
+        return doResolve(lexicalCtx)
 
-        function mergeDataCtx(_creatorCtx, callerCtx) {
-            const creatorCtx = callerCtx ? _creatorCtx.setJbCtx(_creatorCtx.jbCtx.callCtx(callerCtx)) : _creatorCtx
-            if (callerCtx == null) return creatorCtx
-            const noOfVars = Object.keys(callerCtx.vars || []).length
-            if (noOfVars == 0 && callerCtx.data == null)
-                return creatorCtx
-            if (noOfVars == 0 && callerCtx.data != null)
-                return creatorCtx.setData(callerCtx.data)
-            if (noOfVars > 0 && callerCtx.data != null)
-                return creatorCtx.setVars(callerCtx.vars).setData(callerCtx.data)
-            if (noOfVars > 0 && callerCtx.data == null)
-                return creatorCtx.setVars(callerCtx.vars)
+        function mergeDataCtx(_lexicalCtx, dynamicCtx) {
+            const lexicalCtx = dynamicCtx ? _lexicalCtx.setJbCtx(_lexicalCtx.jbCtx.callCtx(dynamicCtx)) : _lexicalCtx
+            if (dynamicCtx == null) return lexicalCtx
+            const noOfVars = Object.keys(dynamicCtx.vars || []).length
+            if (noOfVars == 0 && dynamicCtx.data == null)
+                return lexicalCtx
+            if (noOfVars == 0 && dynamicCtx.data != null)
+                return lexicalCtx.setData(dynamicCtx.data)
+            if (noOfVars > 0 && dynamicCtx.data != null)
+                return lexicalCtx.setVars(dynamicCtx.vars).setData(dynamicCtx.data)
+            if (noOfVars > 0 && dynamicCtx.data == null)
+                return lexicalCtx.setVars(dynamicCtx.vars)
         }
     }
 }

@@ -28,14 +28,12 @@ async function runProbeCli(probePath, resources, {onStatus = null, claudeDir = '
       import '@jb6/testing'
       import '@jb6/core/misc/probe.js'
       const imports = ${JSON.stringify(imports)}
-      const claudeDir = '${claudeDir}', probePath = '${probePath}'
+      const probePath = '${probePath}'
       try {
         ${extraCode || ''}
         await Promise.all(imports.map(f => import(f))) // .catch(e => console.error(e.stack) )
         jb.workflowUtils?.workflowEvents?.on('status', text => console.error(text))
         const probeRes = await jb.coreUtils.runProbe(probePath)
-        const claudeDirRes = await coreUtils.createClaudeDirForProbe({claudeDir, probePath, probeRes,imports})
-        probeRes.claudeDir = claudeDirRes
         await coreUtils.writeServiceResult(probeRes)
       } catch (e) {
         await coreUtils.writeServiceResult({error: e.stack})
@@ -51,6 +49,9 @@ async function runProbeCli(probePath, resources, {onStatus = null, claudeDir = '
       return { probeRes: null, error: error.stack, projectDir}
     }
 }
+
+        //const claudeDirRes = await coreUtils.createClaudeDirForProbe({claudeDir, probePath, probeRes,imports})
+        //probeRes.claudeDir = claudeDirRes
 
 async function runProbe(_probePath, {circuitCmpId, timeout } = {}) {
   debugger
@@ -161,14 +162,12 @@ to read the relevant source code, use the imports and import map
 function stripProbeResult(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.map(entry => {
-    const { from = null, out = null, in: input = {} } = entry || {};
-    const safeIn = {
-      data:   input.data   ?? null,
-      params: input.cmpCtx?.params ?? null,
-      vars:   input.vars   ?? null
-    };
-    return stripData({ from, out, in: safeIn }, {reshowVisited: true});
-  });
+    const { from = null, out = null, in: input = {} } = entry || {}
+    const safeIn = { data: input.data, params: input.jbCtx?.params, vars: input.vars }
+    const safeOut = out instanceof coreUtils.Ctx ? { data: out.data, params: out.jbCtx?.params, vars: out.vars } : out
+
+    return stripData({ from, out: safeOut, in: safeIn }, {reshowVisited: true})
+  })
 }
 
 class Probe {
@@ -225,8 +224,8 @@ class Probe {
     record(ctx,out,data,vars) {
         const {probe, path : _path } = ctx.jbCtx
         if (!probe.active || typeof out == 'function') return
-        const creatorPath = ctx.jbCtx.creatorStack?.[1] || ''
-        const path = [_path,creatorPath].find(p=>probe.probePath.split('~')[0] == p.split('~')[0])
+        const lexicalPath = ctx.jbCtx.lexicalStack?.[1] || ''
+        const path = [_path,lexicalPath].find(p=>probe.probePath.split('~')[0] == p.split('~')[0])
         //if (!path) return
         probe.visits[path] = probe.visits[path] || 0
         probe.visits[path]++

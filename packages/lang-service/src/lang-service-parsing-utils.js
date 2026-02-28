@@ -226,7 +226,9 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
                 actionMap.push({ action: `prependPT!${secParamPath}`, from: startParamArrayArea, to: startParamArrayArea, source: 'secondParamAsArray' })
                 const endOfParamArrayArea = paramsByNameAst ? paramsByNameAst.start -1 : ast.end-1
                 actionMap.push({ action: `appendPT!${secParamPath}`, from: endOfParamArrayArea, to: endOfParamArrayArea })
-                delimiters.forEach((dl, i) => actionMap.push({ action: `insertPT!${secParamPath}~${i}`, from: dl.start, to: dl.end }))
+                delimiters.forEach((dl, i) => i == 0
+                    ? actionMap.push({ action: `prependPT!${secParamPath}`, from: dl.start, to: dl.end, source: 'secondParamAsArray-delim0' })
+                    : actionMap.push({ action: `insertPT!${secParamPath}~${i-1}`, from: dl.start, to: dl.end }))
             }
             params.map(p=>({id:p.id, val: prof[p.id]})).filter(({val}) => val != null)
                 .forEach(({id,val}) => calcActionMap(val, `${path}~${id}`, prof[primitivesAst][id] || val[astNode]))

@@ -128,15 +128,13 @@ Component('singleParamByNameComp', {
   ]
 })
 
-// Data('tst', {
-//   impl: pipeline(
-//     obj(),
-//     bookletsContent(),
-//     obj(),
-//     pipeline(false, ''),
-//     singleParamByNameComp(),
-//     singleParamByNameComp(),
-//     bookletsContent(),
-//     bookletsContent()
-//   )
+// Control('exmapleForProfile', {
+//   impl: group({
+//     controls: [
+//       button('click me', runActionOnItem('', '')),
+//       group(button('btn2', '')),
+//       group(text('my text'), button('btn2', ''))
+//     ],
+//     title: 'group title'
+//   })
 // })

@@ -120,10 +120,10 @@ function log(logNames, logObj) {
 
 function logError(err,logObj) {
   const { ctx, url, line, col } = logObj || {}
-  const { jbCtx: { callerStack, creatorStack }} = ctx || { jbCtx: {} }
+  const { jbCtx: { dynamicStack, lexicalStack }} = ctx || { jbCtx: {} }
   const srcLink = url && globalThis.window ? `${window.location.origin}${url}:${line+1}:${col} ` : ''
-  globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, callerStack, creatorStack)
-  const errObj = { err , ...logObj, callerStack, creatorStack}
+  globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, dynamicStack, lexicalStack)
+  const errObj = { err , ...logObj, dynamicStack, lexicalStack}
   //globalThis.process?.stderr.write(err)
   logVsCode('error', stripData(errObj))
   //jb.ext.spy?.log('error', errObj)
@@ -308,6 +308,9 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, resho
       visited.set(data, path || '<root>')
     }
     if (Array.isArray(data)) {
+      const querySource = data[Symbol.for('queryResult')]
+      if (querySource && data.length > 10)
+        return [...data.slice(0, 3).map((item, i) => _strip(item, depth + 1, path ? `${path}.${i}` : `${i}`)), {$truncated: true, total: data.length, source: querySource}]
       if (data.length > MAX_ARRAY_LENGTH)
         data = data.slice(0, MAX_ARRAY_LENGTH)
       return data.map((item, i) => _strip(item, depth + 1, path ? `${path}.${i}` : `${i}`))

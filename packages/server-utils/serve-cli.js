@@ -38,8 +38,12 @@ function serveCliStream(app) {
   }
   const sseSend = (res, msg) => res.write(`data: ${JSON.stringify(msg)}\n\n`)
 
-  const broadcast = (runId, msg) =>
-    Object.values(runs[runId]?.listeners || {}).forEach(fn => fn(msg))
+  const broadcast = (runId, msg) => {
+    const run = runs[runId]
+    if (!run) return
+    run.buffer.push(msg)
+    Object.values(run.listeners).forEach(fn => fn(msg))
+  }
 
   app.post('/run-cli-stream', (req, res) => {
     if (!req.body) return res.json({ error: 'no body in req' })
@@ -47,7 +51,7 @@ function serveCliStream(app) {
     const runId = newRunId()
     let resolve
     const promise = new Promise(r => resolve = r)
-    runs[runId] = { listeners: {}, promise, resolve }
+    runs[runId] = { listeners: {}, buffer: [], promise, resolve }
 
     const broadcastStatus = text => broadcast(runId, { type: 'status', text })
     const broadcastDone = () => broadcast(runId, { type: 'done' })
@@ -112,6 +116,7 @@ function serveCliStream(app) {
     const run = runs[req.params.runId]
     if (!run) return res.status(404).end('no such run')
     sseHeaders(res)
+    run.buffer.forEach(msg => sseSend(res, msg))
     const id = Math.random().toString(36).slice(2)
     run.listeners[id] = msg => sseSend(res, msg)
     req.on('close', () => delete run.listeners[id])

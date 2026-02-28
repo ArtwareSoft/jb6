@@ -5,7 +5,7 @@ import { ns, dsls, coreUtils } from '@jb6/core'
 import './mock-workspace.js'
 import '@jb6/core/misc/import-map-services.js'
 
-const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, runSnippet, runSnippetCli, prettyPrint } = coreUtils
+const { jb, resolveProfileArgs, prettyPrintWithPositions, calcTgpModelData, resolveProfileTypes, sortedArraysDiff, objectDiff, delay, runSnippetCli, prettyPrint } = coreUtils
 const { tgpEditorHost, tgpModelForLangService, offsetToLineCol, applyCompChange, calcProfileActionMap} = jb.langServiceUtils 
 
 const {
@@ -221,14 +221,12 @@ Test('snippetTest', {
   params: [
     {id: 'profileText', as: 'text', asIs: true},
     {id: 'expectedResult', type: 'boolean', as: 'boolean', dynamic: true},
-    {id: 'runInCli', type: 'boolean', as: 'boolean'},
-    {id: 'setupCode', as: 'text', asIs: true},
     {id: 'repoRoot', as: 'string'},
-    {id: 'fetchByEnvHttpServer', as : 'string' }
+    {id: 'fetchByEnvHttpServer', as: 'string'}
   ],
   impl: dataTest({
     calculate: async (ctx,{},args) => {
-      const res = args.runInCli ? await runSnippetCli(args) : await runSnippet(args)
+      const res = await runSnippetCli(args)
       return res?.result || res.error
     },
     expectedResult: '%$expectedResult()%',

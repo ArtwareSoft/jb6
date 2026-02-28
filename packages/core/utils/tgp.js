@@ -13,7 +13,7 @@ function Component(id, comp) {
   try {
     return jb.dsls[_dsl][toCapitalType(_type)](id,comp)
   } catch(error) {
-    console.error(`error while defing comp ${id}`,error.stack)
+    console.error(`error while defining comp ${id}`,error.stack)
   }
 }  
 
@@ -226,7 +226,7 @@ Data('asIs', {
   params: [
     {id: 'val', ignore: true}
   ],
-  impl: ctx => ctx.args.val
+  impl: ({},{},{val}) => val
 })
 
 Any('If', {

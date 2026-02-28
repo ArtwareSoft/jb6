@@ -102,7 +102,7 @@ GroupProp('group.sum', {
 })
 
 function defaultGroupPropName(ctx) {
-  const aggregatedProp = coreUtils.calcPath(ctx.jbCtx.callerStack.slice(-1)[0],'jbCtx.args.prop') || ''
+  const aggregatedProp = coreUtils.calcPath(ctx.jbCtx.dynamicStack.slice(-1)[0],'jbCtx.args.prop') || ''
   const opId = (ctx.jbCtx.path.match(/([^~.]+)~/) || [])[1]
   return [opId,aggregatedProp.replace(/^./, c => c.toUpperCase())].join('')
 }

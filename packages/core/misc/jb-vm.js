@@ -14,10 +14,10 @@ Object.assign(coreUtils, { getOrCreateVm })
 const vmCache = {}
 
 async function getOrCreateVm(options) {
-    const { vmId, resources} = options
+    const { vmId, resources, entryFiles: optEntryFiles } = options
     if (vmId && vmCache[vmId]) return vmCache[vmId]
-    const importData = resources ? await calcImportData(resources) : options
-    const {importMap, staticMappings } = importData
+    const importData = options.importMap ? options : resources ? await calcImportData(resources) : options
+    const {importMap, staticMappings, entryFiles: calcedEntryFiles } = importData
     if (!importMap) {
         console.error('can not calc importMap',importData, resources,options)
         return 
@@ -38,6 +38,17 @@ async function getOrCreateVm(options) {
         return safeResolveURL(resolved.startsWith('file://') ? resolved : ('file://' + resolved)).href
     }
 
+    const fileOverrides = options.fileOverrides
+
+    function readFileContent(identifier) {
+        if (fileOverrides) {
+            const url = safeResolveURL(identifier)
+            const path = url.pathname || url.href?.replace?.('file://','')
+            if (path && fileOverrides.has(path)) return fileOverrides.get(path)
+        }
+        return fs.readFileSync(safeResolveURL(identifier), 'utf8')
+    }
+
     function loadModule(identifier, context, {fileContent, referrer} = {}) {
         if (!identifier)
             debugger
@@ -45,7 +56,7 @@ async function getOrCreateVm(options) {
             //console.log('♻️ Reusing cached module', identifier)
             return moduleCache.get(identifier)
         }
-        
+
         //console.log('📦 Creating new module', identifier)
         try {
             let mod
@@ -60,7 +71,7 @@ async function getOrCreateVm(options) {
                   )
             } else {
                 try {
-                    const source = fileContent || fs.readFileSync(safeResolveURL(identifier), 'utf8')
+                    const source = fileContent || readFileContent(identifier)
                     mod = new vm.SourceTextModule(source, { identifier, context,
                         importModuleDynamically: (specifier, referrer) => importModuleDynamically (context, specifier, referrer)
                     })
@@ -77,11 +88,11 @@ async function getOrCreateVm(options) {
     }
 
     function linker(specifier, referrer) {
-        //console.log('linker', specifier, referrer.identifier)
         const childId = calcSpecifierUrl(specifier,referrer)
+        if (!childId) console.error('VM linker: FAILED to resolve', specifier, 'from', referrer.identifier)
         const res = childId && loadModule(childId, referrer.context, {fileContent: '', referrer})
         if (!res)
-            return new vm.SyntheticModule([], () => {}, { context, identifier: `error calculating url for ${specifier} from ${referrer?.identifier}` })
+            return new vm.SyntheticModule([], () => {}, { context: referrer.context, identifier: `error calculating url for ${specifier} from ${referrer?.identifier}` })
         return res
     }
 
@@ -112,7 +123,7 @@ async function getOrCreateVm(options) {
             URLSearchParams, atob, gc, performance, URL, calcSpecifierUrl, Buffer,
             fetch,
             vmCleanup, builtIn, __repoRoot: globalThis.__repoRoot })
-        const {entryFiles} = await coreUtils.calcImportData(resources)
+        const entryFiles = optEntryFiles || calcedEntryFiles
         const initCode = ['import { jb } from "@jb6/core"', "globalThis.jb = jb",entryFiles.map(e=>`import '${e}'`)].join('\n')
         const mod = await loadModule(vmId || 'entryScript', context , {fileContent: initCode, displayErrors: true })
         await mod.link(linker)

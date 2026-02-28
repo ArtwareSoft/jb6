@@ -98,7 +98,7 @@ function evalExpressionPart(expressionPart, ctx, calculatedParentParam ) {
         return pipe(input,subExp.slice(0,-2),last,first,true)
       if (first && subExp.charAt(0) == '$' && subExp.length > 1) {
         const ret = calcVar(subExp.substr(1), ctx, {isRef: isRefType(last && jstype)})
-        // const _ctx = ret.creatorCtx ? { data: ctx.data, vars: ctx.vars, jbCtx: ret.creatorCtx } : ctx
+        // const _ctx = ret.lexicalCtx ? { data: ctx.data, vars: ctx.vars, jbCtx: ret.lexicalCtx } : ctx
         //const _ctx = ctx // TODO: fix it. ret && ret.runCtx ? new jb.core.JBCtx(ctx, { cmpCtx: ret.runCtx, forcePath: ret.srcPath}) : ctx
         return typeof ret === 'function' && invokeFunc ? ret(ctx) : ret
       }
@@ -220,7 +220,7 @@ function trackOrigins(str, ctx) {
     const value = toString(evalExpressionPart(innerExp, recordCtx, record.overrideParentParam))
     const varName = (innerExp.match(/\$(.*)/) || [])[1]
     if (recordCtx.jbCtx?.args?.[varName] !== undefined) {
-      const source = `${recordCtx.jbCtx.creatorStack.slice(-1)[0]}~${varName}`
+      const source = `${recordCtx.jbCtx.lexicalStack.slice(-1)[0]}~${varName}`
       segments.push({ text: value, range: [position, position + value.length - 1], source })
     } else if (recordCtx.vars?.[varName] !== undefined) {
       const varSegments = trackOrigins(value, recordCtx)

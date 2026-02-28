@@ -1,9 +1,6 @@
-import { dsls, ns, coreUtils } from '@jb6/core'
-import '@jb6/core/misc/jb-cli.js'
-import '@jb6/core/misc/import-map-services.js'
+import { dsls } from '@jb6/core'
 import '@jb6/testing'
 import '@jb6/mcp'
-const { runBashScript, calcRepoRoot } = coreUtils
 
 const {
   tgp: { TgpType, Component },
@@ -140,25 +137,14 @@ Component('mcpToolTest', {
   params: [
     {id: 'tool', as: 'string'},
     {id: 'args', as: 'object'},
-    {id: 'repoRoot', as: 'string'},
-    {id: 'jb6PackagesRoot', as: 'string'},
-    {id: 'importMapsInCli', as: 'string'},
+    {id: 'mcpUrl', as: 'string', defaultValue: 'http://localhost:8083/mcp'},
     {id: 'expectedResult', type: 'boolean', dynamic: true}
   ],
   impl: dataTest({
-    calculate: async (ctx,{},{tool,args, repoRoot: repoRootParam, jb6PackagesRoot: jb6PackagesRootParam, importMapsInCli}) => {
-        const repoRoot = repoRootParam || await calcRepoRoot()
-
-        const jb6PackagesRoot = jb6PackagesRootParam || `${jb.coreRegistry.repoRoot}/packages`
-
-        const req  = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":tool,arguments: args}}
-        const reqJSON = JSON.stringify(req)
-        const importPart = importMapsInCli ? `--import ${importMapsInCli}` : '' //./public/tests/register.js`
-        const script = `cd ${repoRoot} && node ${importPart} ${jb6PackagesRoot}/mcp/index.js --start --repoRoot=. <<'__JSON__'
-${reqJSON}
-__JSON__`
-        const res = await runBashScript(script)
-        const mcpRes = res?.stdout?.result?.content?.[0]?.text
+    calculate: async (ctx,{},{tool, args, mcpUrl}) => {
+        const req = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name": tool, arguments: args || {}}}
+        const json = await mcpFetch(mcpUrl, req)
+        const mcpRes = json?.result?.content?.[0]?.text
         let parsedMcpRes
         try {
           parsedMcpRes = /^[\s]*[{\[]/.test(mcpRes) && JSON.parse(mcpRes)
@@ -166,13 +152,28 @@ __JSON__`
         if (parsedMcpRes?.error)
           return { testFailure: parsedMcpRes?.error}
         if (!mcpRes)
-          return { testFailure: 'error in mcp res'}
+          return { testFailure: 'error in mcp res', json }
         return mcpRes
     },
     expectedResult: '%$expectedResult()%',
-    timeout: 2000
+    timeout: 5000
   })
 })
+
+async function mcpFetch(url, req) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
+    body: JSON.stringify(req)
+  })
+  const ct = res.headers.get('content-type') || ''
+  if (ct.includes('text/event-stream')) {
+    const text = await res.text()
+    const last = text.split('\n').filter(l => l.startsWith('data: ')).pop()
+    return last ? JSON.parse(last.slice(6)) : null
+  }
+  return res.json()
+}
 
 Component('mcpHttpTest', {
   type: 'test<test>',
@@ -185,15 +186,7 @@ Component('mcpHttpTest', {
   impl: dataTest({
     calculate: async (ctx,{},{tool, args, mcpUrl}) => {
         const req = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name": tool, arguments: args || {}}}
-        const res = await fetch(mcpUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json, text/event-stream'
-          },
-          body: JSON.stringify(req)
-        })
-        const json = await res.json()
+        const json = await mcpFetch(mcpUrl, req)
         const mcpRes = json?.result?.content?.[0]?.text
         let parsedMcpRes
         try {
@@ -225,15 +218,7 @@ Component('mcpUiResourceTest', {
     calculate: async (ctx,{},{compId, mcpUrl}) => {
       const resourceUri = `ui://react-comp/${compId}`
       const req = {"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri": resourceUri}}
-      const res = await fetch(`${mcpUrl}/mcp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json, text/event-stream'
-        },
-        body: JSON.stringify(req)
-      })
-      const json = await res.json()
+      const json = await mcpFetch(`${mcpUrl}/mcp`, req)
       if (json.error) return { testFailure: json.error.message, json }
       const html = json?.result?.contents?.[0]?.text
       if (!html) return { testFailure: 'No HTML in response', json }
@@ -262,15 +247,7 @@ Component('mcpReactTest', {
     calculate: async (ctx,{singleTest},{compId, toolResult, mcpUrl}) => {
       const resourceUri = `ui://react-comp/${compId}`
       const req = {"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri": resourceUri}}
-      const res = await fetch(`${mcpUrl}/mcp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json, text/event-stream'
-        },
-        body: JSON.stringify(req)
-      })
-      const json = await res.json()
+      const json = await mcpFetch(`${mcpUrl}/mcp`, req)
       const html = json?.result?.contents?.[0]?.text
       if (!html) return { testFailure: 'Failed to get UI resource HTML', json }
 

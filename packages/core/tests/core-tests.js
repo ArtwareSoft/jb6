@@ -1,6 +1,7 @@
 import { dsls, coreUtils, ns } from '@jb6/core'
 import '@jb6/testing'
 import '@jb6/llm-guide'
+import '@jb6/common'
 import '@jb6/core/misc/pretty-print.js'
 
 const { 
@@ -54,8 +55,13 @@ Test('coreTest.datum2', {
   impl: dataTest(pipeline('%%', { data: 'hello' }), equals('hello'))
 })
 
+Data('math2.abs', {
+  impl: ctx => Math.abs(ctx.data)
+})
+
+const { math2 } = ns
 Test('coreTest.ns', {
-  impl: dataTest(pipeline(-2, math.abs()), equals(2))
+  impl: dataTest(math2.abs({data: -2}), equals(2))
 })
 
 Data('ns1.nsWithRun', {
@@ -297,12 +303,11 @@ Test('vmTest.minimal', {
   HeavyTest: true,
   impl: dataTest({
     calculate: async () => {
-      const builtIn = {}
-      const result = await jb.testingUtils.runTestVm({
-          testID: 'coreTest.ns', resources: { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/core/tests/core-tests.js`}, builtIn })
-      return result?.testRes?.[0]
+      await coreUtils.calcJb6RepoRootAndImportMapsInCli()
+      return jb.testingUtils.runTestVm({ testID: 'coreTest.ns', resources: { 
+          entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/core/tests/core-tests.js`}})
     },
-    expectedResult: equals(2),
+    expectedResult: equals(2,'%testRes%'),
     timeout: 2000
   })
 })

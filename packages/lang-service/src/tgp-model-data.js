@@ -19,14 +19,15 @@ export async function calcTgpModelData(resources) {
   const { fetchByEnvHttpServer } = resources
   if (resources.forDsls == 'test' && !resources.entryPointPaths)
     resources.forRepo = await calcRepoRoot()
-  const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot, llmGuideFiles, jb6_llmGuideFiles } = await calcImportData(resources)
+  const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot, llmGuideFiles, jb6_llmGuideFiles, jb6_testFiles } = await calcImportData(resources)
   const allLlmGuideFiles = unique([...llmGuideFiles || [], ...jb6_llmGuideFiles || []])
-  const rootFilePaths = unique([...entryFiles, ...testFiles, ...allLlmGuideFiles])
+  const allTestFiles = unique([...testFiles || [], ...jb6_testFiles || []])
+  const rootFilePaths = unique([...entryFiles, ...allTestFiles, ...allLlmGuideFiles])
   // crawl
-  const codeMap = {} , visited = {}
+  const codeMap = {} , visited = {}, importGraph = {}
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
 
-  const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, compDefsByFilePaths: {}, files: Object.keys(codeMap), importMap, entryFiles, testFiles, projectDir, staticMappings}
+  const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, compDefsByFilePaths: {}, files: Object.keys(codeMap), importGraph, importMap, entryFiles, testFiles, projectDir, staticMappings}
   globalThis.detailedjbVSCodeLog && logVsCode('calcTgpModelData before', resources, tgpModel)
 
   const {dsls} = tgpModel
@@ -87,10 +88,19 @@ export async function calcTgpModelData(resources) {
 
   return tgpModel
 
-  function parseCompDec({exportName, decl, filePath, src, compDefs}) {
+  function parseCompDec({exportName, decl, filePath, src, compDefs, vars = {}}) {
     if (!decl) return
     if (decl.type !== 'CallExpression' || decl.callee.type !== 'Identifier') return
     let compDefId = decl.callee.name
+    if (compDefId === 'DefComponents' && decl.arguments[0]?.type === 'Literal' && decl.arguments[1]?.type === 'ArrowFunctionExpression') {
+      const items = decl.arguments[0].value.split(',')
+      const paramName = decl.arguments[1].params[0]?.name
+      const body = decl.arguments[1].body
+      const innerCall = body.type === 'CallExpression' ? body : body.body?.[0]?.expression
+      if (innerCall && paramName)
+        items.forEach(item => parseCompDec({decl: innerCall, filePath, src, compDefs, vars: {[paramName]: item}}))
+      return
+    }
     if (decl.callee.name == 'Component') {
       const dslType = astToTgpObj(decl).$unresolvedArgs[1]?.type || 'data<common>'
       const [_type, _dsl] = coreUtils.splitDslType(dslType)
@@ -100,14 +110,15 @@ export async function calcTgpModelData(resources) {
     if (!compDefs[compDefId]) return
 
     let shortId, comp
-    if (decl.arguments[0].type === 'Literal') {
-      shortId = decl.arguments[0].value
+    const firstArgVal = astToObj(decl.arguments[0], vars)
+    if (typeof firstArgVal === 'string' && decl.arguments.length > 1) {
+      shortId = firstArgVal
       if (exportName && shortId !== exportName)
         logError(`calcTgpModelData id mismatch ${shortId} ${exportName}`,{ filePath, ...offsetToLineCol(src, decl) })
-      comp = astToObj(decl.arguments[1])
+      comp = astToObj(decl.arguments[1], vars)
     } else {
       shortId = exportName
-      comp = astToObj(decl.arguments[0])
+      comp = astToObj(decl.arguments[0], vars)
     }
     if (!shortId)
       logError(`calcTgpModelData no id mismatch`,{ filePath, ...offsetToLineCol(src, decl) })
@@ -136,6 +147,7 @@ export async function calcTgpModelData(resources) {
           .filter(ex => ex.type === 'CallExpression' && ex.callee.type === 'Import')
           .map(ex => ex.arguments[0]?.value).filter(Boolean).map(rel => resolvePath(rUrl, rel))
       ].filter(x=>!x.match(/^\/libs\//))
+      importGraph[url] = imports
       globalThis.detailedjbVSCodeLog && logVsCode('crawl', url, imports)
 
       await Promise.all(imports.map(url => crawl(url)))
@@ -145,27 +157,30 @@ export async function calcTgpModelData(resources) {
   }
 }
 
-function astToObj(node) {
+function astToObj(node, vars = {}) {
   if (!node) return undefined
   switch (node.type) {
+    case 'Identifier':
+      return vars[node.name]
     case 'Literal':
       return node.value
+    case 'TemplateLiteral': {
+      const strs = node.quasis.map(q => q.value.cooked)
+      const exprs = node.expressions.map(e => astToObj(e, vars))
+      return strs.reduce((acc, s, i) => acc + s + (exprs[i] ?? ''), '')
+    }
     case 'ObjectExpression': {
       const obj = {}
       for (const prop of node.properties) {
-        const key = prop.key.type === 'Identifier' 
-          ? prop.key.name 
-          : prop.key.value
-        obj[key] = astToObj(prop.value)
+        const key = prop.key.type === 'Identifier' ? prop.key.name : prop.key.value
+        obj[key] = astToObj(prop.value, vars)
       }
       return obj
     }
     case 'ArrayExpression':
-      return node.elements.map(el => astToObj(el))
+      return node.elements.map(el => astToObj(el, vars))
     case 'UnaryExpression':
-      return node.operator === '-' 
-        ? -astToObj(node.argument) 
-        : astToObj(node.argument)
+      return node.operator === '-' ? -astToObj(node.argument, vars) : astToObj(node.argument, vars)
     default:
       return undefined
   }

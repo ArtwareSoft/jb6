@@ -153,6 +153,10 @@ Test('completionTest.secondParamAsArray1', {
   impl: completionOptionsTest(`dataTest(pipeline('a',__ '-%%-', '%%'))`, ['split'])
 })
 
+Test('completionTest.defComponents.math', {
+  impl: completionOptionsTest('dataTest(pipeline(-2, math.abs()), __equals(2))', ['contains'])
+})
+
 Test('completionTest.createPipelineFromComp', {
   impl: completionActionTest(`uiTest(text(__split()))`, {
     completionToActivate: 'pipeline',
@@ -219,10 +223,6 @@ Test('completionTest.prettyPrintFunctionAsIs', {
     expectedCursorPos: '1,44'
   })
 })
-
-// Test('a', {
-//   impl: dataTest(obj(prop('aa', 'asa'), prop()))
-// })
 
 Test('completionTest.ns', {
   impl: completionActionTest('dataTest(enrichGroupProps(__))', {
@@ -497,10 +497,10 @@ Test('completionTest.multiLine.secondParamAsArray', {
   ))`,
     completionToActivate: 'pipeline',
     expectedEdit: asIs({
-        range: {start: {line: 2, col: 4}, end: {line: 2, col: 4}},
-        newText: `pipeline('', '')`
+        range: {start: {line: 4, col: 4}, end: {line: 4, col: 4}},
+        newText: `pipeline('', ''),\n    `
     }),
-    expectedCursorPos: '3,12'
+    expectedCursorPos: '4,14'
   })
 })
 
@@ -646,7 +646,7 @@ Test('completionActionTest.defaultValueWithDslTypeNoTypeError', {
     filePath: 'packages/testing/ui-dsl-for-tests.js',
     expectedEdit: asIs({
         range: {start: {line: 0, col: 20}, end: {line: 0, col: 82}},
-        newText: `\n  params: [\n    {id: 'f', type: 'feature', defaultValue: {\n      $: 'method',\n      syntaxError: 'can not find comp method of type feature<common> in path  read core/llm-guide/tgp-primer to understand tgp types'\n    }}\n  ]\n`
+        newText: `\n  params: [\n    {id: 'f', type: 'feature', defaultValue: {\n      $: 'method',\n      syntaxError: 'can not find comp method of type feature<common> in path'\n    }}\n  ]\n`
     }),
     expectedCursorPos: '0,19'
   })
