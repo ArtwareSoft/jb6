@@ -504,6 +504,30 @@ Test('completionTest.multiLine.secondParamAsArray', {
   })
 })
 
+Test('completionTest.secondParamAsArrayWithVar', {
+  impl: completionActionTest({
+    compText: `dataTest(pipeline(Var('val1', '%$val%'), obj(), bookletsContent()__, obj()))`,
+    completionToActivate: 'pipeline',
+    expectedEdit: asIs({
+        range: {start: {line: 1, col: 69}, end: {line: 1, col: 69}},
+        newText: `pipeline('', ''), `
+    }),
+    expectedCursorPos: '1,79'
+  })
+})
+
+
+Test('completionTest.firstParamAsArrayWithVar', {
+  impl: completionActionTest({
+    compText: `uiTest(group(Var('x', 1), text('a'), text('b')__, text('c')))`,
+    completionToActivate: 'text',
+    expectedEdit: asIs({
+        range: {start: {line: 1, col: 62}, end: {line: 1, col: 62}},
+        newText: `my text'), text('`
+    }),
+    expectedCursorPos: '1,62'
+  })
+})
 
 Test('completionTest.multiLineInArray', {
   impl: completionOptionsTest({

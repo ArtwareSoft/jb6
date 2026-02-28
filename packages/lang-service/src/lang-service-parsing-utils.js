@@ -215,20 +215,25 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
                 delimiters.forEach(dl => actionMap.push({ action: `addProp!${path}`, from: dl.start, to: dl.end+1, source: 'delimiters' }))
             if (firstParamAsArray) {
                 const firstParamPath = `${path}~${param0.id}`
+                const numVarsFirst = asArray(prof.vars).length
                 actionMap.push({ action: `prependPT!${firstParamPath}`, from: endOfPTName, to: (ast.arguments)?.[0]?.start || endOfPTName, source: 'firstParamAsArray' })
                 const endOfParamArrayArea = paramsByNameAst ? paramsByNameAst.start -1 : ast.end-1
                 actionMap.push({ action: `appendPT!${firstParamPath}`, from: endOfParamArrayArea, to: endOfParamArrayArea })
-                delimiters.forEach((dl, i) => actionMap.push({ action: `insertPT!${firstParamPath}~${i}`, from: dl.start, to: dl.end }))
+                delimiters.forEach((dl, i) => i < numVarsFirst ? null
+                    : actionMap.push({ action: `insertPT!${firstParamPath}~${i-numVarsFirst}`, from: dl.start, to: dl.end }))
             }
             if (secondParamAsArray) {
                 const secParamPath = `${path}~${param1.id}`
-                const startParamArrayArea = delimiters.length ? delimiters[0].end+1 : ast.start
+                const numVars = asArray(prof.vars).length
+                const secParamDelimiterStart = numVars + 1
+                const startParamArrayArea = delimiters.length ? delimiters[numVars]?.end+1 || delimiters[0].end+1 : ast.start
                 actionMap.push({ action: `prependPT!${secParamPath}`, from: startParamArrayArea, to: startParamArrayArea, source: 'secondParamAsArray' })
                 const endOfParamArrayArea = paramsByNameAst ? paramsByNameAst.start -1 : ast.end-1
                 actionMap.push({ action: `appendPT!${secParamPath}`, from: endOfParamArrayArea, to: endOfParamArrayArea })
-                delimiters.forEach((dl, i) => i == 0
+                delimiters.forEach((dl, i) => i < numVars ? null
+                    : i == numVars
                     ? actionMap.push({ action: `prependPT!${secParamPath}`, from: dl.start, to: dl.end, source: 'secondParamAsArray-delim0' })
-                    : actionMap.push({ action: `insertPT!${secParamPath}~${i-1}`, from: dl.start, to: dl.end }))
+                    : actionMap.push({ action: `insertPT!${secParamPath}~${i-secParamDelimiterStart}`, from: dl.start, to: dl.end }))
             }
             params.map(p=>({id:p.id, val: prof[p.id]})).filter(({val}) => val != null)
                 .forEach(({id,val}) => calcActionMap(val, `${path}~${id}`, prof[primitivesAst][id] || val[astNode]))
