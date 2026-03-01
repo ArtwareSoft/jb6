@@ -251,11 +251,11 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       return asIsProps(cleaned,path)
     }
     const fullptId = (profile.$$ || profile.$)  && compIdOfProfile(profile)
-    if (!fullptId) 
+    if (!fullptId)
       return asIsProps(profile,path)
 
     const comp = profile.$ instanceof jbComp ? profile.$ : compByFullId(fullptId, tgpModel)
-    if (!comp) 
+    if (!comp)
       return asIsProps(profile,path)
     let id = fullptId.split('>').pop()
     if (fullptId == 'comp<tgp>tgpComp') {

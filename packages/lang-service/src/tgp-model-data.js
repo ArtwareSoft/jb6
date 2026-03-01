@@ -127,7 +127,7 @@ export async function calcTgpModelData(resources) {
     const _comp = compDefs[compDefId](shortId, {...comp, $location})
     const jbComp = _comp[asJbComp] // remove the proxy
     delete jbComp.$
-    dsls[jbComp.dsl][jbComp.type][shortId] = jbComp 
+    dsls[jbComp.dsl][jbComp.type][shortId] = jbComp
   }
 
   async function crawl(url) {

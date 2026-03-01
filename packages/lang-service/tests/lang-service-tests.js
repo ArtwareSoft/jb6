@@ -49,6 +49,16 @@ Test('completionTest.escBackTic', {
   })
 })
 
+Test('completionTest.nsAndTypeAdapter', {
+  description: 'using ns1.test1 from hosts/test-project/a-tests.js',
+  impl: completionOptionsTest(`ALL:Data('xx', {
+  impl: typeAdapter('action<common>', __ns1.test1())
+})`, ['runActionOnItem'], {
+    notInSuggstions: '🔄 reformat'
+  })
+})
+
+
 Test('completionTest.param1', {
   impl: completionOptionsTest(`uiTest(text(__'hello world', ''), contains('hello world'))`, ['style'])
 })

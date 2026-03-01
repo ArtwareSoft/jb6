@@ -16,7 +16,7 @@ function calcDslType(fullId) {
 export function resolveProfileTypes(prof, { astFromParent, expectedType, parent, parentParam, tgpModel, filePath, topComp, parentType, tgpPath = ''} = {}) {
     if (!prof || !prof.constructor || ['Object','Array'].indexOf(prof.constructor.name) == -1) return prof
     const typeFromParent = expectedType == '$asParent<>' ? (parentType || calcDslType(parent?.$$)) : expectedType
-    const dynamicTypeFromParent = parentParam?.dynamicTypeFromParent?.({parent,tgpModel,filePath})
+    const dynamicTypeFromParent = parentParam?.dynamicTypeFromParent?.(parent)
     const fromFullId = calcDslType(prof.$$)
     const dslType = dynamicTypeFromParent || typeFromParent || fromFullId 
     if (!dslType || dslType?.indexOf('<') == -1) debugger
@@ -170,7 +170,7 @@ function resolveCompTypeWithId(id, tgpModel, {dslType, silent, parentParam, pare
   }
 
   const typeFromParent = parentParam?.$dslType == '$asParent<tgp>' && parentType // parentParam?.typeAsParent === true && parentType
-  const dynamicTypeFromParent = typeof parentParam?.dynamicTypeFromParent == 'function' && parentParam.dynamicTypeFromParent({parent, tgpModel, filePath: topComp.$location[0]})
+  const dynamicTypeFromParent = typeof parentParam?.dynamicTypeFromParent == 'function' && parentParam.dynamicTypeFromParent(parent)
   const byTypeRules = [dynamicTypeFromParent,typeFromParent,dslType].filter(x=>x).join(',').split(',').filter(x=>x)
     .flatMap(t=>moreTypesByTypeRules(t)).join(',')
 
