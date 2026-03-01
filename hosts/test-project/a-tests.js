@@ -1,6 +1,6 @@
 import "@jb6/testing"
 import "@jb6/common"
-import { coreUtils, dsls, ns } from "@jb6/core"
+import { coreUtils, dsls } from "@jb6/core"
 import './main.js'
 
 const { 
@@ -17,14 +17,15 @@ const {
     }
 } = dsls
 
-Action('ns1.test1', {
-  impl: 'ns1.test1'
-})
-const { ns1 } = ns
-
-Data('xx', {
-  impl: typeAdapter('action<common>', ns1.test1())
-})
+// DefComponents('abs,acos', templateParam => Data(`math.${templateParam}`, {
+//     autoGen: true,
+//     category: 'math:70',
+//     params: [
+//       {id: 'func', as: 'string', defaultValue: templateParam}
+//     ],
+//     impl: (ctx, {}, {func}) => Math[func](ctx.data)
+//   })
+// )
 
 Test('myTests.HelloWorld', {
   impl: dataTest(pipeline('hello world'), contains('world'))
