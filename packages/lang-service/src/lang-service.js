@@ -23,7 +23,7 @@ Data('langService.completionItems', {
         }
 
         const compProps = await calcCompProps(_compTextAndCursor)
-        const { actionMap, errors, cursorPos, compId, tgpModel, comp } = compProps
+        const { actionMap, errors, cursorPos, compId, tgpModel, comp, error } = compProps
         let items = [], title = '', paramDef
 
         if (actionMap) {
@@ -43,8 +43,8 @@ Data('langService.completionItems', {
             title = prettyPrint(errors)
         }
 
-        const formattedCompText = prettyPrintComp(comp, { initialPath: compId, tgpModel, filePath })
-        if (formattedCompText != compText) {
+        const formattedCompText = !error && !comp?.syntaxError && prettyPrintComp(comp, { initialPath: compId, tgpModel, filePath })
+        if (formattedCompText && formattedCompText != compText) {
             const reformatEdits = deltaFileContent(compText, formattedCompText , compPos)
             const item = {
                 kind: 4, id: 'reformat', insertText: '', label: '🔄 reformat', sortText: '!!01', edit: reformatEdits,

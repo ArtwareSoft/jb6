@@ -32,7 +32,11 @@ export async function calcTgpModelData(resources) {
 
   const {dsls} = tgpModel
 
-  // Phase 1: find all `... = TgpType(...)`
+  const entryFileSet = new Set(entryFiles)
+  const safeFiles = Object.keys(codeMap).filter(f => !entryFileSet.has(f))
+  const unsafeFiles = entryFiles.filter(f => codeMap[f])
+
+  // Phase 1: TgpTypes — identify compDefs from ALL files
   Object.entries(codeMap).forEach(([url, src]) => {
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
 
@@ -61,28 +65,56 @@ export async function calcTgpModelData(resources) {
   dsls.tgp.var.Var = jb.dsls.tgp.var.Var[asJbComp]
   dsls.tgp.comp.tgpComp = jb.dsls.tgp.tgpComp[asJbComp]
 
-  // 3) Phase 2a: non-exported in the entry files only
-  rootFilePaths.forEach(filePath=> {
+  // Phase 2: load components from safe files (library/framework code that compiles)
+  safeFiles.forEach(filePath => {
     const src = codeMap[filePath]
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
     const compDefs = extractCompDefs({dsls, ast, tgpModel, filePath})
-    ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations)
-        .forEach(decl => parseCompDec({exportName: decl.id.name, decl: decl.init, filePath, src, compDefs}))
+    parseAllDeclarations(ast, filePath, src, compDefs)
   })
 
-  // 4) Phase 2b: exported components + direct compDef
-  Object.entries(codeMap).forEach(([filePath, src]) => {
+  // Phase 3: identify compDef suspects in entry files (may not compile)
+  const { compDefsByFilePaths } = tgpModel
+  unsafeFiles.forEach(filePath => {
+    const src = codeMap[filePath]
     const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
-    const compDefs = extractCompDefs({dsls, ast, tgpModel, filePath})
-
-    const exportDefs = ast.body.filter(n => n.type === 'ExportNamedDeclaration').flatMap(n => n.declaration?.declarations)
-    const constDefs =  ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations)
-    const allDefs = [...exportDefs, ...constDefs].filter(decl=>decl?.init)
-
-    allDefs.forEach(decl => parseCompDec({exportName: decl.id.name , decl: decl.init, filePath, src, compDefs}))
-    const directDefs = ast.body.map(n => n?.expression).filter(Boolean)
-    directDefs.forEach(decl => parseCompDec({decl, filePath, src, compDefs}))
+    const ownCompDefs = extractCompDefs({dsls, ast, tgpModel, filePath})
+    const mergedCompDefs = {...ownCompDefs}
+    collectCompDefsFromImports(filePath, mergedCompDefs)
+    compDefsByFilePaths[filePath] = mergedCompDefs
   })
+
+  // Phase 4: register components from entry files
+  unsafeFiles.forEach(filePath => {
+    const src = codeMap[filePath]
+    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+    const compDefs = compDefsByFilePaths[filePath]
+    parseAllDeclarations(ast, filePath, src, compDefs)
+  })
+
+  function parseAllDeclarations(ast, filePath, src, compDefs) {
+    const exportDefs = ast.body.filter(n => n.type === 'ExportNamedDeclaration').flatMap(n => n.declaration?.declarations)
+    const constDefs = ast.body.filter(n => n.type === 'VariableDeclaration').flatMap(n => n.declarations)
+    ;[...exportDefs, ...constDefs].filter(d => d?.init)
+      .forEach(decl => parseCompDec({exportName: decl.id.name, decl: decl.init, filePath, src, compDefs}))
+    ast.body.map(n => n?.expression).filter(Boolean)
+      .forEach(decl => parseCompDec({decl, filePath, src, compDefs}))
+  }
+
+  function collectCompDefsFromImports(filePath, mergedCompDefs) {
+    const visited = new Set()
+    ;(function walk(fp) {
+      if (visited.has(fp)) return
+      visited.add(fp)
+      ;(importGraph[fp] || []).forEach(dep => {
+        const depCompDefs = compDefsByFilePaths[dep]
+        if (depCompDefs) Object.entries(depCompDefs).forEach(([id, def]) => {
+          if (def && !mergedCompDefs[id]) mergedCompDefs[id] = def
+        })
+        walk(dep)
+      })
+    })(filePath)
+  }
 
   globalThis.detailedjbVSCodeLog && logVsCode('calcTgpModelData result', resources, tgpModel)
 
@@ -332,8 +364,5 @@ async function calcExpectedDslsSection(tgpModel, filePath) {
     return `  ${dslStr}: { ${compDefsStr}\n    ${types}\n  }`
   }).join(',\n')
 
-  const ns = unique(items.filter(item => item[2].indexOf('.') != -1).map(item => item[2].split('.')[0]))
-  const nsStr = ns.length ? `\nconst { ${ns.join(', ')} } = ns` : ''
-
-  return `const {\n${dslsStr}\n} = dsls${nsStr}`
+  return `const {\n${dslsStr}\n} = dsls`
 }

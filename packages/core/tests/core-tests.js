@@ -4,15 +4,15 @@ import '@jb6/llm-guide'
 import '@jb6/common'
 import '@jb6/core/misc/pretty-print.js'
 
-const { 
-  tgp: { Const, TgpType, Component,
-    var : { Var } 
+const {
+  tgp: { Const, Component,
+    var: { Var }
   },
-  common: { Data, Action, Boolean,
-    data: { pipeline, filter, join, property, obj, delay, asIs }, 
-    Boolean: { contains, equals, and },
-    action: { runActions },
-    Prop: { prop }
+  common: { Data,
+    action: { delay, runActions },
+    boolean: { contains, equals },
+    data: { asIs, filter, join, obj, pipeline, property },
+    prop: { prop }
   },
   test: { Test,
     test: { dataTest }

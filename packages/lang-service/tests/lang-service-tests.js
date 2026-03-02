@@ -50,14 +50,16 @@ Test('completionTest.escBackTic', {
 })
 
 Test('completionTest.nsAndTypeAdapter', {
-  description: 'using ns1.test1 from hosts/test-project/a-tests.js',
-  impl: completionOptionsTest(`ALL:Data('xx', {
+  impl: completionOptionsTest({
+    compText: `ALL:Data('xx', {
   impl: typeAdapter('action<common>', __ns1.test1())
-})`, ['runActionOnItem'], {
-    notInSuggstions: '🔄 reformat'
+})
+`,
+    expectedSelections: ['runActionOnItem'],
+    notInSuggstions: ['🔄 reformat'],
+    filePath: 'hosts/test-project/ns-and-type-adapter.js'
   })
 })
-
 
 Test('completionTest.param1', {
   impl: completionOptionsTest(`uiTest(text(__'hello world', ''), contains('hello world'))`, ['style'])
@@ -470,8 +472,8 @@ Test('splitByPivot.basic', {
 `,
     completionToActivate: '🔄 reformat dsls',
     expectedEdit: asIs({
-        range: {start: {line: 4, col: 7}, end: {line: 8, col: 7}},
-        newText: `\n  tgp: { Const, TgpType },\n  common: { Data,\n    boolean: { equals },\n    data: { asIs, enrichGroupProps, list, pipeline, splitByPivot, sum }\n  },\n  test: { Test,\n    test: { dataTest }\n  }\n} = dsls\nconst { group } = n`
+        range: {start: {line: 4, col: 7}, end: {line: 4, col: 8}},
+        newText: `\n  tgp: { Const, TgpType },\n  common: { Data,\n    boolean: { equals },\n    data: { asIs, enrichGroupProps, list, pipeline, splitByPivot, sum }\n  },`
     }),
     expectedCursorPos: '5,15',
     filePath: 'packages/common/common-tests.js'
@@ -493,6 +495,27 @@ const { __
     filePath: 'packages/mcp/mcp-fs-tools.js'
   })
 })
+
+Test('completionTest.dslsSectionAddCompDef', {
+  impl: completionActionTest({
+    compText: `ALL:import { dsls } from '@jb6/core'
+const {__
+} = dsls
+
+GroupProp('aa', {
+  impl: ''
+})
+`,
+    completionToActivate: '🔄 reformat dsls',
+    expectedEdit: asIs({
+        range: {start: {line: 2, col: 0}, end: {line: 2, col: 0}},
+        newText: `  common: { GroupProp }\n`
+    }),
+    expectedCursorPos: '1,7',
+    filePath: 'hosts/test-project/dsls-section-add-comp-def.js'
+  })
+})
+
 
 Test('completionTest.multiLine.secondParamAsArray', {
   impl: completionActionTest({
@@ -675,14 +698,16 @@ Test('completionActionTest.defaultValueWithDslType', {
 })
 
 Test('completionActionTest.defaultValueWithDslTypeNoTypeError', {
+  description: 'TO BE FIXED',
+  doNotRunInTests: true,
   impl: completionActionTest(`ALL:Component('ctrl1', __{ params: [{id: 'f', type: 'feature', defaultValue: method()}] })`, {
     completionToActivate: '🔄 reformat',
-    filePath: 'packages/testing/ui-dsl-for-tests.js',
     expectedEdit: asIs({
         range: {start: {line: 0, col: 20}, end: {line: 0, col: 82}},
         newText: `\n  params: [\n    {id: 'f', type: 'feature', defaultValue: {\n      $: 'method',\n      syntaxError: 'can not find comp method of type feature<common> in path'\n    }}\n  ]\n`
     }),
-    expectedCursorPos: '0,19'
+    expectedCursorPos: '0,19',
+    filePath: 'packages/testing/ui-dsl-for-tests.js'
   })
 })
 

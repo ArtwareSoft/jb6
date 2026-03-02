@@ -116,14 +116,20 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
             resolveProfileTypes(topComp, {tgpModel, expectedType: dslType, topComp, tgpPath: topComp?.id, filePath})
             resolveProfileTop(topComp)
         } catch (error) {
-            return { text: compText, comp: topComp, actionMap: [], error }
+            if (error.syntaxError)
+                topComp.syntaxError = error.syntaxError
+            else
+                return { text: compText, comp: topComp, actionMap: [], error }
         }
-        tgpModel.dsls[dsl][type][topComp.id] = topComp    
+        tgpModel.dsls[dsl][type][topComp.id] = topComp
     } else {
         try {
             resolveProfileTypes(topComp, {tgpModel, expectedType: tgpType, topComp, tgpPath: topComp?.id})
         } catch (error) {
-            return { text: compText, comp: topComp, actionMap: [], error }
+            if (error.syntaxError)
+                topComp.syntaxError = error.syntaxError
+            else
+                return { text: compText, comp: topComp, actionMap: [], error }
         }
     }
 
@@ -312,21 +318,15 @@ function closestComp(docText, cursorLine, cursorCol, filePath) {
             return { notJbCode: true }
         }
 
-        // Handle dsls/ns destructuring section as a single block
+        // Handle dsls destructuring section
         {
-            const isDslsOrNs = n => n.type == 'VariableDeclaration' && n.kind == 'const'
+            const isDsls = n => n.type == 'VariableDeclaration' && n.kind == 'const'
                 && n.declarations?.[0]?.init?.type == 'Identifier'
-                && (n.declarations[0].init.name == 'dsls' || n.declarations[0].init.name == 'ns')
-            if (isDslsOrNs(span) || span.type == 'VariableDeclaration' && span.kind == 'const' && span.declarations?.[0]?.init?.type == 'Identifier') {
-                const dslsSpan = ast.body.find(n => isDslsOrNs(n) && n.declarations[0].init.name == 'dsls')
-                const nsSpan = ast.body.find(n => isDslsOrNs(n) && n.declarations[0].init.name == 'ns')
-                if (dslsSpan && isDslsOrNs(span)) {
-                    const startSpan = dslsSpan
-                    const endSpan = nsSpan || dslsSpan
-                    compText = docText.slice(startSpan.start, endSpan.end)
-                    const compPos = offsetToLineCol(docText, startSpan.start)
-                    return { compText, compPos, inCompOffset: offset - startSpan.start, shortId: 'dsls', cursorLine, cursorCol, filePath, usedLoose, dslsSection: true }
-                }
+                && n.declarations[0].init.name == 'dsls'
+            if (isDsls(span)) {
+                compText = docText.slice(span.start, span.end)
+                const compPos = offsetToLineCol(docText, span.start)
+                return { compText, compPos, inCompOffset: offset - span.start, shortId: 'dsls', cursorLine, cursorCol, filePath, usedLoose, dslsSection: true }
             }
             if (span.type == 'VariableDeclaration' && span.kind == 'const')
                 span = span.declarations?.[0]?.init
