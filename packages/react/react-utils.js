@@ -40,7 +40,7 @@ function resolveImportUrl(url) {
 ReactComp('comp', {
   params: [
     {id: 'hFunc', type: 'vdom', dynamic: true, byName: true},
-    {id: 'enrichCtx', dynamic: true, byName: true, description: 'enrich the react comp ctx at the *first time*. to run on every refresh use hhStrongRefresh'},
+    {id: 'enrichCtx', type: 'ctx-enricher<tgp>', dynamic: true, byName: true, description: 'enrich the react comp ctx at the *first time*. to run on every refresh use hhStrongRefresh'},
     {id: 'sampleCtxData', dynamic: true, description: '{ data , vars {} }'},
     {id: 'samplePropsData', dynamic: true, description: '{ status: "hello" }'},
     {id: 'metadata', type: 'react-metadata[]', dynamic: true},
