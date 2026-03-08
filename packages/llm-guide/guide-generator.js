@@ -7,7 +7,7 @@ import '@jb6/lang-service'
 
 const {
   tgp: { Component,
-    var: { Var }
+    'ctx-enricher': { Var }
   },
   common: { Data,
     data: { bash, pipe }

@@ -4,7 +4,7 @@ import '@jb6/common'
 import '@jb6/core/misc/pretty-print.js'
 
 const { 
-    tgp: { Const, TgpType, var: { Var } }, 
+    tgp: { Const, TgpType, 'ctx-enricher': { Var } }, 
     common: { Data,
       data: { pipeline, join, prettyPrint, slice, list, replace},
       boolean: {and,startsWith,contains,isOfType}

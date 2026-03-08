@@ -8,7 +8,7 @@ import '@jb6/testing'
 const { rxUtils } = jb
 const { log, logError, isPromise, calcPath } = coreUtils
 const {
-  tgp: { TgpType, var: { Var } },
+  tgp: { TgpType, 'ctx-enricher': { Var } },
   rx: { ReactiveSource,ReactiveOperator,
     'reactive-source' : { interval, subjectSource, merge, mergeConcat },
     'reactive-operator' : {}

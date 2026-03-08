@@ -4,7 +4,7 @@ import '@jb6/testing'
 import '@jb6/llm-guide'
 
 const { 
-  tgp: { Const, var: { Var } }, 
+  tgp: { Const, 'ctx-enricher': { Var } }, 
   common: { data: { pipeline, filter, count, scrambleText, join }, Boolean: { and } },
   'llm-guide': { Doclet, Booklet,
     doclet: { howTo },

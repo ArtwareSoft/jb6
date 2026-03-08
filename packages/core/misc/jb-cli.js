@@ -62,7 +62,7 @@ async function runNodeCli(script, options = {}, onStatus) {
         const text = '' + d
         err += text
         if (onStatus && (stream === 'stderr' || stream === 'both'))
-          onStatus({ stream: 'stderr', text })
+          onStatus({ stream: 'stderr', text: text.replace(/\x1b\[[0-9;]*[a-zA-Z]|\r/g, '').trim() })
       })
 
       child.on('close', code => {

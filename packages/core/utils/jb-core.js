@@ -139,16 +139,11 @@ class Ctx {
         return arg(this, arrayIndex)
     }
     extendWithVarsScript(vars) {
-        const runInnerPathForVar = (profile = ({data}) => data, index, ctx) =>
-            run(profile, ctx.setJbCtx(new JBCtx({...ctx.jbCtx, path: `${this.jbCtx.path}~vars~${index}~val`, parentParam: {$type: 'data<common>'} })))
-
-        vars = asArray(vars)
-        if (vars.find(x=>x.async))
-            return vars.reduce( async (ctx,{name,val},i) => {
-              const _ctx = await ctx
-              return _ctx.setVars({[name]: await runInnerPathForVar(val, i, _ctx)})
-            } , this)
-        return vars.reduce((ctx,{name,val},i) => ctx.setVars({[name]: runInnerPathForVar(val, i, ctx)}), this )        
+        return asArray(vars).reduce((ctx, v, i) =>
+            isPromise(ctx)
+                ? ctx.then(c => run(v, c.setJbCtx(new JBCtx({...c.jbCtx, path: `${this.jbCtx.path}~vars~${i}`}))))
+                : run(v, ctx.setJbCtx(new JBCtx({...ctx.jbCtx, path: `${this.jbCtx.path}~vars~${i}`})))
+        , this)
     }
     dataObj(out,vars,input) { 
         if (this.jbCtx.probe)

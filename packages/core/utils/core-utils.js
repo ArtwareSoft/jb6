@@ -308,9 +308,9 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, resho
       visited.set(data, path || '<root>')
     }
     if (Array.isArray(data)) {
-      const querySource = data[Symbol.for('queryResult')]
-      if (querySource && data.length > 10)
-        return [...data.slice(0, 3).map((item, i) => _strip(item, depth + 1, path ? `${path}.${i}` : `${i}`)), {$truncated: true, total: data.length, source: querySource}]
+      const source = data[Symbol.for('bigData')]
+      if (source && data.length > 10)
+        return [...data.slice(0, 3).map((item, i) => _strip(item, depth + 1, path ? `${path}.${i}` : `${i}`)), {$truncated: true, total: data.length, source}]
       if (data.length > MAX_ARRAY_LENGTH)
         data = data.slice(0, MAX_ARRAY_LENGTH)
       return data.map((item, i) => _strip(item, depth + 1, path ? `${path}.${i}` : `${i}`))
@@ -415,11 +415,18 @@ function broadcastStatus(text) {
   globalThis.process && globalThis.process.stderr.write(text)
 }
 
+const statusEvents = {
+  listeners: {},
+  emit(event, data) { this.listeners[event]?.forEach(fn => fn(data)) },
+  on(event, fn) { (this.listeners[event] ??= []).push(fn) },
+  off(event, fn) { this.listeners[event] = this.listeners[event]?.filter(f => f !== fn) || [] }
+}
+if (isNode) statusEvents.on('status', text => process.stderr.write(`\r\x1b[K${text.padEnd(80)}`))
 
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logVsCode, isNode,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus
+  calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus, statusEvents
 })

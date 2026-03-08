@@ -5,7 +5,7 @@ import './main.js'
 
 const { 
     tgp: { Const, TgpType,
-      var : { Var } 
+      'ctx-enricher': { Var } 
     },
     'common': { Data, Action, Boolean,
       data: { pipeline, cmpA, filter, join, property, obj, delay, asIs }, 

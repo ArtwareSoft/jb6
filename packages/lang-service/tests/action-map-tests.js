@@ -5,7 +5,7 @@ const { prettyPrint, prettyPrintComp, asJbComp } = coreUtils
 
 const { 
   tgp: { Const, TgpType, 
-    var : { Var } 
+    'ctx-enricher': { Var } 
   },
   ui: { Control,
     control: { group, text, html }
@@ -55,10 +55,6 @@ Test('actionMapTest.secondParamAsArrayWithLongVars', {
     path: 'begin!~operators~0',
     expectedPos: '82,82'
   })
-})
-
-Test('actionMapTest.asyncVar', {
-  impl: actionMapTest(() => pipeline(Var('a',3, {async: true}),''), 'data<common>', 'begin!~vars~0~async', '30,30')
 })
 
 Test('actionMapTest.prependInGroup', {

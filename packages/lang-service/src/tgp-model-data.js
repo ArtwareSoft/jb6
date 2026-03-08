@@ -62,7 +62,7 @@ export async function calcTgpModelData(resources) {
     logError(error)
     return { tgpModel, error }
   }
-  dsls.tgp.var.Var = jb.dsls.tgp.var.Var[asJbComp]
+  dsls.tgp['ctx-enricher'].Var = jb.dsls.tgp['ctx-enricher'].Var[asJbComp]
   dsls.tgp.comp.tgpComp = jb.dsls.tgp.tgpComp[asJbComp]
 
   // Phase 2: load components from safe files (library/framework code that compiles)

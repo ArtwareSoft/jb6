@@ -27,7 +27,7 @@ import { dsls } from "@jb6/core"
 const {
   tgp: {
     Const, TgpType,
-    var: { Var }
+    'ctx-enricher': { Var }
   },
   common: {
     Data, Action, Boolean,

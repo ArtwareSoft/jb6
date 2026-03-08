@@ -4,7 +4,7 @@ import '@jb6/jq'
 
 const {
   tgp: { 
-    var: { Var }
+    'ctx-enricher': { Var }
   },
   common: { 
     boolean: { equals },

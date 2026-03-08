@@ -14,7 +14,7 @@ import './llm-card-examples.js'
 const { jq, jbjq } = coreUtils
 
 const {
-    tgp: {var: {Var}, any : {If }}, 
+    tgp: {'ctx-enricher': {Var}, any : {If }}, 
     'llm-api': { Prompt,
         prompt: { prompt, user, system, tailwindChartGuide},
         model: {llama_33_70b_versatile, gpt_oss_120b, claude_code_sonnet_4, llama_guard_4_12b}

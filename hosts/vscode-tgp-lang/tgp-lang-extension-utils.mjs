@@ -191,15 +191,54 @@ export const commands = {
         url.searchParams.set('filePath', relativeFilePath)
 
         vsCodelog({path,relativeFilePath,VSCodeWorkspaceProjectRoot,projectRoot})
-        
-        vscodeNS.commands.executeCommand('workbench.action.editorLayoutTwoRows') 
+
+        const urlStr = url.toString()
+        const probeViewTarget = config.get('probeViewTarget') || 'down'
+
+        if (probeViewTarget === 'browser') {
+            vscodeNS.env.openExternal(vscodeNS.Uri.parse(urlStr))
+            vsCodelog(`Opening probe view in external browser: ${urlStr}`)
+            return
+        }
+
+        const layoutCommand = probeViewTarget === 'right' ? 'workbench.action.editorLayoutTwoColumns' : 'workbench.action.editorLayoutTwoRows'
+        vscodeNS.commands.executeCommand(layoutCommand)
         if (!probeResultPanel) {
             probeResultPanel = vscodeNS.window.createWebviewPanel('jbart.inspect', 'Probe Inspector', vscodeNS.ViewColumn.Two, {enableScripts: true})
             probeResultPanel.onDidDispose(() => probeResultPanel = undefined, null, globalThis.jbVSCodeContext?.subscriptions )
         }
 
-        probeResultPanel.webview.html = `<iframe src="${url}" style="width:100%;height:100vh;border:none"></iframe><div>${counter++}</div>`        
-        vsCodelog(`Opening probe view in ViewColumn.Two: ${url.toString()}`)
+        probeResultPanel.webview.html = `
+            <iframe id="probeFrame" src="${urlStr}" style="width:100%;height:100vh;border:none"></iframe>
+            <div>${counter++}</div>
+            <script>
+                const vscode = acquireVsCodeApi();
+                const iframe = document.getElementById('probeFrame');
+                let loaded = false;
+                iframe.addEventListener('load', () => { loaded = true });
+                iframe.addEventListener('error', () => vscode.postMessage({ type: 'iframeError', error: 'iframe failed to load' }));
+                setTimeout(() => {
+                    if (!loaded) vscode.postMessage({ type: 'iframeError', error: 'iframe load timeout' })
+                }, 5000);
+                window.addEventListener('message', (e) => {
+                    if (e.data?.type === 'serviceWorkerError' || e.data?.type === 'probeViewError')
+                        vscode.postMessage({ type: 'iframeError', error: e.data.message || 'service worker error' })
+                });
+            </script>`
+
+        probeResultPanel.webview.onDidReceiveMessage(async message => {
+            if (message.type === 'iframeError') {
+                vsCodelog('Webview iframe error', message.error)
+                const choice = await vscodeNS.window.showErrorMessage(
+                    `Probe view failed to load in webview: ${message.error}`, 'Open in Browser')
+                if (choice) {
+                    vscodeNS.env.openExternal(vscodeNS.Uri.parse(urlStr))
+                    probeResultPanel?.dispose()
+                }
+            }
+        }, null, globalThis.jbVSCodeContext?.subscriptions)
+
+        vsCodelog(`Opening probe view in ViewColumn.Two: ${urlStr}`)
     },
 
     visitLastPath() { // ctrl-Q

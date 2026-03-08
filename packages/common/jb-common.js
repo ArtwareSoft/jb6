@@ -3,7 +3,7 @@ const { asArray, log, logError, waitForInnerElements, toArray, toString, isPromi
 
 const { 
   tgp: { Any, DefComponents, Const, TgpType, TgpTypeModifier, Component,
-    var : { Var }, 
+    'ctx-enricher': { Var }, 
     any: { If } 
   },
   common: { Data, Action, Boolean,

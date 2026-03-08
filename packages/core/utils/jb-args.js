@@ -8,7 +8,7 @@ const OrigArgs = Symbol.for('OrigArgs')
 const astNode = Symbol.for('astNode')
 
 const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
-const systemParams = [ {id: 'data', $dslType: 'data<common>'}, {id: 'vars', $dslType: 'var<tgp>'}] 
+const systemParams = [ {id: 'data', $dslType: 'data<common>'}, {id: 'vars', $dslType: 'ctx-enricher<tgp>'}] 
 
 function asComp(pt) {
     const jbComp = (typeof pt === 'string' ? compByFullId(pt)?.[asJbComp] || compByFullId(pt) : null) || pt[asJbComp] || pt
@@ -56,7 +56,7 @@ function splitSystemArgs(allArgs) {
   const args = [], system = {}
   allArgs.forEach(arg => {
       const comp = arg.$
-      if (comp?.id == 'Var') { // Var in pipeline var<tgp>Var
+      if (comp?.$dslType == 'ctx-enricher<tgp>') { // Var/setVars in pipeline
         system.vars = system.vars || []
         system.vars.push(arg)
       } else {
@@ -91,7 +91,7 @@ function argsToProfile(prof, comp) {
     }
 
     const varArgs = []
-    while (argsByValue[0] && argsByValue[0].$ == 'Var')
+    while (argsByValue[0]?.$?.$dslType == 'ctx-enricher<tgp>')
         varArgs.push(argsByValue.shift())
     const propsByValue = onlyByName ? []
         : firstParamAsArray ? { [param0.id] : argsByValue }
@@ -183,5 +183,11 @@ function cleanVal(v) {
         [k, k === '$' && v.$.$dslType ? `${v.$.$dslType}${v.$.id}` : cleanVal(v[k])]))
 }
 
+function restoreProfile$(obj) {
+  if (!obj || typeof obj !== 'object') return
+  if (typeof obj.$ === 'string') { const c = compByFullId(obj.$); if (c) obj.$ = c[asJbComp] || c }
+  Object.values(obj).forEach(v => Array.isArray(v) ? v.forEach(restoreProfile$) : restoreProfile$(v))
+}
+
 Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, asJbComp, OrigArgs, sysProps, systemParams,
-  asComp, jbCompProxy, compByFullId, lexicalProfileOfDefaultValue, tgpProfileToJson})
+  asComp, jbCompProxy, compByFullId, lexicalProfileOfDefaultValue, tgpProfileToJson, restoreProfile$})

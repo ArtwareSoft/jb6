@@ -295,7 +295,7 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       paramsByName = params.slice(0)
     }
 
-    const varArgs = asArray(profile.vars).map(({name, val, async},i) => ({innerPath: `vars~${i}`, val: {$$: 'var<tgp>Var', name, val,async, ...calcArrayPos(i,profile.vars) }}))
+    const varArgs = asArray(profile.vars).map(({name, val},i) => ({innerPath: `vars~${i}`, val: {$$: 'ctx-enricher<tgp>Var', name, val, ...calcArrayPos(i,profile.vars) }}))
     const varsByValue = hasParamAsArray ? varArgs : []
     //const varsByName = hasParamAsArray ? [] : ['vars']
     const systemProps = sysProps.filter(p=>p != 'vars' || !varsByValue.length).flatMap(p=>profile[p] ? [{innerPath: p, val: profile[p]}] : [])

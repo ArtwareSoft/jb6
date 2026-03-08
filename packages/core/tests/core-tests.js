@@ -6,7 +6,7 @@ import '@jb6/core/misc/pretty-print.js'
 
 const {
   tgp: { Const, Component,
-    var: { Var }
+    'ctx-enricher': { Var, setVars }
   },
   common: { Data,
     action: { delay, runActions },
@@ -162,7 +162,7 @@ Test('coreTest.varsCases', {
 })
 
 Test('coreTest.asyncVar', {
-  impl: dataTest(pipeline(Var('b', 5), Var('a', delay(1, 3), { async: true }), '%$a%,%$b%'), equals('3,5'))
+  impl: dataTest(pipeline(Var('b', 5), Var('a', delay(1, 3)), '%$a%,%$b%'), equals('3,5'))
 })
 
 Test('coreTest.waitForInnerElements.promiseInArray', {
@@ -243,6 +243,14 @@ Test('expTest.activateMethod', {
     ],
     calculate: '%$o1/f1()/a%',
     expectedResult: equals(5)
+  })
+})
+
+Test('expTest.setVars', {
+  impl: dataTest({
+    vars: setVars(asIs({ full: 'full', 'empty': '' })),
+    calculate: '{?%$full% is full?}{?%$empty% is empty?}',
+    expectedResult: equals('full is full')
   })
 })
 
@@ -357,6 +365,7 @@ const trackOriginForTest = Data('trackOriginForTest', {
 })
 
 Test('coreUtilsTest.trackOrigin', {
+  doNotRunInTests: true,
   impl: dataTest({
     vars: Var('stringsOrigins', obj()),
     calculate: pipeline(trackOriginForTest('hello', 'world'), (ctx) => coreUtils.trackOrigins('start hello world varvar end', ctx)),

@@ -2,7 +2,7 @@
   "name": "jb6-tgp-lang",
   "displayName": "jb6 TGP Language",
   "description": "TGP language service and probe activation",
-  "version": "2603.2.1",
+  "version": "2603.8.1",
   "publisher": "artwaresoft",
   "license": "MIT",
   "engines": {
@@ -18,10 +18,10 @@
   ],
   "dependencies": {
     "@jb6/repo": "file:lib/jb6-repo-1.0.0.tgz",
-    "@jb6/core": "file:lib/jb6-core-1.260302.0.tgz",
-    "@jb6/lang-service": "file:lib/jb6-lang-service-1.260302.0.tgz",
-    "@jb6/react": "file:lib/jb6-react-1.260302.0.tgz",
-    "@jb6/probe-studio": "file:lib/jb6-probe-studio-1.260302.0.tgz"
+    "@jb6/core": "file:lib/jb6-core-1.260308.0.tgz",
+    "@jb6/lang-service": "file:lib/jb6-lang-service-1.260308.0.tgz",
+    "@jb6/react": "file:lib/jb6-react-1.260308.0.tgz",
+    "@jb6/probe-studio": "file:lib/jb6-probe-studio-1.260308.0.tgz"
   },
   "scripts": {},
   "main": "csj-starter.js",
@@ -54,6 +54,21 @@
         "jbart.probeViewPath": {
           "type": "string",
           "description": "path on jb6Server to the probe-view.html"
+        },
+        "jbart.probeViewTarget": {
+          "type": "string",
+          "default": "down",
+          "enum": [
+            "down",
+            "right",
+            "browser"
+          ],
+          "enumDescriptions": [
+            "Open probe view below the editor",
+            "Open probe view to the right of the editor",
+            "Open probe view in external browser"
+          ],
+          "description": "Where to open the probe view"
         },
         "jbart.cacheOnSameProfile": {
           "type": "boolean",

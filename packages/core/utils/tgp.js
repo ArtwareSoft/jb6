@@ -1,7 +1,7 @@
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 const { coreUtils } = jb
-const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError } = coreUtils
+const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError, isPromise } = coreUtils
 
 Object.assign(coreUtils, { globalsOfType, globalsOfTypeIds, toCapitalType, findCompDefById, CompDefByDslType })
 
@@ -138,11 +138,12 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
 
 // meta tgp
 const Any = TgpType('any','tgp')
-const MetaVar = TgpType('var','tgp', {modifierId: 'Var'})
-const MetaComp = TgpType('comp','tgp')
-const MetaParam = TgpType('param','tgp')
+TgpType('ctx-enricher','tgp')
+TgpType('comp','tgp')
+TgpType('param','tgp')
 
-MetaParam('param', {
+Component('param', {
+  type: 'param<tgp>',
   params: [
     {id: 'id', as: 'string', mandatory: true},
     {id: 'type', as: 'string', description: 'type or type<dsl> e.g. control,control[],control<ui>'},
@@ -162,12 +163,29 @@ MetaParam('param', {
   ]
 })
 
-MetaVar('Var', {
+Component('Var', {
+  type: 'ctx-enricher<tgp>',
   params: [
       {id: 'name', as: 'string', mandatory: true},
       {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
-      {id: 'async', as: 'boolean', type: 'boolean<common>'}
-  ]
+  ],
+  impl: (ctx,{},{name,val}) => { const v = val(ctx); return isPromise(v) ? v.then(r => ctx.setVars({[name]: r})) : ctx.setVars({[name]: v}) }
+})
+
+Component('setVars', {
+  type: 'ctx-enricher<tgp>',
+  params: [
+    {id: 'obj', dynamic: true}
+  ],
+  impl: (ctx,{},{obj}) => {
+      const v = obj(ctx)
+      if (isPromise(v)) return v.then(r => ctx.setVars(r))
+      const entries = Object.entries(v)
+      const hasPromise = entries.find(([,val]) => isPromise(val))
+      if (!hasPromise) return ctx.setVars(v)
+      return Promise.all(entries.map(([k,p]) => isPromise(p) ? p.then(r => [k,r]) : [k,p]))
+          .then(resolved => ctx.setVars(Object.fromEntries(resolved)))
+  }
 })
 
 // common dsl
@@ -228,6 +246,7 @@ Data('asIs', {
   ],
   impl: ({},{},{val}) => val
 })
+
 
 Any('If', {
   macroByValue: true,

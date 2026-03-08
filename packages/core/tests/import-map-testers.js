@@ -5,7 +5,7 @@ import '@jb6/core/misc/import-map-services.js'
 const { asArray, calcRepoRoot, getStaticServeConfig, calcImportData } = coreUtils
 
 const { 
-  tgp: { TgpType, var: { Var } },
+  tgp: { TgpType, 'ctx-enricher': { Var } },
   test: { Test, 
     test: { dataTest }
   }, 
