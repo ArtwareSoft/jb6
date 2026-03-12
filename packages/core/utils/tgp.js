@@ -188,6 +188,22 @@ Component('setVars', {
   }
 })
 
+Component('sameCtx', {
+  type: 'ctx-enricher<tgp>',
+  impl: ctx => ctx
+})
+
+Component('setData', {
+  type: 'ctx-enricher<tgp>',
+  params: [
+    {id: 'val', dynamic: true}
+  ],
+  impl: (ctx,{},{val}) => {
+    const v = val(ctx)
+    return isPromise(v) ? v.then(r => ctx.setData(r)) : ctx.setData(v)
+  }
+})
+
 // common dsl
 const Data = TgpType('data','common')
 const Action = TgpType('action','common')

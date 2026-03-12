@@ -104,9 +104,10 @@ class JBCtx {
     callCtx(dynamicCtx) {
         return new JBCtx({...this, dynamicStack: [...(this.dynamicStack||[]), dynamicCtx]})
     }
+    get lexicalParentPath() { return this.lexicalStack?.[this.lexicalStack.length - 1] || '' }
     newComp(comp, args) {
-        return new JBCtx({...this, 
-            path: `${comp.$dslType}${comp.id}~impl`, 
+        return new JBCtx({...this,
+            path: `${comp.$dslType}${comp.id}~impl`,
             lexicalStack: [...(this.lexicalStack || []), this.path],
             args
         })

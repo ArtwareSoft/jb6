@@ -128,8 +128,7 @@ function h(t, p = {}, ...c) {
     tag = L(cls)
     cls = ''
   }
-  if (c && c[0] && Array.isArray(c[0]) && c[0][0]?.key == null)
-    c = [...c[0],...c.slice(1)]
+  c = c.flat().filter(x => x != null)
 
   const className=[p.className,cls].filter(Boolean).join(' ').trim()
   let vdom = reactUtils.createElement(tag,className ? {...p,className} : p,...c)
