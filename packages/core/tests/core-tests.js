@@ -393,3 +393,34 @@ Test('coreUtilsTest.trackOrigin', {
 //   impl: dataTest(pipeline(Var('val1', '%$val%'), obj(), bookletsContent(), obj()))
 // })
 
+// --- color coerce tests ---
+import '@jb6/testing/ui-dsl-for-tests.js'
+
+const { ui: { color: { rgb, hexColor, namedColor } } } = dsls
+const { colorBox } = dsls.common.data
+
+// test 1: rgb component works
+Test('colorTest.rgb', {
+  impl: dataTest(rgb(255, 0, 0), equals('%r%', 255))
+})
+
+// test 2: hexColor component works
+Test('colorTest.hexColor', {
+  impl: dataTest(hexColor('#00ff00'), equals('%g%', 255))
+})
+
+// test 3: namedColor component works
+Test('colorTest.namedColor', {
+  impl: dataTest(namedColor('blue'), equals('%b%', 255))
+})
+
+// test 4: coerce hex string → hexColor profile (needs jb-args coerce support)
+Test('colorTest.coerceHex', {
+  impl: dataTest(colorBox('#ff0000'), equals('%color/r%', 255))
+})
+
+// test 5: coerce named string → namedColor profile (needs jb-args coerce support)
+Test('colorTest.coerceNamed', {
+  impl: dataTest(colorBox('red'), equals('%color/r%', 255))
+})
+

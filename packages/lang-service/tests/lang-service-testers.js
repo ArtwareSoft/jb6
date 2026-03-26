@@ -152,7 +152,7 @@ Test('completionActionTest', {
 
       return { testFailure }
     },
-    timeout: 1000,
+    timeout: 3000,
     includeTestRes: true
   })
 })

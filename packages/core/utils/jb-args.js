@@ -56,7 +56,7 @@ function splitSystemArgs(allArgs) {
   const args = [], system = {}
   allArgs.forEach(arg => {
       const comp = arg.$
-      if (comp?.$dslType == 'ctx-enricher<tgp>') { // Var/setVars in pipeline
+      if (comp?.$dslType == 'ctx-enricher<tgp>' && comp.id == 'Var') { // Var/setVars in pipeline
         system.vars = system.vars || []
         system.vars.push(arg)
       } else {
@@ -158,7 +158,14 @@ function resolveProfileArgs(prof) {
   if (Array.isArray(prof)) {
     prof.forEach(v=>resolveProfileArgs(v))
   } else if (comp) {
-    ;[...(comp.params || []), ...systemParams].forEach(p=> resolveProfileArgs(prof[p.id]))
+    ;[...(comp.params || []), ...systemParams].forEach(p=> {
+      const val = prof[p.id]
+      if (typeof val === 'string' && val[0] !== '%') {
+        const coerce = coerceOfDslType(p.$dslType)
+        if (coerce) prof[p.id] = coerce(val)
+      }
+      resolveProfileArgs(prof[p.id])
+    })
     if (prof.$ == 'object')
       Object.values(prof).forEach(v=>resolveProfileArgs(v))
   }
@@ -181,6 +188,12 @@ function cleanVal(v) {
     if (Array.isArray(v)) return v.map(cleanVal)
     return Object.fromEntries(Object.keys(v).filter(k => k !== '$$' && (k === '$' || k[0] !== '$')).map(k =>
         [k, k === '$' && v.$.$dslType ? `${v.$.$dslType}${v.$.id}` : cleanVal(v[k])]))
+}
+
+function coerceOfDslType(dslType) {
+  if (!dslType) return
+  const m = dslType.replace(/\[\]/g,'').match(/^([^<]+)<([^>]+)>$/)
+  return m && jb.dsls[m[2]]?.[coreUtils.toCapitalType(m[1])]?.coerce
 }
 
 function restoreProfile$(obj) {

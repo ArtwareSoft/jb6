@@ -10,6 +10,37 @@ const {
 
 const Control = TgpType('control','ui')
 const Feature = TgpType('feature','ui')
+
+// color type with coerce — converts strings to profiles at build time
+const Color = TgpType('color', 'ui', {
+  typescript: '{ r: number, g: number, b: number }',
+  coerce: str => str.startsWith('#') ? hexColor(str) : namedColor(str)
+})
+
+const rgb = Color('rgb', {
+  params: [{id: 'r', as: 'number'}, {id: 'g', as: 'number'}, {id: 'b', as: 'number'}],
+  impl: (_ctx, {}, {r, g, b}) => ({ r, g, b })
+})
+
+const hexColor = Color('hexColor', {
+  params: [{id: 'hex', as: 'string'}],
+  impl: (_ctx, {}, {hex}) => {
+    const h = hex.replace('#', '')
+    return { r: parseInt(h.slice(0,2), 16), g: parseInt(h.slice(2,4), 16), b: parseInt(h.slice(4,6), 16) }
+  }
+})
+
+const namedColor = Color('namedColor', {
+  params: [{id: 'name', as: 'string'}],
+  impl: (_ctx, {}, {name}) => {
+    const colors = { red: {r:255,g:0,b:0}, green: {r:0,g:128,b:0}, blue: {r:0,g:0,b:255}, white: {r:255,g:255,b:255}, black: {r:0,g:0,b:0} }
+    return colors[name] || { r: 0, g: 0, b: 0 }
+  }
+})
+
+const colorBox = Component('colorBox', {
+  params: [{id: 'color', type: 'color<ui>'}]
+})
 TgpType('action','ui')
 TgpType('ui-action','test')
 TgpType('jbm','jbm')

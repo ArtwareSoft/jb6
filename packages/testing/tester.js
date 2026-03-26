@@ -18,6 +18,7 @@ Component('dataTest', {
     {id: 'calculate', type: 'data', dynamic: true},
     {id: 'expectedResult', type: 'boolean', dynamic: true},
     {id: 'runBefore', type: 'action', dynamic: true},
+    {id: 'setup', type: 'ctx-enricher<tgp>', dynamic: true, description: 'ctx enricher that runs before runBefore and calculate'},
     {id: 'timeout', as: 'number', defaultValue: 200},
     {id: 'allowError', as: 'boolean', dynamic: true, type: 'boolean'},
     {id: 'cleanUp', type: 'action', dynamic: true},
@@ -25,10 +26,11 @@ Component('dataTest', {
     {id: 'spy', as: 'string'},
     {id: 'logger', as: 'string', description: 'e.g dbLogger'}
   ],
-  impl: async (ctx,{}, { calculate,expectedResult,runBefore,timeout,allowError,cleanUp,expectedCounters,spy: _spy, logger }) => {
+  impl: async (ctx,{}, { calculate,expectedResult,runBefore,setup,timeout,allowError,cleanUp,expectedCounters,spy: _spy, logger }) => {
         const loggerObj = logger && dsls.test.logger[logger] && { [logger] : dsls.test.logger[logger].$runWithCtx(ctx) } || {}
         const testID = ctx.vars.testID || (ctx.jbCtx.lexicalStack.slice(-1)[0]||'').split('~')[0]
-		const ctxToUse = ctx.setVars({testID, isTest: true, testSessionId: `test-${Date.now()}`, ...loggerObj})
+		let ctxToUse = ctx.setVars({testID, isTest: true, testSessionId: `test-${Date.now()}`, ...loggerObj})
+		if (setup.profile || typeof setup === 'function') ctxToUse = await setup(ctxToUse) || ctxToUse
 		const {singleTest}  = ctxToUse.vars
 		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 5000 : null
 		const _timeout = singleTest ? Math.max(1000,timeout) : (remoteTimeout || timeout)
@@ -60,7 +62,8 @@ Component('dataTest', {
 			testFailure = expectedResultRes?.testFailure
 			const success = !! (expectedResultRes && !countersErr && !testFailure)
 			log('check test result',{testRes, success,expectedResultRes, testFailure, countersErr, expectedResultCtx})
-			result = { id: testID, success, reason: countersErr || testFailure, testRes, counters}
+			const logResults = logger && ctxToUse.vars[logger]?.logsAndErrors?.() || {}
+			result = { id: testID, success, reason: countersErr || testFailure, testRes: typeof testRes === 'object' && !Array.isArray(testRes) ? { ...testRes, ...logResults } : testRes, counters}
 		} catch (e) {
 			logException(e,'error in test',{ctx})
 			result = { testID, success: false, reason: 'Exception ' + e, testRes}

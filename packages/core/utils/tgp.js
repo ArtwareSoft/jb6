@@ -124,7 +124,7 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
   }
 
   const forward = id => forwardProxy(dsl,type,id)
-  Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward})
+  Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward, coerce: extraCompProps?.coerce})
   dsls[dsl][type] = dsls[dsl][type] || {}
   dsls[dsl][capitalLetterId] = tgpType
   return tgpType
@@ -172,6 +172,15 @@ Component('Var', {
   impl: (ctx,{},{name,val}) => { const v = val(ctx); return isPromise(v) ? v.then(r => ctx.setVars({[name]: r})) : ctx.setVars({[name]: v}) }
 })
 
+Component('setVar', {
+  type: 'ctx-enricher<tgp>',
+  params: [
+      {id: 'name', as: 'string', mandatory: true},
+      {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
+  ],
+  impl: (ctx,{},{name,val}) => { const v = val(ctx); return isPromise(v) ? v.then(r => ctx.setVars({[name]: r})) : ctx.setVars({[name]: v}) }
+})
+
 Component('setVars', {
   type: 'ctx-enricher<tgp>',
   params: [
@@ -201,6 +210,20 @@ Component('setData', {
   impl: (ctx,{},{val}) => {
     const v = val(ctx)
     return isPromise(v) ? v.then(r => ctx.setData(r)) : ctx.setData(v)
+  }
+})
+
+Component('enrichCtx', {
+  type: 'ctx-enricher<tgp>',
+    params: [
+    {id: 'enrichers', type: 'ctx-enricher<tgp>[]', dynamic: true, composite: true }
+  ],
+  impl: async (ctx, {}, { enrichers }) => {
+    let res = ctx
+    const list = asArray(enrichers.profile)
+    for (let i = 0; i < list.length; i++)
+      res = await res.runInnerArg(enrichers, i)
+    return res
   }
 })
 
