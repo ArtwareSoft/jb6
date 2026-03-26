@@ -804,3 +804,13 @@ Test('langServiceTest.createTestEdits', {
 //     }))
 //   })
 // })
+
+// --- coerce prettyPrint round-trip test ---
+Test('completionTest.coerceNoReformat', {
+  impl: completionOptionsTest(`ALL:Test('xx', {
+  impl: dataTest(colorBox('__red'), equals('%color/r%', 255))
+})`, ['rgb'], {
+    notInSuggstions: ['🔄 reformat'],
+    filePath: 'packages/core/tests/core-tests.js'
+  })
+})

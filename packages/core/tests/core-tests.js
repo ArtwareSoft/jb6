@@ -424,3 +424,11 @@ Test('colorTest.coerceNamed', {
   impl: dataTest(colorBox('red'), equals('%color/r%', 255))
 })
 
+// test 6: prettyPrint round-trip — coerced string should print as original string
+Test('colorTest.prettyPrintCoerce', {
+  impl: dataTest({
+    calculate: () => prettyPrintComp(dsls.test.test['colorTest.coerceNamed'], {tgpModel: jb}),
+    expectedResult: contains("colorBox('red')")
+  })
+})
+

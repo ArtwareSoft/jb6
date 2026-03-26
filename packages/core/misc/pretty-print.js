@@ -1,7 +1,7 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/resolve-types.js'
 
-const { resolveCompArgs, resolveProfileArgs, resolveProfileTypes, sysProps, resolveProfileTop, OrigArgs,
+const { resolveCompArgs, resolveProfileArgs, resolveProfileTypes, sysProps, resolveProfileTop, OrigArgs, originCoerce,
   jbComp, asJbComp, isPrimitiveValue, asArray, calcValue, compIdOfProfile, compByFullId, CompDefByDslType } = coreUtils
 const {
   common: { Data }
@@ -225,11 +225,13 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     if (profile.$ == 'asIs') {
       const toPrint = profile[OrigArgs][0]
       const content = prettyPrint(toPrint,{noMacros: true})
-      const tokens = [ 
+      const tokens = [
         {token: 'asIs(', action: `begin!${path}`}, {token: '', action: `edit!${path}`},
         {token: content, action: `asIs!${path}`}, {token: ')', action: `end!${path}`}]
       return props[path] = {tokens, len: content.length + 6, indentWithParent: true }
     }
+    if (profile[originCoerce] != null)
+      return calcValueProps(profile[originCoerce], path)
     if (resolvedParams && path.match(/([0-9]+)~defaultValue$/)) {
       const index = path.match(/([0-9]+)~defaultValue$/)[1]
       const resolvedParam = resolvedParams[index]

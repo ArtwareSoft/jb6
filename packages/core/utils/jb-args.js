@@ -5,6 +5,7 @@ const { logError } = coreUtils
 
 const asJbComp = Symbol.for('asJbComp')
 const OrigArgs = Symbol.for('OrigArgs')
+const originCoerce = Symbol.for('originCoerce')
 const astNode = Symbol.for('astNode')
 
 const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
@@ -162,7 +163,11 @@ function resolveProfileArgs(prof) {
       const val = prof[p.id]
       if (typeof val === 'string' && val[0] !== '%') {
         const coerce = coerceOfDslType(p.$dslType)
-        if (coerce) prof[p.id] = coerce(val)
+        if (coerce) {
+          const coerced = coerce(val)
+          if (coerced && typeof coerced === 'object') coerced[originCoerce] = val
+          prof[p.id] = coerced
+        }
       }
       resolveProfileArgs(prof[p.id])
     })
@@ -202,5 +207,5 @@ function restoreProfile$(obj) {
   Object.values(obj).forEach(v => Array.isArray(v) ? v.forEach(restoreProfile$) : restoreProfile$(v))
 }
 
-Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, asJbComp, OrigArgs, sysProps, systemParams,
+Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, asJbComp, OrigArgs, originCoerce, sysProps, systemParams,
   asComp, jbCompProxy, compByFullId, lexicalProfileOfDefaultValue, tgpProfileToJson, restoreProfile$})
