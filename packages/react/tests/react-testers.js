@@ -6,16 +6,19 @@ const { asArray, logError } = coreUtils
 Object.assign(reactUtils, {registerMutObs, prettyPrintNode, probeReactComp})
 
 const { delay } = coreUtils
-const { 
+const {
   tgp: { TgpType },
-  test: { Test, 
-    test: { dataTest }
-  }, 
+  test: { Test, Logger,
+    test: { dataTest },
+    logger: { domainLogger }
+  },
   react: { ReactComp, HFunc,
     'react-comp': { comp },
   },
   common: { Data }
 } = dsls
+
+Logger('uiLogger', { impl: domainLogger('ui') })
 
 const UiAction = TgpType('ui-action', 'test')
 Test('reactTest', {
@@ -23,10 +26,14 @@ Test('reactTest', {
       {id: 'hFunc', type: 'react-comp<react>', dynamic: true },
       {id: 'expectedResult', type: 'boolean', dynamic: true},
       {id: 'props', as: 'object' },
-      {id: 'userActions', type: 'ui-action[]'}
+      {id: 'userActions', type: 'ui-action[]'},
+      {id: 'logger', as: 'string'},
+      {id: 'setup', type: 'ctx-enricher<tgp>', dynamic: true},
     ],
     impl: dataTest({
-        calculate: async (ctx,{singleTest},{hFunc,userActions,props}) => { 
+        logger: '%$logger%',
+        setup: '%$setup()%',
+        calculate: async (ctx,{singleTest,uiLogger},{hFunc,userActions,props}) => {
           const win = globalThis.window
           if (!win)
             return {error: 'reactTest: no global window' }
@@ -45,17 +52,20 @@ Test('reactTest', {
             return { error: error.stack}
           }
 
+          uiLogger?.info?.({t: 'render', comp: 'reactTest'}, {}, {ctx})
           reactUtils.createRoot(testSimulation).render(reactUtils.createElement(hFuncRes, props))
           await win.waitForMutations(10)
           const ctxA = ctx.setVars({ win })
           for (const a of asArray(userActions)) {
+            uiLogger?.info?.({t: 'ui-action', action: a.actionId || 'action'}, {}, {ctx})
             await a.exec(ctxA)
             await win.waitForMutations(50)
           }
-          const res = prettyPrintNode(testSimulation)
+          uiLogger?.info?.({t: 'actions-done', count: asArray(userActions).length}, {}, {ctx})
+          const html = prettyPrintNode(testSimulation)
           if (!singleTest)
             testSimulation.remove()
-          return res
+          return { html, toString: () => html }
         },
         expectedResult: '%$expectedResult()%',
         timeout: 2000,

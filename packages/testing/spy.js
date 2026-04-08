@@ -3,8 +3,8 @@ import { jb, dsls } from '@jb6/core'
 const { 
     tgp: {TgpType}
 } = dsls
-  
-TgpType('logger', 'test')
+
+const Logger = TgpType('logger', 'test')
 
 let enabled = false, spyParam, _obs, enrichers = []
 const logs = []
@@ -162,3 +162,53 @@ function search(query = '',{slice = -1000, enrich = true} = {}) {
         return res.filter((r,i) => i == 0 || res[i-1].index != r.index) // unique
     }
 }
+
+const takeFromVars = (ids, ctx) => Object.fromEntries((ids||'').split(',').map(x=>x.trim()).filter(x=>x).filter(p=>ctx.vars[p] != null).map(p=>[p,ctx.vars[p]]))
+
+Logger('domainLogger', {
+  params: [
+    {id: 'domain', as: 'string'},
+    {id: 'addToR1', as: 'string', description: 'add to first param, e.g. userId,fileName'},
+    {id: 'addToR2', as: 'string', description: 'add to second param, e.g. roomId'},
+    {id: 'doNotAllowInR1', as: 'string', description: 'e.g. roomId'},
+  ],
+  impl: (ctx,{},{addToR1, addToR2, domain}) => {
+    const logName = `${domain}Log`
+    const errorsName = `${domain}Errors`
+    const startTime = Date.now()
+    return {
+      [logName]: [],
+      [errorsName]: [],
+      info(r1,r2,r3) {
+        const enriched = enrichParams(r1,r2,r3)
+        this[logName].push({...enriched[0], ...enriched[1]})
+        log(logName, {r1: enriched[0], r2: enriched[1], ctx: r3?.ctx})
+      },
+      warning(r1,r2,r3) {
+        const enriched = enrichParams(r1,r2,r3)
+        this[logName].push({severity: 'warning', ...enriched[0], ...enriched[1]})
+        log(logName, {severity: 'warning', r1: enriched[0], r2: enriched[1], ctx: r3?.ctx})
+      },
+      error(r1,r2,r3) {
+        const enriched = enrichParams(r1, r2, r3)
+        this[logName].push({severity: 'error', ...enriched[0], ...enriched[1]})
+        this[errorsName].push({...enriched[0], ...enriched[1]})
+        log(logName, {severity: 'error', r1: enriched[0], r2: enriched[1], ctx: r3?.ctx})
+      },
+      status(text) { jb.coreUtils?.statusEvents?.emit('status', text) },
+      $stripData() { return { $: `${domain}Logger`, logCount: this[logName].length, errorCount: this[errorsName].length, last: this[logName].at(-1)?.t } },
+      logsAndErrors({stripData = true} = {}) {
+        const res = {[logName]: this[logName], [errorsName]: this[errorsName]}
+        return stripData ? jb.coreUtils?.stripData(res) || res : res
+      }
+    }
+    function enrichParams(r1,r2,r3) {
+      const {ctx} = r3
+      const error = r3.error ? {error: r3.error.stack || r3.error.message || r3.error } : {}
+      const resp = r3.response ? { status: r3.response.status, statusText: r3.response.statusText } : {}
+      const enrichedR1 = { ...takeFromVars(addToR1,ctx), ...error, ...resp, at: Date.now() - startTime, tgpPath: ctx.jbCtx.lexicalParentPath, ...r1 }
+      const enrichedR2 = { ...takeFromVars(addToR2,ctx), ...r2 }
+      return [enrichedR1, enrichedR2]
+    }    
+  }
+})

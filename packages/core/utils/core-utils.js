@@ -317,6 +317,7 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, resho
     }
     if (data instanceof Error)
       return { $$: 'Error', message: data.message }
+    if (typeof data.$stripData === 'function') return data.$stripData()
     if (typeof data === 'object' && data.constructor && data.constructor?.name !== 'Object')
       return { $$: data.constructor.name }
     if (typeof data === 'object') {

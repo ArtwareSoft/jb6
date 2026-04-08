@@ -3,7 +3,7 @@ import './core-utils.js'
 const { coreUtils } = jb
 const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError, isPromise } = coreUtils
 
-Object.assign(coreUtils, { globalsOfType, globalsOfTypeIds, toCapitalType, findCompDefById, CompDefByDslType })
+Object.assign(coreUtils, { globalsOfType, globalsOfTypeIds, toCapitalType, findCompDefById, CompDefByDslType, callerCompId })
 
 function Component(id, comp) {
   const {type} = comp
@@ -264,6 +264,10 @@ function globalsOfTypeIds(tgpType, filter) {
 
 function globalsOfType(tgpType, ctx, filter) {
   return Object.entries(tgpType).filter(e => filterGlobal(e[1], filter)).map(([id,val]) => ({id, ...val.$runWithCtx(ctx)}))
+}
+
+function callerCompId(jbCtx) {
+  return (jbCtx.lexicalParentPath.match(/>([^~]+)/) || [])[1] || null
 }
 
 function findCompDefById({id, tgpModel, dslType}) {

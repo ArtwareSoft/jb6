@@ -51,7 +51,8 @@ ReactComp('comp', {
     const id = strongRefresh ? '' : jbid
 
     // resolve importUrls - sync if cached, promise if first time
-    const importUrls = coreUtils.asArray(metadata()).map(m => m.importUrl).filter(Boolean)
+    const metas = coreUtils.asArray(metadata())
+    const importUrls = metas.map(m => m.importUrl).filter(Boolean)
     const pendingImport = importUrls.map(importUrl => resolveImportUrl(importUrl)).find(r => coreUtils.isPromise(r))
 
     const enrichedCtx = enrichCtx(ctx) || ctx
