@@ -27,8 +27,11 @@ export function initSpy({spyParam: _spyParam}) {
 }
 
 function initSpyByUrl() {
-    const spyParam = globalThis.location && Object.fromEntries([...new URLSearchParams(location.search),...new URLSearchParams(location.hash.replace(/^#/, '?'))]).spy || ''
-    return initSpy({spyParam })
+    const params = globalThis.location ? Object.fromEntries([...new URLSearchParams(location.search),...new URLSearchParams(location.hash.replace(/^#/, '?'))]) : {}
+    const spyParam = params.spy || params.logger || ''
+    const res = initSpy({spyParam: spyParam ? 'all' : '' })
+    if (res) globalThis.spy = spy
+    return res
 }
 
 const memoryUsage = () => globalThis.performance?.memory?.usedJSHeapSize

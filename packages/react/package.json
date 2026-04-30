@@ -6,6 +6,7 @@
     ".": "./index.js",
     "./*.js": "./*.js",
     "./lib/*.js": "./lib/*.js",
+    "./lib/*.mjs": "./lib/*.mjs",
     "./tests/*.js": "./tests/*.js"
   },
   "scripts": {},

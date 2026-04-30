@@ -8,6 +8,8 @@ jb.reactRepository = {
 }
 const repo = jb.reactRepository
 
+function logMs(ctx, t, ms, extra) { if (ms) ctx.vars.uiLogger?.info?.({t, ms, ...extra}, {}, {ctx}) }
+
 const { tgp: { TgpType, Component }} = dsls
 
 const ReactComp = TgpType('react-comp','react') // actually jb-react-comp
@@ -50,13 +52,8 @@ ReactComp('comp', {
     const jbid = ctx.jbCtx.lexicalStack?.join(';')
     const id = strongRefresh ? '' : jbid
 
-    // resolve importUrls - sync if cached, promise if first time
-    const metas = coreUtils.asArray(metadata())
-    const importUrls = metas.map(m => m.importUrl).filter(Boolean)
-    const pendingImport = importUrls.map(importUrl => resolveImportUrl(importUrl)).find(r => coreUtils.isPromise(r))
-
-    const enrichedCtx = enrichCtx(ctx) || ctx
-    const ctxOrPromise = pendingImport ? pendingImport.then(() => enrichedCtx) : enrichedCtx
+    const importUrls = coreUtils.asArray(metadata()).map(m => m.importUrl).filter(Boolean)
+    const ctxOrPromise = readyCtxPromise(ctx, importUrls, enrichCtx)
     const isPromise = coreUtils.isPromise(ctxOrPromise)
 
     if (isPromise) {
@@ -100,6 +97,19 @@ ReactComp('comp', {
       }
     }
     return id ? repo.comps[id] : null
+
+    function readyCtxPromise() {
+      const tImp = Date.now()
+      const imports = importUrls.map(u => resolveImportUrl(u))
+      const pending = imports.find(r => coreUtils.isPromise(r))
+      if (pending) Promise.all(imports).then(() => logMs(ctx, 'jb6.importUrls', Date.now() - tImp, {urls: importUrls}))
+      const tEnr = Date.now()
+      const enriched = enrichCtx(ctx) || ctx
+      logMs(ctx, 'jb6.enrichCtx', Date.now() - tEnr)
+      if (!pending && !coreUtils.isPromise(enriched)) return enriched
+      return Promise.all([...imports, enriched]).then(r => r[r.length - 1])
+    }
+
   }
 })
 
@@ -153,7 +163,7 @@ function L(iconName) {
 }
 
 async function loadLucid05() {
-  return jb.reactUtils.icons = await import('./lib/lucide-0.5.mjs')
+  return jb.reactUtils.icons = await import('@jb6/react/lib/lucide-0.5.mjs')
 }
 
 let initReact = () => {}
@@ -188,7 +198,7 @@ if (!globalThis.window) { // used in nodejs
     ;['Image','Node','Element','HTMLElement','Document','MutationObserver','document'].forEach(k => globalThis[k] = win[k])
     ;['navigator','location'].forEach(k => Object.defineProperty(globalThis, k, { value: win[k], writable: true, configurable: true, enumerable: true }))
     const ver = isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
-    const {React,ReactDomClient,ReactDom} = await import(`./lib/react-all-${ver}.mjs`)
+    const {React,ReactDomClient,ReactDom} = await import(`@jb6/react/lib/react-all-${ver}.mjs`)
     Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient })
   }
 } else { // browser
@@ -202,7 +212,7 @@ if (!globalThis.window) { // used in nodejs
       globalThis.process = { env: { NODE_ENV: 'development' }, platform: 'browser', version: '', versions: {} }
     if (!reactUtils.reactPromise)
       reactUtils.reactPromise = (async () => {
-        const { React, ReactDomClient, ReactDom } = await import(`./lib/react-all-${ver}.mjs`)
+        const { React, ReactDomClient, ReactDom } = await import(`@jb6/react/lib/react-all-${ver}.mjs`)
         Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient  })
       })()
     return reactUtils.reactPromise
@@ -228,8 +238,11 @@ async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
     const metadata = coreUtils.asArray(jbComp.impl.metadata)
     const containerComp = metadata.find(m => m.containerComp)?.containerComp
     const cntrImportPath = metadata.find(m => m.containerComp)?.cntrImportPath
-    if (cntrImportPath)
+    if (cntrImportPath) {
+      const _t = Date.now()
       await import(cntrImportPath)
+      logMs(ctx, 'jb6.cntrImport', Date.now() - _t, {cntrImportPath})
+    }
     const compToRun = containerComp && dsls.react['react-comp'][containerComp] || comp
 
     const ctxData = jbComp.impl.sampleCtxData && await ctx.run(jbComp.impl.sampleCtxData)
