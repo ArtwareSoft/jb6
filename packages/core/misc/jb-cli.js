@@ -149,7 +149,8 @@ async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
   }
 }
 
-async function runBashScript(script) {
+async function runBashScript(script, callbacks) {
+  const { onStdoutLine, onStderrLine } = callbacks || {}
   if (!isNode) {
     const response = await fetch('/run-bash', { method: 'POST', headers: {'Content-Type': 'application/json' }, body: JSON.stringify({ script }) })
     const result = await response.json()
@@ -157,18 +158,26 @@ async function runBashScript(script) {
   }
   const {spawn} = await import('child_process')
   return new Promise((resolve) => {
-    let stdout = ''
-    let stderr = ''
+    let stdout = '', stderr = '', outBuf = '', errBuf = ''
+    const emit = (data, isErr) => {
+      const text = String(data)
+      if (isErr) stderr += text; else stdout += text
+      const cb = isErr ? onStderrLine : onStdoutLine
+      if (!cb) return
+      const buf = (isErr ? errBuf : outBuf) + text
+      const lines = buf.split('\n')
+      const tail = lines.pop() || ''
+      if (isErr) errBuf = tail; else outBuf = tail
+      lines.forEach(cb)
+    }
 
     const child = spawn('bash', ['-c', script], { encoding: 'utf8' })
-    child.stdout.on('data', data => {
-      stdout += data
-    })
-    child.stderr.on('data', data => {
-      stderr += data
-    })
+    child.stdout.on('data', d => emit(d, false))
+    child.stderr.on('data', d => emit(d, true))
 
     child.on('close', code => {
+      if (onStdoutLine && outBuf) onStdoutLine(outBuf)
+      if (onStderrLine && errBuf) onStderrLine(errBuf)
       if (code !== 0) {
         const error = `Shell script exited with code ${code}`
         logError('error in run shell script', { error, script, stdout, stderr })

@@ -3,6 +3,7 @@ import '@jb6/testing'
 import '@jb6/llm-guide'
 import '@jb6/common'
 import '@jb6/core/misc/pretty-print.js'
+import '@jb6/core/misc/jb-cli.js'
 
 const {
   tgp: { Const, Component,
@@ -432,3 +433,22 @@ Test('colorTest.prettyPrintCoerce', {
   })
 })
 
+
+// runBashScript streaming: onStdoutLine / onStderrLine fire per complete line
+Test('coreTest.runBashScriptStreamingLines', {
+  impl: dataTest({
+    calculate: async () => {
+      const lines = []
+      await coreUtils.runBashScript(
+        'echo line1; echo line2 >&2; echo line3',
+        {
+          onStdoutLine: l => lines.push(`out:${l}`),
+          onStderrLine: l => lines.push(`err:${l}`)
+        }
+      )
+      return lines.sort().join('|')
+    },
+    expectedResult: equals('err:line2|out:line1|out:line3'),
+    timeout: 5000
+  })
+})
