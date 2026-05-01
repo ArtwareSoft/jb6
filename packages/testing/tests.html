@@ -13,7 +13,7 @@
     const urlQuery = prop => new URLSearchParams(location.search).get(prop)
     const { coreUtils } = await import('@jb6/core')
     const { runTests } = await import('@jb6/testing')
-    const { spy } = await import('@jb6/testing/spy.js')
+    const { spy } = await import('@jb6/core/utils/jb-logging.js')
 
     const modulePath = urlQuery('modulePath') || '@jb6/testing/all-jb6-tests.js'
     console.log('modulePath', modulePath)

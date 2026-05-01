@@ -16,7 +16,7 @@ const settings = {
     MAX_LOG_SIZE: 10000
 }
 
-export const spy = jb.ext.spy = { logs, clear, log, setLogs, initSpy, initSpyByUrl, registerEnrichers, search, isEnabled: () => enabled }
+export const spy = jb.ext.spy = jb.coreUtils.spy = { logs, clear, log, setLogs, initSpy, initSpyByUrl, registerEnrichers, search, isEnabled: () => enabled }
 
 export function initSpy({spyParam: _spyParam}) {
     if (!_spyParam) return

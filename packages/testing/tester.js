@@ -1,8 +1,7 @@
 import { coreUtils, dsls } from '@jb6/core'
 import '@jb6/common'
-import { spy } from './spy.js'
 
-const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfTypeIds, unique, isNode } = coreUtils
+const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfTypeIds, unique, isNode, spy } = coreUtils
 jb.testingUtils = {runTest, runTests, runTestVm, runTestInVm}
 jb.testingRepository = {}
 
