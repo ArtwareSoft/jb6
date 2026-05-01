@@ -1,4 +1,5 @@
 import { jb, coreUtils, dsls } from '@jb6/core'
+import '@jb6/core/misc/import-map-services.js'
 export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, wrapReactCompWithSampleData }
 
 jb.reactRepository = {

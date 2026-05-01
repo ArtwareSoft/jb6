@@ -4,6 +4,7 @@ import '@jb6/llm-guide'
 import '@jb6/common'
 import '@jb6/core/misc/pretty-print.js'
 import '@jb6/core/misc/jb-cli.js'
+import '@jb6/core/misc/import-map-services.js'
 
 const {
   tgp: { Const, Component,
@@ -15,15 +16,12 @@ const {
     data: { asIs, filter, join, obj, pipeline, property },
     prop: { prop }
   },
-  test: { Test, Logger,
-    test: { dataTest },
-    logger: { domainLogger }
+  test: { Test,
+    test: { dataTest }
   }
 } = dsls
 const { prettyPrintComp, prettyPrint } = coreUtils
 const { math } = ns
-
-Logger('cliLogger', { impl: domainLogger('cli') })
 
 Const('person', {
     name: 'Homer Simpson',
@@ -319,8 +317,9 @@ Test('vmTest.minimal', {
       return jb.testingUtils.runTestVm({ testID: 'coreTest.ns', resources: { 
           entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/core/tests/core-tests.js`}})
     },
-    expectedResult: equals(2,'%testRes%'),
-    timeout: 2000
+    expectedResult: equals(2, '%testRes%'),
+    timeout: 2000,
+    logger: 'vmLogger'
   })
 })
 

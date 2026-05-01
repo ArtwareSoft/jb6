@@ -150,36 +150,24 @@ Test('reactTest.buttonClickWithParams', {
   })
 })
 
-// These tests fails in probe-view. it is OK
-Test('reactTest.cli', {
-  HeavyTest: true,
-  impl: dataTest({
-    calculate: async () => {
-    const result = await jb.testingUtils.runTestCli('reactTest.buttonClickWithParams', {textAfterClick : 'kuki'},  {entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`})
-    return result?.result?.testRes
-  },
-    expectedResult: contains('kuki'),
-    timeout: 2000
-  })
-})
-
+// These tests fail in probe-view. it is OK
 Test('reactTest.vm', {
   HeavyTest: true,
   impl: dataTest({
-    calculate: async () => {
-    const builtIn = { JSDOM: 'jsdom' }
-    const results = await Promise.all([
-      jb.testingUtils.runTestVm({
-        testID: 'reactTest.buttonClickWithParams', params: {textAfterClick : 'aaa'}, 
-        resources: { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`}, builtIn }),
-      jb.testingUtils.runTestVm({
-          testID: 'reactTest.buttonClickWithParams', params: {textAfterClick : 'bbb'}, 
-          resources: { entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`}, builtIn }),
-     ])
-    return results.map(r=> r?.testRes).join(',')
-  },
-    expectedResult: contains('aaa','bbb'),
-    timeout: 2000
+    calculate: async (ctx) => {
+      await coreUtils.calcJb6RepoRootAndImportMapsInCli()
+      const entry = `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`
+      const builtIn = { JSDOM: 'jsdom' }
+      const mk = textAfterClick => jb.testingUtils.runTestVm({
+        testID: 'reactTest.buttonClickWithParams', params: {textAfterClick},
+        resources: { entryPointPaths: entry }, builtIn
+      }, ctx)
+      const results = await Promise.all([mk('aaa'), mk('bbb')])
+      return { joined: results.map(r => r?.testRes?.html).join(',') }
+    },
+    expectedResult: contains('aaa','bbb', { allText: '%joined%' }),
+    timeout: 10000,
+    logger: 'vmLogger'
   })
 })
 

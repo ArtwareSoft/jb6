@@ -5,7 +5,8 @@
   "exports": {
     ".": "./index.js",
     "./misc/*.js": "./misc/*.js",
-    "./tests/*.js": "./tests/*.js"
+    "./tests/*.js": "./tests/*.js",
+    "./utils/*.js": "./utils/*.js"
   },
   "scripts": {},
   "dependencies": {

@@ -3,10 +3,10 @@ import '@jb6/common'
 import { spy } from './spy.js'
 
 const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfTypeIds, unique, isNode } = coreUtils
-jb.testingUtils = {runTest, runTests, runTestCli, runTestVm, runTestInVm}
+jb.testingUtils = {runTest, runTests, runTestVm, runTestInVm}
 jb.testingRepository = {}
 
-const { 
+const {
   tgp: {TgpType, Component}
 } = dsls
 
@@ -81,59 +81,40 @@ Component('dataTest', {
 globalThis.spy = spy
 globalThis.jb = jb
 
-async function runTestCli(testID, params, resources) {
-    const {entryFiles, testFiles, projectDir, importMap } = await coreUtils.calcImportData(resources)
-    const imports = unique([...entryFiles, ...testFiles])
-    const script = `
-      import { jb, dsls, coreUtils } from '@jb6/core'
-      import '@jb6/testing'
-      const imports = ${JSON.stringify(imports)}
-      try {
-        await Promise.all(imports.map(f => import(f))) //.catch(e => console.error(f, e.message) )))
-        const result = await jb.testingUtils.runTest('${testID}', {singleTest: true, params: ${JSON.stringify(params || {})}})
-        await coreUtils.writeServiceResult(result)
-      } catch (e) {
-        await coreUtils.writeServiceResult({error: e.message})
-        console.error(e)
-      }
-    `
-    try {
-      const { result, error, cmd } = await coreUtils.runCliInContext(script, {projectDir, importMapsInCli: importMap.importMapsInCli})
-      return { result, error, cmd, projectDir }
-    } catch (error) {
-      debugger
-      return { error, projectDir}
-    }
-}
-
-async function runTestVm(args) {
+async function runTestVm(args, ctx) {
     const {testID, params, resources, builtIn, vmId, importMap, staticMappings} = args
+    const vmLogger = ctx?.vars?.vmLogger
+    vmLogger?.info?.({t: 'runTestVm start', testID, vmId, isNode, hasCtx: !!ctx, hasResources: !!resources, builtIn: builtIn ? Object.keys(builtIn) : null}, {}, {ctx})
     if (!isNode) {
         const script = `import { jb, coreUtils } from '@jb6/core'
     import '@jb6/testing/tester.js'
     ;(async()=>{
     try {
+      console.error('[trace cli-script] before runTestVm ${testID}')
       const result = await jb.testingUtils.runTestVm(${JSON.stringify(args)})
+      console.error('[trace cli-script] after runTestVm', JSON.stringify(result).slice(0,200))
       await coreUtils.writeServiceResult(result || '')
-    } catch (e) { console.error(e) }
+    } catch (e) { console.error('[trace cli-script] EXCEPTION', e.stack || e) }
     })()`
-          const res = await coreUtils.runNodeCliViaJbWebServer(script)
+          vmLogger?.info?.({t: 'calling runNodeCliViaJbWebServer', testID}, {}, {ctx})
+          const res = await coreUtils.runNodeCliViaJbWebServer(script, {}, ctx)
+          vmLogger?.info?.({t: 'runNodeCliViaJbWebServer returned', testID, hasResult: !!res?.result, error: res?.error, keys: Object.keys(res||{}), stderr: String(res?.stderr || '').slice(0,500), textToParse: String(res?.textToParse || '').slice(0,500)}, {}, {ctx})
           return res.result
       }
       await import ('@jb6/core/misc/jb-vm.js')
-//      const v8 = await import ('v8')
-//      const heapSummary = () => Object.fromEntries(v8.getHeapSpaceStatistics().filter(s => s.space_used_size || s.space_size || s.physical_space_size).map(s => [s.space_name, [s.space_used_size, s.space_size, s.physical_space_size].map(v => +(v/1024/1024).toFixed(2))]))
-//      const mem_before = heapSummary().code_space
-      const testVm = await coreUtils.getOrCreateVm({vmId, resources, builtIn, importMap, staticMappings})
+      const testVm = await coreUtils.getOrCreateVm({vmId, resources, builtIn, importMap, staticMappings, vmLogger, ctx})
+      vmLogger?.info?.({t: 'vm ready', testID, hasVm: !!testVm}, {}, {ctx})
+      if (!testVm) {
+        vmLogger?.error?.({t: 'no vm', testID, resources}, {}, {ctx})
+        return { error: 'getOrCreateVm returned null', testID, resources }
+      }
       try {
-        const resPromise = testVm.evalScript(`jb.testingUtils.runTestInVm('${testID}', ${JSON.stringify(params || {})})`)
-        const result = await resPromise
-//        testVm.destroy()
-//        result.mem_after = heapSummary().code_space
-//        result.mem_before = mem_before
+        const result = await testVm.evalScript(`jb.testingUtils.runTestInVm('${testID}', ${JSON.stringify(params || {})})`)
+        vmLogger?.info?.({t: 'runTestVm done', testID, hasResult: !!result, success: result?.success}, {}, {ctx})
         return result
       } catch (e) {
-        console.error(e)
+        vmLogger?.error?.({t: 'runTestVm error', testID, error: e.stack || e.message || String(e)}, {}, {ctx})
+        return { error: e.stack || e.message || String(e) }
       }
 }
 

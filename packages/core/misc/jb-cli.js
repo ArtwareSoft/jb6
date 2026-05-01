@@ -4,6 +4,7 @@ import '../utils/jb-expression.js'
 import '../utils/jb-args.js'
 import '../utils/jb-core.js'
 import '../utils/tgp.js'
+import '../utils/jb-logging.js'
 const { coreUtils } = jb
 
 const {
@@ -85,21 +86,27 @@ async function runNodeCli(script, options = {}, onStatus) {
   })
 }
 
-async function runNodeCliViaJbWebServer(script, options = {}) {
+async function runNodeCliViaJbWebServer(script, options = {}, ctx) {
   try {
     const expressUrl = options.expressUrl || ''
     const { cmd } = buildNodeCliCmd(script, options)
+    const cliLogger = ctx?.vars?.cliLogger
+    cliLogger?.info?.({t: 'POST /run-cli', expressUrl, scriptLen: script.length}, {}, {ctx})
     const res = await fetch(`${expressUrl}/run-cli`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ script, ...options })
     })
+    cliLogger?.info?.({t: '/run-cli response', ok: res.ok, status: res.status}, {}, {ctx})
     if (!res.ok) {
       const text = await res.text()
+      cliLogger?.error?.({t: '/run-cli !ok', status: res.status, body: text.slice(0,500)}, {}, {ctx})
       return { error: `runNodeCliViaJbWebServer failed: ${res.status} – ${text}`, ...options}
     }
 
-    const { result, error } = await res.json()
+    const json = await res.json()
+    const { result, error } = json
+    cliLogger?.info?.({t: '/run-cli json', hasResult: !!result, error, stderr: String(result?.stderr || '').slice(0,500), textToParse: String(result?.textToParse || '').slice(0,500)}, {}, {ctx})
     if (error)
       return { error, cmd, ...options }
 
