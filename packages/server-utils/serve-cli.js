@@ -45,18 +45,31 @@ function serveCliStream(app) {
     Object.values(run.listeners).forEach(fn => fn(msg))
   }
 
-  app.post('/run-cli-stream', (req, res) => {
-    if (!req.body) return res.json({ error: 'no body in req' })
-
+  // generic SSE run registration: returns { runId, urls, broadcastStatus, broadcastDone, resolve }
+  const startRun = pathPrefix => {
     const runId = newRunId()
     let resolve
     const promise = new Promise(r => resolve = r)
     runs[runId] = { listeners: {}, buffer: [], promise, resolve }
+    return {
+      runId,
+      run: runs[runId],
+      urls: {
+        runId,
+        statusUrl: `${pathPrefix}/${runId}/status`,
+        contentUrl: `${pathPrefix}/${runId}/content`
+      },
+      broadcastStatus: text => broadcast(runId, { type: 'status', text }),
+      broadcastDone: () => broadcast(runId, { type: 'done' }),
+      cleanup: () => setTimeout(() => delete runs[runId], 60_000)
+    }
+  }
 
-    const broadcastStatus = text => broadcast(runId, { type: 'status', text })
-    const broadcastDone = () => broadcast(runId, { type: 'done' })
+  app.post('/run-cli-stream', (req, res) => {
+    if (!req.body) return res.json({ error: 'no body in req' })
 
     if (req.body.interactive) {
+      const { runId, run, urls, broadcastStatus, broadcastDone, cleanup } = startRun('/run-cli-stream')
       const { cmd = 'bash', args = [], cwd, env, shell, cols = 120, rows = 40 } = req.body
       const sh = shell || process.env.SHELL || '/bin/bash'
       const term = (env && env.TERM) || 'xterm-256color'
@@ -69,58 +82,73 @@ function serveCliStream(app) {
         rows,
         name: term
       })
-
-      runs[runId].pty = p
-
+      run.pty = p
       p.onData(d => broadcastStatus({ stream: 'pty', text: d }))
-
       p.onExit(({ exitCode, signal }) => {
-        runs[runId]?.resolve({ exitCode, signal })
+        run.resolve({ exitCode, signal })
         broadcastDone()
-        setTimeout(() => delete runs[runId], 60_000)
+        cleanup()
       })
 
       return res.json({
-        runId,
-        statusUrl: `/run-cli-stream/${runId}/status`,
+        ...urls,
         inputUrl: `/run-cli-stream/${runId}/input`,
-        resizeUrl: `/run-cli-stream/${runId}/resize`,
-        contentUrl: `/run-cli-stream/${runId}/content`
+        resizeUrl: `/run-cli-stream/${runId}/resize`
       })
     }
 
     const { script, ...options } = req.body
+    const { runId, run, urls, broadcastStatus, broadcastDone, cleanup } = startRun('/run-cli-stream')
     const { cmd } = buildNodeCliCmd(script, options)
-
     ;(async () => {
       try {
         const final = await runNodeCli(script, options, broadcastStatus)
-        runs[runId]?.resolve(final)
-        broadcastDone()
+        run.resolve(final)
       } catch (error) {
-        runs[runId]?.resolve({ error: error.stack || error })
-        broadcastDone()
+        run.resolve({ error: error.stack || error })
       }
-      setTimeout(() => delete runs[runId], 60_000)
+      broadcastDone()
+      cleanup()
     })()
+    res.json({ cmd, ...urls })
+  })
 
-    res.json({
-      cmd,
-      runId,
-      statusUrl: `/run-cli-stream/${runId}/status`,
-      contentUrl: `/run-cli-stream/${runId}/content`
+  app.post('/run-bash-stream', (req, res) => {
+    if (!req.body) return res.json({ error: 'no body in req' })
+    const { script } = req.body
+    const { runId, run, urls, broadcastStatus, broadcastDone, cleanup } = startRun('/run-bash-stream')
+    ;(async () => {
+      try {
+        const final = await runBashScript(script, { _onChunk: broadcastStatus })
+        run.resolve(final)
+      } catch (error) {
+        run.resolve({ error: error.stack || error })
+      }
+      broadcastDone()
+      cleanup()
+    })()
+    res.json(urls)
+  })
+
+  // shared SSE/content/input/resize endpoints (apply to both /run-cli-stream and /run-bash-stream)
+  const mountSseEndpoints = prefix => {
+    app.get(`${prefix}/:runId/status`, (req, res) => {
+      const run = runs[req.params.runId]
+      if (!run) return res.status(404).end('no such run')
+      sseHeaders(res)
+      run.buffer.forEach(msg => sseSend(res, msg))
+      const id = Math.random().toString(36).slice(2)
+      run.listeners[id] = msg => sseSend(res, msg)
+      req.on('close', () => delete run.listeners[id])
     })
-  })
-
-  app.get('/run-cli-stream/:runId/status', (req, res) => {
-    const run = runs[req.params.runId]
-    if (!run) return res.status(404).end('no such run')
-    sseHeaders(res)
-    run.buffer.forEach(msg => sseSend(res, msg))
-    const id = Math.random().toString(36).slice(2)
-    run.listeners[id] = msg => sseSend(res, msg)
-    req.on('close', () => delete run.listeners[id])
-  })
+    app.get(`${prefix}/:runId/content`, async (req, res) => {
+      const run = runs[req.params.runId]
+      if (!run) return res.status(404).json({ error: 'no such run' })
+      res.json(await run.promise)
+    })
+  }
+  mountSseEndpoints('/run-cli-stream')
+  mountSseEndpoints('/run-bash-stream')
 
   app.post('/run-cli-stream/:runId/input', (req, res) => {
     const run = runs[req.params.runId]
@@ -132,10 +160,10 @@ function serveCliStream(app) {
   app.post('/run-cli-stream/:runId/resize', (req, res) => {
     const run = runs[req.params.runId]
     if (!run?.pty) return res.status(404).json({ error: 'no such run' })
-  
+
     const cols = Math.max(2, Number(req.body?.cols || 120) | 0)
     const rows = Math.max(2, Number(req.body?.rows || 40) | 0)
-  
+
     try {
       run.pty.resize(cols, rows)
     } catch (e) {
@@ -146,11 +174,5 @@ function serveCliStream(app) {
       throw e
     }
     res.json({ ok: true })
-  })  
-  app.get('/run-cli-stream/:runId/content', async (req, res) => {
-    const run = runs[req.params.runId]
-    if (!run) return res.status(404).json({ error: 'no such run' })
-    res.json(await run.promise)
   })
 }
-

@@ -11,7 +11,7 @@ const {
   common: { Data }
 } = jb.dsls
 const { logException, logError, isNode } = coreUtils
-Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript, runNodeCliStreamViaJbWebServer, buildNodeCliCmd})
+Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript, runNodeCliStreamViaJbWebServer, runBashScriptStreamViaJbWebServer, buildNodeCliCmd})
 
 function buildNodeCliCmd(script, options = {}) {
   options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
@@ -32,7 +32,7 @@ async function runCliInContext(script, options, onStatus) {
   if (!isNode && onStatus)
     res = runNodeCliStreamViaJbWebServer(script, options = {}, onStatus)
   else if (!isNode)
-    res = await runNodeCliViaJbWebServer(script, options)  
+    res = await runNodeCliViaJbWebServer(script, options)
   else
     res = await runNodeCli(script, options, onStatus)
   return res
@@ -75,7 +75,7 @@ async function runNodeCli(script, options = {}, onStatus) {
           const result = JSON.parse(out)
           resolve({result, cmd, cwd, stderr: err})
         } catch (e) {
-          resolve({err: 'json parse error', error: e.message || e, cmd, cwd, textToParse: out, stderr: err})
+          resolve({err: 'json parse error', error: e.stack || e, cmd, cwd, textToParse: out, stderr: err})
         }
       })
     } catch(e) {
@@ -86,7 +86,7 @@ async function runNodeCli(script, options = {}, onStatus) {
 }
 
 async function runNodeCliViaJbWebServer(script, options = {}) {
-  try { 
+  try {
     const expressUrl = options.expressUrl || ''
     const { cmd } = buildNodeCliCmd(script, options)
     const res = await fetch(`${expressUrl}/run-cli`, {
@@ -98,60 +98,122 @@ async function runNodeCliViaJbWebServer(script, options = {}) {
       const text = await res.text()
       return { error: `runNodeCliViaJbWebServer failed: ${res.status} – ${text}`, ...options}
     }
-    
+
     const { result, error } = await res.json()
-    if (error) 
+    if (error)
       return { error, cmd, ...options }
 
     return { ...result, cmd }
   } catch (e) {
-    return { error: `runNodeCliViaJbWebServer exception: ${e.message}`, ...options}
+    return { error: `runNodeCliViaJbWebServer exception: ${e.stack}`, ...options}
   }
+}
+
+// shared SSE consumer: posts to startUrl, reads SSE stream via fetch, fetches contentUrl on done
+// works in both browser and Node (uses fetch ReadableStream — no EventSource dependency)
+async function streamViaSSE({ startUrl, body, onStatus }) {
+  const startRes = await fetch(startUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  if (!startRes.ok) {
+    const text = await startRes.text()
+    return { error: `streamViaSSE start failed: ${startRes.status} – ${text}` }
+  }
+  const { statusUrl, contentUrl, error } = await startRes.json()
+  if (error) return { error }
+
+  const origin = (typeof location !== 'undefined' && location.origin) || 'http://localhost'
+  const absStatus  = /^https?:/.test(statusUrl)  ? statusUrl  : new URL(statusUrl,  new URL(startUrl,  origin).href).href
+  const absContent = /^https?:/.test(contentUrl) ? contentUrl : new URL(contentUrl, new URL(startUrl,  origin).href).href
+
+  const sse = await fetch(absStatus, { headers: { Accept: 'text/event-stream' } })
+  const reader = sse.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  let done = false
+  while (!done) {
+    const { value, done: streamDone } = await reader.read()
+    if (streamDone) break
+    buf += decoder.decode(value, { stream: true })
+    const events = buf.split('\n\n')
+    buf = events.pop() || ''
+    for (const ev of events) {
+      const dataLine = ev.split('\n').find(l => l.startsWith('data:'))
+      if (!dataLine) continue
+      try {
+        const msg = JSON.parse(dataLine.slice(5).trim())
+        if (msg.type === 'status' && onStatus) onStatus(msg.text)
+        if (msg.type === 'done') { done = true; break }
+      } catch (e) {}
+    }
+  }
+  reader.cancel().catch(() => {})
+
+  const r = await fetch(absContent)
+  if (!r.ok) return { error: `streamViaSSE content failed: ${r.status} – ${await r.text()}` }
+  return await r.json()
 }
 
 async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
   try {
     const expressUrl = options.expressUrl || ''
     const { cmd } = buildNodeCliCmd(script, options)
-
-    const startRes = await fetch(`${expressUrl}/run-cli-stream`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ script, ...options })
-    })
-    if (!startRes.ok) {
-      const text = await startRes.text()
-      return { error: `runNodeCliStreamViaJbWebServer failed: ${startRes.status} – ${text}`, ...options }
-    }
-
-    const { statusUrl, contentUrl, error } = await startRes.json()
-    if (error) return { error, cmd, ...options }
-
-    const es = new EventSource(statusUrl)
-    await new Promise(resolve => {
-      es.onmessage = ev => {
-        try {
-          const msg = JSON.parse(ev.data)
-          if (msg.type === 'status' && onStatus) {
-            const text = typeof msg.text === 'string' ? msg.text : msg.text?.text
-            const stream = typeof msg.text === 'string' ? 'stderr' : msg.text?.stream
-            onStatus({ stream, text })
-          }
-          if (msg.type === 'done') { es.close(); resolve() }
-        } catch (e) { es.close(); resolve() }
+    const result = await streamViaSSE({
+      startUrl: `${expressUrl}/run-cli-stream`,
+      body: { script, ...options },
+      onStatus: chunk => {
+        if (!onStatus) return
+        const text = typeof chunk === 'string' ? chunk : chunk?.text
+        const stream = typeof chunk === 'string' ? 'stderr' : chunk?.stream
+        onStatus({ stream, text })
       }
     })
-    const r = await fetch(contentUrl)
-    if (!r.ok) return { error: `runNodeCliStreamViaJbWebServer result failed: ${r.status} – ${await r.text()}`, cmd, ...options }
-    return { ...await r.json(), cmd }
+    if (result.error) return { error: result.error, cmd, ...options }
+    return { ...result, cmd }
   } catch (e) {
-    return { error: `runNodeCliStreamViaJbWebServer exception: ${e.message}`, ...options }
+    return { error: `runNodeCliStreamViaJbWebServer exception: ${e.stack}`, ...options }
+  }
+}
+
+// browser-side bash streaming: feeds line-buffered onStdoutLine/onStderrLine from SSE chunks
+// onStatus(chunk) — raw {stream,text} chunks as they arrive (before line buffering)
+async function runBashScriptStreamViaJbWebServer(script, { onStdoutLine, onStderrLine, onStatus } = {}, options = {}) {
+  try {
+    const expressUrl = options.expressUrl || ''
+    const buf = { stdout: '', stderr: '' }
+    const flushChunk = (stream, text) => {
+      const cb = stream === 'stderr' ? onStderrLine : onStdoutLine
+      if (!cb) return
+      const combined = buf[stream] + text
+      const lines = combined.split('\n')
+      buf[stream] = lines.pop() || ''
+      lines.forEach(cb)
+    }
+    const result = await streamViaSSE({
+      startUrl: `${expressUrl}/run-bash-stream`,
+      body: { script, ...options },
+      onStatus: chunk => {
+        if (!chunk) return
+        if (onStatus) onStatus(chunk)
+        flushChunk(chunk.stream, chunk.text || '')
+      }
+    })
+    if (onStdoutLine && buf.stdout) onStdoutLine(buf.stdout)
+    if (onStderrLine && buf.stderr) onStderrLine(buf.stderr)
+    if (result.error) return { error: result.error, script }
+    return result
+  } catch (e) {
+    return { error: `runBashScriptStreamViaJbWebServer exception: ${e.stack}`, script }
   }
 }
 
 async function runBashScript(script, callbacks) {
-  const { onStdoutLine, onStderrLine } = callbacks || {}
+  const { onStdoutLine, onStderrLine, _onChunk } = callbacks || {}
   if (!isNode) {
+    if (onStdoutLine || onStderrLine)
+      return runBashScriptStreamViaJbWebServer(script, { onStdoutLine, onStderrLine })
     const response = await fetch('/run-bash', { method: 'POST', headers: {'Content-Type': 'application/json' }, body: JSON.stringify({ script }) })
     const result = await response.json()
     return result.result
@@ -162,6 +224,7 @@ async function runBashScript(script, callbacks) {
     const emit = (data, isErr) => {
       const text = String(data)
       if (isErr) stderr += text; else stdout += text
+      if (_onChunk) _onChunk({ stream: isErr ? 'stderr' : 'stdout', text })
       const cb = isErr ? onStderrLine : onStdoutLine
       if (!cb) return
       const buf = (isErr ? errBuf : outBuf) + text

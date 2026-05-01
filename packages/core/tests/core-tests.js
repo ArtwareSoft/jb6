@@ -15,12 +15,15 @@ const {
     data: { asIs, filter, join, obj, pipeline, property },
     prop: { prop }
   },
-  test: { Test,
-    test: { dataTest }
+  test: { Test, Logger,
+    test: { dataTest },
+    logger: { domainLogger }
   }
 } = dsls
 const { prettyPrintComp, prettyPrint } = coreUtils
 const { math } = ns
+
+Logger('cliLogger', { impl: domainLogger('cli') })
 
 Const('person', {
     name: 'Homer Simpson',
@@ -450,5 +453,41 @@ Test('coreTest.runBashScriptStreamingLines', {
     },
     expectedResult: equals('err:line2|out:line1|out:line3'),
     timeout: 5000
+  })
+})
+
+// runBashScriptStreamViaJbWebServer: live SSE streaming through the express server.
+// requires the dev server running on http://localhost:8083 (with serveCliStream mounted).
+// Script has explicit sleeps to force chunks to arrive over time (not in one flush) so we can
+// assert the chunks really stream live (verified by gap timing between first/last chunk).
+Test('coreTest.runBashScriptStreamViaJbWebServer', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: async (ctx, {cliLogger}) => {
+      const lines = []
+      const chunks = []
+      const t0 = Date.now()
+      const result = await coreUtils.runBashScriptStreamViaJbWebServer(
+        'echo line1; sleep 0.3; echo line2 >&2; sleep 0.3; echo line3',
+        {
+          onStdoutLine: l => { lines.push(`out:${l}`); cliLogger?.info?.({t:'line', stream:'stdout', line: l, atMs: Date.now()-t0}, {}, {ctx}) },
+          onStderrLine: l => { lines.push(`err:${l}`); cliLogger?.info?.({t:'line', stream:'stderr', line: l, atMs: Date.now()-t0}, {}, {ctx}) },
+          onStatus:    c => { chunks.push({...c, atMs: Date.now()-t0}); cliLogger?.info?.({t:'chunk', stream: c.stream, bytes: (c.text||'').length, atMs: Date.now()-t0}, {}, {ctx}) }
+        },
+        { expressUrl: 'http://localhost:8083' }
+      )
+      const firstAt = chunks[0]?.atMs ?? 0
+      const lastAt  = chunks.at(-1)?.atMs ?? 0
+      cliLogger?.info?.({t:'done', firstChunkAt: firstAt, lastChunkAt: lastAt, gap: lastAt - firstAt, chunkCount: chunks.length}, {}, {ctx})
+      return {
+        lines:   lines.sort().join('|'),
+        stderr:  String(result.stderr || '').trim(),
+        chunkStreams: [...new Set(chunks.map(c=>c.stream))].sort().join(','),
+        streamed: (lastAt - firstAt) > 200 // chunks span >200ms => SSE actually streamed
+      }
+    },
+    expectedResult: equals({ lines: 'err:line2|out:line1|out:line3', stderr: 'line2', chunkStreams: 'stderr,stdout', streamed: true }),
+    timeout: 15000,
+    logger: 'cliLogger'
   })
 })
