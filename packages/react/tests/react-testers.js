@@ -29,10 +29,12 @@ Test('reactTest', {
       {id: 'userActions', type: 'ui-action[]'},
       {id: 'logger', as: 'string'},
       {id: 'setup', type: 'ctx-enricher<tgp>', dynamic: true},
+      {id: 'timeout', as: 'number', defaultValue: 2000},
     ],
     impl: dataTest({
         logger: '%$logger%',
         setup: '%$setup()%',
+        timeout: '%$timeout%',
         calculate: async (ctx,{singleTest,uiLogger},{hFunc,userActions,props}) => {
           const win = globalThis.window
           if (!win)
@@ -68,7 +70,6 @@ Test('reactTest', {
           return { html, toString: () => html }
         },
         expectedResult: '%$expectedResult()%',
-        timeout: 2000,
         includeTestRes: true
     })
 })

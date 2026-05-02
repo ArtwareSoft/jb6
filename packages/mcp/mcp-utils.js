@@ -69,7 +69,7 @@ ${origin ? `<base href="${origin}/">` : ''}
 
     import { dsls, coreUtils } from '@jb6/core'
     import { reactUtils } from '@jb6/react'
-    import '@jb6/react/lib/tailwindcss.js'
+    import '@jb6/react/lib/tailwindcss-3.4.17.js'
     import '@jb6/react/codemirror-utils.js'
     reactUtils.loadLucid05()
     const { h, hh } = reactUtils
