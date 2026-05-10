@@ -69,7 +69,7 @@ function splitSystemArgs(allArgs) {
 
 function argsToProfile(prof, comp) {
     const { args, system } = splitSystemArgs(prof.$unresolvedArgs)
-    if (args.length == 0 || prof.$delayed) return {}
+    if (prof.$delayed) return {}
 
     const lastArg = args[args.length-1]
     const lastArgIsByName = lastArg && typeof lastArg == 'object' && !Array.isArray(lastArg) && !lastArg.$

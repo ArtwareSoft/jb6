@@ -8,7 +8,7 @@ import '@jb6/core/misc/import-map-services.js'
 
 const {
   tgp: { Const, Component,
-    'ctx-enricher': { Var, setVars }
+    'ctx-enricher': { Var, setVars, enrichCtx, setVar }
   },
   common: { Data,
     action: { delay, runActions },
@@ -488,5 +488,29 @@ Test('coreTest.runBashScriptStreamViaJbWebServer', {
     expectedResult: equals({ lines: 'err:line2|out:line1|out:line3', stderr: 'line2', chunkStreams: 'stderr,stdout', streamed: true }),
     timeout: 15000,
     logger: 'cliLogger'
+  })
+})
+
+// Regression: ctx.run(profile) should expose the original profile at ctx.jbCtx.profile inside the impl.
+// Currently broken — Ctx.run() calls top-level run() with the existing jbCtx (where profile is undefined),
+// and inside run() jbCtx.newComp(comp,args) does not carry the original profile forward.
+// The impl only sees ctx.jbCtx.args (resolved compArgs), losing the source profile.
+const captureJbCtxProfile = Data('captureJbCtxProfile', {
+  params: [{id: 'x', as: 'string'}],
+  impl: ctx => ({hasProfile: ctx.jbCtx.profile != null, profile$: ctx.jbCtx.profile?.$, hasArgs: ctx.jbCtx.args != null, argsX: ctx.jbCtx.args?.x})
+})
+
+Test('coreTest.ctxRunProfileVisibleInImpl', {
+  impl: dataTest({
+    calculate: ctx => ctx.run(captureJbCtxProfile({x: 'hello'})),
+    expectedResult: equals(true, '%hasProfile%')
+  })
+})
+
+// Regression: Var(name, <profile>) inside enrichCtx must throw — Var stores val literally; use setVar for dynamic profile evaluation.
+Test('coreTest.varInEnrichCtx', {
+  impl: dataTest({
+    calculate: async ctx => (await ctx.run(enrichCtx(Var('x', '3')))).vars.x,
+    expectedResult: equals(3)
   })
 })

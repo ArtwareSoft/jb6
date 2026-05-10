@@ -32,7 +32,10 @@ async function runSnippetCli(args) {
   const { ecmScript, projectDir, importMapsInCli, topLevelImports, error } = res
   if (error) return res
   try {
-    const result = await runCliInContext(`${ecmScript}\n await coreUtils.writeServiceResult(await calc())`, {projectDir, importMapsInCli})
+    const result = await runCliInContext(
+      `${ecmScript}\n await coreUtils.writeServiceResult(await calc())`,
+      {projectDir, importMapsInCli, ctx: args.ctx, bindLoggers: args.bindLoggers}
+    )
     return { ...result.result, topLevelImports }
   } catch (error) {
     return { error, ecmScript, projectDir, importMapsInCli }
@@ -40,7 +43,7 @@ async function runSnippetCli(args) {
 }
 
 async function calcJsonProfileScript({profileText, repoRoot, fetchByEnvHttpServer}) {
-  const allFullIds = unique([...profileText.matchAll(/\$\s*:\s*'([^']+)'/g)].map(m => m[1]))
+  const allFullIds = unique([...profileText.matchAll(/["']\$["']\s*:\s*["']([^"']+)["']|\$\s*:\s*'([^']+)'/g)].map(m => m[1] || m[2]))
   const parsed = allFullIds.map(id => { const m = id.match(/^([^<]+)<([^>]+)>(.+)$/); return m && { type: m[1], dsl: m[2], shortId: m[3], fullId: id } }).filter(Boolean)
   if (!parsed.length) return { error: `no valid {$: 'type<dsl>id'} found in profile` }
   const allDsls = unique(parsed.map(p => p.dsl))

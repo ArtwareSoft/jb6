@@ -119,7 +119,10 @@ function serveCliStream(app) {
     const { runId, run, urls, broadcastStatus, broadcastDone, cleanup } = startRun('/run-bash-stream')
     ;(async () => {
       try {
-        const final = await runBashScript(script, { _onChunk: broadcastStatus })
+        const final = await runBashScript(script, {
+          _onChunk: broadcastStatus,
+          onStart: ({pid, kill}) => { run.pid = pid; run.kill = kill }
+        })
         run.resolve(final)
       } catch (error) {
         run.resolve({ error: error.stack || error })
@@ -128,6 +131,23 @@ function serveCliStream(app) {
       cleanup()
     })()
     res.json(urls)
+  })
+
+  app.post('/run-bash-stream/:runId/cancel', (req, res) => {
+    const run = runs[req.params.runId]
+    if (!run?.kill) return res.status(404).json({ error: 'no such run or already finished' })
+    const signal = (req.body?.signal) || 'SIGTERM'
+    broadcast(req.params.runId, { type: 'status', text: { stream: 'stdout', text: `==> cancel: ${signal} → pid ${run.pid} (process group)\n` } })
+    run.kill(signal)
+    if (signal === 'SIGTERM') {
+      setTimeout(() => {
+        if (runs[req.params.runId]?.kill) {
+          broadcast(req.params.runId, { type: 'status', text: { stream: 'stdout', text: `==> cancel: 5s elapsed, escalating to SIGKILL\n` } })
+          try { runs[req.params.runId].kill('SIGKILL') } catch {}
+        }
+      }, 5000)
+    }
+    res.json({ ok: true, runId: req.params.runId, signal })
   })
 
   // shared SSE/content/input/resize endpoints (apply to both /run-cli-stream and /run-bash-stream)

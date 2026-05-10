@@ -135,11 +135,19 @@ export async function calcTgpModelData(resources) {
     }
     if (decl.callee.name == 'Component') {
       const dslType = astToTgpObj(decl).$unresolvedArgs[1]?.type || 'data<common>'
+      if (typeof dslType !== 'string' || !/^[^<]+<[^>]+>$/.test(dslType)) {
+        logError(`calcTgpModelData bad Component type ${JSON.stringify(dslType)}`, { filePath, ...offsetToLineCol(src, decl.start) })
+        return
+      }
       const [_type, _dsl] = coreUtils.splitDslType(dslType)
       compDefId = coreUtils.toCapitalType(_type)
       compDefs[compDefId] = dsls[_dsl][compDefId]
     }
-    if (!compDefs[compDefId]) return
+    if (typeof compDefs[compDefId] !== 'function') {
+      if (compDefs[compDefId] !== undefined)
+        logError(`calcTgpModelData compDef "${compDefId}" is not a function (got ${typeof compDefs[compDefId]}). Known compDefs: ${Object.keys(compDefs).join(', ')}`, { filePath, ...offsetToLineCol(src, decl.start) })
+      return
+    }
 
     let shortId, comp
     const firstArgVal = astToObj(decl.arguments[0], vars)

@@ -23,10 +23,13 @@ Component('dataTest', {
     {id: 'cleanUp', type: 'action', dynamic: true},
     {id: 'expectedCounters', as: 'single'},
     {id: 'spy', as: 'string'},
-    {id: 'logger', as: 'string', description: 'e.g dbLogger'}
+    {id: 'logger', as: 'string', description: 'e.g "dbLogger" or comma-separated "makeLogger,dbLogger"'}
   ],
   impl: async (ctx,{}, { calculate,expectedResult,runBefore,setup,timeout,allowError,cleanUp,expectedCounters,spy: _spy, logger }) => {
-        const loggerObj = logger && dsls.test.logger[logger] && { [logger] : dsls.test.logger[logger].$runWithCtx(ctx) } || {}
+        const loggerNames = (logger || '').split(',').map(s => s.trim()).filter(Boolean)
+        const loggerObj = Object.fromEntries(
+          loggerNames.filter(n => dsls.test.logger[n]).map(n => [n, dsls.test.logger[n].$runWithCtx(ctx)])
+        )
         const testID = ctx.vars.testID || (ctx.jbCtx.lexicalStack.slice(-1)[0]||'').split('~')[0]
 		let ctxToUse = ctx.setVars({testID, isTest: true, testSessionId: `test-${Date.now()}`, ...loggerObj})
 		if (setup.profile || typeof setup === 'function') ctxToUse = await setup(ctxToUse) || ctxToUse
@@ -61,7 +64,9 @@ Component('dataTest', {
 			testFailure = expectedResultRes?.testFailure
 			const success = !! (expectedResultRes && !countersErr && !testFailure)
 			log('check test result',{testRes, success,expectedResultRes, testFailure, countersErr, expectedResultCtx})
-			const logResults = logger && ctxToUse.vars[logger]?.logsAndErrors?.() || {}
+			const logResults = Object.fromEntries(
+			  loggerNames.flatMap(n => Object.entries(ctxToUse.vars[n]?.logsAndErrors?.() || {}))
+			)
 			result = { id: testID, success, reason: countersErr || testFailure, testRes: typeof testRes === 'object' && !Array.isArray(testRes) ? { ...testRes, ...logResults } : testRes, counters}
 		} catch (e) {
 			logException(e,'error in test',{ctx})

@@ -200,6 +200,7 @@ export const domainLogger = Logger('domainLogger', {
         log(logName, {severity: 'error', r1: enriched[0], r2: enriched[1], ctx: r3?.ctx})
       },
       status(text) { jb.coreUtils?.statusEvents?.emit('status', text) },
+      progress(payload) { jb.coreUtils?.statusEvents?.emit(`${domain}.progress`, payload) },
       $stripData() { return { $: `${domain}Logger`, logCount: this[logName].length, errorCount: this[errorsName].length, last: this[logName].at(-1)?.t } },
       logsAndErrors({stripData = true} = {}) {
         const res = {[logName]: this[logName], [errorsName]: this[errorsName]}
