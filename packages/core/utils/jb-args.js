@@ -12,7 +12,7 @@ const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
 const systemParams = [ {id: 'data', $dslType: 'data<common>'}, {id: 'vars', $dslType: 'ctx-enricher<tgp>'}] 
 
 function asComp(pt) {
-    const jbComp = (typeof pt === 'string' ? compByFullId(pt)?.[asJbComp] || compByFullId(pt) : null) || pt[asJbComp] || pt
+    const jbComp = (typeof pt === 'string' ? compByFullId(pt) : null) || pt[asJbComp] || pt
     if (!jbComp?.$resolvedInner)
         resolveCompArgs(jbComp)
     return jbComp
@@ -106,7 +106,8 @@ function argsToProfile(prof, comp) {
 
 function compByFullId(id, tgpModel = jb) {
   const [type, dsl, shortId] = (id.match(/^([^<]+)<([^>]+)>(.+)$/)||[]).slice(1)
-  return tgpModel.dsls[dsl||'common']?.[type]?.[shortId]
+  const c = tgpModel.dsls[dsl||'common']?.[type]?.[shortId]
+  return c?.[asJbComp] || c
 }
 
 function resolveProfileTop(comp) {
@@ -180,7 +181,7 @@ function resolveProfileArgs(prof) {
 function lexicalProfileOfDefaultValue(ctx) {
   const path = ctx.jbCtx.lexicalStack.filter(x => x && !x.match('~defaultValue')).slice(-1)[0] || ''
   const parts = path.split('~').slice(0,-1)
-  return coreUtils.calcPath(compByFullId(parts[0])?.[asJbComp], parts.slice(1)) || {}
+  return coreUtils.calcPath(compByFullId(parts[0]), parts.slice(1)) || {}
 }
 
 function tgpProfileToJson(prof) {
@@ -203,7 +204,7 @@ function coerceOfDslType(dslType) {
 
 function restoreProfile$(obj) {
   if (!obj || typeof obj !== 'object') return
-  if (typeof obj.$ === 'string') { const c = compByFullId(obj.$); if (c) obj.$ = c[asJbComp] || c }
+  if (typeof obj.$ === 'string') { const c = compByFullId(obj.$); if (c) obj.$ = c }
   Object.values(obj).forEach(v => Array.isArray(v) ? v.forEach(restoreProfile$) : restoreProfile$(v))
 }
 

@@ -93,7 +93,7 @@ async function runProbe(_probePath, {circuitCmpId, timeout } = {}) {
         if (!probePath) 
            return { error: `calcCircuitPath : no probe path` }
         const cmpId = probePath.split('~')[0]
-        const comp = compByFullId(cmpId, jb)?.[asJbComp]
+        const comp = compByFullId(cmpId, jb)
         if (!comp)
           return { error: `calcCircuitPath : can not find comp ${cmpId} in jb repo` }
 
@@ -176,7 +176,7 @@ class Probe {
         this.circuitCmpId = this.circuitCtx.jbCtx.path = circuitCmpId
         this.records = {}
         this.visits = {}
-        this.circuitComp = compByFullId(circuitCmpId, jb)[asJbComp]
+        this.circuitComp = compByFullId(circuitCmpId, jb)
         this.id = ++jb.probeRepository.probeCounter
     }
 
@@ -274,7 +274,7 @@ function circuitOptions(compId) {
     }
 
     function noOpenParams(id) {
-      return (compByFullId(id, jb)[asJbComp]?.params || []).filter(p=>!p.defaultValue).length == 0
+      return (compByFullId(id, jb)?.params || []).filter(p=>!p.defaultValue).length == 0
     }
 
     function expand() {

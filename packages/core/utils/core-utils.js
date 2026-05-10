@@ -100,6 +100,7 @@ const isPromise = v => v && v != null && typeof v.then === 'function'
 
 function compIdOfProfile(profile) {
   if (typeof profile.$$ == 'string') return profile.$$
+  if (typeof profile.$ == 'string' && profile.$.match(/^[^<]+<[^>]+>.+/)) return profile.$
   const comp = profile.$$ || profile.$
   return `${comp.$dslType}${comp.id}`
 }

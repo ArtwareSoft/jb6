@@ -281,7 +281,7 @@ Test('prettyPrintTest.comp', {
   impl: dataTest({
     calculate: () => prettyPrintComp(dsls.test.test['coreTest.asyncVar'], {tgpModel: jb} ),
     expectedResult: equals(asIs(`Test('coreTest.asyncVar', {
-  impl: dataTest(pipeline(Var(), Var(), '%$a%,%$b%'), equals('3,5'))
+  impl: dataTest(pipeline(Var('b', 5), Var('a', delay(1, 3)), '%$a%,%$b%'), equals('3,5'))
 })`))
   })
 })
