@@ -28,13 +28,14 @@ function toJson(v) {
 
 async function runSnippetCli(args) {
   const repoRoot = args.repoRoot || await calcRepoRoot()
-  const res = await calcJsonProfileScript({...args, repoRoot})
+  const toJson = p => p == null ? p : typeof p === 'string' ? p : JSON.stringify(coreUtils.tgpProfileToJson(p))
+  const res = await calcJsonProfileScript({...args, profileText: toJson(args.profile ?? args.profileText), ctxEnricher: toJson(args.ctxEnricher), repoRoot})
   const { ecmScript, projectDir, importMapsInCli, topLevelImports, error } = res
   if (error) return res
   try {
     const result = await runCliInContext(
       `${ecmScript}\n await coreUtils.writeServiceResult(await calc())`,
-      {projectDir, importMapsInCli, ctx: args.ctx, bindLoggers: args.bindLoggers}
+      {projectDir, importMapsInCli, ctx: args.ctx, bindLoggers: args.bindLoggers, stream: 'both'}
     )
     return { ...result.result, topLevelImports }
   } catch (error) {
@@ -42,38 +43,55 @@ async function runSnippetCli(args) {
   }
 }
 
-async function calcJsonProfileScript({profileText, repoRoot, fetchByEnvHttpServer}) {
-  const allFullIds = unique([...profileText.matchAll(/["']\$["']\s*:\s*["']([^"']+)["']|\$\s*:\s*'([^']+)'/g)].map(m => m[1] || m[2]))
+// Auto-discover Node-side imports needed to resolve `$:'type<dsl>id'` refs in the given profile(s)/JSON-text.
+// Accepts a TGP profile, an array of profiles, or a JSON string. Returns importsStr ready to inline,
+// plus projectDir + importMapsInCli for runCliInContext.
+async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer} = {}) {
+  repoRoot = repoRoot || await calcRepoRoot()
+  const text = typeof input === 'string' ? input
+    : Array.isArray(input) ? input.map(p => JSON.stringify(coreUtils.tgpProfileToJson(p))).join('\n')
+    : JSON.stringify(coreUtils.tgpProfileToJson(input))
+  const allFullIds = unique([...text.matchAll(/["']\$["']\s*:\s*["']([^"']+)["']|\$\s*:\s*'([^']+)'/g)].map(m => m[1] || m[2]))
   const parsed = allFullIds.map(id => { const m = id.match(/^([^<]+)<([^>]+)>(.+)$/); return m && { type: m[1], dsl: m[2], shortId: m[3], fullId: id } }).filter(Boolean)
-  if (!parsed.length) return { error: `no valid {$: 'type<dsl>id'} found in profile` }
+  if (!parsed.length) return { error: `no valid {$: 'type<dsl>id'} found in profile`, topLevelImports: [], importsStr: '' }
   const allDsls = unique(parsed.map(p => p.dsl))
   const tgpModel = await calcTgpModelData({forRepo: repoRoot, forDsls: allDsls.join(','), fetchByEnvHttpServer })
   if (tgpModel.error) return { error: tgpModel.error }
-  const { importMap } = tgpModel
   const projectDir = tgpModel.projectDir || repoRoot
   const comps = parsed.map(p => tgpModel.dsls[p.dsl]?.[p.type]?.[p.shortId]).filter(Boolean)
   if (!comps.length) return { error: `can not find ${allFullIds.join(', ')}` }
-
   const allComps = collectTransitiveComps(comps, tgpModel)
   const allCompDsls = unique([...allDsls, ...allComps.map(c => c.dsl)])
   const dslsEntryPoints = await discoverDslEntryPoints({ forDsls: allCompDsls, repoRoot })
   const entryFiles = unique(allComps.map(c => c.$location?.path).filter(Boolean))
   const topLevelImports = calcMinimalImports([...dslsEntryPoints, ...entryFiles], tgpModel.importGraph)
-  const importsStr = topLevelImports.map(f => `\tawait import('${f}')`).join('\n')
+  const importsStr = topLevelImports.map(f => `await import('${f}')`).join('\n')
+  return { topLevelImports, importsStr, projectDir, importMapsInCli: tgpModel.importMap.importMapsInCli, tgpModel }
+}
+Object.assign(coreUtils, { calcImportsForProfile })
+
+async function calcJsonProfileScript({profileText, repoRoot, fetchByEnvHttpServer, bindLoggers, ctxEnricher}) {
+  const imp = await calcImportsForProfile(profileText + (ctxEnricher || ''), {repoRoot, fetchByEnvHttpServer})
+  if (imp.error) return imp
+  const { importsStr, projectDir, importMapsInCli } = imp
+  const loggerNames = (bindLoggers || '').split(',').map(s => s.trim()).filter(Boolean)
+  const wrapStmt = loggerNames.length ? `coreUtils.wrapLoggersToStderr(${JSON.stringify(loggerNames)})\n    ` : ''
+  const enrichStmt = ctxEnricher ? `.run(${ctxEnricher})` : ''
+  const loggerSetup = `
+    ${wrapStmt}const result = await (await coreUtils.ensureLoggers(${JSON.stringify(loggerNames)})${enrichStmt}).run(${profileText})`
   const ecmScript = `
   // dir: ${projectDir}
 import { coreUtils } from '@jb6/core'
 export async function calc() {
   ${importsStr}
-  try {
-    const result = await coreUtils.run(${profileText})
+  try {${loggerSetup}
     return {result: coreUtils.stripData(result)}
   } catch (e) {
     return coreUtils.stripData(e)
   }
 }
 `
-  return { ecmScript, projectDir, importMapsInCli: importMap.importMapsInCli, topLevelImports }
+  return { ecmScript, projectDir, importMapsInCli, topLevelImports: imp.topLevelImports }
 }
 
 function collectTransitiveComps(initialComps, tgpModel) {

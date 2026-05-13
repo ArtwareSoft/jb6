@@ -36,12 +36,11 @@
       await import(file)
 
     const cmpId = urlParams.get('cmpId') || 'showMe'
-    const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(cmpId)
-    //const ctx = new coreUtils.Ctx().setVars({react: reactUtils})
+    const seedCtx = reactUtils.extendCtxWithUrl()
+    const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(cmpId, seedCtx)
+    window.jbLoggers = ctx.vars
     reactUtils.createRoot(document.getElementById('show')).render(
-      h('div', {}, 
-      hh(ctx, JbPickerStarter), 
-      hh(ctx, reactCmp, props))
+      h('div', {}, hh(ctx, JbPickerStarter), hh(ctx, reactCmp, props))
     )
 
   </script>

@@ -417,18 +417,17 @@ function broadcastStatus(text) {
   globalThis.process && globalThis.process.stderr.write(text)
 }
 
-const statusEvents = {
+const eventEmitter = {
   listeners: {},
   emit(event, data) { this.listeners[event]?.forEach(fn => fn(data)) },
   on(event, fn) { (this.listeners[event] ??= []).push(fn) },
   off(event, fn) { this.listeners[event] = this.listeners[event]?.filter(f => f !== fn) || [] }
 }
-if (isNode) statusEvents.on('status', text => process.stderr.write(`\r\x1b[K${text.padEnd(80)}`))
 
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logVsCode, isNode,
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus, statusEvents
+  calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus, eventEmitter
 })

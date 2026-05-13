@@ -12,7 +12,7 @@ const {
   common: { Data }
 } = jb.dsls
 const { logException, logError, isNode } = coreUtils
-Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript, runNodeCliStreamViaJbWebServer, runBashScriptStreamViaJbWebServer, buildNodeCliCmd, makeBindLoggersOnStatus, buildBindLoggersPrelude})
+Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript, runNodeCliStreamViaJbWebServer, runBashScriptStreamViaJbWebServer, buildNodeCliCmd, makeChildOutputRouter})
 
 function buildNodeCliCmd(script, options = {}) {
   options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
@@ -21,54 +21,43 @@ function buildNodeCliCmd(script, options = {}) {
   return { cmd, importParts }
 }
 
-// Wraps user onStatus with a stderr-line parser. When the child emits JSONL `{kind:'log',logger,channel,event}`
-// lines (via the bindLoggers prelude), routes each to ctx.vars[logger][channel](event). Unparseable lines pass through.
-function makeBindLoggersOnStatus({ctx, bindLoggers, userOnStatus}) {
-  if (!bindLoggers) return userOnStatus
-  const names = bindLoggers.split(',').map(s => s.trim()).filter(Boolean)
-  const loggers = Object.fromEntries(names.map(n => [n, ctx?.vars?.[n]]).filter(([,v]) => v))
-  let buf = ''
-  return ({stream, text}) => {
-    if (stream !== 'stderr' || !text) { userOnStatus?.({stream, text}); return }
-    buf += text
-    const lines = buf.split('\n')
-    buf = lines.pop() || ''
-    const passThrough = []
-    for (const line of lines) {
-      if (!line) continue
-      let obj; try { obj = JSON.parse(line) } catch { passThrough.push(line); continue }
-      if (obj?.kind === 'log' && loggers[obj.logger]?.[obj.channel])
-        try { loggers[obj.logger][obj.channel](obj.event, {}, {ctx}) } catch {}
-      else passThrough.push(line)
-    }
-    if (passThrough.length && userOnStatus) userOnStatus({stream, text: passThrough.join('\n') + '\n'})
-  }
-}
-
-// Script prelude that wraps each named logger's info/progress/error to also emit JSONL on stderr.
-function buildBindLoggersPrelude(bindLoggers) {
-  const names = (bindLoggers || '').split(',').map(s => s.trim()).filter(Boolean)
-  if (!names.length) return ''
-  return `
-import { jb as _jb } from '@jb6/core'
-for (const _n of ${JSON.stringify(names)}) {
-  const _comp = _jb.dsls.test.logger[_n]?.[Symbol.for('asJbComp')]
-  if (!_comp) continue
-  const _orig = _comp.impl
-  _comp.impl = (...a) => {
-    const _inst = _orig(...a)
-    for (const _ch of ['info','progress','error']) {
-      const _o = _inst[_ch]?.bind(_inst)
-      if (!_o) continue
-      _inst[_ch] = (e, ...x) => {
-        try { process.stderr.write(JSON.stringify({kind:'log', logger:_n, channel:_ch, event:e}) + '\\n') } catch {}
-        return _o(e, ...x)
+// Reverse of wrapLoggerInstanceToStderr: parses JSONL `{kind:'log',logger,channel,event}` from child output and routes to ctx loggers.
+// Non-JSONL lines flow through cliLogger as info events so nothing is silently dropped.
+const tryParse = line => { try { return JSON.parse(line) } catch { return null } }
+function dispatchChildLine({ctx, line, stream}) {
+  if (!line) return
+  const ev = tryParse(line)
+  if (ev?.kind === 'log') {
+    const lg = ctx?.vars?.[ev.logger]
+    const fn = lg?.[ev.channel]
+    if (typeof fn === 'function') {
+      try { ev.channel === 'progress' || ev.channel === 'status' ? fn.call(lg, ev.event) : fn.call(lg, ev.event, {}, {ctx}) } catch (e) {
+        ctx?.vars?.cliLogger?.error?.({t: 'dispatch error', logger: ev.logger, channel: ev.channel, err: e.message}, {}, {ctx})
       }
+    } else {
+      ctx?.vars?.cliLogger?.error?.({t: 'dispatch missing', logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function')}, {}, {ctx})
     }
-    return _inst
+    return
   }
+  ctx?.vars?.cliLogger?.info?.({t: 'cli line', stream, line}, {}, {ctx})
 }
-`
+// Stateful line-buffered router for chunked stdio. Splits on '\n'; call .flush() to drain trailing partials.
+function makeChildOutputRouter({ctx, bindLoggers}) {
+  if (!bindLoggers && !ctx?.vars?.cliLogger) return null
+  const bufs = {stdout: '', stderr: ''}
+  const router = ({stream, text}) => {
+    if (stream === 'flush') {
+      for (const s of ['stdout','stderr']) { if (bufs[s]) { dispatchChildLine({ctx, line: bufs[s], stream: s}); bufs[s] = '' } }
+      return
+    }
+    if (!text) return
+    bufs[stream] += text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\r[^\n]*(?=\r|$)/g, '')
+    const lines = bufs[stream].split('\n')
+    bufs[stream] = lines.pop()
+    lines.forEach(line => dispatchChildLine({ctx, line, stream}))
+  }
+  router.flush = () => router({stream: 'flush'})
+  return router
 }
 
 Component('bash', {
@@ -78,59 +67,41 @@ Component('bash', {
   impl: (ctx, {}, {script}) => runBashScript(script)
 })
 
-async function runCliInContext(script, options = {}, onStatus) {
-  const {ctx, bindLoggers} = options
-  const wrappedScript = buildBindLoggersPrelude(bindLoggers) + script
-  const wrappedOnStatus = makeBindLoggersOnStatus({ctx, bindLoggers, userOnStatus: onStatus})
-  let res = {}
-  if (!isNode && wrappedOnStatus)
-    res = runNodeCliStreamViaJbWebServer(wrappedScript, options, wrappedOnStatus)
-  else if (!isNode)
-    res = await runNodeCliViaJbWebServer(wrappedScript, options)
-  else
-    res = await runNodeCli(wrappedScript, options, wrappedOnStatus)
-  return res
+// Run a TGP CLI script. options: {ctx, bindLoggers, projectDir, importMapsInCli, expressUrl}.
+// In browser: routes through jb-web-server SSE. In Node: spawns a child directly.
+// Child stderr JSONL lines route to ctx.vars[loggerName]; non-JSONL falls through to ctx.vars.cliLogger.
+async function runCliInContext(script, options = {}) {
+  const router = makeChildOutputRouter(options)
+  if (!isNode && router) return runNodeCliStreamViaJbWebServer(script, options, router)
+  if (!isNode) return runNodeCliViaJbWebServer(script, options)
+  return runNodeCli(script, options)
 }
 
-async function runNodeCli(script, options = {}, onStatus) {
+async function runNodeCli(script, options = {}) {
   const {spawn} = await import('child_process')
   const { cmd, importParts } = buildNodeCliCmd(script, options)
   const cwd = options.projectDir
   const scriptToRun = `console.log = () => {};\n${script}`
-
-  const stream = options.stream || 'stderr' // 'stderr' | 'stdout' | 'both'
+  const router = makeChildOutputRouter(options)
+  const onChunk = options.onChunk  // raw {stream,text} chunks — used by SSE server to broadcast
+  options.ctx?.vars?.cliLogger?.info?.({t: 'spawn cli', cmd, cwd}, {}, {ctx: options.ctx})
 
   return new Promise(resolve => {
     let out = '', err = ''
     try {
-      const child = spawn(process.execPath, ['--experimental-vm-modules', '--expose-gc', '--input-type=module', ...importParts, '-e', scriptToRun], {cwd })
-
-      child.stdout.on('data', d => {
-        const text = '' + d
-        out += text
-        if (onStatus && (stream === 'stdout' || stream === 'both'))
-          onStatus({ stream: 'stdout', text })
-      })
-
-      child.stderr.on('data', d => {
-        const text = '' + d
-        err += text
-        if (onStatus && (stream === 'stderr' || stream === 'both'))
-          onStatus({ stream: 'stderr', text: text.replace(/\x1b\[[0-9;]*[a-zA-Z]|\r/g, '').trim() })
-      })
-
+      const child = spawn(process.execPath, ['--experimental-vm-modules', '--expose-gc', '--input-type=module', ...importParts, '-e', scriptToRun], {cwd})
+      options.onChild?.(child)
+      child.stdout.on('data', d => { const text = '' + d; out += text; router?.({stream: 'stdout', text}); onChunk?.({stream: 'stdout', text}) })
+      child.stderr.on('data', d => { const text = '' + d; err += text; router?.({stream: 'stderr', text}); onChunk?.({stream: 'stderr', text}) })
       child.on('close', code => {
+        router?.flush?.()
         if (code !== 0) {
           const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
           logException(error, 'error in run node cli stream', {cmd, cwd, stdout: out})
           return resolve({error, cmd, cwd, code, stderr: err})
         }
-        try {
-          const result = JSON.parse(out)
-          resolve({result, cmd, cwd, stderr: err})
-        } catch (e) {
-          resolve({err: 'json parse error', error: e.stack || e, cmd, cwd, textToParse: out, stderr: err})
-        }
+        try { resolve({result: JSON.parse(out), cmd, cwd, stderr: err}) }
+        catch (e) { resolve({err: 'json parse error', error: e.stack || e, cmd, cwd, textToParse: out, stderr: err}) }
       })
     } catch(e) {
       logException(e, 'error in run node cli stream', {cmd, cwd})
@@ -169,8 +140,22 @@ async function runNodeCliViaJbWebServer(script, options = {}, ctx) {
   }
 }
 
-// shared SSE consumer: posts to startUrl, reads SSE stream via fetch, fetches contentUrl on done
-// works in both browser and Node (uses fetch ReadableStream — no EventSource dependency)
+// Shared SSE consumer: posts to startUrl, reads SSE stream via fetch, fetches contentUrl on done.
+// Works in both browser and Node (uses fetch ReadableStream — no EventSource dependency).
+//
+// SSE protocol on the wire (per https://html.spec.whatwg.org/multipage/server-sent-events.html):
+//   data: <single-line value>\n
+//   data: <single-line value>\n   ← optional repeat for multi-line values (joined with \n on the receiver)
+//   \n                            ← blank line ends the message
+// So message terminator is `\n\n`. A single `data:` line cannot itself contain a raw `\n`.
+// Producer writes `data: ${JSON.stringify(msg)}\n\n` — JSON.stringify guarantees no raw `\n` in its output
+// (any newlines in values are escaped to `\\n`), so the format is safe and unambiguous.
+//
+// Parsing flow below:
+//   buf.split('\n\n')          → individual SSE messages
+//   ev.split('\n').find(...)   → the `data:` field within a message
+//   dataLine.slice(5).trim()   → strip `data:` prefix + any whitespace
+//   JSON.parse                 → un-escape and recover the original payload (newlines inside strings restored)
 async function streamViaSSE({ startUrl, body, onStatus, onUrls }) {
   const startRes = await fetch(startUrl, {
     method: 'POST',
@@ -198,7 +183,8 @@ async function streamViaSSE({ startUrl, body, onStatus, onUrls }) {
   while (!done) {
     const { value, done: streamDone } = await reader.read()
     if (streamDone) break
-    buf += decoder.decode(value, { stream: true })
+    const chunk = decoder.decode(value, { stream: true })
+    buf += chunk
     const events = buf.split('\n\n')
     buf = events.pop() || ''
     for (const ev of events) {
@@ -220,11 +206,11 @@ async function streamViaSSE({ startUrl, body, onStatus, onUrls }) {
 
 async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
   try {
-    const expressUrl = options.expressUrl || ''
-    const { cmd } = buildNodeCliCmd(script, options)
+    const { ctx, expressUrl = '', ...optionsToPass } = options
+    const { cmd } = buildNodeCliCmd(script, optionsToPass)
     const result = await streamViaSSE({
       startUrl: `${expressUrl}/run-cli-stream`,
-      body: { script, ...options },
+      body: { script, ...optionsToPass },
       onStatus: chunk => {
         if (!onStatus) return
         const text = typeof chunk === 'string' ? chunk : chunk?.text
@@ -232,6 +218,7 @@ async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
         onStatus({ stream, text })
       }
     })
+    onStatus?.flush?.()
     if (result.error) return { error: result.error, cmd, ...options }
     return { ...result, cmd }
   } catch (e) {
@@ -239,7 +226,7 @@ async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
   }
 }
 
-// browser-side bash streaming: feeds line-buffered onStdoutLine/onStderrLine from SSE chunks
+/// browser-side bash streaming: feeds line-buffered onStdoutLine/onStderrLine from SSE chunks
 // onStatus(chunk) — raw {stream,text} chunks as they arrive (before line buffering)
 async function runBashScriptStreamViaJbWebServer(script, { onStdoutLine, onStderrLine, onStatus, onStart } = {}, options = {}) {
   try {

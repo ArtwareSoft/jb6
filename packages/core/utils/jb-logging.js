@@ -1,11 +1,41 @@
 import { jb } from '@jb6/repo'
+import './core-utils.js'
+const { coreUtils } = jb
+
 import './tgp.js'
 
 const {
-    tgp: {TgpType}
+    tgp: {TgpType, Component}
 } = jb.dsls
 
 const Logger = TgpType('logger', 'test')
+
+// URL params reserved by view boot — modules add their own here so URL params can be cleanly partitioned into ctx vars.
+jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
+Object.assign(jb.coreRegistry.urlReservedParams, {logger: true, spy: true})
+
+// ensureLoggers: instantiate named loggers into ctx.vars iff not already present. Idempotent. Creates a fresh Ctx if none provided.
+const ensureLoggers = (names = [], ctx = new jb.coreUtils.Ctx()) => names.reduce((c, name) => {
+  if (c.vars[name]) return c
+  const comp = jb.dsls.test.logger[name]
+  return comp ? c.setVars({[name]: comp.$runWithCtx(c)}) : c
+}, ctx)
+jb.coreUtils.ensureLoggers = ensureLoggers
+
+// loggersFromUrl: instantiate loggers named by `?logger=...` URL param + activate spy. Returns ctx with logger vars.
+const loggersFromUrl = (urlParams, ctx = new jb.coreUtils.Ctx()) => {
+  initSpyByUrl()
+  const names = (urlParams.get('logger') || '').split(',').map(s => s.trim()).filter(Boolean)
+  return ensureLoggers(names, ctx)
+}
+jb.coreUtils.loggersFromUrl = loggersFromUrl
+
+// ensureLogger: ctx-enricher form (single name). Idempotent — safe in both standalone and test-runner ctxs.
+Component('ensureLogger', {
+  type: 'ctx-enricher<tgp>',
+  params: [{id: 'name', as: 'string', mandatory: true, description: 'logger name (e.g. "wlaLogger")'}],
+  impl: (ctx, {}, {name}) => ensureLoggers([name], ctx)
+})
 
 let enabled = false, spyParam, _obs, enrichers = []
 const logs = []
@@ -199,12 +229,17 @@ export const domainLogger = Logger('domainLogger', {
         this[errorsName].push({...enriched[0], ...enriched[1]})
         log(logName, {severity: 'error', r1: enriched[0], r2: enriched[1], ctx: r3?.ctx})
       },
-      status(text) { jb.coreUtils?.statusEvents?.emit('status', text) },
-      progress(payload) { jb.coreUtils?.statusEvents?.emit(`${domain}.progress`, payload) },
+      status(text) { this.progress({t: text, status: true}) },
+      progress(payload) {
+        const entry = {severity: 'progress', at: Date.now() - startTime, logger: `${domain}Logger`, ...payload}
+        this[logName].push(entry)
+        log(logName, {severity: 'progress', r1: entry})
+        coreUtils.eventEmitter.emit('progress', entry)
+      },
       $stripData() { return { $: `${domain}Logger`, logCount: this[logName].length, errorCount: this[errorsName].length, last: this[logName].at(-1)?.t } },
       logsAndErrors({stripData = true} = {}) {
         const res = {[logName]: this[logName], [errorsName]: this[errorsName]}
-        return stripData ? jb.coreUtils?.stripData(res) || res : res
+        return stripData ? coreUtils?.stripData(res) || res : res
       }
     }
     function enrichParams(r1,r2,r3) {
@@ -220,5 +255,21 @@ export const domainLogger = Logger('domainLogger', {
 
 Logger('vmLogger', { impl: domainLogger('vm') })
 Logger('cliLogger', { impl: domainLogger('cli') })
+
+// wrapLoggerInstanceToStderr: wrap each channel of an instantiated logger so every call also emits JSONL on stderr.
+// Embedded `\n`s inside the JSON are escaped to '\\n' at write-time so the line is a single physical line on the wire,
+// surviving SSE/transport layers that split on raw `\n`. Receiver unescapes via JSON.parse.
+const wrapLoggerInstanceToStderr = (name, inst) => {
+  for (const ch of ['info','warning','error','progress','status']) {
+    const o = inst[ch]?.bind(inst)
+    if (!o) continue
+    inst[ch] = (...args) => {
+      try { process.stderr.write(JSON.stringify({kind:'log', logger:name, channel:ch, event: args[0]}).replace(/\n/g, '\\n') + '\n') } catch {}
+      return o(...args)
+    }
+  }
+  return inst
+}
+jb.coreUtils.wrapLoggerInstanceToStderr = wrapLoggerInstanceToStderr
 
 export { Logger }

@@ -23,19 +23,20 @@ Logger('uiLogger', { impl: domainLogger('ui') })
 const UiAction = TgpType('ui-action', 'test')
 Test('reactTest', {
     params: [
-      {id: 'hFunc', type: 'react-comp<react>', dynamic: true },
+      {id: 'testedComp', type: 'react-comp<react>', dynamic: true },
       {id: 'expectedResult', type: 'boolean', dynamic: true},
       {id: 'props', as: 'object' },
       {id: 'userActions', type: 'ui-action[]'},
       {id: 'logger', as: 'string'},
       {id: 'setup', type: 'ctx-enricher<tgp>', dynamic: true},
       {id: 'timeout', as: 'number', defaultValue: 2000},
+      {id: 'locationHref', as: 'string'},
     ],
     impl: dataTest({
         logger: '%$logger%',
         setup: '%$setup()%',
         timeout: '%$timeout%',
-        calculate: async (ctx,{singleTest,uiLogger},{hFunc,userActions,props}) => {
+        calculate: async (ctx,{singleTest,uiLogger},{testedComp,userActions,props,locationHref}) => {
           const win = globalThis.window
           if (!win)
             return {error: 'reactTest: no global window' }
@@ -47,9 +48,10 @@ Test('reactTest', {
           const hasActions = asArray(userActions).length > 0
           if (singleTest || hasActions)
               win.document.body.appendChild(testSimulation)
+          const seedCtx = reactUtils.extendCtxWithUrl({ctx: ctx.setVars({react: reactUtils}), href: locationHref})
           let hFuncRes
           try {
-            hFuncRes = hFunc(ctx.setVars({react: reactUtils}))
+            hFuncRes = testedComp(seedCtx)
           } catch (error) {
             return { error: error.stack}
           }
@@ -57,7 +59,7 @@ Test('reactTest', {
           uiLogger?.info?.({t: 'render', comp: 'reactTest'}, {}, {ctx})
           reactUtils.createRoot(testSimulation).render(reactUtils.createElement(hFuncRes, props))
           await win.waitForMutations(10)
-          const ctxA = ctx.setVars({ win })
+          const ctxA = seedCtx.setVars({ win })
           for (const a of asArray(userActions)) {
             uiLogger?.info?.({t: 'ui-action', action: a.actionId || 'action'}, {}, {ctx})
             await a.exec(ctxA)
@@ -89,6 +91,11 @@ UiAction('actions', {
 UiAction('waitForMutations', {
   params: [ { id:'timeout', as:'number' } ],
   impl: ({}, {}, {timeout}) => ({ exec: ctx => ctx.vars.win.waitForMutations(timeout) })
+})
+
+UiAction('delay', {
+  params: [ { id:'ms', as:'number', defaultValue: 1000 } ],
+  impl: ({}, {}, {ms}) => ({ exec: () => delay(ms) })
 })
 
 UiAction('waitForSelector', {

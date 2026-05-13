@@ -84,37 +84,30 @@ Test('probeCliTest.claudeDir', {
   })
 })
 
-Test('probeCliTest.statusViaStderr', {
+Test('cliTest.progressViaLogger', {
   impl: dataTest({
-    calculate: async () => {
-      const repoRoot = await coreUtils.calcRepoRoot()
-      const entryPointPaths = `${repoRoot}/hosts/test-project/a-tests.js`
-      const status = []
-      const onStatus = ({ stream, text }) => stream == 'stderr' && status.push(text)
-      await runProbeCli('test<test>myTests.statusViaStderr~impl~expectedResult',{entryPointPaths}, {onStatus})
-      return status
+    calculate: async (ctx) => {
+      ctx.vars.cliLogger.progress({t: '0'})
+      const fromCli = []
+      const onProgress = e => e.logger === 'cliLogger' && fromCli.push(e.t)
+      coreUtils.eventEmitter.on('progress', onProgress)
+      const script = `
+        import { coreUtils } from '@jb6/core'
+        let ctx = coreUtils.ensureLoggers(['cliLogger'])
+        coreUtils.wrapLoggerInstanceToStderr('cliLogger', ctx.vars.cliLogger)
+        ctx.vars.cliLogger.progress({t: '1'})
+        await coreUtils.delay(20)
+        ctx.vars.cliLogger.progress({t: '2'})
+        await coreUtils.delay(20)
+        await coreUtils.writeServiceResult('hi')
+      `
+      await coreUtils.runCliInContext(script, { ctx, bindLoggers: 'cliLogger' })
+      coreUtils.eventEmitter.off('progress', onProgress)
+      return fromCli
     },
     expectedResult: equals('1,2', join(',')),
-    timeout: 1000
-  })
-})
-
-Test('probeCliTest.statusViaStdoutAndStderr', {
-  doNotRunInTests: true,
-  impl: dataTest({
-    calculate: async () => {
-      const status = []
-      const onStatus = ({ stream, text }) => status.push({ stream, text })
-      const script = `
-        process.stdout.write('{"probe":"1",')
-        process.stderr.write('2')
-        process.stdout.write('"done":true}')
-      `
-      await coreUtils.runCliInContext(script, { stream: 'both' }, onStatus)
-      return status.map(x => (x.text.match(/[12]/g) || []).join('')).filter(x=>x).join(',')
-    },
-    expectedResult: equals('1,2'),
-    timeout: 1000
+    timeout: 10000,
+    logger: 'cliLogger'
   })
 })
 

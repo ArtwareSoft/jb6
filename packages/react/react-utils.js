@@ -1,6 +1,9 @@
 import { jb, coreUtils, dsls } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
-export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, wrapReactCompWithSampleData }
+export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, wrapReactCompWithSampleData, extendCtxWithUrl }
+
+jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
+Object.assign(jb.coreRegistry.urlReservedParams, {cmpId: true, urlsToLoad: true, wlaForceRebuild: true, wlaDryRun: true})
 
 jb.reactRepository = {
   comps: {},
@@ -9,6 +12,15 @@ jb.reactRepository = {
 }
 const repo = jb.reactRepository
 
+// Extend a Ctx with URL params: `ctx-*` (prefix stripped) and names in `urlReservedParams` → ctx vars. Loggers via `?logger=...` (jb-logging).
+function extendCtxWithUrl({ctx = new coreUtils.Ctx(), href} = {}) {
+  href = href ?? globalThis.window?.location?.href ?? ''
+  const urlParams = new URLSearchParams(href.split('?')[1] || '')
+  const reserved = jb.coreRegistry.urlReservedParams
+  const urlVars = Object.fromEntries([...urlParams.entries()].map(([k, v]) => k.startsWith('ctx-') ? [k.slice(4), v] : reserved[k] ? [k, v] : null).filter(Boolean))
+  return coreUtils.loggersFromUrl(urlParams, ctx.setVars(urlVars))
+}
+
 function logMs(ctx, t, ms, extra) { if (ms) ctx.vars.uiLogger?.info?.({t, ms, ...extra}, {}, {ctx}) }
 
 const { tgp: { TgpType, Component }} = dsls
@@ -16,6 +28,12 @@ const { tgp: { TgpType, Component }} = dsls
 const ReactComp = TgpType('react-comp','react') // actually jb-react-comp
 TgpType('vdom','react') // actually react-comp
 TgpType('react-metadata','react') // actually jb-metadata-for-react-comp
+const ProgressIndicator = TgpType('progress-indicator','react', {
+  typescript: '(ctx) => () => vdom'
+})
+TgpType('progress-hfunc','react', {
+  typescript: '(ctx) => ({progressEvent}) => vdom'
+})
 
 Component('importUrl', {
   description: 'importUrls for the component, will make the comp async',
@@ -47,11 +65,13 @@ ReactComp('comp', {
     {id: 'sampleCtxData', dynamic: true, description: '{ data , vars {} }'},
     {id: 'samplePropsData', dynamic: true, description: '{ status: "hello" }'},
     {id: 'metadata', type: 'react-metadata[]', dynamic: true},
+    {id: 'progressIndicator', type: 'progress-indicator<react>', dynamic: true, byName: true, defaultValue: {$: 'progress-indicator<react>spinner'}},
   ],
-  impl: (_ctx, {strongRefresh, react: {useState, useEffect} }, { hFunc, enrichCtx, metadata }) => {
+  impl: (_ctx, {strongRefresh, react: {useState, useEffect} }, { hFunc, enrichCtx, metadata, progressIndicator }) => {
     const ctx = _ctx.setVars({strongRefresh: false})
     const jbid = ctx.jbCtx.lexicalStack?.join(';')
-    const id = strongRefresh ? '' : jbid
+    const varsKey = Object.keys(ctx.vars || {}).sort().join(',')
+    const id = strongRefresh ? '' : (jbid && `${jbid}|${varsKey}`)
 
     const importUrls = coreUtils.asArray(metadata()).map(m => m.importUrl).filter(Boolean)
     const ctxOrPromise = readyCtxPromise(ctx, importUrls, enrichCtx)
@@ -78,7 +98,7 @@ ReactComp('comp', {
           }, [])
 
           if (loading)
-            return h('div:flex items-center justify-center h-full w-full', {}, h(L('Loader'), { className: 'animate-spin w-4 h-4' }))
+            return h(progressIndicator(_ctx))
           return h(hFunc(ctx), args)
         }
         if (id && !repo.comps[id])
@@ -102,15 +122,15 @@ ReactComp('comp', {
     function readyCtxPromise() {
       const tImp = Date.now()
       const imports = importUrls.map(u => resolveImportUrl(u))
-      const pending = imports.find(r => coreUtils.isPromise(r))
-      if (pending) Promise.all(imports).then(() => logMs(ctx, 'jb6.importUrls', Date.now() - tImp, {urls: importUrls}))
+      let pending = imports.find(r => coreUtils.isPromise(r))
+      if (pending) 
+        pending = Promise.all(imports).then(() => logMs(ctx, 'jb6.importUrls', Date.now() - tImp, {urls: importUrls}))
       const tEnr = Date.now()
       const enriched = enrichCtx(ctx) || ctx
       logMs(ctx, 'jb6.enrichCtx', Date.now() - tEnr)
-      if (!pending && !coreUtils.isPromise(enriched)) return enriched
-      return Promise.all([...imports, enriched]).then(r => r[r.length - 1])
+      if (!pending) return enriched
+      return Promise.resolve(pending).then(() => enriched)
     }
-
   }
 })
 
@@ -233,8 +253,8 @@ async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
   const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
   try {
     const fullId = cmpId.indexOf('<') == -1 ? `react-comp<react>${cmpId}` : cmpId
-    const comp = coreUtils.compByFullId(fullId, jb)
-    const jbComp = comp[coreUtils.asJbComp]
+    const jbComp = coreUtils.compByFullId(fullId, jb)
+    //const jbComp = comp[coreUtils.asJbComp]
     coreUtils.resolveCompArgs(jbComp)
     const metadata = coreUtils.asArray(jbComp.impl.metadata)
     const containerComp = metadata.find(m => m.containerComp)?.containerComp

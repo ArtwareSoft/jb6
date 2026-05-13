@@ -1,19 +1,22 @@
 import { coreUtils, dsls, ns } from '@jb6/core'
 import './react-testers.js'
+import '@jb6/react/progress-indicators.js'
 
-const { 
-  tgp: { Component }, 
-  test: { Test, 
+const { json } = ns
+const {
+  tgp: { Component },
+  test: { Test,
       'ui-action': { click, longPress, actions, waitForText },
       test: { dataTest, reactTest }
-  }, 
-  common: { 
+  },
+  common: {
     data: { asIs },
     boolean: { contains, equals, and },
   },
-  react: { ReactComp, 
+  react: { ReactComp,
     'react-comp': { comp },
-    'react-metadata': { containerComp, importUrl }
+    'react-metadata': { containerComp, importUrl },
+    'progress-indicator': { spinner, dots, byStatus, byProgress }
   }
 } = dsls
 
@@ -23,7 +26,7 @@ Test('reactTest.helloWorld', {
 
 Test('reactTest.buttonClick', {
   impl: reactTest({
-    hFunc: ({}, {react: {h, useState}}) => () => {
+    testedComp: ({}, {react: {h, useState}}) => () => {
       const [text, setText] = useState('Click me')
       return h('button', { onClick: () => setText('Clicked!') }, text)
     },
@@ -34,7 +37,7 @@ Test('reactTest.buttonClick', {
 
 Test('reactTest.use', {
   impl: reactTest({
-    hFunc: ({}, {react: {h, use}}) => {
+    testedComp: ({}, {react: {h, use}}) => {
       const textPromise = coreUtils.delay(20).then(()=>'hello')
       return () => {
         const text = use(textPromise)
@@ -58,7 +61,7 @@ const compWithP1AndV1 = ReactComp('compWithP1AndV1', {
 
 Test('reactTest.usingjbComp', {
   impl: reactTest({
-    hFunc: (ctx, {react: {h, hh}}) => () => h('div', {}, hh(ctx, compWithP1AndV1, {p1: 'p1Val'})),
+    testedComp: (ctx, {react: {h, hh}}) => () => h('div', {}, hh(ctx, compWithP1AndV1, {p1: 'p1Val'})),
     expectedResult: contains('myComp p1: p1Val, v1: v1Val')
   })
 })
@@ -75,7 +78,7 @@ const asyncComp = ReactComp('asyncComp', {
 
 Test('reactTest.asyncComp', {
   impl: reactTest({
-    hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, asyncComp, {p1: 'p1Val'}),
+    testedComp: (ctx, {react: {h, hh}}) => () => hh(ctx, asyncComp, {p1: 'p1Val'}),
     expectedResult: contains('myComp p1: p1Val, v1: v1Val'),
     userActions: waitForText('v1Val')
   })
@@ -87,7 +90,7 @@ const userComp = ReactComp('userComp', {
 
 Test('reactTest.strongRefresh', {
   impl: reactTest({
-    hFunc: (ctx, {react: {h, hh, hhStrongRefresh}}) => () => h('div', {}, [
+    testedComp: (ctx, {react: {h, hh, hhStrongRefresh}}) => () => h('div', {}, [
         hh(ctx.setVars({userName: 'John'}), userComp),  // Shows: "User: John" (cached)
         hh(ctx.setVars({ userName: 'Jane' }), userComp),                      // Shows: "User: John" (still cached!)
         hhStrongRefresh(ctx.setVars({ userName: 'Jane' }), userComp)          // Shows: "User: Jane" (fresh)
@@ -105,7 +108,7 @@ const userCompAsync = ReactComp('userCompAsync', {
 
 Test('reactTest.strongRefreshAsync', {
   impl: reactTest({
-    hFunc: (ctx, {react: {h, hh, hhStrongRefresh}}) => () => h('div', {}, [
+    testedComp: (ctx, {react: {h, hh, hhStrongRefresh}}) => () => h('div', {}, [
         hh(ctx.setVars({userName: 'John'}), userCompAsync),  // Shows: "User: John" (cached)
         hh(ctx.setVars({ userName: 'Jane' }), userCompAsync),                      // Shows: "User: John" (still cached!)
         hhStrongRefresh(ctx.setVars({ userName: 'Jane' }), userCompAsync)          // Shows: "User: Jane" (fresh)
@@ -127,7 +130,7 @@ const refreshMainInner = ReactComp('refreshMainInner', {
 
 Test('reactTest.refreshMainWithNewVars', {
   impl: reactTest({
-    hFunc: (ctx, {react: { hhStrongRefresh, useState}}) => () => {
+    testedComp: (ctx, {react: { hhStrongRefresh, useState}}) => () => {
         const [vars, setVars] = useState({userName: 'John'})
         return hhStrongRefresh(ctx.setVars(vars), refreshMainInner, { refreshMain: (vars) => setVars(vars) })
     },
@@ -141,7 +144,7 @@ Test('reactTest.buttonClickWithParams', {
     {id: 'textAfterClick', as: 'string', defaultValue: 'Clicked!'}
   ],
   impl: reactTest({
-    hFunc: ({}, {react: {h, useState}}, {textAfterClick}) => () => {
+    testedComp: ({}, {react: {h, useState}}, {textAfterClick}) => () => {
       const [text, setText] = useState('Click me')
       return h('button', { onClick: () => setText(textAfterClick) }, text)
     },
@@ -173,7 +176,7 @@ Test('reactTest.vm', {
 
 Test('reactTest.buttonForClick', {
   impl: reactTest({
-    hFunc: ({}, {react: {h, useState}}) => () => {
+    testedComp: ({}, {react: {h, useState}}) => () => {
     const [text, setText] = useState('Click me')
     return h('button', { onClick: () => setText('Clicked!') }, text)
   },
@@ -183,7 +186,7 @@ Test('reactTest.buttonForClick', {
 
 Test('reactTest.longPress', {
   impl: reactTest({
-    hFunc: ({}, {react: {h, useState, useRef}}) => () => {
+    testedComp: ({}, {react: {h, useState, useRef}}) => () => {
       const [text, setText] = useState('LongPress me')
       const timeoutRef = useRef(null)
       
@@ -239,8 +242,76 @@ const compWithImportUrl = ReactComp('compWithImportUrl', {
 
 Test('reactTest.importUrl', {
   impl: reactTest({
-    hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, compWithImportUrl),
+    testedComp: (ctx, {react: {h, hh}}) => () => hh(ctx, compWithImportUrl),
     expectedResult: contains('importUrl loaded'),
     userActions: waitForText('importUrl loaded')
+  })
+})
+
+// progress-indicator usage: react-comp.comp renders the progressIndicator while its async enrichCtx is pending.
+
+Test('reactTest.progress.defaultSpinner', {
+  impl: reactTest({
+    testedComp: comp({
+      hFunc: ({}, {react: {h}}) => () => h('div', {}, 'report ready'),
+      enrichCtx: ctx => coreUtils.delay(20).then(()=> ctx)
+    }),
+    expectedResult: contains('spinner', { allText: json.stringify('%$uiLogger/uiLog%') }),
+    userActions: waitForText('report ready'),
+    logger: 'uiLogger'
+  })
+})
+
+Test('reactTest.progress.dots', {
+  impl: reactTest({
+    testedComp: comp({
+      hFunc: ({}, {react: {h}}) => () => h('div', {}, 'report ready'),
+      enrichCtx: ctx => coreUtils.delay(20).then(()=> ctx),
+      progressIndicator: dots('Loading', 10)
+    }),
+    expectedResult: contains('Loading', { allText: json.stringify('%$uiLogger/uiLog%') }),
+    userActions: waitForText('report ready'),
+    logger: 'uiLogger'
+  })
+})
+
+Test('reactTest.progress.byStatus', {
+  impl: reactTest({
+    testedComp: comp({
+      hFunc: ({}, {react: {h}}) => () => h('div', {}, 'model ready'),
+      enrichCtx: async (ctx, {uiLogger}) => {
+        await coreUtils.delay(10).then(()=> uiLogger.status('1'))
+        await coreUtils.delay(10).then(()=> uiLogger.status('232'))
+        await coreUtils.delay(0)
+        return ctx
+      },
+      progressIndicator: byStatus('Loading model')
+    }),
+    expectedResult: contains('1', '232', { allText: json.stringify('%$uiLogger/uiLog%') }),
+    userActions: waitForText('232'),
+    logger: 'uiLogger'
+  })
+})
+
+Test('reactTest.progress.byProgress', {
+  impl: reactTest({
+    testedComp: comp({
+      hFunc: ({}, {react: {h}}) => () => h('div', {}, 'report ready'),
+      enrichCtx: async (ctx, {uiLogger}) => {
+        await coreUtils.delay(10).then(()=> uiLogger.progress({t: 'aggregating', pct: 10}))
+        await coreUtils.delay(10).then(()=> uiLogger.progress({t: 'aggregating', pct: 80}))
+        await coreUtils.delay(10)
+        return ctx
+      },
+      progressIndicator: byProgress({
+        title: 'Loading report',
+        logger: 'uiLogger',
+        hFunc: ({}, {react: {h}}) => ({progressEvent}) =>
+          h('div', {}, `${progressEvent.t} — ${progressEvent.pct}%`)
+      })
+    }),
+    expectedResult: contains('10', '80', { allText: json.stringify('%$uiLogger/uiLog%') }),
+    userActions: waitForText('80'),
+    logger: 'uiLogger'
   })
 })

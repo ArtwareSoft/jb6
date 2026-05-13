@@ -102,7 +102,7 @@ function serveCliStream(app) {
     const { cmd } = buildNodeCliCmd(script, options)
     ;(async () => {
       try {
-        const final = await runNodeCli(script, options, broadcastStatus)
+        const final = await runNodeCli(script, {...options, onChunk: broadcastStatus})
         run.resolve(final)
       } catch (error) {
         run.resolve({ error: error.stack || error })
