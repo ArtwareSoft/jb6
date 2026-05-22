@@ -144,6 +144,13 @@ export async function runTest(testID, {fullTestId, singleTest, action, httpReqId
     log('start test',{testID})
     let res = null
     const start = Date.now()
+    if (!isNode && jbComp.nodeOnly) {
+        const profile = { $: `${jbComp.type}<${jbComp.dsl}>${jbComp.id}`, ...(params || {}) }
+        const cliRes = await coreUtils.runSnippetCli({ profile })
+        res = cliRes?.result || cliRes || { success: false, reason: 'no result from node CLI' }
+        res.duration = Date.now() - start
+        return res
+    }
     try {
         const ctx = new Ctx().setVars({ testID, fullTestId,singleTest, httpReqId, win1: globalThis })
         res = await jbComp.runProfile({...params}, ctx)
@@ -231,7 +238,6 @@ export async function runTests({specificTest,show,pattern,notPattern,take,repo,s
         .filter(id =>!specificTest || id == specificTest)
         .filter(id => specificTest || includeHeavy || !Test[id][asJbComp]?.HeavyTest)
         .filter(id => specificTest || !Test[id][asJbComp]?.doNotRunInTests)
-        .filter(id => isNode || !Test[id][asJbComp]?.nodeOnly)
         .filter(id =>!pattern || id.match(pattern))
         .filter(id =>!notPattern || !id.match(notPattern))
         .map(id => ({testID:id}) ) // put in object to assign to groups

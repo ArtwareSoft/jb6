@@ -105,9 +105,13 @@ function argsToProfile(prof, comp) {
 }
 
 function compByFullId(id, tgpModel = jb) {
+  const proxy = proxyByFullId(id, tgpModel)
+  return proxy?.[asJbComp] || proxy
+}
+
+function proxyByFullId(id, tgpModel = jb) {
   const [type, dsl, shortId] = (id.match(/^([^<]+)<([^>]+)>(.+)$/)||[]).slice(1)
-  const c = tgpModel.dsls[dsl||'common']?.[type]?.[shortId]
-  return c?.[asJbComp] || c
+  return tgpModel.dsls[dsl||'common']?.[type]?.[shortId]
 }
 
 function resolveProfileTop(comp) {
@@ -209,4 +213,4 @@ function restoreProfile$(obj) {
 }
 
 Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, asJbComp, OrigArgs, originCoerce, sysProps, systemParams,
-  asComp, jbCompProxy, compByFullId, lexicalProfileOfDefaultValue, tgpProfileToJson, restoreProfile$})
+  asComp, jbCompProxy, compByFullId, proxyByFullId, lexicalProfileOfDefaultValue, tgpProfileToJson, restoreProfile$})

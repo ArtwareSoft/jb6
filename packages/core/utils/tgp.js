@@ -35,6 +35,7 @@ const tgpComp = CompDef({ // bootstraping
     {id: 'HeavyTest', as: 'boolean' },
     {id: 'aggregator', as: 'boolean' },
     {id: 'doNotRunInTests', as: 'boolean' },
+    {id: 'nodeOnly', as: 'boolean' },
     {id: 'circuit', as: 'string' },
     {id: 'params', type: 'param[]'},
     {id: 'impl', type: '$asParent<tgp>', mandatory: true }

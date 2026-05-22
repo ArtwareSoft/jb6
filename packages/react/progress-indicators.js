@@ -99,3 +99,47 @@ Component('progressBar', {
     h('div:bg-gray-200 h-2 w-full', {},
       h('div:bg-blue-500 h-2', {style: {width: `${progressEvent?.pct ?? 0}%`}}))
 })
+
+Component('stepper', {
+  type: 'progress-indicator<react>',
+  description: 'accumulates progress events keyed by .step and renders a vertical checklist',
+  params: [
+    {id: 'title', as: 'string', defaultValue: 'Loading'},
+    {id: 'steps', as: 'string', description: 'comma-delimited expected step ids in order'},
+    {id: 'labels', as: 'string', description: 'comma-delimited friendly labels (parallel to steps)'}
+  ],
+  impl: (ctx, {react: {useState, useEffect}, uiLogger}, {title, steps, labels}) => () => {
+    const stepIds = (steps || '').split(',').map(s => s.trim()).filter(Boolean)
+    const labelArr = (labels || '').split(',').map(s => s.trim())
+    const [state, setState] = useState({})
+    useEffect(() => {
+      uiLogger?.info?.({t: 'progress.mount', indicator: 'stepper', title}, {}, {ctx})
+      const fn = e => e?.step && setState(s => ({...s, [e.step]: e.status || 'running'}))
+      coreUtils.eventEmitter.on('progress', fn)
+      return () => coreUtils.eventEmitter.off('progress', fn)
+    }, [])
+    const ids = stepIds.length ? stepIds : Object.keys(state)
+    const doneCount = ids.filter(id => state[id] === 'done').length
+    const runningCount = ids.filter(id => state[id] === 'running').length
+    const pct = ids.length ? Math.round(100 * (doneCount + runningCount * 0.5) / ids.length) : 0
+    return h('div:max-w-md mx-auto mt-10 p-6 bg-white rounded-xl shadow-md border border-gray-100 font-sans', {},
+      h('div:flex items-center justify-between mb-4', {},
+        h('h2:text-base font-semibold text-gray-800', {}, title),
+        h('span:text-xs text-gray-400 tabular-nums', {}, pct + '%')),
+      h('div:bg-gray-100 h-1.5 rounded-full overflow-hidden mb-5', {},
+        h('div:bg-indigo-500 h-full transition-all duration-300', {style: {width: pct + '%'}})),
+      h('ul:space-y-2', {}, ...ids.map((id, i) => {
+        const status = state[id]
+        const done = status === 'done'
+        const running = status === 'running'
+        const dot = done
+          ? h('span:w-4 h-4 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center', {}, '✓')
+          : running
+          ? h('span:w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin', {})
+          : h('span:w-4 h-4 rounded-full bg-gray-200', {})
+        const textCls = done ? 'text-gray-500' : running ? 'text-indigo-700 font-medium' : 'text-gray-400'
+        return h('li:flex items-center gap-3', {}, dot,
+          h('span:text-sm ' + textCls, {}, labelArr[i] || id))
+      })))
+  }
+})

@@ -253,7 +253,7 @@ async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
   const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
   try {
     const fullId = cmpId.indexOf('<') == -1 ? `react-comp<react>${cmpId}` : cmpId
-    const jbComp = coreUtils.compByFullId(fullId, jb)
+    const jbComp = coreUtils.compByFullId(fullId)
     //const jbComp = comp[coreUtils.asJbComp]
     coreUtils.resolveCompArgs(jbComp)
     const metadata = coreUtils.asArray(jbComp.impl.metadata)
@@ -264,7 +264,7 @@ async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
       await import(cntrImportPath)
       logMs(ctx, 'jb6.cntrImport', Date.now() - _t, {cntrImportPath})
     }
-    const compToRun = containerComp && dsls.react['react-comp'][containerComp] || comp
+    const compToRun = containerComp && dsls.react['react-comp'][containerComp] || coreUtils.proxyByFullId(fullId)
 
     const ctxData = jbComp.impl.sampleCtxData && await ctx.run(jbComp.impl.sampleCtxData)
     const props = jbComp.impl.samplePropsData && await ctx.run(jbComp.impl.samplePropsData)
