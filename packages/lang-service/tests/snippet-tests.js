@@ -6,9 +6,17 @@ const {
     boolean: { contains, equals }
   },
   test: { Test,
-    test: { snippetTest }
+    test: { snippetTest, dataTest }
   }
 } = dsls
+
+Test('nodeOnly.basic', {
+  nodeOnly: true,
+  impl: dataTest({
+    calculate: () => typeof process !== 'undefined' && !!process.versions?.node,
+    expectedResult: equals(true)
+  })
+})
 
 Test('snippet.Data', {
   HeavyTest: true,
@@ -51,7 +59,7 @@ Test('snippet.runTest', {
 Test('snippet.runReactTest', {
   HeavyTest: true,
   impl: snippetTest({
-    profileText: `{$: 'test<test>reactTest', hFunc: ({},{react: {h, useState}}) => () => { const [text, setText] = useState('Click me'); return h('button', { onClick: () => setText('Clicked!') }, text) }, expectedResult: {$: 'boolean<common>contains', text: 'Clicked!'}, userActions: {$: 'ui-action<test>click', buttonText: 'Click me'}}`,
+    profileText: `{$: 'test<test>reactTest', testedComp: ({},{react: {h, useState}}) => () => { const [text, setText] = useState('Click me'); return h('button', { onClick: () => setText('Clicked!') }, text) }, expectedResult: {$: 'boolean<common>contains', text: 'Clicked!'}, userActions: {$: 'ui-action<test>click', buttonText: 'Click me'}}`,
     expectedResult: '%success%',
   })
 })

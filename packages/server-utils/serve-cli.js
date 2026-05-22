@@ -1,8 +1,10 @@
 import { coreUtils, jb, dsls } from '@jb6/core'
 import '@jb6/core/misc/jb-cli.js'
+import '@jb6/core/misc/import-map-services.js'
 import pty from 'node-pty'
 
-const { runNodeCli, runBashScript, buildNodeCliCmd } = coreUtils
+const { runNodeCli, runBashScript, buildNodeCliCmd, calcJb6RepoRootAndImportMapsInCli } = coreUtils
+const ensureImportMapsInCli = async () => (jb.coreRegistry.importMapsInCli || (await calcJb6RepoRootAndImportMapsInCli(), jb.coreRegistry.importMapsInCli))
 
 jb.serverUtils = jb.serverUtils || {}
 Object.assign(jb.serverUtils, {serveCli, serveCliStream })
@@ -14,6 +16,7 @@ function serveCli(app) {
       return
     }
     const { script, ...options } = req.body
+    options.importMapsInCli = options.importMapsInCli || await ensureImportMapsInCli()
     const result = await runNodeCli(script, options)
     res.status(200).json({ result })
   })
@@ -65,7 +68,7 @@ function serveCliStream(app) {
     }
   }
 
-  app.post('/run-cli-stream', (req, res) => {
+  app.post('/run-cli-stream', async (req, res) => {
     if (!req.body) return res.json({ error: 'no body in req' })
 
     if (req.body.interactive) {
@@ -98,6 +101,7 @@ function serveCliStream(app) {
     }
 
     const { script, ...options } = req.body
+    options.importMapsInCli = options.importMapsInCli || await ensureImportMapsInCli()
     const { runId, run, urls, broadcastStatus, broadcastDone, cleanup } = startRun('/run-cli-stream')
     const { cmd } = buildNodeCliCmd(script, options)
     ;(async () => {
