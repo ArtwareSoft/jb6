@@ -20,8 +20,8 @@ export async function expressTestServices(app) {
   serveCliStream(app)
   serveGotoSource(app)
   serveEditSource(app, {express})
-  serveMjpeg(app)
-  serveFramesToMp4(app)
+  //serveMjpeg(app)
+  //serveFramesToMp4(app)
 
   const repoRoot = await calcRepoRoot()
   app.get('/repoRoot', async (req, res) => {

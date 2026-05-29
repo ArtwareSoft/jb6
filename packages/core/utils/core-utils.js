@@ -98,6 +98,34 @@ const unique = (ar,f) => {
 }
 const isPromise = v => v && v != null && typeof v.then === 'function'
 
+// dataContext = { data?, vars? } | Ctx | Promise<dataContext> | null
+// Applies a dataContext to ctx. Stays sync when nothing inside is a promise.
+function enrichCtxWithDataContext(ctx, dc) {
+  if (!dc) return ctx
+  if (dc instanceof jb.coreUtils.Ctx) return dc
+  if (isPromise(dc))                  return dc.then(r => enrichCtxWithDataContext(ctx, r))
+  if (dc.vars && isPromise(dc.vars))  return dc.vars.then(v => enrichCtxWithDataContext(ctx, { ...dc, vars: v }))
+
+  const varEntries = dc.vars ? Object.entries(dc.vars) : []
+  const dataIsPromise = isPromise(dc.data)
+  const anyVarPromise = varEntries.some(([,v]) => isPromise(v))
+
+  if (!dataIsPromise && !anyVarPromise) {
+    let next = ctx
+    if (dc.data !== undefined) next = next.setData(dc.data)
+    if (varEntries.length)     next = next.setVars(dc.vars)
+    return next
+  }
+
+  return Promise.all(varEntries.map(([k,v]) => isPromise(v) ? v.then(r => [k,r]) : [k,v]))
+    .then(async resolved => {
+      let next = ctx
+      if (dc.data !== undefined) next = next.setData(dataIsPromise ? await dc.data : dc.data)
+      if (varEntries.length)     next = next.setVars(Object.fromEntries(resolved))
+      return next
+    })
+}
+
 function compIdOfProfile(profile) {
   if (typeof profile.$$ == 'string') return profile.$$
   if (typeof profile.$ == 'string' && profile.$.match(/^[^<]+<[^>]+>.+/)) return profile.$
@@ -426,7 +454,7 @@ const eventEmitter = {
 
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logVsCode, isNode,
-  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps,
+  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps, enrichCtxWithDataContext,
   compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
   calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus, eventEmitter

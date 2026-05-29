@@ -89,7 +89,7 @@ Test('cliTest.progressViaLogger', {
     calculate: async (ctx) => {
       ctx.vars.cliLogger.progress({t: '0'})
       const fromCli = []
-      const onProgress = e => e.logger === 'cliLogger' && fromCli.push(e.t)
+      const onProgress = e => e.logger === 'cliLogger' && fromCli.push(e)
       coreUtils.eventEmitter.on('progress', onProgress)
       const script = `
         import { coreUtils } from '@jb6/core'
@@ -105,7 +105,7 @@ Test('cliTest.progressViaLogger', {
       coreUtils.eventEmitter.off('progress', onProgress)
       return fromCli
     },
-    expectedResult: equals('1,2', join(',')),
+    expectedResult: equals('1,2', join(',', { itemText: '%t%' })),
     timeout: 10000,
     logger: 'cliLogger'
   })

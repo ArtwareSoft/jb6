@@ -1,7 +1,7 @@
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 const { coreUtils } = jb
-const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError, isPromise } = coreUtils
+const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError, enrichCtxWithDataContext } = coreUtils
 
 Object.assign(coreUtils, { globalsOfType, globalsOfTypeIds, toCapitalType, findCompDefById, CompDefByDslType, callerCompId })
 
@@ -170,7 +170,7 @@ Component('Var', {
       {id: 'name', as: 'string', mandatory: true},
       {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
   ],
-  impl: (ctx,{},{name,val}) => { const v = val(ctx); return isPromise(v) ? v.then(r => ctx.setVars({[name]: r})) : ctx.setVars({[name]: v}) }
+  impl: (ctx,{},{name,val}) => enrichCtxWithDataContext(ctx, { vars: { [name]: val(ctx) } })
 })
 
 Component('setVar', {
@@ -179,7 +179,7 @@ Component('setVar', {
       {id: 'name', as: 'string', mandatory: true},
       {id: 'val', dynamic: true, type: 'data', mandatory: true, defaultValue: '%%'},
   ],
-  impl: (ctx,{},{name,val}) => { const v = val(ctx); return isPromise(v) ? v.then(r => ctx.setVars({[name]: r})) : ctx.setVars({[name]: v}) }
+  impl: (ctx,{},{name,val}) => enrichCtxWithDataContext(ctx, { vars: { [name]: val(ctx) } })
 })
 
 Component('setVars', {
@@ -187,15 +187,7 @@ Component('setVars', {
   params: [
     {id: 'obj', dynamic: true}
   ],
-  impl: (ctx,{},{obj}) => {
-      const v = obj(ctx)
-      if (isPromise(v)) return v.then(r => ctx.setVars(r))
-      const entries = Object.entries(v)
-      const hasPromise = entries.find(([,val]) => isPromise(val))
-      if (!hasPromise) return ctx.setVars(v)
-      return Promise.all(entries.map(([k,p]) => isPromise(p) ? p.then(r => [k,r]) : [k,p]))
-          .then(resolved => ctx.setVars(Object.fromEntries(resolved)))
-  }
+  impl: (ctx,{},{obj}) => enrichCtxWithDataContext(ctx, { vars: obj(ctx) })
 })
 
 Component('sameCtx', {
@@ -208,10 +200,7 @@ Component('setData', {
   params: [
     {id: 'val', dynamic: true}
   ],
-  impl: (ctx,{},{val}) => {
-    const v = val(ctx)
-    return isPromise(v) ? v.then(r => ctx.setData(r)) : ctx.setData(v)
-  }
+  impl: (ctx,{},{val}) => enrichCtxWithDataContext(ctx, { data: val(ctx) })
 })
 
 Component('enrichCtx', {
