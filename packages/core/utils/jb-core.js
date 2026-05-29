@@ -33,8 +33,8 @@ const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, i
 function run(profile, ctx = new Ctx(), settings = {}) {
     // changing context with data and vars
     resolveDelayed(profile)
-    if (profile.vars && !settings.resolvedCtx)
-        ctx = ctx.extendWithVarsScript(profile.vars)
+    if (profile.vars != null && !settings.resolvedCtx)
+        ctx = applyCtxEnrichers(profile.vars, ctx, settings)
     if (isPromise(ctx)) // handling a-synch vars
         return ctx.then(resolvedCtx => run(profile,resolvedCtx,{...settings, resolvedCtx: true}))
     delete settings.resolvedCtx
@@ -63,6 +63,18 @@ function run(profile, ctx = new Ctx(), settings = {}) {
     if (jbCtx.probe && res !== profile)
         jbCtx.probe.record(ctx, res, ctx.data, ctx.vars)
     return res
+}
+
+// apply a ctx-enricher (or array of them) to ctx, sequentially. each enricher is run via the
+// regular TGP run() and returns a Ctx (await-by-default: a later enricher sees the resolved ctx
+// of the prior one). stays sync unless an enricher returns a Promise<Ctx>, in which case it chains.
+function applyCtxEnrichers(enrichers, ctx, settings) {
+    const basePath = ctx.jbCtx.path
+    return asArray(enrichers).reduce((ctx, e, i) =>
+        isPromise(ctx)
+            ? ctx.then(c => run(e, c.setJbCtx(new JBCtx({...c.jbCtx, path: `${basePath}~vars~${i}`})), settings))
+            : run(e, ctx.setJbCtx(new JBCtx({...ctx.jbCtx, path: `${basePath}~vars~${i}`})), settings)
+    , ctx)
 }
 
 function toRTType(parentParam, value) {
@@ -138,13 +150,6 @@ class Ctx {
     }
     runInnerArg(arg, arrayIndex) {
         return arg(this, arrayIndex)
-    }
-    extendWithVarsScript(vars) {
-        return asArray(vars).reduce((ctx, v, i) =>
-            isPromise(ctx)
-                ? ctx.then(c => run(v, c.setJbCtx(new JBCtx({...c.jbCtx, path: `${this.jbCtx.path}~vars~${i}`}))))
-                : run(v, ctx.setJbCtx(new JBCtx({...ctx.jbCtx, path: `${this.jbCtx.path}~vars~${i}`})))
-        , this)
     }
     dataObj(out,vars,input) { 
         if (this.jbCtx.probe)

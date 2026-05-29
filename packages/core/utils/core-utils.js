@@ -454,8 +454,8 @@ const eventEmitter = {
 
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logVsCode, isNode,
-  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps, enrichCtxWithDataContext,
-  compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
+  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps, 
+  enrichCtxWithDataContext, compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
   calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus, eventEmitter
 })

@@ -8,12 +8,12 @@ import '@jb6/core/misc/import-map-services.js'
 
 const {
   tgp: { Const, Component,
-    'ctx-enricher': { Var, setVars, enrichCtx, setVar }
+    'ctx-enricher': { Var, setVars, enrichCtx, setVar, setData }
   },
   common: { Data,
     action: { delay, runActions },
     boolean: { contains, equals },
-    data: { asIs, filter, join, obj, pipeline, property },
+    data: { asIs, filter, join, obj, pipeline, property, split },
     prop: { prop }
   },
   test: { Test,
@@ -167,6 +167,32 @@ Test('coreTest.asyncVar', {
   impl: dataTest(pipeline(Var('b', 5), Var('a', delay(1, 3)), '%$a%,%$b%'), equals('3,5'))
 })
 
+Test('coreTest.vars.setDataEnricher', {
+  impl: dataTest(pipeline({ vars: setData('hello'), source: '%%' }), equals('hello'))
+})
+
+Test('coreTest.vars.arraySequentialRefs', {
+  impl: dataTest(pipeline({ vars: [Var('a', 5), Var('b', '%$a%!')], source: '%$a%,%$b%' }), equals('5,5!'))
+})
+
+Test('coreTest.vars.asyncSingle', {
+  impl: dataTest(pipeline({ vars: [Var('a', delay(1, 3))], source: '%$a%' }), equals('3'))
+})
+
+Test('coreTest.vars.awaitsBetweenStages', {
+  // await-by-default: stage 2 (b) must see the resolved value of the async stage 1 (a)
+  impl: dataTest(pipeline({ vars: [Var('a', delay(1, 3)), Var('b', '%$a%0')], source: '%$a%,%$b%' }), equals('3,30'))
+})
+
+Test('coreTest.vars.setVarsEnricher', {
+  impl: dataTest(pipeline({ vars: setVars(asIs({a: 1, b: 2})), source: '%$a%,%$b%' }), equals('1,2'))
+})
+
+Test('coreTest.vars.leadingEnricherInPipeline', {
+  // non-Var leading ctx-enricher folds into vars via the ctx-enricher abstraction (no Var literal in parse)
+  impl: dataTest(pipeline(setData('hi'), '%%!'), equals('hi!'))
+})
+
 Test('coreTest.waitForInnerElements.promiseInArray', {
   impl: dataTest(()=> [coreUtils.delay(1,1)], equals(()=>[1]))
 })
@@ -283,6 +309,21 @@ Test('prettyPrintTest.comp', {
     expectedResult: equals(asIs(`Test('coreTest.asyncVar', {
   impl: dataTest(pipeline(Var('b', 5), Var('a', delay(1, 3)), '%$a%,%$b%'), equals('3,5'))
 })`))
+  })
+})
+
+Test('prettyPrintTest.leadingEnricher', {
+  // pretty-print renders the real ctx-enricher comp (no hardcoded Var synthesis)
+  impl: dataTest({
+    calculate: () => prettyPrint(pipeline(setData('hi'), '%%!'), { type: 'data<common>', singleLine: true }),
+    expectedResult: equals(asIs(`pipeline(setData('hi'), '%%!')`))
+  })
+})
+
+Test('prettyPrintTest.varsByName', {
+  impl: dataTest({
+    calculate: () => prettyPrint(split({ vars: Var('a', 100), separator: ',' }), { type: 'data<common>', singleLine: true }),
+    expectedResult: equals(asIs(`split({ vars: Var('a', 100), separator: ',' })`))
   })
 })
 

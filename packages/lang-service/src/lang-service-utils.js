@@ -190,7 +190,7 @@ class tgpModelForLangService {
         if (!path) return ''
         if (path.indexOf('~') == -1)
             return 'comp<tgp>tgpComp'
-        if (path.match(/~\vars$/)) 
+        if (path.match(/~vars$/))
             return
         const prof = this.valOfPath(path)
         return prof?.$$ && compIdOfProfile(prof)

@@ -9,7 +9,7 @@ const originCoerce = Symbol.for('originCoerce')
 const astNode = Symbol.for('astNode')
 
 const sysProps = ['data', '$debug', '$disabled', '$log', 'ctx', '//', 'vars' ]
-const systemParams = [ {id: 'data', $dslType: 'data<common>'}, {id: 'vars', $dslType: 'ctx-enricher<tgp>'}] 
+const systemParams = [ {id: 'data', $dslType: 'data<common>'}, {id: 'vars', $dslType: 'ctx-enricher<tgp>'}]
 
 function asComp(pt) {
     const jbComp = (typeof pt === 'string' ? compByFullId(pt) : null) || pt[asJbComp] || pt
@@ -57,7 +57,7 @@ function splitSystemArgs(allArgs) {
   const args = [], system = {}
   allArgs.forEach(arg => {
       const comp = arg.$
-      if (comp?.$dslType == 'ctx-enricher<tgp>' && comp.id == 'Var') { // Var/setVars in pipeline
+      if (comp?.$dslType == 'ctx-enricher<tgp>') { // leading ctx-enricher (Var/setData/setVars/...) folded into vars
         system.vars = system.vars || []
         system.vars.push(arg)
       } else {

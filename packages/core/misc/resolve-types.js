@@ -76,7 +76,7 @@ function argsToProfile(prof, comp) {
   }
 
   const varArgs = []
-  while (argsByValue[0] && argsByValue[0].$ == 'Var')
+  while (argsByValue[0] && jb.dsls.tgp['ctx-enricher']?.[argsByValue[0].$])
       varArgs.push(argsByValue.shift())
   const propsByValue = onlyByName ? []
       : firstParamAsArray ? { [param0.id] : argsByValue }
@@ -128,7 +128,7 @@ function argsToProfile(prof, comp) {
   function splitSystemArgs(allArgs, ast) {
     const args = [], system = {}
     allArgs.forEach(arg => {
-        if (arg.$ == 'Var') { // Var in pipeline
+        if (jb.dsls.tgp['ctx-enricher']?.[arg.$]) { // leading ctx-enricher (Var/setData/setVars/...) in pipeline
           system.vars = system.vars || []
           system.vars.push(arg)
         } else {
