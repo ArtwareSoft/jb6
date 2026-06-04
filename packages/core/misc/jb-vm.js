@@ -132,8 +132,7 @@ async function getOrCreateVm(options) {
 
         const context = vm.createContext({
             console, vmId, httpRequests, setTimeout, clearTimeout, setInterval, clearInterval, process, AbortController,
-            URLSearchParams, atob, gc, performance, URL, calcSpecifierUrl, Buffer,
-            fetch,
+            URLSearchParams, atob, gc, performance, URL, calcSpecifierUrl, Buffer, RegExp, fetch,
             vmCleanup, builtIn, __repoRoot: globalThis.__repoRoot })
         const entryFiles = optEntryFiles || calcedEntryFiles
         log('vm context ready', { entryCount: entryFiles.length })
