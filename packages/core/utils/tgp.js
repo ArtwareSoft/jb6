@@ -1,9 +1,9 @@
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 const { coreUtils } = jb
-const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError, enrichCtxWithDataContext } = coreUtils
+const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError, enrichCtxWithDataContext, compByFullId } = coreUtils
 
-Object.assign(coreUtils, { globalsOfType, globalsOfTypeIds, toCapitalType, findCompDefById, CompDefByDslType, callerCompId })
+Object.assign(coreUtils, { globalsOfType, globalsOfTypeIds, toCapitalType, findCompDefById, CompDefByDslType, callerCompId, parseCompFieldModifier, getCompField })
 
 function Component(id, comp) {
   const {type} = comp
@@ -139,6 +139,9 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
 
 // meta tgp
 const Any = TgpType('any','tgp')
+// ctx-enricher RT interface: impl is (ctx, {}, args) => Ctx — given the current ctx, return a new enriched ctx
+// (build it via enrichCtxWithDataContext(ctx, {vars, data}), or return ctx as-is). enrichers chain: each receives
+// the previous one's ctx. compose a list with enrichCtx; run one via ctx.run(enricher) -> enriched ctx.
 TgpType('ctx-enricher','tgp')
 TgpType('comp','tgp')
 TgpType('param','tgp')
@@ -224,6 +227,35 @@ const Action = TgpType('action','common')
 TgpType('boolean','common')
 TgpType('reactive-source','rx') // callbag api
 TgpType('reactive-operator','rx') // callbag api
+
+// ── comp-field: a declared list metadata field of comps. Contributions are comps named '<cmpId>#<fieldId>[#<order>]'
+// of the field's element type, plus the inline '<comp>[fieldId]'. harvested+ordered by getCompField, which returns
+// the contribution profiles (the consumer decides how to run them).
+const CompField = TgpType('comp-field','tgp')
+CompField('compField', { type: 'comp-field<tgp>', params: [{id: 'type', as: 'string'}] })
+
+// sampleCtx: sample ctx-enrichers used to exercise a comp (e.g. in probe/usages)
+CompField('sampleCtx', { impl: { $: 'comp-field<tgp>compField', type: 'ctx-enricher<tgp>[]' } })
+
+function parseCompFieldModifier(id) {
+  const [base, field, order] = id.split('#')
+  return { base, field, order: order ? +order : undefined }
+}
+
+// getCompField(cmpId, fieldId, dtCtx): the inline '<comp>[fieldId]' + ordered '<cmpId>#<fieldId>' contribution profiles. throws if field undeclared.
+function getCompField(cmpId, fieldId, dtCtx = new Ctx()) {
+  const decl = jb.dsls.tgp['comp-field'][fieldId]?.[asJbComp]
+  if (!decl) throw new Error(`getCompField: undeclared field '${fieldId}'`)
+  const [t, d] = splitDslType(decl.impl.type.replace(/\[\]/g, ''))
+  const shortId = cmpId.split('>').pop()
+  const external = Object.entries(jb.dsls[d][t])
+    .filter(([id]) => id.includes('#'))
+    .map(([id]) => ({ id, m: parseCompFieldModifier(id) }))
+    .filter(({ m }) => m.base === shortId && m.field === fieldId)
+    .sort((a, b) => (a.m.order ?? Infinity) - (b.m.order ?? Infinity))
+    .map(({ id }) => jb.dsls[d][t][id][asJbComp].impl)
+  return [...asArray(compByFullId(cmpId, jb)?.[fieldId]), ...external]
+}
 
 function DefComponents(items,def) { items.split(',').forEach(item=>def(item)) } // 'templateParam' must be used as param name
 

@@ -20,7 +20,7 @@ const {
     test: { dataTest }
   }
 } = dsls
-const { prettyPrintComp, prettyPrint } = coreUtils
+const { prettyPrintComp, prettyPrint, getCompField, enrichCtxWithDataContext } = coreUtils
 const { math } = ns
 
 Const('person', {
@@ -553,5 +553,17 @@ Test('coreTest.varInEnrichCtx', {
   impl: dataTest({
     calculate: async ctx => (await ctx.run(enrichCtx(Var('x', '3')))).vars.x,
     expectedResult: equals(3)
+  })
+})
+
+Data('compFieldTest.target', { sampleCtx: setVar('a', '1') })
+Component('compFieldTest.target#sampleCtx#2', { type: 'ctx-enricher<tgp>', impl: setVar('c', '3') })
+Component('compFieldTest.target#sampleCtx#1', { type: 'ctx-enricher<tgp>', impl: setVar('b', '2') })
+
+Test('compFieldTest.sampleCtx', {
+  impl: dataTest({
+    setup: ctx => getCompField('data<common>compFieldTest.target', 'sampleCtx').reduce((ctx, enricher) => ctx.run(enricher), ctx),
+    calculate: '%$a%,%$b%,%$c%',
+    expectedResult: equals('1,2,3')
   })
 })
