@@ -10,7 +10,7 @@ const CAP = 256 * 1024
 // harvests those names from the lexicalCtx (args separate from vars, calcVar order), closing over shipped values
 // that name more tokens. Values are JSON-safe: bigData arrays → {$bigData:url}, functions → '@js@<src>'. An ongoing
 // byte accumulator trips at CAP naming the offending var. buildCtx revives and rebuilds the real Ctx.
-const tokensIn = v => [...JSON.stringify(v ?? '').matchAll(/%\$([a-zA-Z0-9_]+)%/g)].map(m => m[1])
+const tokensIn = v => [...(JSON.stringify(v ?? '') || '').matchAll(/%\$([a-zA-Z0-9_]+)%/g)].map(m => m[1])
 
 // tokens reachable when running the profile: the call's own tokens + each referenced comp's impl + param defaults
 function scanProfile(prof, seen = new Set()) {

@@ -4,7 +4,6 @@ import '@jb6/llm-guide'
 import '@jb6/common'
 import '@jb6/core/misc/pretty-print.js'
 import '@jb6/core/misc/jb-cli.js'
-import '@jb6/core/misc/jb-remote.js'
 import '@jb6/core/misc/import-map-services.js'
 
 const {
@@ -407,47 +406,6 @@ Test('expTest.dynamicAsIsQuery', {
     expectedResult: equals('read /tmp/data.json where total >= 5')
   })
 })
-
-const sCalc = Data('sCalc', {
-  params: [
-    {id: 'p1', as: 'string'},
-    {id: 'pDyn1', dynamic: true, defaultValue: '%$v1%-%$p1%'}
-  ],
-  impl: '%$v1%-%$p1%-%$pDyn1()%'
-})
-
-const s2Calc = Data('s2Calc', {
-  params: [
-    {id: 'pDyn2', dynamic: true }
-  ],
-  impl: sCalc('s2-%$pDyn2()%')
-})
-
-const stripAndRun = Data('stripAndRun', {
-  params: [{id: 'prof', dynamic: true}],
-  impl: (ctx, {}, {prof}) => {
-    const { stripCtx, buildCtx, tgpProfileToJson } = coreUtils
-    const profileJson = tgpProfileToJson(prof.profile)
-    const wire = JSON.parse(JSON.stringify(stripCtx({ profileJson, ctx: prof.lexicalCtx })))
-    return buildCtx(wire).run(profileJson)
-  }
-})
-
-// a VAR (v1, built-in vars) and an ARG (p1) cross the wire; pDyn1 falls to its server-side defaultValue (%$v1%-%$p1%),
-// resolved remotely. jb6 semantics: a dynamic body reads its lexical VARS (v1), not a sibling ARG (p1) → its %$p1% empty.
-Test('stripCtxTest.var', {
-  impl: dataTest(stripAndRun({ vars: Var('v1', 'V'), prof: sCalc('P') }), equals('V-P-V-'))
-})
-
-// a nested comp profile (s2Calc, which itself calls sCalc) rides inside the dynamic pDyn1 and resolves remotely;
-// its %$v1% var crosses the wire. Result threads through both comps' impls + defaults.
-Test('stripCtxTest.doubleDynamicTrue', {
-  impl: dataTest({
-    calculate: stripAndRun({ vars: Var('v1', 'V'), prof: sCalc('P', s2Calc('%$v1%')) }),
-    expectedResult: equals('V-P-V-s2-V-V-')
-  })
-})
-
 
 Test('coreUtilsTest.resolveRefs', {
   impl: dataTest({

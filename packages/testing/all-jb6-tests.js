@@ -1,5 +1,6 @@
 import '../jq/jq-tests.js'
 import '../core/tests/core-tests.js'
+import '../core/tests/cli-tests.js'
 import '../core/tests/probe-tests.js'
 import '../core/tests/import-map-tests.js'
 import '../common/common-tests.js'
