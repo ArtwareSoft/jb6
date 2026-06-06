@@ -1,6 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
 import './lang-service-testers.js'
-import '@jb6/core/misc/jb-remote-via-cli.js'   // stripCtx/buildCtx + runStrippedCli (over the cli wire)
 import '@jb6/core/tests/core-tests.js'         // sCalcLogged (a snippet that emits a logger event)
 
 const {
@@ -12,34 +11,6 @@ const {
     test: { snippetTest, dataTest }
   }
 } = dsls
-
-// PARALLEL TO THE LAMBDA: from a live ctx, stripCtx the call, discover imports (the lambda uses its bundle instead),
-// then runStrippedCli — a fresh process rebuilds the ctx (buildCtx), overlays extraVars, binds the loggers and streams
-// their events back into THIS ctx. Asserts the result AND that the snippet's vmLogger event arrived over the wire.
-const sCalcLogged = dsls.common.data.sCalcLogged
-const runOverCliWithLoggers = Data('runOverCliWithLoggers', {
-  params: [{id: 'prof', dynamic: true}],
-  impl: async (ctx, {}, {prof}) => {
-    const { stripCtx, tgpProfileToJson, calcImportsForProfile, runStrippedCli } = coreUtils
-    const profileJson = tgpProfileToJson(prof.profile)
-    const packed = stripCtx({ profileJson, ctx: prof.lexicalCtx })
-    const imp = await calcImportsForProfile(profileJson, {})                 // test-side discovery (lambda: its index.js)
-    const result = await runStrippedCli({ profileJson, packed,
-      importsStr: imp.importsStr, projectDir: imp.projectDir, importMapsInCli: imp.importMapsInCli,
-      extraVars: { isTest: true }, bindLoggers: 'vmLogger', ctx })           // ctx = the caller sink; vmLogger events stream into ctx.vars.vmLogger
-    const logged = (ctx.vars.vmLogger?.vmLog || []).some(e => e.t === 'sCalcLogged')
-    return `${result}|logged:${logged}`
-  }
-})
-Test('remoteCli.loggersStreamBack', {
-  HeavyTest: true,
-  impl: dataTest({
-    calculate: runOverCliWithLoggers({ prof: sCalcLogged('P') }),
-    expectedResult: equals('done-P|logged:true'),
-    logger: 'vmLogger',
-    timeout: 20000
-  })
-})
 
 Test('nodeOnly.basic', {
   nodeOnly: true,

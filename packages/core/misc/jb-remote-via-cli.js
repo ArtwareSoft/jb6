@@ -14,6 +14,9 @@ async function runStrippedCli({ profileJson, packed, imports = {}, testLoggers =
   const test = testLoggers.split(',').map(s => s.trim()).filter(Boolean)
   const prog = progressLoggers.split(',').map(s => s.trim()).filter(Boolean)
   const all = [...new Set([...test, ...prog])]
+  // the live sink: dispatchChildLine routes child progress into ctx.vars[logger].progress → eventEmitter (the local
+  // progress channel a UI/SSE subscribes to). Default it to a fresh ctx with progressLoggers, so callers needn't manage it.
+  ctx = ctx || await coreUtils.ensureLoggers(prog)
   const { importsStr = '', projectDir, importMapsInCli } = imports
   const script = `
 import { coreUtils } from '@jb6/core'

@@ -50,50 +50,71 @@ Test('stripCtxTest.doubleDynamicTrue', {
   })
 })
 
-const sCalcLogged = Data('sCalcLogged', {
-  params: [{id: 'p1', as: 'string'}],
-  impl: (ctx, {}, {p1}) => {
-    ctx.vars.cliLogger?.progress?.({ t: 'sCalcProgress', p1 })
-    ctx.vars.cliLogger?.info?.({ t: 'sCalcLogged', p1 }, {}, {ctx})
-    return `done-${p1}`
-  }
+const safeToEmbed = (text, ctx) => String(text).replace(/\{%\$(\w+)%\}/g, (_, name) => coreUtils.calcVar(name, ctx))
+
+// resolve {%$var%} in the SQL's DEFINITION ctx (lexical params like minTotal), merged with the RUNTIME ctx vars (e.g. region).
+const lexEmbed = Data('lexEmbed', {
+  params: [{id: 'sql', dynamic: true}],
+  impl: (ctx, {}, {sql}) => safeToEmbed(sql.profile, sql.lexicalCtx.setVars(ctx.vars))
 })
 
-// from a live ctx: stripCtx the call, then runStrippedCli on a FRESH node process that shares the code (imports =
-// core-tests.js, like a lambda's package index.js). Captures the LOCAL progress channel (eventEmitter) to prove
-// remote progress re-activates it.
-const stripAndRunCli = Data('stripAndRunCli', {
-  params: [{id: 'prof', dynamic: true}, {id: 'testLoggers', as: 'string'}, {id: 'progressLoggers', as: 'string'}],
-  impl: async (ctx, {}, {prof, testLoggers, progressLoggers}) => {
-    const { stripCtx, tgpProfileToJson, runStrippedCli, ensureLoggers } = coreUtils
+const reportSql = Data('reportSql', {
+  params: [{id: 'minTotal', as: 'number'}],
+  impl: lexEmbed({ sql: 'total >= {%$minTotal%}' })
+})
+
+Test('lexEmbedTest.DyanmicSafeToEmbedParam', {
+  impl: dataTest({
+    calculate: reportSql({ minTotal: 200 }),
+    expectedResult: equals('total >= 200')
+  })
+})
+
+// reportSqlVar embeds a runtime VAR (region) AND the lexical param (minTotal) — both via safeToEmbed's {%$ %} token.
+const reportSqlVar = Data('reportSqlVar', {
+  params: [{id: 'minTotal', as: 'number'}],
+  impl: lexEmbed({ sql: '{%$region%} total >= {%$minTotal%}' })
+})
+
+
+// one snippet emits an INFO event, another a PROGRESS event — kept separate so each test reads a single, unambiguous entry.
+const sLogInfo = Data('sLogInfo', { impl: ctx => ctx.vars.cliLogger?.info?.({ t: 'theInfo' }, {}, { ctx }) })
+const sLogProgress = Data('sLogProgress', { impl: ctx => ctx.vars.cliLogger?.progress?.({ t: 'theProgress' }) })
+
+// runOverCli(prof) runs the snippet on a FRESH node process that shares this file's code (like a lambda's package
+// index.js). Returns { result, logs, localProgress }: logs = what testLoggers RETURN; localProgress = what progressLoggers
+// stream live, captured off the LOCAL eventEmitter (the channel a UI/SSE subscribes to).
+const runOverCli = Data('runOverCli', {
+  params: [{id: 'prof', dynamic: true}, {id: 'loggers', as: 'string'}],
+  impl: async (ctx, {}, {prof, loggers}) => {
+    const { stripCtx, tgpProfileToJson, runStrippedCli } = coreUtils
     const profileJson = tgpProfileToJson(prof.profile)
     const packed = stripCtx({ profileJson, ctx: prof.lexicalCtx })
-    const sink = await ensureLoggers((progressLoggers || '').split(',').filter(Boolean))
     const localProgress = []
     const onProgress = ev => localProgress.push(ev)
     coreUtils.eventEmitter.on('progress', onProgress)
-    const result = await runStrippedCli({ profileJson, packed, imports: { importsStr: "await import('@jb6/core/tests/cli-tests.js')" }, testLoggers, progressLoggers, ctx: sink })
+    const { result, logs } = await runStrippedCli({ profileJson, packed, imports: { importsStr: "await import('@jb6/core/tests/cli-tests.js')" }, testLoggers: loggers, progressLoggers: loggers })
     coreUtils.eventEmitter.off('progress', onProgress)
-    return { result, localProgress }
+    return { result, logs, localProgress }
   }
 })
 
-// var + arg cross the wire; the remote returns the result string.
+// a VAR (v1) + an ARG (p1) cross the wire; the remote returns the result string.
 Test('cliTest.stripCtxRun', {
   HeavyTest: true,
   impl: dataTest({
-    calculate: stripAndRunCli({ vars: Var('v1', 'V'), prof: sCalc('P') }),
-    expectedResult: equals('V-P-V-', '%result.result%'),
+    calculate: runOverCli({ vars: Var('v1', 'V'), prof: sCalc('P') }),
+    expectedResult: equals('V-P-V-', '%result%'),
     timeout: 20000
   })
 })
 
-// testLoggers ⇒ the remote RETURNS the snippet's logged record (the info event).
+// testLoggers ⇒ the snippet's INFO event is RETURNED in logs (the record), at the end.
 Test('cliTest.stripCtxLogs', {
   HeavyTest: true,
   impl: dataTest({
-    calculate: stripAndRunCli({ prof: sCalcLogged('P'), testLoggers: 'cliLogger' }),
-    expectedResult: equals('sCalcLogged', '%result.logs.cliLogger.cliLog.1.t%'),
+    calculate: runOverCli({ prof: sLogInfo(), loggers: 'cliLogger' }),
+    expectedResult: equals('theInfo', '%logs.cliLogger.cliLog.0.t%'),
     timeout: 20000
   })
 })
@@ -102,8 +123,19 @@ Test('cliTest.stripCtxLogs', {
 Test('cliTest.stripCtxProgress', {
   HeavyTest: true,
   impl: dataTest({
-    calculate: stripAndRunCli({ prof: sCalcLogged('P'), progressLoggers: 'cliLogger' }),
-    expectedResult: equals('sCalcProgress', '%localProgress.0.t%'),
+    calculate: runOverCli({ prof: sLogProgress(), loggers: 'cliLogger' }),
+    expectedResult: equals('theProgress', '%localProgress.0.t%'),
+    timeout: 20000
+  })
+})
+
+// OVER THE WIRE (the lambda mechanism, in jb6): dynamic param + safeToEmbed + a var, all crossing to a fresh process.
+// stripCtx harvests minTotal (lexical, from the SQL's DEFINITION frame) AND region (a var) → remote lexEmbed resolves both.
+Test('cliTest.stripCtxSafeToEmbed', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: runOverCli({ vars: Var('region', 'US'), prof: reportSqlVar({ minTotal: 200 }) }),
+    expectedResult: equals('US total >= 200', '%result%'),
     timeout: 20000
   })
 })
