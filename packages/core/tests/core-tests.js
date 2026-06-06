@@ -375,6 +375,38 @@ Test('expTest.asIsParam', {
   impl: dataTest(asIsParam('%%'), contains('%'))
 })
 
+// asIs: a query string may contain literal %a% tokens (its own host syntax, not jb vars), so the param is asIs:true —
+const asIsQuery = Data({
+  params: [
+    {id: 'minTotal', as: 'number'},
+    {id: 'query', as: 'string', asIs: true}
+  ],
+  impl: (ctx, {}, {query}) => query.replace(/\{%\$(\w+)%\}/g, (_, name) => coreUtils.calcVar(name, ctx))
+})
+Test('expTest.asIsQueryArg', {
+  impl: dataTest(asIsQuery({ minTotal: 5, query: 'rows where total >= {%$minTotal%} and kind = %a%' }), equals('rows where total >= 5 and kind = %a%'))
+})
+
+// the query resolves both an arg (minTotal, in jbCtx.args) and a run-time var (inputFile, supplied via vars:) — all
+// in the comp's own frame via calcVar. asIs keeps the raw string; resolution is the comp's own, not the engine's.
+const dynamicAsIsQuery = Data({
+  params: [
+    {id: 'minTotal', as: 'number'},
+    {id: 'query', as: 'string', dynamic: true, asIs: true}
+  ],
+  impl: (ctx, {}, {query}) => query.replace(/\{%\$(\w+)%\}/g, (_, name) => coreUtils.calcVar(name, ctx))
+})
+Test('expTest.dynamicAsIsQuery', {
+  impl: dataTest({
+    calculate: dynamicAsIsQuery({
+      vars: Var('inputFile', '/tmp/data.json'),
+      minTotal: 5,
+      query: 'read {%$inputFile%} where total >= {%$minTotal%}'
+    }),
+    expectedResult: equals('read /tmp/data.json where total >= 5')
+  })
+})
+
 Test('coreUtilsTest.resolveRefs', {
   impl: dataTest({
     calculate: () => {
