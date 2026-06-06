@@ -232,7 +232,7 @@ TgpType('reactive-operator','rx') // callbag api
 // of the field's element type, plus the inline '<comp>[fieldId]'. harvested+ordered by getCompField, which returns
 // the contribution profiles (the consumer decides how to run them).
 const CompField = TgpType('comp-field','tgp')
-CompField('compField', { type: 'comp-field<tgp>', params: [{id: 'type', as: 'string'}] })
+CompField('compField', { params: [{id: 'type', as: 'string'}] })
 
 // sampleCtx: sample ctx-enrichers used to exercise a comp (e.g. in probe/usages)
 CompField('sampleCtx', { impl: { $: 'comp-field<tgp>compField', type: 'ctx-enricher<tgp>[]' } })
@@ -246,9 +246,10 @@ function parseCompFieldModifier(id) {
 function getCompField(cmpId, fieldId, dtCtx = new Ctx()) {
   const decl = jb.dsls.tgp['comp-field'][fieldId]?.[asJbComp]
   if (!decl) throw new Error(`getCompField: undeclared field '${fieldId}'`)
-  const [t, d] = splitDslType(decl.impl.type.replace(/\[\]/g, ''))
+  const elemType = decl.impl.type.replace(/\[\]/g, '')
+  const [t, d] = elemType.includes('<') ? splitDslType(elemType) : []   // primitive element type (e.g. 'string') has no comp #-contributions
   const shortId = cmpId.split('>').pop()
-  const external = Object.entries(jb.dsls[d][t])
+  const external = !d ? [] : Object.entries(jb.dsls[d][t])
     .filter(([id]) => id.includes('#'))
     .map(([id]) => ({ id, m: parseCompFieldModifier(id) }))
     .filter(({ m }) => m.base === shortId && m.field === fieldId)

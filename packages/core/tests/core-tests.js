@@ -542,10 +542,8 @@ const captureJbCtxProfile = Data('captureJbCtxProfile', {
 })
 
 Test('coreTest.ctxRunProfileVisibleInImpl', {
-  impl: dataTest({
-    calculate: ctx => ctx.run(captureJbCtxProfile({x: 'hello'})),
-    expectedResult: equals(true, '%hasProfile%')
-  })
+  description: 'desc test',
+  impl: dataTest(ctx => ctx.run(captureJbCtxProfile({x: 'hello'})), equals(true, '%hasProfile%'))
 })
 
 // Regression: Var(name, <profile>) inside enrichCtx must throw — Var stores val literally; use setVar for dynamic profile evaluation.
@@ -565,5 +563,14 @@ Test('compFieldTest.sampleCtx', {
     setup: ctx => getCompField('data<common>compFieldTest.target', 'sampleCtx').reduce((ctx, enricher) => ctx.run(enricher), ctx),
     calculate: '%$a%,%$b%,%$c%',
     expectedResult: equals('1,2,3')
+  })
+})
+
+// primitive (non-comp) element type: getCompField returns the inline string, no #-contribution scan
+Data('compFieldTest.descTarget', { description: 'hello' })
+Test('compFieldTest.description', {
+  impl: dataTest({
+    calculate: () => getCompField('data<common>compFieldTest.descTarget', 'description').join(),
+    expectedResult: equals('hello')
   })
 })
