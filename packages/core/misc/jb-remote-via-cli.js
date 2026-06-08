@@ -11,7 +11,7 @@ const { coreUtils } = jb
 //   - progressLoggers → wrapped to stderr live → runCliInContext dispatches into the caller's ctx loggers. (UI progress)
 // Returns { result, error?, logs? }.
 async function runStrippedCli({ profileJson, packed, imports = {}, testLoggers = '', progressLoggers = '', ctx }) {
-  const test = testLoggers.split(',').map(s => s.trim()).filter(Boolean)
+  const test = [...new Set(['errorLogger', ...testLoggers.split(',').map(s => s.trim()).filter(Boolean)])]   // errorLogger always returned — child errors must reach the caller
   const prog = progressLoggers.split(',').map(s => s.trim()).filter(Boolean)
   const all = [...new Set([...test, ...prog])]
   // the live sink: dispatchChildLine routes child progress into ctx.vars[logger].progress → eventEmitter (the local

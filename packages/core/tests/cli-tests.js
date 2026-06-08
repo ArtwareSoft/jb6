@@ -80,6 +80,8 @@ const reportSqlVar = Data('reportSqlVar', {
 // one snippet emits an INFO event, another a PROGRESS event — kept separate so each test reads a single, unambiguous entry.
 const sLogInfo = Data('sLogInfo', { impl: ctx => ctx.vars.cliLogger?.info?.({ t: 'theInfo' }, {}, { ctx }) })
 const sLogProgress = Data('sLogProgress', { impl: ctx => ctx.vars.cliLogger?.progress?.({ t: 'theProgress' }) })
+// a snippet emitting a numeric METRIC — observability: a remote process's perf/metric must ride back via the logger.
+const sLogMetric = Data('sLogMetric', { impl: ctx => ctx.vars.cliLogger?.info?.({ t: 'perf', maxRssKb: 29760 }, {}, { ctx }) })
 
 // runOverCli(prof) runs the snippet on a FRESH node process that shares this file's code (like a lambda's package
 // index.js). Returns { result, logs, localProgress }: logs = what testLoggers RETURN; localProgress = what progressLoggers
@@ -136,6 +138,16 @@ Test('cliTest.stripCtxSafeToEmbed', {
   impl: dataTest({
     calculate: runOverCli({ vars: Var('region', 'US'), prof: reportSqlVar({ minTotal: 200 }) }),
     expectedResult: equals('US total >= 200', '%result%'),
+    timeout: 20000
+  })
+})
+
+// OBSERVABILITY over the wire: a numeric metric logged in the remote process rides back in {logs} (like a lambda's duckdb perf).
+Test('cliTest.stripCtxMetric', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: runOverCli({ prof: sLogMetric(), loggers: 'cliLogger' }),
+    expectedResult: equals(29760, '%logs.cliLogger.cliLog.0.maxRssKb%'),
     timeout: 20000
   })
 })

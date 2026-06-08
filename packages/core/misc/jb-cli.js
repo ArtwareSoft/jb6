@@ -31,11 +31,12 @@ function dispatchChildLine({ctx, line, stream}) {
     const lg = ctx?.vars?.[ev.logger]
     const fn = lg?.[ev.channel]
     if (typeof fn === 'function') {
+      if (ev.channel === 'progress') ctx?.vars?.cliLogger?.info?.({t: 'dispatch progress', logger: ev.logger, hasStep: ev.event?.step != null, status: ev.event?.status, eventT: ev.event?.t}, {}, {ctx})   // log to delete
       try { ev.channel === 'progress' || ev.channel === 'status' ? fn.call(lg, ev.event) : fn.call(lg, ev.event, {}, {ctx}) } catch (e) {
-        ctx?.vars?.cliLogger?.error?.({t: 'dispatch error', logger: ev.logger, channel: ev.channel, err: e.message}, {}, {ctx})
+        ctx.vars.errorLogger.error({t: 'dispatch error', logger: ev.logger, channel: ev.channel, err: e.message}, {}, {ctx})
       }
     } else {
-      ctx?.vars?.cliLogger?.error?.({t: 'dispatch missing', logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function')}, {}, {ctx})
+      ctx.vars.errorLogger.error({t: 'dispatch missing', logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function')}, {}, {ctx})
     }
     return
   }
@@ -71,6 +72,7 @@ Component('bash', {
 // In browser: routes through jb-web-server SSE. In Node: spawns a child directly.
 // Child stderr JSONL lines route to ctx.vars[loggerName]; non-JSONL falls through to ctx.vars.cliLogger.
 async function runCliInContext(script, options = {}) {
+  options.ctx = coreUtils.ensureLoggers([], options.ctx)   // always a ctx with errorLogger — single source of truth downstream
   const router = makeChildOutputRouter(options)
   if (!isNode && router) return runNodeCliStreamViaJbWebServer(script, options, router)
   if (!isNode) return runNodeCliViaJbWebServer(script, options)
@@ -110,7 +112,8 @@ async function runNodeCli(script, options = {}) {
   })
 }
 
-async function runNodeCliViaJbWebServer(script, options = {}, ctx) {
+async function runNodeCliViaJbWebServer(script, options = {}) {
+  const { ctx, ...optionsToSend } = options
   try {
     const expressUrl = options.expressUrl || ''
     const { cmd } = buildNodeCliCmd(script, options)
@@ -119,24 +122,24 @@ async function runNodeCliViaJbWebServer(script, options = {}, ctx) {
     const res = await fetch(`${expressUrl}/run-cli`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ script, ...options })
+      body: JSON.stringify({ script, ...optionsToSend })
     })
     cliLogger?.info?.({t: '/run-cli response', ok: res.ok, status: res.status}, {}, {ctx})
     if (!res.ok) {
       const text = await res.text()
-      cliLogger?.error?.({t: '/run-cli !ok', status: res.status, body: text.slice(0,500)}, {}, {ctx})
-      return { error: `runNodeCliViaJbWebServer failed: ${res.status} – ${text}`, ...options}
+      ctx.vars.errorLogger.error({t: '/run-cli !ok', status: res.status, body: text.slice(0,500)}, {}, {ctx})
+      return { error: `runNodeCliViaJbWebServer failed: ${res.status} – ${text}`, ...optionsToSend }
     }
 
     const json = await res.json()
     const { result, error } = json
     cliLogger?.info?.({t: '/run-cli json', hasResult: !!result, error, stderr: String(result?.stderr || '').slice(0,500), textToParse: String(result?.textToParse || '').slice(0,500)}, {}, {ctx})
     if (error)
-      return { error, cmd, ...options }
+      return { error, cmd, ...optionsToSend }
 
     return { ...result, cmd }
   } catch (e) {
-    return { error: `runNodeCliViaJbWebServer exception: ${e.stack}`, ...options}
+    return { error: `runNodeCliViaJbWebServer exception: ${e.stack}`, ...optionsToSend }
   }
 }
 

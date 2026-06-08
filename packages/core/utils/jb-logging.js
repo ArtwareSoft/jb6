@@ -15,7 +15,8 @@ jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
 Object.assign(jb.coreRegistry.urlReservedParams, {logger: true, spy: true})
 
 // ensureLoggers: instantiate named loggers into ctx.vars iff not already present. Idempotent. Creates a fresh Ctx if none provided.
-const ensureLoggers = (names = [], ctx = new jb.coreUtils.Ctx()) => names.reduce((c, name) => {
+// errorLogger is ALWAYS ensured — errors must be visible regardless of which tracing loggers the caller opted into.
+const ensureLoggers = (names = [], ctx = new jb.coreUtils.Ctx()) => [...new Set(['errorLogger', ...names])].reduce((c, name) => {
   if (c.vars[name]) return c
   const comp = jb.dsls.test.logger[name]
   return comp ? c.setVars({[name]: comp.$runWithCtx(c)}) : c
@@ -210,6 +211,7 @@ export const domainLogger = Logger('domainLogger', {
     const logName = `${domain}Log`
     const errorsName = `${domain}Errors`
     const startTime = Date.now()
+    let progressSeq = 0   // log to delete
     return {
       [logName]: [],
       [errorsName]: [],
@@ -228,12 +230,17 @@ export const domainLogger = Logger('domainLogger', {
         this[logName].push({severity: 'error', ...enriched[0], ...enriched[1]})
         this[errorsName].push({...enriched[0], ...enriched[1]})
         log(logName, {severity: 'error', r1: enriched[0], r2: enriched[1], ctx: r3?.ctx})
+        const errLog = r3?.ctx?.vars?.errorLogger   // tee: every error is ALSO recorded in the always-on errorLogger
+        if (errLog && errLog !== this) errLog.error(r1, r2, r3)
       },
-      status(text) { this.progress({t: text, status: true}) },
+      status(text) { try { process.stderr?.write?.(JSON.stringify({_dbg: 'status→progress', logger: `${domain}Logger`, t: text}) + '\n') } catch {}; this.progress({t: text, status: true}) },   // log to delete (shows status delegating to progress)
       progress(payload) {
+        const seq = ++progressSeq
         const entry = {severity: 'progress', at: Date.now() - startTime, logger: `${domain}Logger`, ...payload}
         this[logName].push(entry)
         log(logName, {severity: 'progress', r1: entry})
+        const listenerCount = coreUtils.eventEmitter.listeners?.progress?.length ?? 0 
+        try { process.stderr?.write?.(JSON.stringify({_dbg: 'progress.emit', seq, logger: `${domain}Logger`, listenerCount, hasStep: entry.step != null, status: entry.status, t: entry.t}) + '\n') } catch {}   // log to delete
         coreUtils.eventEmitter.emit('progress', entry)
       },
       $stripData() { return { $: `${domain}Logger`, logCount: this[logName].length, errorCount: this[errorsName].length, last: this[logName].at(-1)?.t } },
@@ -253,6 +260,7 @@ export const domainLogger = Logger('domainLogger', {
   }
 })
 
+Logger('errorLogger', { impl: domainLogger('error') })   // always-on (ensureLoggers) sink — every domain .error() tees here
 Logger('vmLogger', { impl: domainLogger('vm') })
 Logger('cliLogger', { impl: domainLogger('cli') })
 
@@ -260,16 +268,16 @@ Logger('cliLogger', { impl: domainLogger('cli') })
 // Embedded `\n`s inside the JSON are escaped to '\\n' at write-time so the line is a single physical line on the wire,
 // surviving SSE/transport layers that split on raw `\n`. Receiver unescapes via JSON.parse.
 const wrapLoggerInstanceToStderr = (name, inst) => {
-  for (const ch of ['info','warning','error','progress','status']) {
+  for (const ch of ['info','warning','error','progress']) {   // not 'status': status() delegates to progress() which is already wrapped
     const o = inst[ch]?.bind(inst)
     if (!o) continue
     inst[ch] = (...args) => {
-      try { process.stderr.write(JSON.stringify({kind:'log', logger:name, channel:ch, event: args[0]}).replace(/\n/g, '\\n') + '\n') } catch {}
-      return o(...args)
+      const event = args[0] && typeof args[0] === 'object' ? {...args[0], $source: process.pid} : args[0]
+      try { process.stderr.write(JSON.stringify({kind:'log', logger:name, channel:ch, event}).replace(/\n/g, '\\n') + '\n') } catch {}
+      return o(event, ...args.slice(1))
     }
   }
   return inst
 }
 jb.coreUtils.wrapLoggerInstanceToStderr = wrapLoggerInstanceToStderr
 
-export { Logger }

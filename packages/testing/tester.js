@@ -26,7 +26,7 @@ Component('dataTest', {
     {id: 'logger', as: 'string', description: 'e.g "dbLogger" or comma-separated "makeLogger,dbLogger"'}
   ],
   impl: async (ctx,{}, { calculate,expectedResult,runBefore,setup,timeout,allowError,cleanUp,expectedCounters,spy: _spy, logger }) => {
-        const loggerNames = (logger || '').split(',').map(s => s.trim()).filter(Boolean)
+        const loggerNames = [...new Set(['errorLogger', ...(logger || '').split(',').map(s => s.trim()).filter(Boolean)])]   // errorLogger always-on + always harvested
         const loggerObj = Object.fromEntries(
           loggerNames.filter(n => dsls.test.logger[n]).map(n => [n, dsls.test.logger[n].$runWithCtx(ctx)])
         )
@@ -38,6 +38,11 @@ Component('dataTest', {
 		const _timeout = singleTest ? Math.max(1000,timeout) : (remoteTimeout || timeout)
 		_spy && spy.setLogs(_spy+',error')
 		let result = null, testRes
+		const withLogs = r => {
+			const logResults = Object.fromEntries(loggerNames.flatMap(n => Object.entries(ctxToUse.vars[n]?.logsAndErrors?.() || {})))
+			const isPlainObj = r && typeof r === 'object' && !Array.isArray(r)
+			return isPlainObj ? { ...r, ...logResults } : { result: r, ...logResults }
+		}
 		try {
 			testRes = await Promise.race([ 
 				!singleTest && (async() => {
@@ -64,13 +69,10 @@ Component('dataTest', {
 			testFailure = expectedResultRes?.testFailure
 			const success = !! (expectedResultRes && !countersErr && !testFailure)
 			log('check test result',{testRes, success,expectedResultRes, testFailure, countersErr, expectedResultCtx})
-			const logResults = Object.fromEntries(
-			  loggerNames.flatMap(n => Object.entries(ctxToUse.vars[n]?.logsAndErrors?.() || {}))
-			)
-			result = { id: testID, success, reason: countersErr || testFailure, testRes: typeof testRes === 'object' && !Array.isArray(testRes) ? { ...testRes, ...logResults } : testRes, counters}
+			result = { id: testID, success, reason: countersErr || testFailure, testRes: withLogs(testRes), counters}
 		} catch (e) {
 			logException(e,'error in test',{ctx})
-			result = { testID, success: false, reason: 'Exception ' + e, testRes}
+			result = { testID, success: false, reason: 'Exception ' + e, testRes: withLogs(testRes) }
 		} finally {
 			_spy && spy.setLogs('error')
 			const doNotClean = ctx.probe || singleTest
@@ -109,7 +111,7 @@ async function runTestVm(args, ctx) {
       const testVm = await coreUtils.getOrCreateVm({vmId, resources, builtIn, importMap, staticMappings, vmLogger, ctx})
       vmLogger?.info?.({t: 'vm ready', testID, hasVm: !!testVm}, {}, {ctx})
       if (!testVm) {
-        vmLogger?.error?.({t: 'no vm', testID, resources}, {}, {ctx})
+        ctx?.vars?.errorLogger.error({t: 'no vm', testID, resources}, {}, {ctx})
         return { error: 'getOrCreateVm returned null', testID, resources }
       }
       try {
