@@ -124,9 +124,8 @@ Test('cliTest.stripCtxLogs', {
 // progressLoggers ⇒ the snippet's PROGRESS event re-activates the LOCAL progress mechanism (eventEmitter) — the UI hook.
 Test('cliTest.stripCtxProgress', {
   HeavyTest: true,
-  impl: dataTest({
-    calculate: runOverCli({ prof: sLogProgress(), loggers: 'cliLogger' }),
-    expectedResult: equals('theProgress', '%localProgress.0.t%'),
+  nodeOnly: true,
+  impl: dataTest(runOverCli(sLogProgress(), 'cliLogger'), equals('theProgress', '%localProgress.0.t%'), {
     timeout: 20000
   })
 })

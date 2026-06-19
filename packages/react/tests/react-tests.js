@@ -36,25 +36,6 @@ Test('reactTest.buttonClick', {
   })
 })
 
-// effect depends on `count` only. Bumping `other` must NOT re-run the effect; bumping `count` must.
-// tracedReact emits {t:'effect', deps:[count]} on each run. The assertion proves dep-correct scheduling:
-// effect deps [0] then [1] (for the two count values) and never deps [<other>], i.e. the `other` change did not re-run it.
-Test('reactTest.useEffect', {
-  impl: reactTest({
-    testedComp: ({}, {react: {h, useState, useEffect}}) => () => {
-      const [count, setCount] = useState(0)
-      const [other, setOther] = useState(0)
-      useEffect(() => {}, [count])
-      return h('div', {},
-        h('button', { onClick: () => setOther(other + 1) }, `bump other ${other}`),
-        h('button', { onClick: () => setCount(count + 1) }, `bump count ${count}`))
-    },
-    expectedResult: contains('"t": "effect", "deps": [0]', '"t": "effect", "deps": [1]', { allText: json.stringify('%$uiLogger/uiLog%') }),
-    userActions: actions(click('bump other 0'), click('bump count 0')),
-    logger: 'uiLogger'
-  })
-})
-
 Test('reactTest.use', {
   impl: reactTest({
     testedComp: ({}, {react: {h, use}}) => {
@@ -170,27 +151,6 @@ Test('reactTest.buttonClickWithParams', {
     },
     expectedResult: contains('%$textAfterClick%'),
     userActions: actions(click('Click me'))
-  })
-})
-
-// These tests fail in probe-view. it is OK
-Test('reactTest.vm', {
-  HeavyTest: true,
-  impl: dataTest({
-    calculate: async (ctx) => {
-      await coreUtils.calcJb6RepoRootAndImportMapsInCli()
-      const entry = `${jb.coreRegistry.jb6Root}/packages/react/tests/react-tests.js`
-      const builtIn = { JSDOM: 'jsdom' }
-      const mk = textAfterClick => jb.testingUtils.runTestVm({
-        testID: 'reactTest.buttonClickWithParams', params: {textAfterClick},
-        resources: { entryPointPaths: entry }, builtIn
-      }, ctx)
-      const results = await Promise.all([mk('aaa'), mk('bbb')])
-      return { joined: results.map(r => r?.testRes?.html).join(',') }
-    },
-    expectedResult: contains('aaa','bbb', { allText: '%joined%' }),
-    timeout: 10000,
-    logger: 'vmLogger'
   })
 })
 

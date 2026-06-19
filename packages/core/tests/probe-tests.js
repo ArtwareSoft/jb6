@@ -85,6 +85,7 @@ Test('probeCliTest.claudeDir', {
 })
 
 Test('cliTest.progressViaLogger', {
+  nodeOnly: true,
   impl: dataTest({
     calculate: async (ctx) => {
       ctx.vars.cliLogger.progress({t: '0'})
@@ -93,7 +94,8 @@ Test('cliTest.progressViaLogger', {
       coreUtils.eventEmitter.on('progress', onProgress)
       const script = `
         import { coreUtils } from '@jb6/core'
-        let ctx = coreUtils.ensureLoggers(['cliLogger'])
+        import '@jb6/core/misc/jb-cli.js'
+        let ctx = await coreUtils.ensureLoggers(['cliLogger'])
         coreUtils.wrapLoggerInstanceToStderr('cliLogger', ctx.vars.cliLogger)
         ctx.vars.cliLogger.progress({t: '1'})
         await coreUtils.delay(20)

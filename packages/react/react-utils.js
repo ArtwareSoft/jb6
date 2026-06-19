@@ -1,17 +1,7 @@
 import { jb, coreUtils, dsls } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
-export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, wrapReactCompWithSampleData, extendCtxWithUrl, tracedReact }
+export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, wrapReactCompWithSampleData, extendCtxWithUrl }
 
-// returns ctx whose react.useState/useEffect log to uiLogger: {t:'state', value} on every setter, {t:'effect', deps, ms} when an effect runs and {t:'effect.cleanup', deps} on teardown
-function tracedReact(ctx) {
-  const { uiLogger, react } = ctx.vars
-  if (!uiLogger) return ctx
-  const useState = init => {
-    const [v, set] = react.useState(init)
-    return [v, next => { uiLogger.info({t: 'state', value: typeof next === 'function' ? next(v) : next}, {}, {ctx}); set(next) }]
-  }
-  return ctx.setVars({react: {...react, useState}})
-}
 
 jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
 Object.assign(jb.coreRegistry.urlReservedParams, {cmpId: true, urlsToLoad: true, wlaForceRebuild: true, wlaDryRun: true})
@@ -111,7 +101,7 @@ ReactComp('comp', {
 
           if (loading)
             return h(progressIndicator(_ctx))
-          return h(hFunc(tracedReact(ctx)), args)
+          return h(hFunc(ctx), args)
         }
         if (id && !repo.comps[id])
           repo.comps[id] = comp
@@ -121,7 +111,7 @@ ReactComp('comp', {
       }
     } else {
       if (!id || !repo.comps[id]) {
-        const comp = hFunc(tracedReact(ctxOrPromise))
+        const comp = hFunc(ctxOrPromise)
         comp.jbid = jbid
         if (id && !repo.comps[id])
           repo.comps[id] = comp
