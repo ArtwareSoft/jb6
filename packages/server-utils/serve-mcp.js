@@ -59,7 +59,7 @@ async function serveMcpViaCli(app, { express }) {
       const urlsToLoad = sourceFile ? [sourceFile] : []
       const { renderReactCompToHtml } = await import('@jb6/mcp/mcp-utils.js')
       res.type('html').send(renderReactCompToHtml(compId, importMap, urlsToLoad))
-    } catch(e) { res.status(500).send(e.message) }
+    } catch(e) { res.status(500).send(e.stack) }
   })
 
   app.post("/mcp", express.json({ type: "application/json" }), async (req, res) => {

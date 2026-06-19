@@ -30,7 +30,7 @@ function serveEditSource(app, {express}) {
       res.json({ ok: true })
     } catch (e) {
       console.error('editSource error:', e)
-      res.status(500).json({ error: e.message })
+      res.status(500).json({ error: e.stack })
     }
   })
 }

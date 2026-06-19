@@ -16,20 +16,21 @@ Object.assign(jb.coreRegistry.urlReservedParams, {logger: true, spy: true})
 
 // ensureLoggers: instantiate named loggers into ctx.vars iff not already present. Idempotent. Creates a fresh Ctx if none provided.
 // errorLogger is ALWAYS ensured — errors must be visible regardless of which tracing loggers the caller opted into.
-const ensureLoggers = (names = [], ctx = new jb.coreUtils.Ctx()) => [...new Set(['errorLogger', ...names])].reduce((c, name) => {
+const ensureLoggers = (names = [], ctx = new coreUtils.Ctx()) => [...new Set(['errorLogger', ...names])].reduce((c, name) => {
   if (c.vars[name]) return c
   const comp = jb.dsls.test.logger[name]
   return comp ? c.setVars({[name]: comp.$runWithCtx(c)}) : c
 }, ctx)
-jb.coreUtils.ensureLoggers = ensureLoggers
+coreUtils.ensureLoggers = ensureLoggers
+
+coreUtils.harvestLogs = (ctx, names) => Object.fromEntries((names || Object.keys(ctx.vars)).filter(n => ctx.vars[n]?.logsAndErrors).map(n => [n, ctx.vars[n].logsAndErrors()]))
 
 // loggersFromUrl: instantiate loggers named by `?logger=...` URL param + activate spy. Returns ctx with logger vars.
-const loggersFromUrl = (urlParams, ctx = new jb.coreUtils.Ctx()) => {
+coreUtils.loggersFromUrl = (urlParams, ctx = new coreUtils.Ctx()) => {
   initSpyByUrl()
   const names = (urlParams.get('logger') || '').split(',').map(s => s.trim()).filter(Boolean)
   return ensureLoggers(names, ctx)
 }
-jb.coreUtils.loggersFromUrl = loggersFromUrl
 
 // ensureLogger: ctx-enricher form (single name). Idempotent — safe in both standalone and test-runner ctxs.
 Component('ensureLogger', {
@@ -47,7 +48,7 @@ const settings = {
     MAX_LOG_SIZE: 10000
 }
 
-export const spy = jb.ext.spy = jb.coreUtils.spy = { logs, clear, log, setLogs, initSpy, initSpyByUrl, registerEnrichers, search, isEnabled: () => enabled }
+export const spy = jb.ext.spy = coreUtils.spy = { logs, clear, log, setLogs, initSpy, initSpyByUrl, registerEnrichers, search, isEnabled: () => enabled }
 
 export function initSpy({spyParam: _spyParam}) {
     if (!_spyParam) return
@@ -200,6 +201,10 @@ function search(query = '',{slice = -1000, enrich = true} = {}) {
 
 const takeFromVars = (ids, ctx) => Object.fromEntries((ids||'').split(',').map(x=>x.trim()).filter(x=>x).filter(p=>ctx.vars[p] != null).map(p=>[p,ctx.vars[p]]))
 
+let $source = 'browser'   // machine:pid, computed once. stamped on every entry so parent & child logs both carry their origin
+if (typeof process != 'undefined')
+  import('os').then(os => $source = `${os.hostname()}:${process.pid}`)
+
 export const domainLogger = Logger('domainLogger', {
   params: [
     {id: 'domain', as: 'string'},
@@ -211,7 +216,7 @@ export const domainLogger = Logger('domainLogger', {
     const logName = `${domain}Log`
     const errorsName = `${domain}Errors`
     const startTime = Date.now()
-    let progressSeq = 0   // log to delete
+    let progressSeq = 0   // monotonic per-instance; with $source lets a debugger order emits & detect dropped (dispatch-missing) progress
     return {
       [logName]: [],
       [errorsName]: [],
@@ -233,14 +238,11 @@ export const domainLogger = Logger('domainLogger', {
         const errLog = r3?.ctx?.vars?.errorLogger   // tee: every error is ALSO recorded in the always-on errorLogger
         if (errLog && errLog !== this) errLog.error(r1, r2, r3)
       },
-      status(text) { try { process.stderr?.write?.(JSON.stringify({_dbg: 'status→progress', logger: `${domain}Logger`, t: text}) + '\n') } catch {}; this.progress({t: text, status: true}) },   // log to delete (shows status delegating to progress)
+      status(text) { this.progress({t: text, status: true}) },
       progress(payload) {
-        const seq = ++progressSeq
-        const entry = {severity: 'progress', at: Date.now() - startTime, logger: `${domain}Logger`, ...payload}
+        const entry = {severity: 'progress', seq: ++progressSeq, at: Date.now() - startTime, $source, logger: `${domain}Logger`, ...payload}
         this[logName].push(entry)
         log(logName, {severity: 'progress', r1: entry})
-        const listenerCount = coreUtils.eventEmitter.listeners?.progress?.length ?? 0 
-        try { process.stderr?.write?.(JSON.stringify({_dbg: 'progress.emit', seq, logger: `${domain}Logger`, listenerCount, hasStep: entry.step != null, status: entry.status, t: entry.t}) + '\n') } catch {}   // log to delete
         coreUtils.eventEmitter.emit('progress', entry)
       },
       $stripData() { return { $: `${domain}Logger`, logCount: this[logName].length, errorCount: this[errorsName].length, last: this[logName].at(-1)?.t } },
@@ -253,7 +255,7 @@ export const domainLogger = Logger('domainLogger', {
       const {ctx} = r3
       const error = r3.error ? {error: r3.error.stack || r3.error.message || r3.error } : {}
       const resp = r3.response ? { status: r3.response.status, statusText: r3.response.statusText } : {}
-      const enrichedR1 = { ...takeFromVars(addToR1,ctx), ...error, ...resp, at: Date.now() - startTime, tgpPath: ctx.jbCtx.lexicalParentPath, ...r1 }
+      const enrichedR1 = { ...takeFromVars(addToR1,ctx), ...error, ...resp, at: Date.now() - startTime, $source, tgpPath: ctx.jbCtx.lexicalParentPath, ...r1 }
       const enrichedR2 = { ...takeFromVars(addToR2,ctx), ...r2 }
       return [enrichedR1, enrichedR2]
     }
@@ -261,23 +263,21 @@ export const domainLogger = Logger('domainLogger', {
 })
 
 Logger('errorLogger', { impl: domainLogger('error') })   // always-on (ensureLoggers) sink — every domain .error() tees here
-Logger('vmLogger', { impl: domainLogger('vm') })
-Logger('cliLogger', { impl: domainLogger('cli') })
 
 // wrapLoggerInstanceToStderr: wrap each channel of an instantiated logger so every call also emits JSONL on stderr.
 // Embedded `\n`s inside the JSON are escaped to '\\n' at write-time so the line is a single physical line on the wire,
 // surviving SSE/transport layers that split on raw `\n`. Receiver unescapes via JSON.parse.
 const wrapLoggerInstanceToStderr = (name, inst) => {
   for (const ch of ['info','warning','error','progress']) {   // not 'status': status() delegates to progress() which is already wrapped
-    const o = inst[ch]?.bind(inst)
+    const o = inst?.[ch]?.bind(inst)
     if (!o) continue
     inst[ch] = (...args) => {
-      const event = args[0] && typeof args[0] === 'object' ? {...args[0], $source: process.pid} : args[0]
+      const event = args[0] && typeof args[0] === 'object' ? {...args[0], $source} : args[0]
       try { process.stderr.write(JSON.stringify({kind:'log', logger:name, channel:ch, event}).replace(/\n/g, '\\n') + '\n') } catch {}
       return o(event, ...args.slice(1))
     }
   }
   return inst
 }
-jb.coreUtils.wrapLoggerInstanceToStderr = wrapLoggerInstanceToStderr
+coreUtils.wrapLoggerInstanceToStderr = wrapLoggerInstanceToStderr
 

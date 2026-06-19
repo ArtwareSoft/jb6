@@ -12,6 +12,9 @@ const { coreUtils } = jb
 const {resolveWithImportMap, calcImportData, logError } = coreUtils
 Object.assign(coreUtils, { getOrCreateVm })
 
+const { test: { Logger, logger: { domainLogger } } } = jb.dsls
+Logger('vmLogger', { impl: domainLogger('vm') })
+
 const vmCache = {}
 
 async function getOrCreateVm(options) {
@@ -189,6 +192,6 @@ function safeResolveURL(specifier, base) {
       return new URL(specifier, base)
     } catch (e) {
       debugger
-      return { error: e.message, specifier, base }
+      return { error: e.stack, specifier, base }
     }
 }

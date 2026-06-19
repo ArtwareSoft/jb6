@@ -8,9 +8,8 @@ Object.assign(reactUtils, {registerMutObs, prettyPrintNode, probeReactComp})
 const { delay } = coreUtils
 const {
   tgp: { TgpType },
-  test: { Test, Logger,
-    test: { dataTest },
-    logger: { domainLogger }
+  test: { Test, Logger, logger: { domainLogger },
+    test: { dataTest }
   },
   react: { ReactComp, HFunc,
     'react-comp': { comp },
@@ -19,6 +18,7 @@ const {
 } = dsls
 
 Logger('uiLogger', { impl: domainLogger('ui') })
+Logger('uiHtmlLogger', { impl: domainLogger('uiHtml') })
 
 const UiAction = TgpType('ui-action', 'test')
 Test('reactTest', {
@@ -36,7 +36,7 @@ Test('reactTest', {
         logger: '%$logger%',
         setup: '%$setup()%',
         timeout: '%$timeout%',
-        calculate: async (ctx,{singleTest,uiLogger},{testedComp,userActions,props,locationHref}) => {
+        calculate: async (ctx,{singleTest,uiLogger,uiHtmlLogger},{testedComp,userActions,props,locationHref}) => {
           const win = globalThis.window
           if (!win)
             return {error: 'reactTest: no global window' }
@@ -69,7 +69,9 @@ Test('reactTest', {
           const html = prettyPrintNode(testSimulation)
           if (!singleTest)
             testSimulation.remove()
-          return { html, toString: () => html }
+          uiLogger?.info?.({t: 'html', len: html.length, summary: html.replace(/\s+/g, ' ').slice(0, 200)}, {}, {ctx})
+          uiHtmlLogger?.info?.({t: 'html', html}, {}, {ctx})
+          return { toString: () => html }
         },
         expectedResult: '%$expectedResult()%',
         includeTestRes: true
@@ -105,20 +107,21 @@ UiAction('waitForSelector', {
   ],
   impl: ({}, {}, { selector, timeout }) => ({
     async exec(ctx) {
-      const {win} = ctx.vars
+      const {win, uiLogger} = ctx.vars, t0 = Date.now()
       return new Promise(resolve => {
         const observer = new win.MutationObserver(check)
         observer.observe(win.document, { childList: true, subtree: true })
-        const timer = setTimeout(() => { observer.disconnect(); resolve(null) }, timeout)
+        const timer = setTimeout(() => { observer.disconnect(); uiLogger?.info?.({t: 'waitForSelector', selector, found: false, ms: Date.now()-t0}, {}, {ctx}); resolve(null) }, timeout)
         check()
 
-        function check() { 
+        function check() {
           const el = win.document.querySelector(selector)
-          if (el) { 
+          if (el) {
             observer.disconnect()
             clearTimeout(timer)
-            resolve(el) 
-          } 
+            uiLogger?.info?.({t: 'waitForSelector', selector, found: true, ms: Date.now()-t0}, {}, {ctx})
+            resolve(el)
+          }
         }
       })
     }
@@ -132,20 +135,21 @@ UiAction('waitForText', {
   ],
   impl: ({}, {}, { text, timeout }) => ({
     async exec(ctx) {
-      const {win} = ctx.vars
+      const {win, uiLogger} = ctx.vars, t0 = Date.now()
       return new Promise(resolve => {
         const observer = new win.MutationObserver(check)
         observer.observe(win.document, { childList: true, subtree: true })
-        const timer = setTimeout(() => { observer.disconnect(); resolve(null) }, timeout)
+        const timer = setTimeout(() => { observer.disconnect(); uiLogger?.info?.({t: 'waitForText', text, found: false, ms: Date.now()-t0}, {}, {ctx}); resolve(null) }, timeout)
         check()
 
-        function check() { 
+        function check() {
           const found = win.document.body.outerHTML.indexOf(text) != -1
-          if (found) { 
+          if (found) {
             observer.disconnect()
             clearTimeout(timer)
-            resolve() 
-          } 
+            uiLogger?.info?.({t: 'waitForText', text, found: true, ms: Date.now()-t0}, {}, {ctx})
+            resolve()
+          }
         }
       })
     }

@@ -41,8 +41,8 @@ app.post('/proxy', (req, res) => {
     }
 
     function endWithFailure(res, err) {
-      console.error('Proxy error:', err.message || err);
-      res.headersSent ? res.end() : res.status(500).json({ error: err.message || 'Proxy request failed' });
+      console.error('Proxy error:', err.stack || err);
+      res.headersSent ? res.end() : res.status(500).json({ error: err.stack || 'Proxy request failed' });
     }
   })
 }

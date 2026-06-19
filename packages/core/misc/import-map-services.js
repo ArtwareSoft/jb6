@@ -25,7 +25,7 @@ async function calcRepoRoot(options) {
       const result = await coreUtils.calcRepoRoot()
       await coreUtils.writeServiceResult(result)
     } catch (e) {
-      await coreUtils.writeServiceResult(e.message || e)
+      await coreUtils.writeServiceResult(e.stack || e)
     }`
     const res = await coreUtils.runNodeCliViaJbWebServer(script,options)
     return jb.coreRegistry.repoRoot = res.result
@@ -100,7 +100,7 @@ try {
       }
       return dsls.flatMap(dsl=> files.filter(f=>f.endsWith(`${dsl}/index.js`)))
     } catch (error) {
-      return { error: `Failed to discover DSL entry points: ${error.message}` }
+      return { error: `Failed to discover DSL entry points: ${error.stack}` }
     }
 
     async function walkDir(dir) {
@@ -183,7 +183,7 @@ async function packageJson(packageDir) {
     const path = await import('path')
     return JSON.parse(await readFile(path.join(packageDir, 'package.json'), 'utf8'))
   } catch (error) {
-    return { error: `Cannot read package.json at ${packageDir}: ${error.message}` }
+    return { error: `Cannot read package.json at ${packageDir}: ${error.stack}` }
   }
 }
 
@@ -216,7 +216,7 @@ async function getStaticConfig(repoRoot, pkgJson) {
     return { importMap: { imports, staticMappings, importMapsInCli }, staticMappings, repoRootName: pkgJson.name }
     // staticMappings is needed in client so it is also passed inside importMap
   } catch (error) {
-    return { error: `Failed to configure ${repoName}: ${error.message}` }
+    return { error: `Failed to configure ${repoName}: ${error.stack}` }
   }
 }
 

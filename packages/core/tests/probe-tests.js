@@ -93,6 +93,7 @@ Test('cliTest.progressViaLogger', {
       coreUtils.eventEmitter.on('progress', onProgress)
       const script = `
         import { coreUtils } from '@jb6/core'
+        import '@jb6/core/misc/jb-cli.js'
         let ctx = coreUtils.ensureLoggers(['cliLogger'])
         coreUtils.wrapLoggerInstanceToStderr('cliLogger', ctx.vars.cliLogger)
         ctx.vars.cliLogger.progress({t: '1'})

@@ -9,10 +9,13 @@ const { coreUtils } = jb
 
 const {
   tgp: { Component },
-  common: { Data }
+  common: { Data },
+  test: { Logger, logger: { domainLogger } }
 } = jb.dsls
 const { logException, logError, isNode } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript, runNodeCliStreamViaJbWebServer, runBashScriptStreamViaJbWebServer, buildNodeCliCmd, makeChildOutputRouter})
+
+Logger('cliLogger', { impl: domainLogger('cli') })
 
 function buildNodeCliCmd(script, options = {}) {
   options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
@@ -31,9 +34,8 @@ function dispatchChildLine({ctx, line, stream}) {
     const lg = ctx?.vars?.[ev.logger]
     const fn = lg?.[ev.channel]
     if (typeof fn === 'function') {
-      if (ev.channel === 'progress') ctx?.vars?.cliLogger?.info?.({t: 'dispatch progress', logger: ev.logger, hasStep: ev.event?.step != null, status: ev.event?.status, eventT: ev.event?.t}, {}, {ctx})   // log to delete
       try { ev.channel === 'progress' || ev.channel === 'status' ? fn.call(lg, ev.event) : fn.call(lg, ev.event, {}, {ctx}) } catch (e) {
-        ctx.vars.errorLogger.error({t: 'dispatch error', logger: ev.logger, channel: ev.channel, err: e.message}, {}, {ctx})
+        ctx.vars.errorLogger.error({t: 'dispatch error', logger: ev.logger, channel: ev.channel, err: e.stack}, {}, {ctx})
       }
     } else {
       ctx.vars.errorLogger.error({t: 'dispatch missing', logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function')}, {}, {ctx})

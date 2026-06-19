@@ -44,7 +44,7 @@ async function serveRpc(app) {
       } catch (err) {
         console.log('error', {err})
         if (id != null) {
-          res.json({ jsonrpc:'2.0', error:{ code:-32000, message:err.message }, id })
+          res.json({ jsonrpc:'2.0', error:{ code:-32000, message:err.stack }, id })
         } else {
           res.status(204).end()
         }

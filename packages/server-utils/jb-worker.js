@@ -23,7 +23,7 @@ function generateWorkerCode(entryPoints, compName, args) {
     }
     catch(err){
       // deliver error
-      if (typeof postMessage==='function') postMessage({ error: err.message })
+      if (typeof postMessage==='function') postMessage({ error: err.stack })
       else {
         console.error(err.stack||err.message)
         process.exit(1)

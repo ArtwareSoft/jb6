@@ -28,9 +28,9 @@ export async function calc() {
   try {
     const ctx = coreUtils.buildCtx(${JSON.stringify(packed)}).setVars(loggers)
     const result = coreUtils.stripData(await ctx.run(${JSON.stringify(profileJson)}))
-    const logs = Object.fromEntries(${JSON.stringify(test)}.map(n => [n, loggers[n]?.logsAndErrors?.()]))   // testLoggers → returned
+    const logs = coreUtils.harvestLogs({ vars: loggers }, ${JSON.stringify(test)})   // testLoggers → returned
     return ${JSON.stringify(test.length > 0)} ? { result, logs } : { result }
-  } catch (e) { return { error: coreUtils.stripData(e) } }
+  } catch (e) { return { error: e.stack } }
 }
 `
   const res = await coreUtils.runCliInContext(`${script}\n await coreUtils.writeServiceResult(await calc())`,

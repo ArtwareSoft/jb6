@@ -36,6 +36,7 @@ Component('dataTest', {
 		const {singleTest}  = ctxToUse.vars
 		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 5000 : null
 		const _timeout = singleTest ? Math.max(1000,timeout) : (remoteTimeout || timeout)
+		ctxToUse = ctxToUse.setVars({testTimeout: _timeout})   // ambient: lambda layer derives a shorter server deadline from it
 		_spy && spy.setLogs(_spy+',error')
 		let result = null, testRes
 		const withLogs = r => {
