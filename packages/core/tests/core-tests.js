@@ -353,12 +353,12 @@ Test('runActions', {
 Test('vmTest.minimal', {
   HeavyTest: true,
   impl: dataTest({
-    calculate: async ctx => {
+    calculate: async () => {
       await coreUtils.calcJb6RepoRootAndImportMapsInCli()
       return jb.testingUtils.runTestVm({ testID: 'coreTest.ns', resources: { 
-          entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/core/tests/core-tests.js`}}, ctx)
+          entryPointPaths: `${jb.coreRegistry.jb6Root}/packages/core/tests/core-tests.js`}})
     },
-    expectedResult: equals(2, '%testRes/result%'),
+    expectedResult: equals(2, '%testRes%'),
     timeout: 2000,
     logger: 'vmLogger'
   })
@@ -384,10 +384,7 @@ const asIsQuery = Data({
   impl: (ctx, {}, {query}) => query.replace(/\{%\$(\w+)%\}/g, (_, name) => coreUtils.calcVar(name, ctx))
 })
 Test('expTest.asIsQueryArg', {
-  impl: dataTest({
-    calculate: asIsQuery(5, 'rows where total >= {%$minTotal%} and kind = %a%'),
-    expectedResult: equals(() => 'rows where total >= 5 and kind = %a%')
-  })
+  impl: dataTest(asIsQuery({ minTotal: 5, query: 'rows where total >= {%$minTotal%} and kind = %a%' }), equals('rows where total >= 5 and kind = %a%'))
 })
 
 // the query resolves both an arg (minTotal, in jbCtx.args) and a run-time var (inputFile, supplied via vars:) — all
@@ -601,3 +598,11 @@ Test('compFieldTest.sampleCtx', {
   })
 })
 
+// primitive (non-comp) element type: getCompField returns the inline string, no #-contribution scan
+Data('compFieldTest.descTarget', { description: 'hello' })
+Test('compFieldTest.description', {
+  impl: dataTest({
+    calculate: () => getCompField('data<common>compFieldTest.descTarget', 'description').join(),
+    expectedResult: equals('hello')
+  })
+})

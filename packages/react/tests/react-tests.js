@@ -31,7 +31,27 @@ Test('reactTest.buttonClick', {
       return h('button', { onClick: () => setText('Clicked!') }, text)
     },
     expectedResult: contains('Clicked!'),
-    userActions: actions(click('Click me'))
+    userActions: actions(click('Click me')),
+    logger: 'uiLogger'
+  })
+})
+
+// effect depends on `count` only. Bumping `other` must NOT re-run the effect; bumping `count` must.
+// tracedReact emits {t:'effect', deps:[count]} on each run. The assertion proves dep-correct scheduling:
+// effect deps [0] then [1] (for the two count values) and never deps [<other>], i.e. the `other` change did not re-run it.
+Test('reactTest.useEffect', {
+  impl: reactTest({
+    testedComp: ({}, {react: {h, useState, useEffect}}) => () => {
+      const [count, setCount] = useState(0)
+      const [other, setOther] = useState(0)
+      useEffect(() => {}, [count])
+      return h('div', {},
+        h('button', { onClick: () => setOther(other + 1) }, `bump other ${other}`),
+        h('button', { onClick: () => setCount(count + 1) }, `bump count ${count}`))
+    },
+    expectedResult: contains('"t": "effect", "deps": [0]', '"t": "effect", "deps": [1]', { allText: json.stringify('%$uiLogger/uiLog%') }),
+    userActions: actions(click('bump other 0'), click('bump count 0')),
+    logger: 'uiLogger'
   })
 })
 

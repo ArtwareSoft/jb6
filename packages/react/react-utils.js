@@ -10,12 +10,7 @@ function tracedReact(ctx) {
     const [v, set] = react.useState(init)
     return [v, next => { uiLogger.info({t: 'state', value: typeof next === 'function' ? next(v) : next}, {}, {ctx}); set(next) }]
   }
-  const useEffect = (fn, deps) => react.useEffect(() => {
-    const t0 = Date.now(), cleanup = fn()
-    uiLogger.info({t: 'effect', deps, ms: Date.now() - t0}, {}, {ctx})
-    return typeof cleanup === 'function' ? () => { uiLogger.info({t: 'effect.cleanup', deps}, {}, {ctx}); cleanup() } : cleanup
-  }, deps)
-  return ctx.setVars({react: {...react, useState, useEffect}})
+  return ctx.setVars({react: {...react, useState}})
 }
 
 jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
@@ -39,7 +34,8 @@ function extendCtxWithUrl({ctx = new coreUtils.Ctx(), href} = {}) {
 
 function logMs(ctx, t, ms, extra) { if (ms) ctx.vars.uiLogger?.info?.({t, ms, ...extra}, {}, {ctx}) }
 
-const { tgp: { TgpType, Component }} = dsls
+const { tgp: { TgpType, Component }, test: { Logger, logger: { domainLogger } }} = dsls
+Logger('uiLogger', { impl: domainLogger('ui') })
 
 const ReactComp = TgpType('react-comp','react') // actually jb-react-comp
 TgpType('vdom','react') // actually react-comp

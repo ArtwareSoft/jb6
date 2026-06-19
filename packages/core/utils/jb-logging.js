@@ -269,7 +269,7 @@ Logger('errorLogger', { impl: domainLogger('error') })   // always-on (ensureLog
 // surviving SSE/transport layers that split on raw `\n`. Receiver unescapes via JSON.parse.
 const wrapLoggerInstanceToStderr = (name, inst) => {
   for (const ch of ['info','warning','error','progress']) {   // not 'status': status() delegates to progress() which is already wrapped
-    const o = inst?.[ch]?.bind(inst)
+    const o = inst[ch]?.bind(inst)
     if (!o) continue
     inst[ch] = (...args) => {
       const event = args[0] && typeof args[0] === 'object' ? {...args[0], $source} : args[0]

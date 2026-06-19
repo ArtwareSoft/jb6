@@ -3,6 +3,7 @@ import vm from 'node:vm'
 
 import https from 'node:https'
 import http from 'node:http'
+import * as os from 'node:os'   // node-only file → safe at head. registered in builtInModules so sandbox code (jb-logging's $source) can import 'os'
 
 import { jb } from '@jb6/repo'
 import './import-map-services.js'
@@ -126,12 +127,13 @@ async function getOrCreateVm(options) {
 
     async function init() {
         const httpRequests = {}
-        const builtIn = options.builtIn || {}
+        const builtIn = { ...options.builtIn }
         log('loading builtIn', { keys: Object.keys(builtIn) })
         await Promise.all(Object.entries(builtIn || {}).filter(e=>typeof e[1] == 'string').map( async e => {
             builtIn[e[0]] = await import(e[1])
             builtInModules[e[1]] = builtIn[e[0]] = builtIn[e[0]].default || builtIn[e[0]]
         }))
+        builtInModules['os'] = os
 
         const context = vm.createContext({
             console, vmId, httpRequests, setTimeout, clearTimeout, setInterval, clearInterval, process, AbortController,

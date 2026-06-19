@@ -17,7 +17,6 @@ const {
   common: { Data }
 } = dsls
 
-Logger('uiLogger', { impl: domainLogger('ui') })
 Logger('uiHtmlLogger', { impl: domainLogger('uiHtml') })
 
 const UiAction = TgpType('ui-action', 'test')
@@ -48,7 +47,7 @@ Test('reactTest', {
           const hasActions = asArray(userActions).length > 0
           if (singleTest || hasActions)
               win.document.body.appendChild(testSimulation)
-          const seedCtx = reactUtils.extendCtxWithUrl({ctx: ctx.setVars({react: reactUtils}), href: locationHref})
+          const seedCtx = reactUtils.tracedReact(reactUtils.extendCtxWithUrl({ctx: ctx.setVars({react: reactUtils}), href: locationHref}))
           let hFuncRes
           try {
             hFuncRes = testedComp(seedCtx)

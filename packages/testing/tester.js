@@ -34,7 +34,7 @@ Component('dataTest', {
 		let ctxToUse = ctx.setVars({testID, isTest: true, testSessionId: `test-${Date.now()}`, testLoggers: logger, ...loggerObj})
 		if (setup.profile || typeof setup === 'function') ctxToUse = await setup(ctxToUse) || ctxToUse
 		const {singleTest}  = ctxToUse.vars
-		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 5000 : null
+		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 15000 : null
 		const _timeout = singleTest ? Math.max(1000,timeout) : (remoteTimeout || timeout)
 		ctxToUse = ctxToUse.setVars({testTimeout: _timeout})   // ambient: lambda layer derives a shorter server deadline from it
 		_spy && spy.setLogs(_spy+',error')

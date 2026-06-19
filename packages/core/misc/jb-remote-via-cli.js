@@ -27,10 +27,12 @@ export async function calc() {
   ;${JSON.stringify(prog)}.forEach(n => loggers[n] && coreUtils.wrapLoggerInstanceToStderr(n, loggers[n]))   // progress → stderr live
   try {
     const ctx = coreUtils.buildCtx(${JSON.stringify(packed)}).setVars(loggers)
-    const result = coreUtils.stripData(await ctx.run(${JSON.stringify(profileJson)}))
-    const logs = coreUtils.harvestLogs({ vars: loggers }, ${JSON.stringify(test)})   // testLoggers → returned
+    const raw = await ctx.run(${JSON.stringify(profileJson)})
+    if (raw instanceof Error) process.stderr.write('CHILD_ERR_STACK '+raw.stack+'\\n')   // log to delete
+    const result = coreUtils.stripData(raw)
+    const logs = Object.fromEntries(${JSON.stringify(test)}.filter(n => loggers[n]?.logsAndErrors).map(n => [n, loggers[n].logsAndErrors()]))   // testLoggers → returned (inlined: child bundle may predate coreUtils.harvestLogs)
     return ${JSON.stringify(test.length > 0)} ? { result, logs } : { result }
-  } catch (e) { return { error: e.stack } }
+  } catch (e) { process.stderr.write('CHILD_CATCH_STACK '+e.stack+'\\n'); return { error: e.stack } }
 }
 `
   const res = await coreUtils.runCliInContext(`${script}\n await coreUtils.writeServiceResult(await calc())`,
