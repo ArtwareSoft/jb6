@@ -121,6 +121,15 @@ Test('mcpTest.snippet', {
   })
 })
 
+Test('mcpTest.probe', {
+  HeavyTest: true,
+  impl: mcpToolTest({
+    tool: 'runProbe',
+    args: asIs({ probePath: 'test<test>coreTest.HelloWorld~impl~calculate~operators~0' }),
+    expectedResult: contains('hello world')
+  })
+})
+
 Test('mcpReactTest.helloMcp', {
   HeavyTest: true,
   doNotRunInTests: true,

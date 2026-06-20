@@ -7,7 +7,7 @@ import '../utils/tgp.js'
 import './jb-cli.js'
 
 const { coreUtils } = jb
-const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays, 
+const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays,
   asJbComp, compIdOfProfile, stripData, unique } = coreUtils
 
 jb.probeRepository = {
@@ -15,45 +15,74 @@ jb.probeRepository = {
 }
 Object.assign(coreUtils, {runProbe, runProbeCli, createClaudeDirForProbe})
 
-async function runProbeCli(probePath, resources, {onStatus = null, claudeDir = ''} = {}) {
-    const { extraCode } = resources
-    const {entryFiles, testFiles, importMap, projectDir } = await coreUtils.calcImportData(resources)
-    const allTests = testFiles.filter(path=>path.includes('all-tests'))
-    const testsToInclude = allTests.length ? allTests : testFiles
-    const imports = unique([...entryFiles, ...testsToInclude]) // ,...moreTests
+async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDir = ''} = {}) {
+  try {
+    const { extraCode, circuitCmpId, repoRoot, fetchByEnvHttpServer, resolution = 'default' } = resources
+    const loggerNames = (resources.logger || '').split(',').map(s => s.trim()).filter(Boolean)
+    const ctx = resources.ctx || (loggerNames.length ? await coreUtils.ensureLoggers(loggerNames) : undefined)
+
+    if (!coreUtils.calcImportsForProfile)
+      await import('@jb6/lang-service')
+
+    // resolve imports for the probed/circuit component. the circuit is a CALLER of the probed
+    // component, so we must also import all test files (where circuits are defined) - this is what
+    // lets circuitOptions() discover the circuit at runtime in the child process.
+    const cmpId = (circuitCmpId || probePath).split('~')[0]
+    const profileText = `{$: '${cmpId}'}`
+    const imp = await coreUtils.calcImportsForProfile(profileText, {repoRoot, fetchByEnvHttpServer, ctx})
+    if (imp.error)
+      return { probeRes: null, error: imp.error, diagnostic: imp.diagnostic }
+    const { projectDir, importMapsInCli } = imp
+    const testFiles = imp.tgpModel?.testFiles || []
+    const allImportFiles = unique([...(imp.topLevelImports || []), ...testFiles])
+    const importsStr = allImportFiles.map(f => `await import('${f}')`).join('\n')
 
     const script = `
-      import { writeFile } from 'fs/promises'
       import { jb, dsls, coreUtils } from '@jb6/core'
       import '@jb6/testing'
+      import '@jb6/core/misc/jb-cli.js'
       import '@jb6/core/misc/probe.js'
-      const imports = ${JSON.stringify(imports)}
       const probePath = '${probePath}'
+      const loggerNames = ${JSON.stringify(loggerNames)}
       try {
         ${extraCode || ''}
-        await Promise.all(imports.map(f => import(f))) // .catch(e => console.error(e.stack) )
-        const probeRes = await jb.coreUtils.runProbe(probePath)
+        if (loggerNames.length) {
+          coreUtils.spy.initSpy({spyParam: 'all'})
+          const loggerCtx = await coreUtils.ensureLoggers(loggerNames)
+          loggerNames.forEach(n => coreUtils.wrapLoggerInstanceToStderr(n, loggerCtx.vars[n]))
+        }
+        ${importsStr}
+        const probeRes = await jb.coreUtils.runProbe(probePath, ${JSON.stringify({circuitCmpId})})
         await coreUtils.writeServiceResult(probeRes)
       } catch (e) {
         await coreUtils.writeServiceResult({error: e.stack})
         console.error(e)
       }
     `
-    try {
-      const { result, error, cmd } = await coreUtils.runCliInContext(script, {projectDir, importMapsInCli: importMap.importMapsInCli}, onStatus)
-  
-      return { probeRes: result, error, cmd, projectDir }
-    } catch (error) {
-      debugger
-      return { probeRes: null, error: error.stack, projectDir}
-    }
+    const { result, error, cmd } = await coreUtils.runCliInContext(script,
+      {projectDir, importMapsInCli, ctx, bindLoggers: loggerNames.join(','), stream: 'both'}, onStatus)
+    const probeLog = Object.fromEntries(loggerNames.flatMap(n => {
+      const l = ctx?.vars?.[n]?.logsAndErrors?.(); return l ? Object.entries(l) : []
+    }))
+    if (resolution == 'all')
+      return { probeRes: result, error, cmd, projectDir, topLevelImports: allImportFiles, ...probeLog }
+    // result[] records are {in:{data,vars}, out, from}. 'default' = in.data + out (no vars) -
+    // the "what flowed through" view. 'output' = only out side. 'input' = full in (with vars) + out.
+    const projectRec = ({in: i, out, from}) => resolution == 'output' ? { out, from }
+      : resolution == 'input' ? { in: i, out, from }
+      : { in: i && { data: i.data }, out, from }
+    const projectResult = r => r.map(projectRec)
+    return { probeRes: result && { circuitCmpId: result.circuitCmpId, probePath: result.probePath,
+      result: result.result && projectResult(result.result), visits: result.visits, circuitRes: result.circuitRes, errors: result.errors }, error, ...probeLog }
+  } catch (error) {
+    return { probeRes: null, error: error.stack || String(error) }
+  }
 }
 
         //const claudeDirRes = await coreUtils.createClaudeDirForProbe({claudeDir, probePath, probeRes,imports})
         //probeRes.claudeDir = claudeDirRes
 
 async function runProbe(_probePath, {circuitCmpId, timeout } = {}) {
-  debugger
   if (!_probePath) {
        logError(`probe runCircuit missing probe path`, {})
        return { error: `probe runCircuit missing probe path` }

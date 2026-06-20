@@ -73,7 +73,7 @@ Tool('macroToJson', {
         const result = coreUtils.macroToJson(macroText, tgpModel)
         return result.error ? `Error: ${result.error}` : JSON.stringify(result, null, 2)
       } catch (error) {
-        return `Error: ${error.message}`
+        return `Error: ${error.stack}`
       }
     }
   })
@@ -101,7 +101,33 @@ Use tgpModel tool to discover available components and their params.`,
         const res = await coreUtils.runSnippetCli(args)
         return JSON.stringify(res, null, 2)
       } catch (error) {
-        return `Error running snippet: ${error.message}`
+        return `Error running snippet: ${error.stack}`
+      }
+    }
+  })
+})
+
+Tool('runProbe', {
+  description: `Probe a TGP circuit: run it and capture intermediate {in,out} at a probePath.
+A probePath addresses a location inside a runnable circuit, e.g.
+'test<test>coreTest.HelloWorld~impl~calculate~operators~0' or 'data<common>cmpA~impl'.
+Returns the recorded {in,out} at that path plus visits, circuitRes, logs and errors.`,
+  params: [
+    {id: 'probePath', as: 'string', asIs: true, mandatory: true, description: `probe path, e.g. test<test>myTest~impl~expectedResult~items~0`},
+    {id: 'resolution', as: 'string', options: 'default,input,output,all', defaultValue: 'default', description: `result detail: 'default' = {in,out} at path + visits + circuitRes + errors; 'input'/'output' = only that side of the captured records; 'all' adds logs, cmd, imports`},
+    {id: 'circuit', as: 'string', description: `force circuit comp id (overrides auto-detect), e.g. test<test>circuitForAA`},
+    {id: 'logger', as: 'string', description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
+    {id: 'repoRoot', as: 'string', description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
+    {id: 'fetchByEnvHttpServer', as: 'string', description: `cross-repo: http server serving that repo, e.g. http://localhost:3000`},
+  ],
+  impl: mcpTool({
+    text: async (ctx, {}, {probePath, resolution, circuit, logger, repoRoot, fetchByEnvHttpServer}) => {
+      try {
+        await import('@jb6/lang-service')
+        const res = await coreUtils.runProbeCli(probePath, {circuitCmpId: circuit, logger, forRepo: repoRoot, fetchByEnvHttpServer, resolution})
+        return JSON.stringify(res, null, 2)
+      } catch (error) {
+        return `Error running probe: ${error.stack}`
       }
     }
   })
@@ -119,7 +145,7 @@ Tool('runTest', {
         await import('@jb6/lang-service')
         return coreUtils.runSnippetCli({profileText: `{$: 'test<test>${testId}'}`, logger})
       } catch (error) {
-        return `Error running test: ${error.message || error}`
+        return `Error running test: ${error.stack || error}`
       }
     }
   })
