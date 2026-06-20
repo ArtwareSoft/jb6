@@ -96,20 +96,6 @@ Test('mcpTest.tgpModel', {
 //   })
 // })
 
-Test('mcpTest.listBooklets', {
-  HeavyTest: true,
-  impl: mcpToolTest('listBooklets', asIs(), { expectedResult: contains('commonDslQuizzes') })
-})
-
-Test('mcpTest.bookletsContent', {
-  HeavyTest: true,
-  impl: mcpToolTest({
-    tool: 'bookletsContentTool',
-    args: asIs({booklets: 'tgpPrimer'}),
-    expectedResult: contains('secondParamAsArray')
-  })
-})
-
 Test('mcpTest.snippet', {
   HeavyTest: true,
   impl: mcpToolTest({

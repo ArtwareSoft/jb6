@@ -17,7 +17,7 @@ Object.assign(coreUtils, {runProbe, runProbeCli, createClaudeDirForProbe})
 
 async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDir = ''} = {}) {
   try {
-    const { extraCode, circuitCmpId, repoRoot, fetchByEnvHttpServer, resolution = 'default' } = resources
+    const { extraCode, circuitCmpId, repoRoot, fetchByEnvHttpServer, entryPointPaths, resolution = 'default' } = resources
     const loggerNames = (resources.logger || '').split(',').map(s => s.trim()).filter(Boolean)
     const ctx = resources.ctx || (loggerNames.length ? await coreUtils.ensureLoggers(loggerNames) : undefined)
 
@@ -29,7 +29,7 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
     // lets circuitOptions() discover the circuit at runtime in the child process.
     const cmpId = (circuitCmpId || probePath).split('~')[0]
     const profileText = `{$: '${cmpId}'}`
-    const imp = await coreUtils.calcImportsForProfile(profileText, {repoRoot, fetchByEnvHttpServer, ctx})
+    const imp = await coreUtils.calcImportsForProfile(profileText, {repoRoot, fetchByEnvHttpServer, entryPointPaths, ctx})
     if (imp.error)
       return { probeRes: null, error: imp.error, diagnostic: imp.diagnostic }
     const { projectDir, importMapsInCli } = imp

@@ -54,9 +54,11 @@ async function runSnippetCli(args) {
 // Auto-discover Node-side imports needed to resolve `$:'type<dsl>id'` refs in the given profile(s)/JSON-text.
 // Accepts a TGP profile, an array of profiles, or a JSON string. Returns importsStr ready to inline,
 // plus projectDir + importMapsInCli for runCliInContext.
-async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer, ctx} = {}) {
+async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer, entryPointPaths, ctx} = {}) {
   const log = ctx?.vars?.snippetLogger
-  repoRoot = repoRoot || await calcRepoRoot()
+  // entryPointPaths mode crawls explicit files (e.g. host tests outside /packages) - forRepo mode
+  // ignores entryPointPaths and only crawls the repo's discovered files, so the two are exclusive.
+  if (!entryPointPaths) repoRoot = repoRoot || await calcRepoRoot()
   const text = typeof input === 'string' ? input
     : Array.isArray(input) ? input.map(p => JSON.stringify(coreUtils.tgpProfileToJson(p))).join('\n')
     : JSON.stringify(coreUtils.tgpProfileToJson(input))
@@ -64,7 +66,7 @@ async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer, ctx
   const parsed = allFullIds.map(id => { const m = id.match(/^([^<]+)<([^>]+)>(.+)$/); return m && { type: m[1], dsl: m[2], shortId: m[3], fullId: id } }).filter(Boolean)
   if (!parsed.length) return { error: `no valid {$: 'type<dsl>id'} found in profile`, topLevelImports: [], importsStr: '' }
   const allDsls = unique(parsed.map(p => p.dsl))
-  const tgpModel = await calcTgpModelData({forRepo: repoRoot, forDsls: allDsls.join(','), fetchByEnvHttpServer, ctx })
+  const tgpModel = await calcTgpModelData({forRepo: entryPointPaths ? undefined : repoRoot, forDsls: allDsls.join(','), fetchByEnvHttpServer, entryPointPaths, ctx })
   if (tgpModel.error) return { error: tgpModel.error }
   const projectDir = tgpModel.projectDir || repoRoot
   const comps = parsed.map(p => tgpModel.dsls[p.dsl]?.[p.type]?.[p.shortId]).filter(Boolean)
