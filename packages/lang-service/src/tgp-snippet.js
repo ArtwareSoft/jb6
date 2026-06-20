@@ -7,6 +7,9 @@ import { parse } from '../lib/acorn-loose.mjs'
 const { unique, calcTgpModelData, runCliInContext, toCapitalType, calcRepoRoot, discoverDslEntryPoints } = coreUtils
 Object.assign(coreUtils, { runSnippetCli, macroToJson })
 
+const { test: { Logger, logger: { domainLogger } } } = dsls
+Logger('snippetLogger', { impl: domainLogger('snippet') })
+
 function macroToJson(macroText, tgpModel) {
   const cleanText = macroText.replace(/^[^<]+<[^>]+>:?/, '')
   const allComps = Object.values(tgpModel.dsls).flatMap(type => Object.values(type)).filter(x => typeof x == 'object').flatMap(x => Object.values(x))
@@ -28,10 +31,15 @@ function toJson(v) {
 
 async function runSnippetCli(args) {
   const repoRoot = args.repoRoot || await calcRepoRoot()
+  const loggerNames = (args.logger || '').split(',').map(s => s.trim()).filter(Boolean)
+  const ctx = args.ctx || (loggerNames.length ? await coreUtils.ensureLoggers(loggerNames) : undefined)
   const toJson = p => p == null ? p : typeof p === 'string' ? p : JSON.stringify(coreUtils.tgpProfileToJson(p))
-  const res = await calcJsonProfileScript({...args, profileText: toJson(args.profile ?? args.profileText), ctxEnricher: toJson(args.ctxEnricher), repoRoot})
+  const res = await calcJsonProfileScript({...args, ctx, profileText: toJson(args.profile ?? args.profileText), ctxEnricher: toJson(args.ctxEnricher), repoRoot})
+  const snippetLog = Object.fromEntries(loggerNames.flatMap(n => {
+    const l = ctx?.vars?.[n]?.logsAndErrors?.(); return l ? Object.entries(l) : []
+  }))
   const { ecmScript, projectDir, importMapsInCli, topLevelImports, error } = res
-  if (error) return res
+  if (error) return { ...res, ...snippetLog }
   try {
     const result = await runCliInContext(
       `${ecmScript}\n await coreUtils.writeServiceResult(await calc())`,
@@ -46,7 +54,8 @@ async function runSnippetCli(args) {
 // Auto-discover Node-side imports needed to resolve `$:'type<dsl>id'` refs in the given profile(s)/JSON-text.
 // Accepts a TGP profile, an array of profiles, or a JSON string. Returns importsStr ready to inline,
 // plus projectDir + importMapsInCli for runCliInContext.
-async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer} = {}) {
+async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer, ctx} = {}) {
+  const log = ctx?.vars?.snippetLogger
   repoRoot = repoRoot || await calcRepoRoot()
   const text = typeof input === 'string' ? input
     : Array.isArray(input) ? input.map(p => JSON.stringify(coreUtils.tgpProfileToJson(p))).join('\n')
@@ -55,11 +64,15 @@ async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer} = {
   const parsed = allFullIds.map(id => { const m = id.match(/^([^<]+)<([^>]+)>(.+)$/); return m && { type: m[1], dsl: m[2], shortId: m[3], fullId: id } }).filter(Boolean)
   if (!parsed.length) return { error: `no valid {$: 'type<dsl>id'} found in profile`, topLevelImports: [], importsStr: '' }
   const allDsls = unique(parsed.map(p => p.dsl))
-  const tgpModel = await calcTgpModelData({forRepo: repoRoot, forDsls: allDsls.join(','), fetchByEnvHttpServer })
+  const tgpModel = await calcTgpModelData({forRepo: repoRoot, forDsls: allDsls.join(','), fetchByEnvHttpServer, ctx })
   if (tgpModel.error) return { error: tgpModel.error }
   const projectDir = tgpModel.projectDir || repoRoot
   const comps = parsed.map(p => tgpModel.dsls[p.dsl]?.[p.type]?.[p.shortId]).filter(Boolean)
-  if (!comps.length) return { error: `can not find ${allFullIds.join(', ')}` }
+  if (!comps.length) {
+    const diagnostic = calcResolveFailedDiagnostic(parsed, tgpModel)
+    log?.error?.({ t: 'snippetResolveFailed', requested: allFullIds, ...diagnostic }, {}, { ctx })
+    return { error: `can not find ${allFullIds.join(', ')}`, diagnostic }
+  }
   const allComps = collectTransitiveComps(comps, tgpModel)
   const allCompDsls = unique([...allDsls, ...allComps.map(c => c.dsl)])
   const dslsEntryPoints = await discoverDslEntryPoints({ forDsls: allCompDsls, repoRoot })
@@ -70,8 +83,8 @@ async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer} = {
 }
 Object.assign(coreUtils, { calcImportsForProfile })
 
-async function calcJsonProfileScript({profileText, repoRoot, fetchByEnvHttpServer, bindLoggers, ctxEnricher}) {
-  const imp = await calcImportsForProfile(profileText + (ctxEnricher || ''), {repoRoot, fetchByEnvHttpServer})
+async function calcJsonProfileScript({profileText, repoRoot, fetchByEnvHttpServer, bindLoggers, ctxEnricher, ctx}) {
+  const imp = await calcImportsForProfile(profileText + (ctxEnricher || ''), {repoRoot, fetchByEnvHttpServer, ctx})
   if (imp.error) return imp
   const { importsStr, projectDir, importMapsInCli } = imp
   const loggerNames = (bindLoggers || '').split(',').map(s => s.trim()).filter(Boolean)
@@ -114,6 +127,26 @@ function collectTransitiveComps(initialComps, tgpModel) {
       if (m) walkComp(tgpModel.dsls[m[2]]?.[m[1]]?.[m[3]])
     }
     Object.values(node).forEach(v => walkImpl(v))
+  }
+}
+
+// Future-LLM bug detector: when a {$:'type<dsl>id'} ref fails to resolve, the unique fingerprint is
+// dslLoaded:true + definingFileCrawled:false ⇒ the defining file (e.g. *-tests.js) sits outside any dsl
+// entry-point import-graph and the discoverFiles scan, so it was never crawled.
+// For the full file inventory / per-comp registration, enable langServiceLogger + detailedTgpModelDataLogger.
+function calcResolveFailedDiagnostic(parsed, tgpModel) {
+  const files = tgpModel.files || []
+  return {
+    missing: parsed.map(p => {
+      const token = p.shortId.split('.').pop()
+      return {
+        fullId: p.fullId,
+        dslLoaded: !!tgpModel.dsls[p.dsl],
+        typeLoaded: !!tgpModel.dsls[p.dsl]?.[p.type],
+        definingFileCrawled: files.some(f => f.includes(token))   // false ⇒ defining file never crawled
+      }
+    }),
+    crawledFileCount: files.length
   }
 }
 

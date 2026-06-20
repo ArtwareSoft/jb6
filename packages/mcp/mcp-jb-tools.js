@@ -90,6 +90,9 @@ Profile: {$: 'gradient<css>linearGradient', direction: 'to right', stops: [{$: '
 Use tgpModel tool to discover available components and their params.`,
   params: [
     {id: 'profileText', as: 'string', asIs: true, mandatory: true, description: `JSON profile to execute, e.g. {$: 'data<common>pipeline', items: [...]}`},
+    {id: 'logger', as: 'string', description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
+    {id: 'repoRoot', as: 'string', description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
+    {id: 'fetchByEnvHttpServer', as: 'string', description: `cross-repo: http server serving that repo, e.g. http://localhost:3000`},
   ],
   impl: mcpTool({
     text: async (ctx, {}, args) => {
@@ -108,12 +111,13 @@ Tool('runTest', {
   description: 'Run a jb6 test by its test ID. Wraps the test as a snippet and executes it.',
   params: [
     {id: 'testId', as: 'string', mandatory: true, description: 'The test ID to run (e.g., "jqTest.tryCatch")'},
+    {id: 'logger', as: 'string', description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
   ],
   impl: mcpTool({
-    text: async (ctx, {}, {testId}) => {
+    text: async (ctx, {}, {testId, logger}) => {
       try {
         await import('@jb6/lang-service')
-        return coreUtils.runSnippetCli({profileText: `{$: 'test<test>${testId}'}`})
+        return coreUtils.runSnippetCli({profileText: `{$: 'test<test>${testId}'}`, logger})
       } catch (error) {
         return `Error running test: ${error.message || error}`
       }

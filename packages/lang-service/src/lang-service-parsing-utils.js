@@ -7,8 +7,12 @@ const { jb, systemParams, astNode, logException, logError, findCompDefById,
     resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType, resolveProfileTop } = coreUtils
 Object.assign(coreUtils, {astToTgpObj})
 
-export const langServiceUtils = jb.langServiceUtils = { closestComp, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath, 
-    lineColToOffset, offsetToLineCol, tgpEditorHost, applyCompChange, importJb6File }
+// acorn-loose mis-parses valid multiline destructures (drops `= dsls` init). Try strict acorn first, fall back to loose with a warning.
+const parseWithFallback = (src, opts, filePath) => { try { return parse(src, opts) } catch (e) {
+  logError(`acorn strict failed, using acorn-loose (may mis-parse) at ${filePath || '?'}: ${e.message}`); return parseLoose(src, opts) } }
+
+export const langServiceUtils = jb.langServiceUtils = { closestComp, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath,
+    lineColToOffset, offsetToLineCol, tgpEditorHost, applyCompChange, importJb6File, parseWithFallback }
 
 function tgpEditorHost() {
     return jb.ext.tgpTextEditor.host

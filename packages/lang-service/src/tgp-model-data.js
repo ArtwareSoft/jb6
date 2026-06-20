@@ -1,14 +1,17 @@
-import { parse } from '../lib/acorn-loose.mjs'
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
 
 const { jb, astToTgpObj, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData, calcRepoRoot, toCapitalType, absPathToImportUrl } = coreUtils
-const { calcProfileActionMap, lineColToOffset } = langServiceUtils
-const { 
+const { calcProfileActionMap, lineColToOffset, parseWithFallback: parse } = langServiceUtils
+const {
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
+  test: { Logger, logger: { domainLogger } },
 } = dsls
+
+Logger('langServiceLogger', { impl: domainLogger('langService') })
+Logger('detailedTgpModelDataLogger', { impl: domainLogger('detailedTgpModelData') })   // verbose per-crawl/per-comp firehose
 
 Object.assign(coreUtils, { calcTgpModelData, calcExpectedDslsSection})
 
@@ -16,16 +19,25 @@ Object.assign(coreUtils, { calcTgpModelData, calcExpectedDslsSection})
 // it is used by language services and wrapped by the class tgpModelForLangService
 
 export async function calcTgpModelData(resources) {
-  const { fetchByEnvHttpServer } = resources
-  if (resources.forDsls == 'test' && !resources.entryPointPaths)
+  const { fetchByEnvHttpServer, ctx } = resources
+  const log = ctx?.vars?.langServiceLogger
+  const detailed = ctx?.vars?.detailedTgpModelDataLogger
+  if (resources.forDsls == 'test' && !resources.entryPointPaths && !resources.forRepo)
     resources.forRepo = await calcRepoRoot()
   const {importMap, staticMappings, entryFiles, testFiles, projectDir, repoRoot, llmGuideFiles, jb6_llmGuideFiles, jb6_testFiles } = await calcImportData(resources)
   const allLlmGuideFiles = unique([...llmGuideFiles || [], ...jb6_llmGuideFiles || []])
   const allTestFiles = unique([...testFiles || [], ...jb6_testFiles || []])
   const rootFilePaths = unique([...entryFiles, ...allTestFiles, ...allLlmGuideFiles])
+  const short = p => (p || '').replace(repoRoot + '/', '')   // strip common prefix to shrink logs
+  const compsByFile = {}
   // crawl
   const codeMap = {} , visited = {}, importGraph = {}
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
+  // discovery trace: a comp is resolvable only if its file is among crawledFiles. files reachable ONLY from a
+  // non-entry aggregator (e.g. all-tests.js) and outside discoverFiles' jb6Dirs/tests scan never appear here.
+  log?.info?.({ t: 'tgpModelDiscovery', forDsls: resources.forDsls, repoRoot, entryFileCount: entryFiles.length,
+    testFileCount: allTestFiles.length, crawledFileCount: Object.keys(codeMap).length,
+    entryFiles: entryFiles.map(short), testFiles: allTestFiles.map(short) }, {}, { ctx })
 
   const tgpModel = {dsls: {}, ns: {}, nsRepo: {}, compDefsByFilePaths: {}, files: Object.keys(codeMap), importGraph, importMap, entryFiles, testFiles, projectDir, staticMappings}
   globalThis.detailedjbVSCodeLog && logVsCode('calcTgpModelData before', resources, tgpModel)
@@ -38,7 +50,7 @@ export async function calcTgpModelData(resources) {
 
   // Phase 1: TgpTypes — identify compDefs from ALL files
   Object.entries(codeMap).forEach(([url, src]) => {
-    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' }, url)
 
     const directDefs = ast.body.flatMap(n => n?.expression)
     const exportDefs = ast.body.filter(n => n.type === 'ExportNamedDeclaration').flatMap(n => n.declaration?.declarations).map(d=>d?.init)
@@ -68,7 +80,7 @@ export async function calcTgpModelData(resources) {
   // Phase 2: load components from safe files (library/framework code that compiles)
   safeFiles.forEach(filePath => {
     const src = codeMap[filePath]
-    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' }, filePath)
     const compDefs = extractCompDefs({dsls, ast, tgpModel, filePath})
     parseAllDeclarations(ast, filePath, src, compDefs)
   })
@@ -77,7 +89,7 @@ export async function calcTgpModelData(resources) {
   const { compDefsByFilePaths } = tgpModel
   unsafeFiles.forEach(filePath => {
     const src = codeMap[filePath]
-    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' }, filePath)
     const ownCompDefs = extractCompDefs({dsls, ast, tgpModel, filePath})
     const mergedCompDefs = {...ownCompDefs}
     collectCompDefsFromImports(filePath, mergedCompDefs)
@@ -87,7 +99,7 @@ export async function calcTgpModelData(resources) {
   // Phase 4: register components from entry files
   unsafeFiles.forEach(filePath => {
     const src = codeMap[filePath]
-    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+    const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' }, filePath)
     const compDefs = compDefsByFilePaths[filePath]
     parseAllDeclarations(ast, filePath, src, compDefs)
   })
@@ -117,6 +129,7 @@ export async function calcTgpModelData(resources) {
   }
 
   globalThis.detailedjbVSCodeLog && logVsCode('calcTgpModelData result', resources, tgpModel)
+  detailed?.info?.({ t: 'compsRegistered', totalComps: Object.values(compsByFile).reduce((a,b)=>a+b,0), compsByFile }, {}, { ctx })
 
   return tgpModel
 
@@ -168,6 +181,7 @@ export async function calcTgpModelData(resources) {
     const jbComp = _comp[asJbComp] // remove the proxy
     delete jbComp.$
     dsls[jbComp.dsl][jbComp.type][shortId] = jbComp
+    compsByFile[short(filePath)] = (compsByFile[short(filePath)] || 0) + 1
   }
 
   async function crawl(url) {
@@ -178,7 +192,7 @@ export async function calcTgpModelData(resources) {
       const src = await fetchByEnv(rUrl, staticMappings, fetchByEnvHttpServer)
       codeMap[url] = src
 
-      const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+      const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' }, rUrl)
 
       const imports = [
       ...ast.body.filter(n => n.type === 'ImportDeclaration').map(n => n.source.value)
@@ -189,9 +203,11 @@ export async function calcTgpModelData(resources) {
       ].filter(x=>!x.match(/^\/libs\//))
       importGraph[url] = imports
       globalThis.detailedjbVSCodeLog && logVsCode('crawl', url, imports)
+      detailed?.info?.({ t: 'crawl', url: short(url), importCount: imports.length }, {}, { ctx })
 
       await Promise.all(imports.map(url => crawl(url)))
     } catch (e) {
+      detailed?.error?.({ t: 'crawlError', url, err: e.stack || String(e) }, {}, { ctx })
       console.error(`Error crawling ${url}:`, e)
     }
   }
@@ -309,7 +325,7 @@ async function calcExpectedDslsSection(tgpModel, filePath) {
 
   // Detect tgp dsl compDefs (Component, Const, TgpType, TgpTypeModifier) used in the file
   const tgpCompDefIds = new Set(['Component', 'Const', 'TgpType', 'TgpTypeModifier'])
-  const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' })
+  const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module' }, filePath)
   ast.body.forEach(n => {
     const callee = n?.expression?.callee?.name || n?.declarations?.[0]?.init?.callee?.name
     if (callee && tgpCompDefIds.has(callee))
