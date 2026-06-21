@@ -116,6 +116,27 @@ Test('mcpTest.probe', {
   })
 })
 
+Test('mcpTest.snippetWithLogger', {
+  HeavyTest: true,
+  impl: mcpToolTest({
+    tool: 'runTgpSnippet',
+    args: asIs({
+        profileText: `{$: 'data<common>pipeline', source: [1,2,3], operators: [{$: 'data<common>count'}]}`,
+        logger: 'langServiceLogger'
+    }),
+    expectedResult: contains('langServiceLog')
+  })
+})
+
+Test('mcpTest.probeWithLogger', {
+  HeavyTest: true,
+  impl: mcpToolTest({
+    tool: 'runProbe',
+    args: asIs({ probePath: 'test<test>coreTest.HelloWorld~impl~calculate~operators~0', logger: 'langServiceLogger' }),
+    expectedResult: contains('langServiceLog')
+  })
+})
+
 Test('mcpReactTest.helloMcp', {
   HeavyTest: true,
   doNotRunInTests: true,

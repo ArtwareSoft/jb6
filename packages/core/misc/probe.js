@@ -5,6 +5,7 @@ import '../utils/jb-args.js'
 import '../utils/jb-core.js'
 import '../utils/tgp.js'
 import './jb-cli.js'
+import './import-map-services.js'
 
 const { coreUtils } = jb
 const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays,
@@ -19,17 +20,23 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
   try {
     const { extraCode, circuitCmpId, repoRoot, fetchByEnvHttpServer, entryPointPaths, resolution = 'default' } = resources
     const loggerNames = (resources.logger || '').split(',').map(s => s.trim()).filter(Boolean)
-    const ctx = resources.ctx || (loggerNames.length ? await coreUtils.ensureLoggers(loggerNames) : undefined)
+    const ctx = resources.ctx || (loggerNames.length ? coreUtils.ensureLoggers(loggerNames) : undefined)
 
-    if (!coreUtils.calcImportsForProfile)
-      await import('@jb6/lang-service')
-
-    // resolve imports for the probed/circuit component. the circuit is a CALLER of the probed
-    // component, so we must also import all test files (where circuits are defined) - this is what
-    // lets circuitOptions() discover the circuit at runtime in the child process.
-    const cmpId = (circuitCmpId || probePath).split('~')[0]
-    const profileText = `{$: '${cmpId}'}`
-    const imp = await coreUtils.calcImportsForProfile(profileText, {repoRoot, fetchByEnvHttpServer, entryPointPaths, ctx})
+    // completion probes a SYNTHETIC comp defined only in extraCode (the edited comp in the editor) -
+    // it has no on-disk definition, so resolving its imports would always fail (and waste ~800ms on
+    // a full model scan). go straight to importing entry + repo test files (calcImportsForFiles lives
+    // in core); extraCode defines the comp. otherwise resolve the probed/circuit comp's imports via
+    // lang-service (the circuit is a CALLER of the probed comp, so test files are pulled in too - this
+    // is what lets circuitOptions() discover the circuit at runtime in the child process).
+    let imp
+    if (extraCode && entryPointPaths) {
+      imp = await coreUtils.calcImportsForFiles(coreUtils.asArray(entryPointPaths), {repoRoot})
+    } else {
+      if (!coreUtils.calcImportsForProfile)
+        await import('@jb6/lang-service/src/tgp-model-data.js')
+      const cmpId = (circuitCmpId || probePath).split('~')[0]
+      imp = await coreUtils.calcImportsForProfile(`{$: '${cmpId}'}`, {repoRoot, fetchByEnvHttpServer, entryPointPaths, ctx})
+    }
     if (imp.error)
       return { probeRes: null, error: imp.error, diagnostic: imp.diagnostic }
     const { projectDir, importMapsInCli } = imp
@@ -46,11 +53,7 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
       const loggerNames = ${JSON.stringify(loggerNames)}
       try {
         ${extraCode || ''}
-        if (loggerNames.length) {
-          coreUtils.spy.initSpy({spyParam: 'all'})
-          const loggerCtx = await coreUtils.ensureLoggers(loggerNames)
-          loggerNames.forEach(n => coreUtils.wrapLoggerInstanceToStderr(n, loggerCtx.vars[n]))
-        }
+        if (loggerNames.length) coreUtils.ensureLoggers(loggerNames, {wrapToStderr: true})
         ${importsStr}
         const probeRes = await jb.coreUtils.runProbe(probePath, ${JSON.stringify({circuitCmpId})})
         await coreUtils.writeServiceResult(probeRes)
@@ -61,9 +64,7 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
     `
     const { result, error, cmd } = await coreUtils.runCliInContext(script,
       {projectDir, importMapsInCli, ctx, bindLoggers: loggerNames.join(','), stream: 'both'}, onStatus)
-    const probeLog = Object.fromEntries(loggerNames.flatMap(n => {
-      const l = ctx?.vars?.[n]?.logsAndErrors?.(); return l ? Object.entries(l) : []
-    }))
+    const probeLog = ctx ? coreUtils.harvestLogs(ctx, loggerNames) : {}
     if (resolution == 'all')
       return { probeRes: result, error, cmd, projectDir, topLevelImports: allImportFiles, ...probeLog }
     // result[] records are {in:{data,vars}, out, from}. 'default' = in.data + out (no vars) -

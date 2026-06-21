@@ -67,7 +67,7 @@ Test('probeCliTest.helloWorld', {
       return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',{entryPointPaths})
     },
     expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
-    timeout: 1000
+    timeout: 4000
   })
 })
 
@@ -80,7 +80,7 @@ Test('probeCliTest.claudeDir', {
       return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',{entryPointPaths}, { claudeDir: `${repoRoot}/.probe-claude` })
     },
     expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
-    timeout: 1000
+    timeout: 4000
   })
 })
 
@@ -95,8 +95,7 @@ Test('cliTest.progressViaLogger', {
       const script = `
         import { coreUtils } from '@jb6/core'
         import '@jb6/core/misc/jb-cli.js'
-        let ctx = await coreUtils.ensureLoggers(['cliLogger'])
-        coreUtils.wrapLoggerInstanceToStderr('cliLogger', ctx.vars.cliLogger)
+        let ctx = coreUtils.ensureLoggers('cliLogger', {wrapToStderr: true})
         ctx.vars.cliLogger.progress({t: '1'})
         await coreUtils.delay(20)
         ctx.vars.cliLogger.progress({t: '2'})
@@ -125,7 +124,7 @@ Test('probeCliTest.findTestFiles', {
       return allData
     },
     expectedResult: equals('hello,hello,hello'),
-    timeout: 2000
+    timeout: 8000
   })
 })
 

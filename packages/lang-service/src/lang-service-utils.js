@@ -275,7 +275,11 @@ async function dataCompletions(compProps, path, ctx) {
 const { test: { Test, test: { dataTest } } } = dsls
 ${compText}
 ` : ''
-    const {probeRes, error, cmd} = await runProbeCli(path, {entryPointPaths, extraCode })
+    // resolution:'all' keeps the full {in:{data,vars,jbCtx}} record - completions need vars/jbCtx
+    // for %$var% suggestions. the lean 'default' projection is only for the MCP wire payload.
+    const importStrategy = (extraCode && entryPointPaths) ? 'calcImportsForFiles (no profile scan)' : 'calcImportsForProfile (profile scan)'
+    ctx?.vars?.langServiceLogger?.info?.({ t: 'dataCompletions probe', path, importStrategy, hasExtraCode: !!extraCode, entryPointPaths }, {}, { ctx })
+    const {probeRes, error, cmd} = await runProbeCli(path, {entryPointPaths, extraCode, resolution: 'all' })
     if (error) {
         globalThis.showUserMessage && showUserMessage('error', `probe cli failed: ${JSON.stringify(error)} ${cmd}`)
         return []

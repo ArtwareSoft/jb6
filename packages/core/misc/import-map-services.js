@@ -8,7 +8,7 @@ const { isNode, logException, pathJoin,pathParent, unique, asArray } = coreUtils
 jb.importMapCache = {
   fileContext: {}
 }
-Object.assign(coreUtils, { getStaticServeConfig, calcImportData, resolveWithImportMap, fetchByEnv, calcRepoRoot, calcJb6RepoRootAndImportMapsInCli, discoverDslEntryPoints, absPathToImportUrl })
+Object.assign(coreUtils, { getStaticServeConfig, calcImportData, calcImportsForFiles, resolveWithImportMap, fetchByEnv, calcRepoRoot, calcJb6RepoRootAndImportMapsInCli, discoverDslEntryPoints, absPathToImportUrl })
 
 const ignoreDirs = [ 'node_modules', '3rd-party', '.git'] 
 async function calcRepoRoot(options) {
@@ -175,6 +175,17 @@ try {
 
 function createErrorResult(error, entryFiles = [], pkgJson = {}) {
   return { pkgJson, entryFiles, error, testFiles: [], llmGuideFiles: [] }
+}
+
+// Build the import list for running a SYNTHETIC comp (one that has no on-disk definition, e.g. a comp
+// defined inline in probe extraCode). We can't resolve its imports from the comp, so we import the
+// given entry files + the repo's entryFiles + ALL repo test files (where Const()/circuits may live).
+async function calcImportsForFiles(files, {repoRoot} = {}) {
+  repoRoot = repoRoot || await calcRepoRoot()
+  const { entryFiles = [], testFiles = [], importMap, projectDir, error } = await calcImportData({ forRepo: repoRoot })
+  if (error) return { error }
+  const topLevelImports = unique([...entryFiles, ...files, ...testFiles])
+  return { topLevelImports, projectDir: projectDir || repoRoot, importMapsInCli: importMap?.importMapsInCli, tgpModel: { testFiles } }
 }
 
 async function packageJson(packageDir) {

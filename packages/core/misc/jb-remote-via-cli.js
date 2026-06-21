@@ -16,15 +16,14 @@ async function runStrippedCli({ profileJson, packed, imports = {}, testLoggers =
   const all = [...new Set([...test, ...prog])]
   // the live sink: dispatchChildLine routes child progress into ctx.vars[logger].progress → eventEmitter (the local
   // progress channel a UI/SSE subscribes to). Default it to a fresh ctx with progressLoggers, so callers needn't manage it.
-  ctx = ctx || await coreUtils.ensureLoggers(prog)
+  ctx = ctx || coreUtils.ensureLoggers(prog)
   const { importsStr = '', projectDir, importMapsInCli } = imports
   const script = `
 import { coreUtils } from '@jb6/core'
 import '@jb6/core/misc/jb-remote.js'
 export async function calc() {
   ${importsStr}
-  const loggers = (await coreUtils.ensureLoggers(${JSON.stringify(all)})).vars
-  ;${JSON.stringify(prog)}.forEach(n => loggers[n] && coreUtils.wrapLoggerInstanceToStderr(n, loggers[n]))   // progress → stderr live
+  const loggers = coreUtils.ensureLoggers(${JSON.stringify(all)}, {ctx: coreUtils.ensureLoggers(${JSON.stringify(prog)}, {wrapToStderr: true})}).vars   // prog wrapped to stderr (live), rest just instantiated
   try {
     const ctx = coreUtils.buildCtx(${JSON.stringify(packed)}).setVars(loggers)
     const raw = await ctx.run(${JSON.stringify(profileJson)})

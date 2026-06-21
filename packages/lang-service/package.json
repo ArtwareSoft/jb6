@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./index.js",
+    "./src/tgp-model-data.js": "./src/tgp-model-data.js",
     "./lib/*.mjs": "./lib/*.mjs"
   },
   "files": [

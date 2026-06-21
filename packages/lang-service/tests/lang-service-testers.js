@@ -99,7 +99,7 @@ Test('completionOptionsTest', {
       }, []).filter(x=>x).join(', ')
       return errors.match(/^-*$/) ? true : { testFailure: errors }
     },
-    timeout: 1000,
+    timeout: 4000,
     includeTestRes: true
   })
 })

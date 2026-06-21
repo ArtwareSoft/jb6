@@ -74,7 +74,7 @@ Component('bash', {
 // In browser: routes through jb-web-server SSE. In Node: spawns a child directly.
 // Child stderr JSONL lines route to ctx.vars[loggerName]; non-JSONL falls through to ctx.vars.cliLogger.
 async function runCliInContext(script, options = {}) {
-  options.ctx = coreUtils.ensureLoggers([], options.ctx)   // always a ctx with errorLogger — single source of truth downstream
+  options.ctx = coreUtils.ensureLoggers([], {ctx: options.ctx})   // always a ctx with errorLogger — single source of truth downstream
   const router = makeChildOutputRouter(options)
   if (!isNode && router) return runNodeCliStreamViaJbWebServer(script, options, router)
   if (!isNode) return runNodeCliViaJbWebServer(script, options)

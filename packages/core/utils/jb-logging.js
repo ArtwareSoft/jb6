@@ -14,13 +14,22 @@ const Logger = TgpType('logger', 'test')
 jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
 Object.assign(jb.coreRegistry.urlReservedParams, {logger: true, spy: true})
 
-// ensureLoggers: instantiate named loggers into ctx.vars iff not already present. Idempotent. Creates a fresh Ctx if none provided.
+// ensureLoggers: the single logger-init entry point. Instantiates named loggers into ctx.vars (idempotent).
+// wrapToStderr is passed by the PARENT into the child script it generates (probe/snippet) - the child is the only
+// place that should tee logs to stderr (the only channel back to the parent router). When set, it also turns spy on
+// and wraps each requested logger instance. Parents call without it, so they never wrap themselves; browsers never
+// pass it (and process.stderr guard in wrapLoggerInstanceToStderr is a backstop).
 // errorLogger is ALWAYS ensured — errors must be visible regardless of which tracing loggers the caller opted into.
-const ensureLoggers = (names = [], ctx = new coreUtils.Ctx()) => [...new Set(['errorLogger', ...names])].reduce((c, name) => {
-  if (c.vars[name]) return c
-  const comp = jb.dsls.test.logger[name]
-  return comp ? c.setVars({[name]: comp.$runWithCtx(c)}) : c
-}, ctx)
+const ensureLoggers = (names = [], {ctx = new coreUtils.Ctx(), wrapToStderr} = {}) => {
+  names = (Array.isArray(names) ? names : String(names).split(',')).map(s => s.trim()).filter(Boolean)
+  if (wrapToStderr) initSpy({spyParam: 'all'})
+  return [...new Set(['errorLogger', ...names])].reduce((c, name) => {
+    const inst = c.vars[name] || (jb.dsls.test.logger[name] ? jb.dsls.test.logger[name].$runWithCtx(c) : undefined)
+    if (!inst) return c
+    if (wrapToStderr) wrapLoggerInstanceToStderr(name, inst)
+    return c.vars[name] ? c : c.setVars({[name]: inst})
+  }, ctx)
+}
 coreUtils.ensureLoggers = ensureLoggers
 
 coreUtils.harvestLogs = (ctx, names) => Object.fromEntries((names || Object.keys(ctx.vars)).filter(n => ctx.vars[n]?.logsAndErrors).map(n => [n, ctx.vars[n].logsAndErrors()]))
@@ -28,15 +37,15 @@ coreUtils.harvestLogs = (ctx, names) => Object.fromEntries((names || Object.keys
 // loggersFromUrl: instantiate loggers named by `?logger=...` URL param + activate spy. Returns ctx with logger vars.
 coreUtils.loggersFromUrl = (urlParams, ctx = new coreUtils.Ctx()) => {
   initSpyByUrl()
-  const names = (urlParams.get('logger') || '').split(',').map(s => s.trim()).filter(Boolean)
-  return ensureLoggers(names, ctx)
+  const names = urlParams.get('logger') || ''
+  return ensureLoggers(names, {ctx})
 }
 
 // ensureLogger: ctx-enricher form (single name). Idempotent — safe in both standalone and test-runner ctxs.
 Component('ensureLogger', {
   type: 'ctx-enricher<tgp>',
   params: [{id: 'name', as: 'string', mandatory: true, description: 'logger name (e.g. "wlaLogger")'}],
-  impl: (ctx, {}, {name}) => ensureLoggers([name], ctx)
+  impl: (ctx, {}, {name}) => ensureLoggers(name, {ctx})
 })
 
 let enabled = false, spyParam, _obs, enrichers = []
@@ -268,6 +277,9 @@ Logger('errorLogger', { impl: domainLogger('error') })   // always-on (ensureLog
 // Embedded `\n`s inside the JSON are escaped to '\\n' at write-time so the line is a single physical line on the wire,
 // surviving SSE/transport layers that split on raw `\n`. Receiver unescapes via JSON.parse.
 const wrapLoggerInstanceToStderr = (name, inst) => {
+  if (!inst) return inst   // logger not registered in this process (its defining package wasn't imported) - skip, don't crash the run
+  if (inst._wrappedToStderr) return inst   // idempotent - ensureLoggers may run more than once; don't double-emit
+  inst._wrappedToStderr = true
   for (const ch of ['info','warning','error','progress']) {   // not 'status': status() delegates to progress() which is already wrapped
     const o = inst[ch]?.bind(inst)
     if (!o) continue
