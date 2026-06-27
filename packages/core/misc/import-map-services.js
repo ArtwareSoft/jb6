@@ -40,24 +40,20 @@ async function calcRepoRoot(options) {
 }
 
 async function calcJb6RepoRootAndImportMapsInCli() {
-  if (jb.coreRegistry.jb6Root)
-    return jb.coreRegistry.jb6Root
   if (!isNode) {
-    try {
+    if (!jb.coreRegistry.jb6Root) try {
       jb.coreRegistry.jb6Root = pathParent(JSON.parse(globalThis.document.head.querySelector('[type="importmap"]').innerText).staticMappings
         .find(x=>x.urlPath == '/jb6_packages').diskPath)
-    } catch(e) {
-      debugger
-    }
-  } else {
-    const path = await import('path')
-    const repoRoot = await calcRepoRoot()
-    const pkgJson = await packageJson(repoRoot)
-    jb.coreRegistry.jb6Root = pkgJson.name == 'jb6-monorepo' && repoRoot
-      || pkgJson.jb6Root && path.resolve(repoRoot,pkgJson.jb6Root)
-      || `${repoRoot}/node_modules/@jb6`
-    jb.coreRegistry.importMapsInCli = pkgJson.importMapsInCli && path.resolve(repoRoot,pkgJson.importMapsInCli)
+    } catch(e) { debugger }
+    return jb.coreRegistry.jb6Root
   }
+  const path = await import('path')
+  const repoRoot = await calcRepoRoot()
+  const pkgJson = await packageJson(repoRoot)
+  jb.coreRegistry.jb6Root = pkgJson.name == 'jb6-monorepo' && repoRoot
+    || pkgJson.jb6Root && path.resolve(repoRoot,pkgJson.jb6Root)
+    || `${repoRoot}/node_modules/@jb6`
+  jb.coreRegistry.importMapsInCli = pkgJson.importMapsInCli && path.resolve(repoRoot,pkgJson.importMapsInCli)
   return jb.coreRegistry.jb6Root
 }
 

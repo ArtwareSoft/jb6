@@ -20,7 +20,7 @@ function scanProfile(prof, seen = new Set()) {
         const comp = asComp(prof.$)
         if (comp && !seen.has(comp)) {
             seen.add(comp)
-            tokens.push(...tokensIn(comp.impl), ...(comp.params || []).flatMap(p => tokensIn(p.defaultValue)))
+            tokens.push(...tokensIn(comp.impl), ...(comp.params || []).filter(p => prof[p.id] === undefined).flatMap(p => tokensIn(p.defaultValue)))
         }
     }
     Object.values(prof).forEach(v => Array.isArray(v) ? v.forEach(x => tokens.push(...scanProfile(x, seen))) : tokens.push(...scanProfile(v, seen)))

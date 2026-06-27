@@ -54,8 +54,8 @@ async function runSnippetCli(args) {
   }
 }
 
-async function calcJsonProfileScript({profileText, repoRoot, fetchByEnvHttpServer, bindLoggers, ctxEnricher, ctx}) {
-  const imp = await coreUtils.calcImportsForProfile(profileText + (ctxEnricher || ''), {repoRoot, fetchByEnvHttpServer, ctx})
+async function calcJsonProfileScript({profileText, repoRoot, fetchByEnvHttpServer, bindLoggers, ctxEnricher, entryPointPaths, ctx}) {
+  const imp = await coreUtils.calcImportsForProfile(profileText + (ctxEnricher || ''), {repoRoot, fetchByEnvHttpServer, entryPointPaths, ctx})
   if (imp.error) return imp
   const { importsStr, projectDir, importMapsInCli } = imp
   const enrichStmt = ctxEnricher ? `.run(${ctxEnricher})` : ''

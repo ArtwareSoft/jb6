@@ -67,7 +67,7 @@ Test('probeCliTest.helloWorld', {
       return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',{entryPointPaths})
     },
     expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
-    timeout: 4000
+    timeout: 1000
   })
 })
 
@@ -80,7 +80,7 @@ Test('probeCliTest.claudeDir', {
       return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',{entryPointPaths}, { claudeDir: `${repoRoot}/.probe-claude` })
     },
     expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
-    timeout: 4000
+    timeout: 1000
   })
 })
 
@@ -124,7 +124,7 @@ Test('probeCliTest.findTestFiles', {
       return allData
     },
     expectedResult: equals('hello,hello,hello'),
-    timeout: 8000
+    timeout: 2000
   })
 })
 

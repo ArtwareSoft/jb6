@@ -33,6 +33,7 @@ const ensureLoggers = (names = [], {ctx = new coreUtils.Ctx(), wrapToStderr} = {
 coreUtils.ensureLoggers = ensureLoggers
 
 coreUtils.harvestLogs = (ctx, names) => Object.fromEntries((names || Object.keys(ctx.vars)).filter(n => ctx.vars[n]?.logsAndErrors).map(n => [n, ctx.vars[n].logsAndErrors()]))
+coreUtils.activeLoggers = ctx => Object.keys(ctx.vars).filter(n => /Logger$/.test(n)).join(',')
 
 // loggersFromUrl: instantiate loggers named by `?logger=...` URL param + activate spy. Returns ctx with logger vars.
 coreUtils.loggersFromUrl = (urlParams, ctx = new coreUtils.Ctx()) => {

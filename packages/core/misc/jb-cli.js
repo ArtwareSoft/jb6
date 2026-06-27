@@ -16,6 +16,7 @@ const { logException, logError, isNode } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript, runNodeCliStreamViaJbWebServer, runBashScriptStreamViaJbWebServer, buildNodeCliCmd, makeChildOutputRouter})
 
 Logger('cliLogger', { impl: domainLogger('cli') })
+Logger('cliLineLogger', { impl: domainLogger('cliLine') })
 
 function buildNodeCliCmd(script, options = {}) {
   options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
@@ -38,11 +39,11 @@ function dispatchChildLine({ctx, line, stream}) {
         ctx.vars.errorLogger.error({t: 'dispatch error', logger: ev.logger, channel: ev.channel, err: e.stack}, {}, {ctx})
       }
     } else {
-      ctx.vars.errorLogger.error({t: 'dispatch missing', logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function')}, {}, {ctx})
+      ctx.vars.errorLogger.error({t: 'dispatch missing', logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function'), pid: process?.pid, ctxLoggers: Object.keys(ctx.vars).filter(n=>ctx.vars[n]?.logsAndErrors), registeredDef: !!jb.dsls?.test?.logger?.[ev.logger]}, {}, {ctx})
     }
     return
   }
-  ctx?.vars?.cliLogger?.info?.({t: 'cli line', stream, line}, {}, {ctx})
+  ctx?.vars?.cliLineLogger?.info?.({t: 'cli line', stream, line}, {}, {ctx})   // raw passthrough → its OWN logger; keeps cliLogger (timing) clean
 }
 // Stateful line-buffered router for chunked stdio. Splits on '\n'; call .flush() to drain trailing partials.
 function makeChildOutputRouter({ctx, bindLoggers}) {
@@ -93,19 +94,23 @@ async function runNodeCli(script, options = {}) {
   return new Promise(resolve => {
     let out = '', err = ''
     try {
+      const _spawnAt = Date.now(), _log = ev => options.ctx?.vars?.cliLogger?.info?.(ev, {}, {ctx: options.ctx})   // log to delete
+      let _firstOut = 0   // log to delete
       const child = spawn(process.execPath, ['--experimental-vm-modules', '--expose-gc', '--input-type=module', ...importParts, '-e', scriptToRun], {cwd})
+      _log({t: 'node spawned (process.execPath)', spawnCallMs: Date.now() - _spawnAt})   // log to delete
       options.onChild?.(child)
       child.stdout.on('data', d => { const text = '' + d; out += text; router?.({stream: 'stdout', text}); onChunk?.({stream: 'stdout', text}) })
-      child.stderr.on('data', d => { const text = '' + d; err += text; router?.({stream: 'stderr', text}); onChunk?.({stream: 'stderr', text}) })
+      child.stderr.on('data', d => { const text = '' + d; if (!_firstOut) { _firstOut = Date.now(); _log({t: 'child first stderr (node boot+envelope import done)', bootMs: _firstOut - _spawnAt}) } err += text; router?.({stream: 'stderr', text}); onChunk?.({stream: 'stderr', text}) })   // log to delete
       child.on('close', code => {
+        _log({t: 'child process closed', childWallMs: Date.now() - _spawnAt, bootToFirstOutMs: _firstOut ? _firstOut - _spawnAt : null})   // log to delete
         router?.flush?.()
         if (code !== 0) {
           const error = Object.assign(new Error(`Exit ${code}`), {stdout: out, stderr: err})
           logException(error, 'error in run node cli stream', {cmd, cwd, stdout: out})
           return resolve({error, cmd, cwd, code, stderr: err})
         }
-        try { resolve({result: JSON.parse(out), cmd, cwd, stderr: err}) }
-        catch (e) { resolve({err: 'json parse error', error: e.stack || e, cmd, cwd, textToParse: out, stderr: err}) }
+        try { const result = JSON.parse(out); resolve({result, error: result?.error, cmd, cwd, stderr: err}) }
+        catch (e) { resolve({error: e.stack || e, cmd, cwd, textToParse: out, stderr: err}) }
       })
     } catch(e) {
       logException(e, 'error in run node cli stream', {cmd, cwd})

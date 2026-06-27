@@ -6,8 +6,8 @@ import '@jb6/core/misc/jb-remote-via-cli.js' // runStrippedCli
 
 // ============================================================================
 // OVER-THE-WIRE: run a profile on a process that shares the code, with a stripped slice of the caller's ctx.
-//   stripCtx({profileJson, ctx})  → packed (the call's referenced vars/args; bigData→ref; 256K cap)
-//   buildCtx(packed)              → Ctx (args back into jbCtx) — run it == running locally
+//   stripCtx({profileJson, ctx})  → packedCtx (the call's referenced vars/args; bigData→ref; 256K cap)
+//   buildCtx(packedCtx)           → Ctx (args back into jbCtx) — run it == running locally
 // over a FRESH node process: result returned, testLoggers' logs returned, progressLoggers re-activate local progress.
 // ============================================================================
 const {
@@ -91,11 +91,11 @@ const runOverCli = Data('runOverCli', {
   impl: async (ctx, {}, {prof, loggers}) => {
     const { stripCtx, tgpProfileToJson, runStrippedCli } = coreUtils
     const profileJson = tgpProfileToJson(prof.profile)
-    const packed = stripCtx({ profileJson, ctx: prof.lexicalCtx })
+    const packedCtx = stripCtx({ profileJson, ctx: prof.lexicalCtx })
     const localProgress = []
     const onProgress = ev => localProgress.push(ev)
     coreUtils.eventEmitter.on('progress', onProgress)
-    const { result, logs } = await runStrippedCli({ profileJson, packed, imports: { importsStr: "await import('@jb6/core/tests/cli-tests.js')" }, testLoggers: loggers, progressLoggers: loggers })
+    const { result, logs } = await runStrippedCli({ profileJson, packedCtx, imports: { importsStr: "await import('@jb6/core/tests/cli-tests.js')" }, testLoggers: loggers, progressLoggers: loggers })
     coreUtils.eventEmitter.off('progress', onProgress)
     return { result, logs, localProgress }
   }
