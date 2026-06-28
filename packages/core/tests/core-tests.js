@@ -527,7 +527,7 @@ Test('coreTest.runBashScriptStreamViaJbWebServer', {
       }
     },
     expectedResult: equals({ lines: 'err:line2|out:line1|out:line3', stderr: 'line2', chunkStreams: 'stderr,stdout', streamed: true }),
-    timeout: 15000,
+    timeout: 12000,
     logger: 'cliLogger'
   })
 })

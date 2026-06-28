@@ -107,7 +107,7 @@ Test('cliTest.stripCtxRun', {
   impl: dataTest({
     calculate: runOverCli({ vars: Var('v1', 'V'), prof: sCalc('P') }),
     expectedResult: equals('V-P-V-', '%result%'),
-    timeout: 20000
+    timeout: 12000
   })
 })
 
@@ -117,7 +117,7 @@ Test('cliTest.stripCtxLogs', {
   impl: dataTest({
     calculate: runOverCli({ prof: sLogInfo(), loggers: 'cliLogger' }),
     expectedResult: equals('theInfo', '%logs.cliLogger.cliLog.0.t%'),
-    timeout: 20000
+    timeout: 12000
   })
 })
 
@@ -126,7 +126,7 @@ Test('cliTest.stripCtxProgress', {
   HeavyTest: true,
   nodeOnly: true,
   impl: dataTest(runOverCli(sLogProgress(), 'cliLogger'), equals('theProgress', '%localProgress.0.t%'), {
-    timeout: 20000
+    timeout: 12000
   })
 })
 
@@ -137,7 +137,7 @@ Test('cliTest.stripCtxSafeToEmbed', {
   impl: dataTest({
     calculate: runOverCli({ vars: Var('region', 'US'), prof: reportSqlVar({ minTotal: 200 }) }),
     expectedResult: equals('US total >= 200', '%result%'),
-    timeout: 20000
+    timeout: 12000
   })
 })
 
@@ -147,6 +147,6 @@ Test('cliTest.stripCtxMetric', {
   impl: dataTest({
     calculate: runOverCli({ prof: sLogMetric(), loggers: 'cliLogger' }),
     expectedResult: equals(29760, '%logs.cliLogger.cliLog.0.maxRssKb%'),
-    timeout: 20000
+    timeout: 12000
   })
 })

@@ -256,7 +256,7 @@ async function servePuppeteerRender(app) {
         const baseUrl = `http://localhost:${process.env.PORT || 3000}`
         const url = `${baseUrl}/jb6-local-settings/probe-view.html?path=scenario%3Cdemo%3E${encodeURIComponent(scenarioId)}&filePath=${encodeURIComponent(filePath)}&autoplay=true`
         console.log(`Navigating to: ${url}`)
-        await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
+        await page.goto(url, { waitUntil: 'networkidle0', timeout: 12000 })
         await new Promise(r => setTimeout(r, 2000)) // wait for render and animation start
 
         const phoneElement = await page.$('[data-phone-frame="true"]')

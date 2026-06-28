@@ -230,7 +230,7 @@ Test('snippetTest', {
       return res?.result || res.error
     },
     expectedResult: '%$expectedResult()%',
-    timeout: 20000,
+    timeout: 12000,
     allowError: true,
     includeTestRes: true
   })

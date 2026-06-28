@@ -43,6 +43,18 @@
       h('div', {}, hh(ctx, JbPickerStarter), hh(ctx, reactCmp, props))
     )
 
+    // uiAction=<json profile of ui-action<test>actions> → drive the mounted comp (waitForText/click/…) exactly like reactTest's
+    // action loop, but live in the page. lets Playwright reproduce a reactTest's userActions over a real URL. needs the testers.
+    const uiAction = urlParams.get('uiAction')
+    if (uiAction) {
+      await import('@jb6/react/tests/react-testers.js')
+      reactUtils.registerMutObs(window)
+      const profile = JSON.parse(uiAction); coreUtils.restoreProfile$(profile)
+      const action = await ctx.run(profile)
+      await window.waitForMutations(10)
+      await action.exec(ctx.setVars({ win: window }))
+    }
+
   </script>
 </body>
 </html>

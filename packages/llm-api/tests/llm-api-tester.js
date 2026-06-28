@@ -21,7 +21,7 @@ Test('llmTest', {
       useLocalStorageCache: '%$useLocalStorageCache%'
     }),
     expectedResult: '%$expectedResult()%',
-    timeout: 50000,
+    timeout: 12000,
     includeTestRes: true
   })
 })
@@ -40,7 +40,7 @@ Test('llmCardTest', {
       useLocalStorageCache: '%$useLocalStorageCache%'
     }),
     expectedResult: '%$expectedResult()%',
-    timeout: 500000,
+    timeout: 12000,
     includeTestRes: true
   })
 })
