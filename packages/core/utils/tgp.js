@@ -211,13 +211,8 @@ Component('enrichCtx', {
     params: [
     {id: 'enrichers', type: 'ctx-enricher<tgp>[]', dynamic: true, composite: true }
   ],
-  impl: async (ctx, {}, { enrichers }) => {
-    let res = ctx
-    const list = asArray(enrichers.profile)
-    for (let i = 0; i < list.length; i++)
-      res = await res.runInnerArg(enrichers, i)
-    return res
-  }
+  impl: (ctx, {}, { enrichers }) =>
+    asArray(enrichers.profile).flat().reduce((res, e) => Promise.resolve(res).then(c => c.run(e)), ctx)
 })
 
 // common dsl

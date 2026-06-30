@@ -50,12 +50,10 @@ Test('stripCtxTest.doubleDynamicTrue', {
   })
 })
 
-const safeToEmbed = (text, ctx) => String(text).replace(/\{%\$(\w+)%\}/g, (_, name) => coreUtils.calcVar(name, ctx))
-
 // resolve {%$var%} in the SQL's DEFINITION ctx (lexical params like minTotal), merged with the RUNTIME ctx vars (e.g. region).
 const lexEmbed = Data('lexEmbed', {
   params: [{id: 'sql', dynamic: true}],
-  impl: (ctx, {}, {sql}) => safeToEmbed(sql.profile, sql.lexicalCtx.setVars(ctx.vars))
+  impl: (ctx, {}, {sql}) => coreUtils.safeToEmbed(sql.profile, sql.lexicalCtx.setVars(ctx.vars))
 })
 
 const reportSql = Data('reportSql', {

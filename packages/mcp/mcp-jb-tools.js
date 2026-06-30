@@ -109,13 +109,14 @@ Use tgpModel tool to discover available components and their params.`,
 
 Tool('runProbe', {
   description: `Probe a TGP circuit: run it and capture intermediate {in,out} at a probePath.
-A probePath addresses a location inside a runnable circuit, e.g.
+The circuit is the comp run end-to-end to reach the probePath; a probePath addresses a location inside it, e.g.
 'test<test>coreTest.HelloWorld~impl~calculate~operators~0' or 'data<common>cmpA~impl'.
+To probe a generic comp (mandatory params filled only by a caller), set probePath to a spot inside the generic comp and circuit to the leaf that supplies its args - e.g. probePath 'test<test>mcpToolTest~impl~calculate' with circuit 'test<test>scrambleText...', so the leaf's args/vars flow into the probed spot.
 Returns the recorded {in,out} at that path plus visits, circuitRes, logs and errors.`,
   params: [
     {id: 'probePath', as: 'string', asIs: true, mandatory: true, description: `probe path, e.g. test<test>myTest~impl~expectedResult~items~0`},
     {id: 'resolution', as: 'string', options: 'default,input,output,all', defaultValue: 'default', description: `result detail: 'default' = {in,out} at path + visits + circuitRes + errors; 'input'/'output' = only that side of the captured records; 'all' adds logs, cmd, imports`},
-    {id: 'circuit', as: 'string', description: `force circuit comp id (overrides auto-detect), e.g. test<test>circuitForAA`},
+    {id: 'circuit', as: 'string', description: `the comp run end-to-end to reach the probePath - its ctx (args/vars) flows down to the probed spot. Full comp id, NO ~path, e.g. test<test>roomLambdaTest.perm.admin.usersRO. Auto-detected from the probePath's root (a test->itself, else a caller); OVERRIDE when that root is a generic/reusable comp with mandatory params that only a specific caller fills (e.g. probe mcpToolTest under the leaf scrambleText test, or accessGranted under perm.admin.usersRO) - pass that caller.`},
     {id: 'logger', as: 'string', description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
     {id: 'repoRoot', as: 'string', description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
     {id: 'fetchByEnvHttpServer', as: 'string', description: `cross-repo: http server serving that repo, e.g. http://localhost:3000`},

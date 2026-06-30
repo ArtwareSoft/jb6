@@ -58,6 +58,9 @@ const settings = {
     MAX_LOG_SIZE: 10000
 }
 
+// spy = the browser in-memory log buffer (the live log-viewer's store + search()). It is NOT the test gate. Tests read the
+// logger INSTANCES in ctx.vars (ctx.vars.xxLogger.xxLog / .xxErrors, harvested via logsAndErrors). Every domain .error() tees
+// into the always-on errorLogger, and the tester auto-FAILS on any errorLogger.errorErrors entry unless the test sets allowError.
 export const spy = jb.ext.spy = coreUtils.spy = { logs, clear, log, setLogs, initSpy, initSpyByUrl, registerEnrichers, search, isEnabled: () => enabled }
 
 export function initSpy({spyParam: _spyParam}) {

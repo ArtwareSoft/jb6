@@ -212,5 +212,9 @@ function restoreProfile$(obj) {
   Object.values(obj).forEach(v => Array.isArray(v) ? v.forEach(restoreProfile$) : restoreProfile$(v))
 }
 
+function safeToEmbed(text, ctx) {
+  return String(text).replace(/\{%\$(\w+)%\}/g, (_, name) => coreUtils.calcVar(name, ctx))
+}
+
 Object.assign(coreUtils, { astNode, resolveProfileTop, resolveCompArgs, resolveProfileArgs, asJbComp, OrigArgs, originCoerce, sysProps, systemParams,
-  asComp, jbCompProxy, compByFullId, proxyByFullId, lexicalProfileOfDefaultValue, tgpProfileToJson, restoreProfile$})
+  asComp, jbCompProxy, compByFullId, proxyByFullId, lexicalProfileOfDefaultValue, tgpProfileToJson, restoreProfile$, safeToEmbed})

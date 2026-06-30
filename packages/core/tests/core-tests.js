@@ -188,6 +188,10 @@ Test('coreTest.vars.setVarsEnricher', {
   impl: dataTest(pipeline({ vars: setVars(asIs({a: 1, b: 2})), source: '%$a%,%$b%' }), equals('1,2'))
 })
 
+Test('coreTest.vars.enrichCtxEnricher', {
+  impl: dataTest(join({ vars: enrichCtx([Var('a', '1'), Var('b', '2')]), items: '%$a%,%$b%', separator: '' }), equals('1,2'))
+})
+
 Test('coreTest.vars.leadingEnricherInPipeline', {
   // non-Var leading ctx-enricher folds into vars via the ctx-enricher abstraction (no Var literal in parse)
   impl: dataTest(pipeline(setData('hi'), '%%!'), equals('hi!'))

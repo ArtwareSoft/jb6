@@ -6,10 +6,12 @@ jb.testingUtils = {runTest, runTests, runTestVm, runTestInVm}
 jb.testingRepository = {}
 
 const {
-  tgp: {TgpType, Component}
+  tgp: {TgpType, Component},
+  test: { Logger, logger: { domainLogger } }
 } = dsls
 
 const Test = TgpType('test', 'test')
+Logger('testLogger', { impl: domainLogger('test') })
 
 Component('dataTest', {
   type: 'test<test>',
@@ -63,7 +65,7 @@ Component('dataTest', {
 				})()
 			].filter(Boolean))
 			let testFailure = testRes?.[0]?.testFailure || testRes?.testFailure
-			const countersErr = countersErrors(expectedCounters,allowError)
+			const countersErr = countersErrors(expectedCounters,allowError,ctxToUse)
             const counters = Object.fromEntries(Object.keys(expectedCounters || {}).map(exp => [exp, spy.count(exp)]))
 			const expectedResultCtx = ctxToUse.setData(testRes)
 			const expectedResultRes = !testFailure && await expectedResult(expectedResultCtx)
@@ -177,12 +179,11 @@ export async function runTest(testID, {fullTestId, singleTest, action, httpReqId
     return res
 }
 
-function countersErrors(expectedCounters,allowError) {
-    if (!spy.isEnabled()) return ''
-    const exception = spy.logs.find(r=>r.logNames.indexOf('exception') != -1)
-    const error = spy.logs.find(r=>r.logNames.indexOf('error') != -1)
-    if (exception) return exception.err
-    if (!allowError() && error) return error.err
+function countersErrors(expectedCounters,allowError,ctx) {
+    // automatic error gate: every domain .error() tees into the always-on errorLogger (jb-logging.js), so its errorErrors
+    // aggregates ALL logger errors. Unless the test opts in via allowError, any such error fails the test.
+    const loggedErrors = ctx?.vars?.errorLogger?.errorErrors || []
+    if (!allowError() && loggedErrors.length) return loggedErrors[0].error || loggedErrors[0].t || JSON.stringify(loggedErrors[0])
 
     return Object.keys(expectedCounters || {}).map(
         exp => expectedCounters[exp] != spy.count(exp)
