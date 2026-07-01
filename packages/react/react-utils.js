@@ -1,6 +1,9 @@
 import { jb, coreUtils, dsls } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
-export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, wrapReactCompWithSampleData, extendCtxWithUrl }
+export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, wrapReactCompWithSampleData, extendCtxWithUrl, imported }
+
+// get a resolved import module. always keyed by the REAL url (importUrl), even when a stub was loaded under win.testing
+function imported(url) { return jb.reactRepository.importCache[url] }
 
 
 jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
@@ -41,13 +44,16 @@ Component('importUrl', {
   description: 'importUrls for the component, will make the comp async',
   type: 'react-metadata<react>',
   params: [
-    {id: 'importUrl', as: 'string'}
+    {id: 'importUrl', as: 'string'},
+    {id: 'stubUrl', as: 'string', byName: true}
   ]
 })
 
-function resolveImportUrl(url) {
-  if (repo.importCache[url]) return repo.importCache[url] // sync - 99%
-  return import(url).then(m => repo.importCache[url] = m)
+function resolveImportUrl(m) {
+  const key = m.importUrl // always cache under the real url, even when a stub is loaded
+  if (repo.importCache[key]) return repo.importCache[key] // sync - 99%
+  const url = (globalThis.window?.testing && m.stubUrl && !globalThis.window?.noStubs) ? m.stubUrl : key
+  return import(url).then(mod => repo.importCache[key] = mod)
 }
 
 /*  hFunc signature: (ctx, ctxVars, compParams) => (reactProps) => vdom
@@ -75,8 +81,8 @@ ReactComp('comp', {
     const varsKey = Object.keys(ctx.vars || {}).sort().join(',')
     const id = strongRefresh ? '' : (jbid && `${jbid}|${varsKey}`)
 
-    const importUrls = coreUtils.asArray(metadata()).map(m => m.importUrl).filter(Boolean)
-    const ctxOrPromise = readyCtxPromise(ctx, importUrls, enrichCtx)
+    const importMetas = coreUtils.asArray(metadata()).filter(m => m.importUrl)
+    const ctxOrPromise = readyCtxPromise(ctx, importMetas, enrichCtx)
     const isPromise = coreUtils.isPromise(ctxOrPromise)
 
     if (isPromise) {
@@ -123,10 +129,10 @@ ReactComp('comp', {
 
     function readyCtxPromise() {
       const tImp = Date.now()
-      const imports = importUrls.map(u => resolveImportUrl(u))
+      const imports = importMetas.map(m => resolveImportUrl(m))
       let pending = imports.find(r => coreUtils.isPromise(r))
-      if (pending) 
-        pending = Promise.all(imports).then(() => logMs(ctx, 'jb6.importUrls', Date.now() - tImp, {urls: importUrls}))
+      if (pending)
+        pending = Promise.all(imports).then(() => logMs(ctx, 'jb6.importUrls', Date.now() - tImp, {urls: importMetas.map(m => m.importUrl)}))
       const tEnr = Date.now()
       const enriched = enrichCtx(ctx) || ctx
       logMs(ctx, 'jb6.enrichCtx', Date.now() - tEnr)

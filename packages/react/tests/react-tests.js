@@ -1,12 +1,13 @@
 import { coreUtils, dsls, ns } from '@jb6/core'
 import './react-testers.js'
 import '@jb6/react/progress-indicators.js'
+import '@jb6/react/codemirror-utils.js'
 
 const { json } = ns
 const {
   tgp: { Component },
   test: { Test,
-      'ui-action': { click, longPress, actions, waitForText },
+      'ui-action': { click, longPress, actions, waitForText, clickInCodeMirror, selectInCodeMirror, keyPressInCodeMirror },
       test: { dataTest, reactTest }
   },
   common: {
@@ -14,7 +15,7 @@ const {
     boolean: { contains, equals, and },
   },
   react: { ReactComp,
-    'react-comp': { comp },
+    'react-comp': { comp, CodeMirrorJs },
     'react-metadata': { containerComp, importUrl },
     'progress-indicator': { spinner, dots, byStatus, byProgress }
   }
@@ -225,6 +226,47 @@ Test('reactTest.importUrl', {
     testedComp: (ctx, {react: {h, hh}}) => () => hh(ctx, compWithImportUrl),
     expectedResult: contains('importUrl loaded'),
     userActions: waitForText('importUrl loaded')
+  })
+})
+
+// renders the real CodeMirrorJs (cm6 stubbed under win.testing) with a fixed doc, logging the
+// selected text on every cursor/selection change so tests can assert 'selected: <text>'.
+const codeMirrorTest = ReactComp('codeMirrorTest', {
+  impl: comp({
+    hFunc: (ctx, {react: {h, hh}}) => () => hh(ctx, CodeMirrorJs, {
+      code: 'select-all-me',
+      onCursorActivity: view => {
+        const { from, to } = view.state.selection.main
+        ctx.vars.uiLogger?.info?.({t: 'selected', text: `selected: ${view.state.doc.toString().slice(from, to)}`}, {}, {ctx})
+      }
+    })
+  })
+})
+
+Test('reactTest.codeMirrorSelect', {
+  impl: reactTest({
+    testedComp: codeMirrorTest(),
+    expectedResult: contains('selected: lect-a', { allText: json.stringify('%$uiLogger/uiLog%') }),
+    userActions: actions(selectInCodeMirror(2, 8)),
+    logger: 'uiLogger'
+  })
+})
+
+Test('reactTest.codeMirrorClick', {
+  impl: reactTest({
+    testedComp: codeMirrorTest(),
+    expectedResult: contains('selected: ', { allText: json.stringify('%$uiLogger/uiLog%') }),
+    userActions: actions(clickInCodeMirror(5)),
+    logger: 'uiLogger'
+  })
+})
+
+Test('reactTest.codeMirrorKeyShortcut', {
+  impl: reactTest({
+    testedComp: codeMirrorTest(),
+    expectedResult: contains('selected: select-all-me', { allText: json.stringify('%$uiLogger/uiLog%') }),
+    userActions: actions(keyPressInCodeMirror('a', { ctrl: true })),
+    logger: 'uiLogger'
   })
 })
 

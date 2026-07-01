@@ -164,6 +164,42 @@ Tool('scrambleText', {
   ))
 })
 
+Tool('playwrightHarvest', {
+  description: `Load a live react-comp url in headless Chromium (Playwright) and harvest its jb6 loggers + browser errors - no screenshots.
+Use it to verify a bare comp url (e.g. a tests.html ?showOnly url) actually mounts and behaves in a REAL browser with REAL modules (no test stubs), when node/jsdom is not enough.
+Returns { hasLoggers, consoleErrors, pageErrors, logs }: consoleErrors = console messages of type error/warning, pageErrors = uncaught exceptions + failed requests, logs = harvestLogs from window.jbLoggers (add &logger=... and &spy=... to the url to populate them).`,
+  params: [
+    {id: 'url', as: 'string', mandatory: true, description: 'full comp url incl. loggers, e.g. http://localhost:8083/packages/testing/tests.html?test=reactTest.codeMirrorSelect&showOnly&spy=test&logger=uiLogger'},
+    {id: 'settleMs', as: 'number', defaultValue: 5000, description: 'ms to wait after networkidle for async imports/effects to settle before harvesting'},
+  ],
+  impl: mcpTool(async (ctx, {}, {url, settleMs}) => {
+    const script = `
+import { coreUtils } from '@jb6/core'
+import '@jb6/core/misc/import-map-services.js'
+const { chromium } = await import(coreUtils.pathJoin(await coreUtils.calcRepoRoot(), 'node_modules/playwright/index.mjs'))
+const browser = await chromium.launch()
+const page = await browser.newPage()
+const consoleErrors = [], pageErrors = []
+const noise = /cdn\\.tailwindcss\\.com should not be used in production|favicon\\.ico/  // dev-page noise, not real failures
+page.on('console', m => { const t = m.text(); if (/error|warning/i.test(m.type()) && !noise.test(t)) consoleErrors.push(\`[\${m.type()}] \${t}\`) })
+page.on('pageerror', e => pageErrors.push(String(e?.stack || e)))
+page.on('requestfailed', r => { if (!noise.test(r.url())) pageErrors.push(\`requestfailed \${r.url()} - \${r.failure()?.errorText}\`) })
+await page.goto(${JSON.stringify(url)}, { waitUntil: 'networkidle', timeout: 20000 })
+const hasLoggers = await page.waitForFunction(() => window.jbLoggers, { timeout: 15000 }).then(() => true).catch(() => false)
+await page.waitForTimeout(${Number(settleMs) || 5000})
+const logs = hasLoggers ? await page.evaluate(() => jb.coreUtils.harvestLogs({ vars: window.jbLoggers })) : null
+await browser.close()
+await coreUtils.writeServiceResult({ hasLoggers, consoleErrors, pageErrors, logs })`
+    try {
+      await coreUtils.calcJb6RepoRootAndImportMapsInCli()
+      const { result, error } = await coreUtils.runCliInContext(script, { importMapsInCli: jb.coreRegistry.importMapsInCli })
+      return JSON.stringify(error ? { error } : result, null, 2)
+    } catch (error) {
+      return `Error running playwrightHarvest: ${error.stack || error}`
+    }
+  })
+})
+
 Component('helloMcp', {
   type: 'react-comp<react>',
   moreTypes: 'tool<mcp>',

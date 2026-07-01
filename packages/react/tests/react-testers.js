@@ -209,6 +209,74 @@ UiAction('longPress', {
   })
 })
 
+// resolve the cm6 EditorView bound to a .cm-editor node. real cm6 and the test stub both
+// resolve the view via EditorView.findFromDOM(el) - the one API both the real cm6 bundle and the stub expose.
+// CodeMirrorJs is async (importUrl -> spinner first), so the node mounts after render; wait for it.
+const CM6_IMPORT = './lib/codemirror6/codemirror6-bundle.mjs'
+async function cmView(ctx, selector, timeout = 2000) {
+  const { win, uiLogger } = ctx.vars
+  const sel = selector || '.cm-editor'
+  const { EditorView } = reactUtils.imported(CM6_IMPORT) || {}
+  const t0 = Date.now()
+  const find = () => { const el = win.document.querySelector(sel); const view = EditorView?.findFromDOM(el); return view ? { el, view } : null }
+  let found = find()
+  while (!found && Date.now() - t0 < timeout) {
+    await win.waitForMutations(20)
+    found = find()
+  }
+  const { el, view } = found || {}
+  uiLogger?.info?.({ t: 'cmView', selector: sel, elFound: !!el, viewFound: !!view, ms: Date.now() - t0 }, {}, { ctx })
+  return { win, el, view }
+}
+
+UiAction('clickInCodeMirror', {
+  params: [ { id: 'pos', as: 'number' }, { id: 'selector', as: 'string' } ],
+  impl: ({}, {}, { pos, selector }) => ({
+    async exec(ctx) {
+      const { uiLogger } = ctx.vars
+      const { win, view } = await cmView(ctx, selector)
+      if (!view) return uiLogger?.info?.({ t: 'clickInCodeMirror', pos, error: 'no cm view' }, {}, { ctx })
+      if (win.testing) view.setSel(pos, pos)
+      else view.dispatch({ selection: { anchor: pos } })
+      uiLogger?.info?.({ t: 'clickInCodeMirror', pos }, {}, { ctx })
+    }
+  })
+})
+
+UiAction('selectInCodeMirror', {
+  params: [ { id: 'from', as: 'number' }, { id: 'to', as: 'number' }, { id: 'selector', as: 'string' } ],
+  impl: ({}, {}, { from, to, selector }) => ({
+    async exec(ctx) {
+      const { uiLogger } = ctx.vars
+      const { win, view } = await cmView(ctx, selector)
+      if (!view) return uiLogger?.info?.({ t: 'selectInCodeMirror', from, to, error: 'no cm view' }, {}, { ctx })
+      if (win.testing) view.setSel(from, to)
+      else view.dispatch({ selection: { anchor: from, head: to } })
+      uiLogger?.info?.({ t: 'selectInCodeMirror', from, to, text: view.state.doc.toString().slice(from, to) }, {}, { ctx })
+    }
+  })
+})
+
+UiAction('keyPressInCodeMirror', {
+  params: [ { id: 'key', as: 'string' }, { id: 'ctrl', as: 'boolean' }, { id: 'meta', as: 'boolean' }, { id: 'shift', as: 'boolean' }, { id: 'selector', as: 'string' } ],
+  impl: ({}, {}, { key, ctrl, meta, shift, selector }) => ({
+    async exec(ctx) {
+      const { uiLogger } = ctx.vars
+      const { win, view } = await cmView(ctx, selector)
+      const spec = [ctrl && 'Ctrl', meta && 'Cmd', shift && 'Shift', key].filter(Boolean).join('-')
+      if (!view) return uiLogger?.info?.({ t: 'keyPressInCodeMirror', key: spec, error: 'no cm view' }, {}, { ctx })
+      if (win.testing) {
+        const bind = view.keymap.find(k => k.key === spec)
+        uiLogger?.info?.({ t: 'keyPressInCodeMirror', key: spec, bound: !!bind }, {}, { ctx })
+        bind?.run(view)
+      } else {
+        view.contentDOM.dispatchEvent(new win.KeyboardEvent('keydown', { key, ctrlKey: !!ctrl, metaKey: !!meta, shiftKey: !!shift, bubbles: true, cancelable: true }))
+        uiLogger?.info?.({ t: 'keyPressInCodeMirror', key: spec }, {}, { ctx })
+      }
+    }
+  })
+})
+
 async function probeReactComp(ctx, reactCmp, props) {
   const win = globalThis.window
   if (!win)

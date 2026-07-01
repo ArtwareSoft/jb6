@@ -17,6 +17,8 @@
 
     const modulePath = urlQuery('modulePath') || '@jb6/testing/all-jb6-tests.js'
     console.log('modulePath', modulePath)
+    // show/showOnly/action render the real component visibly -> load real modules, not stubs
+    if (['show','showOnly','action'].some(p => urlQuery(p) != null)) window.noStubs = true
     await import(modulePath)
 
     const params = {

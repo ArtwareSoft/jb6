@@ -1,19 +1,27 @@
-import { dsls, jb } from '@jb6/core'
-import '@jb6/react'
+import { dsls } from '@jb6/core'
+import { reactUtils } from '@jb6/react'
 
 const CM6_IMPORT = './lib/codemirror6/codemirror6-bundle.mjs'
+const CM6_STUB = '@jb6/react/tests/codemirror6-stub.mjs'
 
 const {
+    tgp: { Component },
     react : { ReactComp ,
         'react-comp': { comp },
         'react-metadata': { importUrl }
     }
 } = dsls
 
+// reusable metadata: real cm6 bundle, or the minimal stub under win.testing
+const importCodeMirror = Component('importCodeMirror', {
+  type: 'react-metadata<react>',
+  impl: importUrl(CM6_IMPORT, { stubUrl: CM6_STUB })
+})
+
 ReactComp('CodeMirrorJs', {
   impl: comp({
     hFunc: (ctx, {react: {h, useRef, useEffect}}) => ({ code, onCursorActivity }) => {
-        const { EditorState, EditorView, javascript, lineNumbers, syntaxHighlighting, defaultHighlightStyle, keymap, search, openSearchPanel } = jb.reactRepository.importCache[CM6_IMPORT]
+        const { EditorState, EditorView, javascript, lineNumbers, syntaxHighlighting, defaultHighlightStyle, keymap, search, openSearchPanel } = reactUtils.imported(CM6_IMPORT)
         const host = useRef()
         const viewRef = useRef()
 
@@ -25,7 +33,10 @@ ReactComp('CodeMirrorJs', {
               doc: code || '',
               extensions: [
                 lineNumbers(), syntaxHighlighting(defaultHighlightStyle), javascript(), search(),
-                keymap.of([{ key: 'Ctrl-f', run: openSearchPanel }]),
+                keymap.of([
+                  { key: 'Ctrl-f', run: openSearchPanel },
+                  { key: 'Ctrl-a', run: view => (view.dispatch({ selection: { anchor: 0, head: view.state.doc.toString().length } }), true) }
+                ]),
                 EditorState.readOnly.of(true),
                 EditorView.theme({ '&': { height: '100%', fontSize: '12px' }, '.cm-scroller': { overflow: 'auto' }, '.cm-content': { fontFamily: 'monospace' } }),
                 ...(onCursorActivity ? [EditorView.updateListener.of(update => {
@@ -46,6 +57,6 @@ ReactComp('CodeMirrorJs', {
 
         return h('div:h-full', { ref: host })
       },
-    metadata: importUrl(CM6_IMPORT)
+    metadata: importCodeMirror()
   })
 })
