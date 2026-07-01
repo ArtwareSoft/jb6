@@ -10,6 +10,11 @@ import './import-map-services.js'
 const { coreUtils } = jb
 const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays,
   asJbComp, compIdOfProfile, stripData, unique } = coreUtils
+const { tgp: { Component }, test: { Logger, logger: { domainLogger } } } = jb.dsls
+
+// probeLogger: dedicated carrier for live probe progress (visited comps). Wrapped-to-stderr in the child and
+// routed browser-side via dispatchChildLine → eventEmitter, where the studio's visitsProgress view listens.
+Logger('probeLogger', { impl: domainLogger('probe') })
 
 jb.probeRepository = {
     probeCounter: 0
@@ -20,18 +25,33 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
   try {
     const { extraCode, circuitCmpId, repoRoot, fetchByEnvHttpServer, entryPointPaths, resolution = 'default' } = resources
     const loggerNames = (resources.logger || '').split(',').map(s => s.trim()).filter(Boolean)
-    const ctx = resources.ctx || (loggerNames.length ? coreUtils.ensureLoggers(loggerNames) : undefined)
+    // always ensure probeLogger in the routing ctx so live visit-progress (emitted on probeLogger.progress in the
+    // child) routes back via dispatchChildLine → eventEmitter. harvestLogs below uses loggerNames only, not harvested.
+    const ctx = resources.ctx || coreUtils.ensureLoggers(['probeLogger', 'cliLogger', ...loggerNames])
+    // real "starting" signal: runProbeCli runs browser-side in the studio, so this cliLogger.progress
+    // reaches the studio eventEmitter directly - marks the true start, before the ~800ms import resolution.
+    ctx.vars.cliLogger?.progress?.({step: 'resolveImports', status: 'running'})
 
-    // completion probes a SYNTHETIC comp defined only in extraCode (the edited comp in the editor) -
-    // it has no on-disk definition, so resolving its imports would always fail (and waste ~800ms on
-    // a full model scan). go straight to importing entry + repo test files (calcImportsForFiles lives
-    // in core); extraCode defines the comp. otherwise resolve the probed/circuit comp's imports via
-    // lang-service (the circuit is a CALLER of the probed comp, so test files are pulled in too - this
-    // is what lets circuitOptions() discover the circuit at runtime in the child process).
-    let imp
-    if (extraCode && entryPointPaths) {
+    // deciding the child's import list. the expensive path (calcImportsForProfile) does a full-model AST
+    // scan (~800ms, worse in big repos) only to DISCOVER the file that holds the circuit. we can skip it
+    // whenever the circuit is already resolvable from files we know:
+    //   - extraCode: the probed comp is SYNTHETIC (defined inline in the editor), no on-disk def to scan for.
+    //   - circuitInLoadedFiles: runProbeCli runs in the SAME process that already imported entryPointPaths
+    //     (studio imports urlsToLoad before calling us), so jb.dsls holds them. if calcCircuit(probePath)
+    //     resolves to a real comp here, the circuit lives in those files (e.g. probing a test, or a comp
+    //     whose test/caller is in the same file) - importing entryPointPaths is enough, no scan.
+    // only when the circuit can't be found locally (its caller is in some other, un-named file) do we scan.
+    const circuitInLoadedFiles = entryPointPaths && !circuitCmpId && (() => {
+      const normPath = probePath.indexOf('<') == -1 ? `test<test>${probePath}` : probePath
+      const c = calcCircuit(normPath)
+      return typeof c == 'string' && !!compByFullId(c, jb)
+    })()
+    let imp, strategy
+    if (entryPointPaths && (extraCode || circuitInLoadedFiles)) {
+      strategy = extraCode ? 'files:extraCode' : 'files:circuitInLoadedFiles'
       imp = await coreUtils.calcImportsForFiles(coreUtils.asArray(entryPointPaths), {repoRoot})
     } else {
+      strategy = 'scan:calcImportsForProfile'
       if (!coreUtils.calcImportsForProfile)
         await import('@jb6/lang-service/src/tgp-model-data.js')
       const cmpId = (circuitCmpId || probePath).split('~')[0]
@@ -39,8 +59,9 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
     }
     if (imp.error)
       return { probeRes: null, error: imp.error, diagnostic: imp.diagnostic }
+    ctx.vars.cliLogger?.progress?.({step: 'resolveImports', status: 'done', strategy})
     const { projectDir, importMapsInCli } = imp
-    const testFiles = imp.tgpModel?.testFiles || []
+    const testFiles = imp.testFiles || imp.tgpModel?.testFiles || []
     const allImportFiles = unique([...(imp.topLevelImports || []), ...testFiles])
     const importsStr = allImportFiles.map(f => `await import('${f}')`).join('\n')
 
@@ -53,9 +74,13 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
       const loggerNames = ${JSON.stringify(loggerNames)}
       try {
         ${extraCode || ''}
-        if (loggerNames.length) coreUtils.ensureLoggers(loggerNames, {wrapToStderr: true})
+        // probeLogger + cliLogger are wrapped-to-stderr so live visit progress and the staticImportsLoaded timing (emitted by jb-logging) stream back even without ?logger=
+        const _ctx = coreUtils.ensureLoggers(['probeLogger', 'cliLogger', ...loggerNames], {wrapToStderr: true})
+        _ctx.vars.cliLogger.progress({step: 'spawn', status: 'done'})   // child's FIRST emit → spawn already happened (~10ms), so it's reported done
+        _ctx.vars.cliLogger.progress({step: 'imports', status: 'running'})   // child-side stepper step: loading probed comp + test imports (streams to studio via stderr)
         ${importsStr}
-        const probeRes = await jb.coreUtils.runProbe(probePath, ${JSON.stringify({circuitCmpId})})
+        _ctx.vars.cliLogger.progress({step: 'imports', status: 'done'})
+        const probeRes = await jb.coreUtils.runProbe(probePath, {...${JSON.stringify({circuitCmpId})}, progressLogger: _ctx.vars.probeLogger, ctx: _ctx})
         await coreUtils.writeServiceResult(probeRes)
       } catch (e) {
         await coreUtils.writeServiceResult({error: e.stack})
@@ -63,7 +88,7 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
       }
     `
     const { result, error, cmd } = await coreUtils.runCliInContext(script,
-      {projectDir, importMapsInCli, ctx, bindLoggers: loggerNames.join(','), stream: 'both'}, onStatus)
+      {projectDir, importMapsInCli, ctx, bindLoggers: ['probeLogger', 'cliLogger', ...loggerNames].join(','), stream: 'both'}, onStatus)
     const probeLog = ctx ? coreUtils.harvestLogs(ctx, loggerNames) : {}
     if (resolution == 'all')
       return { probeRes: result, error, cmd, projectDir, topLevelImports: allImportFiles, ...probeLog }
@@ -83,14 +108,19 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
         //const claudeDirRes = await coreUtils.createClaudeDirForProbe({claudeDir, probePath, probeRes,imports})
         //probeRes.claudeDir = claudeDirRes
 
-async function runProbe(_probePath, {circuitCmpId, timeout } = {}) {
+async function runProbe(_probePath, {circuitCmpId, timeout, progressLogger, ctx = new Ctx() } = {}) {
   if (!_probePath) {
        logError(`probe runCircuit missing probe path`, {})
        return { error: `probe runCircuit missing probe path` }
     }
     const probePath = _probePath.indexOf('<') == -1 ? `test<test>${_probePath}` : _probePath
     log('probe start run circuit',{probePath})
-    let circuit = circuitCmpId || calcCircuit()
+    progressLogger?.info?.({t: 'beforeCalcCircuit', probePath}, {}, {ctx})
+    progressLogger?.progress?.({step: 'calcCircuit', status: 'running', probePath})   // stepper step: circuit inference (progress channel → eventEmitter → studio)
+    let circuit = circuitCmpId || calcCircuit(probePath)
+    progressLogger?.info?.({t: 'afterCalcCircuit', circuit}, {}, {ctx})
+    progressLogger?.progress?.({step: 'calcCircuit', status: 'done', circuit})
+    progressLogger?.progress?.({step: 'runCircuit', status: 'running', circuit})   // stepper step: about to run the circuit
     if (circuit.error)
       return circuit
     if (!circuit)
@@ -101,7 +131,7 @@ async function runProbe(_probePath, {circuitCmpId, timeout } = {}) {
     if (!compByFullId(circuit, jb))
       return { error: `can not find comp circuit ${circuit}` }
 
-    let probeObj = new Probe(circuit)
+    let probeObj = new Probe(circuit, progressLogger)
     try {
       await probeObj.runCircuit(probePath,timeout)
     } catch (e) {}
@@ -117,22 +147,26 @@ async function runProbe(_probePath, {circuitCmpId, timeout } = {}) {
         logs: stripData(jb.ext.spy?.logs)
     }
 
-    return result 
+    return result
+}
 
-    function calcCircuit() {
-        if (!probePath) 
-           return { error: `calcCircuitPath : no probe path` }
-        const cmpId = probePath.split('~')[0]
-        const comp = compByFullId(cmpId, jb)
-        if (!comp)
-          return { error: `calcCircuitPath : can not find comp ${cmpId} in jb repo` }
+// resolve the circuit comp id for a probe path from the IN-MEMORY jb.dsls registry.
+// a test/react-comp is its own circuit (self-contained in its file); otherwise search callers via circuitOptions.
+// used both in the child (runProbe) and client-side in runProbeCli to decide if the circuit is already
+// resolvable from the loaded files - if so, no full-model scan is needed to find it.
+function calcCircuit(probePath) {
+    if (!probePath)
+       return { error: `calcCircuitPath : no probe path` }
+    const cmpId = probePath.split('~')[0]
+    const comp = compByFullId(cmpId, jb)
+    if (!comp)
+      return { error: `calcCircuitPath : can not find comp ${cmpId} in jb repo` }
 
-        const circuitCmpId = comp.circuit  
-                || comp.impl?.expectedResult && cmpId // test
-                || comp.sampleCtxData && cmpId // react comp
-                || circuitOptions(cmpId)[0]?.id || cmpId
-        return circuitCmpId
-    }
+    const circuitCmpId = comp.circuit
+            || comp.impl?.expectedResult && cmpId // test
+            || comp.sampleCtxData && cmpId // react comp
+            || circuitOptions(cmpId)[0]?.id || cmpId
+    return circuitCmpId
 }
 
 async function createClaudeDirForProbe({ probePath, probeRes, imports, claudeDir } = {}) {
@@ -200,14 +234,32 @@ function stripProbeResult(raw) {
 }
 
 class Probe {
-    constructor(circuitCmpId) {
+    constructor(circuitCmpId, progressLogger) {
         this.circuitCtx = new Ctx().setVars({singleTest: true})
         this.circuitCtx.jbCtx.probe = this
         this.circuitCmpId = this.circuitCtx.jbCtx.path = circuitCmpId
         this.records = {}
-        this.visits = {}
+        this.visits = {}   // accumulated {tgpPath: count}, emitted live as progress (throttled in record)
+        this.progressLogger = progressLogger
+        this._lastEmit = 0
         this.circuitComp = compByFullId(circuitCmpId, jb)
         this.id = ++jb.probeRepository.probeCounter
+    }
+
+    // throttled live emit of accumulated per-tgpPath visit totals. force=true for the final flush.
+    emitVisits(force) {
+        const now = Date.now()
+        if (!force && now - this._lastEmit < 100) return
+        this._lastEmit = now
+        this.progressLogger?.progress?.({t: 'visit', visits: {...this.visits}})
+    }
+
+    // fired once at the very start of runCircuit, BEFORE the (possibly slow / slow-booting) circuit runs.
+    // gives the studio an immediate "probe is alive" signal so its visitsProgress view flips out of the
+    // indefinite "waiting for the probe to run…" spinner during the boot/import/resolve window (~seconds
+    // on a cold child) instead of looking hung. carries the probed path so the view can show it right away.
+    emitStart() {
+        this.progressLogger?.progress?.({t: 'probeStart', probePath: this.probePath, circuitCmpId: this.circuitCmpId, visits: {}})
     }
 
     async runCircuit(probePath,maxTime) {
@@ -216,6 +268,7 @@ class Probe {
         log('probe run circuit',{probePath, probe: this})
         this.records[probePath]
         this.probePath = probePath
+        this.emitStart()   // immediate "probe is alive" signal, before the (slow-booting) circuit runs
 
         try {
             this.active = true
@@ -235,6 +288,7 @@ class Probe {
             log('probe completed',{probePath, probe: this})
             // ref to values
             this.result.forEach((obj,i)=> { obj.out = calcValue(resolvedOuts[i]) ; obj.in.data = calcValue(obj.in.data)})
+            this.emitVisits(true)   // final flush so the last window's totals reach the view
 
             return this
         } catch (error) {
@@ -258,6 +312,7 @@ class Probe {
         //if (!path) return
         probe.visits[path] = probe.visits[path] || 0
         probe.visits[path]++
+        probe.emitVisits()
         if (probe.probePath.indexOf(path) != 0) return
 
         const _ctx = data ? ctx = ctx.setData(data).setVars(vars||{}) : ctx // used by ctx.data(..,) in rx

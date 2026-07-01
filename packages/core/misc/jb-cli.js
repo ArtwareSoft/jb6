@@ -17,6 +17,7 @@ Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext,
 
 Logger('cliLogger', { impl: domainLogger('cli') })
 Logger('cliLineLogger', { impl: domainLogger('cliLine') })
+Logger('cliDetailedLogger', { impl: domainLogger('cliDetailed') })   // verbose per-line dispatch diagnostics (LOG 3/4/5) — kept off cliLogger so the timeline stays small
 
 function buildNodeCliCmd(script, options = {}) {
   options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli
@@ -31,15 +32,19 @@ const tryParse = line => { try { return JSON.parse(line) } catch { return null }
 function dispatchChildLine({ctx, line, stream}) {
   if (!line) return
   const ev = tryParse(line)
+  // LOG 4: every complete line the router hands over - was it JSON? is it a {kind:'log'} envelope? which logger/channel?
+  ctx?.vars?.cliDetailedLogger?.info?.({t: 'dispatch line', stream, parsed: !!ev, kind: ev?.kind, logger: ev?.logger, channel: ev?.channel, len: line.length, preview: String(line).slice(0, 120)}, {}, {ctx})   // LOG 4
   if (ev?.kind === 'log') {
     const lg = ctx?.vars?.[ev.logger]
     const fn = lg?.[ev.channel]
     if (typeof fn === 'function') {
+      // LOG 5: about to invoke the target logger channel (proves the envelope reached a live logger fn - e.g. probeLogger.progress)
+      ctx?.vars?.cliLogger?.info?.({t: 'dispatch invoke', logger: ev.logger, channel: ev.channel, evT: ev.event?.t}, {}, {ctx})   // LOG 5 — small, stays on cliLogger
       try { ev.channel === 'progress' || ev.channel === 'status' ? fn.call(lg, ev.event) : fn.call(lg, ev.event, {}, {ctx}) } catch (e) {
-        ctx.vars.errorLogger.error({t: 'dispatch error', logger: ev.logger, channel: ev.channel, err: e.stack}, {}, {ctx})
+        ctx?.vars?.errorLogger?.error?.({t: 'dispatch error', logger: ev.logger, channel: ev.channel, err: e.stack}, {}, {ctx})
       }
     } else {
-      ctx.vars.errorLogger.error({t: 'dispatch missing', logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function'), pid: process?.pid, ctxLoggers: Object.keys(ctx.vars).filter(n=>ctx.vars[n]?.logsAndErrors), registeredDef: !!jb.dsls?.test?.logger?.[ev.logger]}, {}, {ctx})
+      ctx?.vars?.errorLogger?.error?.({t: 'dispatch missing', logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function'), pid: process?.pid, ctxLoggers: ctx?.vars && Object.keys(ctx.vars).filter(n=>ctx.vars[n]?.logsAndErrors), registeredDef: !!jb.dsls?.test?.logger?.[ev.logger]}, {}, {ctx})
     }
     return
   }
@@ -49,18 +54,24 @@ function dispatchChildLine({ctx, line, stream}) {
 function makeChildOutputRouter({ctx, bindLoggers}) {
   if (!bindLoggers && !ctx?.vars?.cliLogger) return null
   const bufs = {stdout: '', stderr: ''}
+  const _log = ev => ctx?.vars?.cliLogger?.info?.(ev, {}, {ctx})   // log to delete: browser-side wire diagnostics harvestable via cliLogger
+  let _nChunks = 0   // log to delete
   const router = ({stream, text}) => {
     if (stream === 'flush') {
       for (const s of ['stdout','stderr']) { if (bufs[s]) { dispatchChildLine({ctx, line: bufs[s], stream: s}); bufs[s] = '' } }
       return
     }
     if (!text) return
+    _nChunks++   // log to delete
+    // LOG 3: router received a chunk (proves onStatus→router wiring). show stream + a short preview of the raw text
+    ctx?.vars?.cliDetailedLogger?.info?.({t: 'router chunk', n: _nChunks, stream, len: text.length, preview: String(text).slice(0, 120)}, {}, {ctx})   // LOG 3
     bufs[stream] += text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\r[^\n]*(?=\r|$)/g, '')
     const lines = bufs[stream].split('\n')
     bufs[stream] = lines.pop()
     lines.forEach(line => dispatchChildLine({ctx, line, stream}))
   }
   router.flush = () => router({stream: 'flush'})
+  router._log = _log   // LOG 1 uses this from streamViaSSE (onStatus is the router)
   return router
 }
 
@@ -77,6 +88,8 @@ Component('bash', {
 async function runCliInContext(script, options = {}) {
   options.ctx = coreUtils.ensureLoggers([], {ctx: options.ctx})   // always a ctx with errorLogger — single source of truth downstream
   const router = makeChildOutputRouter(options)
+  // LOG 0: which transport branch is taken. isNode/hasRouter decide streaming(SSE)-vs-oneshot-vs-nodeSpawn. hasCliLogger + bindLoggers explain why router is (non)null.
+  options.ctx?.vars?.cliLogger?.info?.({t: 'runCliInContext branch', isNode, hasRouter: !!router, bindLoggers: options.bindLoggers, hasCliLogger: !!options.ctx?.vars?.cliLogger, stream: options.stream}, {}, {ctx: options.ctx})   // log to delete
   if (!isNode && router) return runNodeCliStreamViaJbWebServer(script, options, router)
   if (!isNode) return runNodeCliViaJbWebServer(script, options)
   return runNodeCli(script, options)
@@ -190,6 +203,7 @@ async function streamViaSSE({ startUrl, body, onStatus, onUrls }) {
   const decoder = new TextDecoder()
   let buf = ''
   let done = false
+  let _nStatus = 0, _nDone = 0   // log to delete
   while (!done) {
     const { value, done: streamDone } = await reader.read()
     if (streamDone) break
@@ -202,12 +216,14 @@ async function streamViaSSE({ startUrl, body, onStatus, onUrls }) {
       if (!dataLine) continue
       try {
         const msg = JSON.parse(dataLine.slice(5).trim())
-        if (msg.type === 'status' && onStatus) onStatus(msg.text)
-        if (msg.type === 'done') { done = true; break }
+        // LOG 1: every SSE message reaching the browser consumer (type + shape of status text)
+        if (msg.type === 'status') { _nStatus++; onStatus && onStatus(msg.text) }
+        if (msg.type === 'done') { _nDone++; done = true; break }
       } catch (e) {}
     }
   }
   reader.cancel().catch(() => {})
+  onStatus?._log?.({t: 'streamViaSSE drained', statusMsgs: _nStatus, doneMsgs: _nDone})   // LOG 1
 
   const r = await fetch(absContent)
   if (!r.ok) return { error: `streamViaSSE content failed: ${r.status} – ${await r.text()}` }
@@ -218,15 +234,21 @@ async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
   try {
     const { ctx, expressUrl = '', ...optionsToPass } = options
     const { cmd } = buildNodeCliCmd(script, optionsToPass)
+    let _nFwd = 0   // log to delete
+    const sseOnStatus = chunk => {
+      if (!onStatus) return
+      const text = typeof chunk === 'string' ? chunk : chunk?.text
+      const stream = typeof chunk === 'string' ? 'stderr' : chunk?.stream
+      _nFwd++   // log to delete
+      // LOG 2: each SSE status chunk forwarded into the router (proves consumer→router bridge). preview the payload
+      onStatus._log && onStatus._log({t: 'sse→router fwd', n: _nFwd, stream, len: (text||'').length, preview: String(text||'').slice(0, 120)})   // LOG 2
+      onStatus({ stream, text })
+    }
+    sseOnStatus._log = onStatus?._log   // let streamViaSSE's LOG 1 log via cliLogger
     const result = await streamViaSSE({
       startUrl: `${expressUrl}/run-cli-stream`,
       body: { script, ...optionsToPass },
-      onStatus: chunk => {
-        if (!onStatus) return
-        const text = typeof chunk === 'string' ? chunk : chunk?.text
-        const stream = typeof chunk === 'string' ? 'stderr' : chunk?.stream
-        onStatus({ stream, text })
-      }
+      onStatus: sseOnStatus
     })
     onStatus?.flush?.()
     if (result.error) return { error: result.error, cmd, ...options }

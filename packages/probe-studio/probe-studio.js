@@ -27,6 +27,16 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
 
   const urlParams = new URLSearchParams(window.location.search)
   const path = urlParams.get('path') || 'reactTest.HelloWorld~impl~expectedResult'
+  const logger = urlParams.get('logger') || ''
+
+  // harvestable browser loggers: uiLogger (visitsProgress wire diagnostics) + cliLogger (SSE→router→dispatch wire
+  // logs) + probeLogger + any ?logger= names. exposed on window.jbLoggers so playwrightHarvest's
+  // harvestLogs({vars: window.jbLoggers}) can read them. this SAME ctx is passed to runProbeCli so its
+  // browser-side wire diagnostics (cliLogger.info) route into the harvested vars.
+  const loggerCtx = coreUtils.ensureLoggers(['uiLogger', 'cliLogger', 'cliLineLogger', 'probeLogger', ...logger.split(',').map(s => s.trim()).filter(Boolean)])
+  window.jbLoggers = loggerCtx.vars
+  coreUtils.studioUiLogger = loggerCtx.vars.uiLogger   // visitsProgress logs into this
+  coreUtils.studioLoggerCtx = loggerCtx                 // domainLogger.info needs a real ctx as 3rd arg
 
   const root = createRoot(topElem)
   const render = (c) => root.render(c)
@@ -50,7 +60,7 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
       }
     }
     const entryPointPaths = urlsToLoad.map(f => coreUtils.resolveWithImportMap(f, { imports }, staticMappings))
-    top = await coreUtils.runProbeCli(path, { entryPointPaths }, { onStatus, claudeDir })
+    top = await coreUtils.runProbeCli(path, { entryPointPaths, logger, ctx: loggerCtx }, { onStatus, claudeDir })
     if (cleanseProbResult)
       top = cleanseProbResult(ctx.setData(top))
   } catch (e) { error = e.stack || e.message }
@@ -100,21 +110,187 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
   render(hh(viewCtx.setVars({ allViews }), probeResultView))
 }
 
+// reusable live visited-comps list. Subscribes to eventEmitter 'progress' and accumulates {comp:count}
+// from {t:'visit', comps} events (emitted by Probe.record via cliLogger.progress, routed browser-side by
+// dispatchChildLine). Optional `seed` prop pre-fills the map (used post-run from probeRes.visits). `probed`
+// prop highlights the probed comp.
+const visitsProgress = ReactComp('visitsProgress', {
+  impl: comp({
+    hFunc: ({ }, { react: { h, useState, useEffect } }) => ({ seed, probed }) => {
+      // seed from the global buffer so a re-mount (onStatus re-renders loadingView) keeps prior visits
+      const [visits, setVisits] = useState(seed || coreUtils.lastProbeVisits || {})
+      const [count, setCount] = useState(0)
+      const [started, setStarted] = useState(false)   // flips true on the probeStart event (before any visit)
+      const uiLog = ev => coreUtils.studioUiLogger?.info?.(ev, {}, { ctx: coreUtils.studioLoggerCtx })   // harvestable via window.jbLoggers; domainLogger.info needs {ctx}
+      useEffect(() => {
+        uiLog({ t: 'visitsProgress subscribe', seed, probed, buffered: coreUtils.lastProbeVisits })
+        const fn = e => {
+          uiLog({ t: 'visitsProgress progress', eventT: e?.t, visits: e?.visits })
+          setCount(c => c + 1)
+          if (e?.t === 'probeStart') setStarted(true)   // immediate "probe is alive" signal from runCircuit
+          if (e?.t === 'visit') { coreUtils.lastProbeVisits = e.visits; setVisits(e.visits) }
+        }
+        coreUtils.eventEmitter.on('progress', fn)
+        return () => {
+          uiLog({ t: 'visitsProgress unsubscribe' })
+          coreUtils.eventEmitter.off('progress', fn)
+        }
+      }, [])
+      // probe emits per-tgpPath counts (visits keyed by full path like `comp<dsl>id~impl~...`).
+      // UI aggregates: group paths by their comp (path.split('~')[0]), each group shows its per-path rows.
+      const entries = Object.entries(visits)
+      const total = entries.reduce((s, [, n]) => s + n, 0)
+      const max = entries.reduce((m, [, n]) => Math.max(m, n), 1)
+      const live = count > 0
+
+      const groups = {}
+      for (const [p, n] of entries) {
+        const comp = p.split('~')[0]
+        ;(groups[comp] = groups[comp] || []).push([p, n])
+      }
+      // sort groups by their busiest path desc; probed comp first
+      const groupList = Object.entries(groups)
+        .map(([comp, paths]) => ({ comp, paths: paths.sort((a, b) => b[1] - a[1]), sum: paths.reduce((s, [, n]) => s + n, 0) }))
+        .sort((a, b) => (b.comp === probed) - (a.comp === probed) || b.sum - a.sum)
+
+      const header = h('div:flex items-center justify-between mb-2', {},
+        h('div:flex items-center gap-2', {},
+          h('span:relative flex h-2 w-2', {},
+            live && h('span:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75', {}),
+            h('span', { className: `relative inline-flex rounded-full h-2 w-2 ${live ? 'bg-emerald-500' : 'bg-gray-300'}` })
+          ),
+          h('span:text-xs font-semibold text-gray-700', {}, `Visited paths`),
+          h('span:text-[10px] font-medium text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5 tabular-nums', {}, '' + entries.length)
+        ),
+        h('span:text-[10px] text-gray-400 tabular-nums', {}, `${total} visits`)
+      )
+
+      if (!entries.length)
+        return h('div:w-full', {},
+          header,
+          h('div:text-gray-400 text-center text-xs py-6 flex flex-col items-center gap-1', {},
+            h('span:inline-block h-4 w-4 border-2 border-gray-200 border-t-emerald-400 rounded-full animate-spin', {}),
+            h('span', {}, started ? 'probe started, running the circuit…' : 'waiting for the probe to run…')
+          )
+        )
+
+      // per comp-group: a small comp header, then each tgpPath as a row with a proportional bar (n/max).
+      return h('div:w-full flex flex-col gap-2', {},
+        header,
+        ...groupList.map(({ comp, paths, sum }) => {
+          const isProbed = comp === probed
+          return h('div', {
+            key: comp,
+            className: `rounded-lg border overflow-hidden ${isProbed ? 'border-amber-300' : 'border-gray-100'}`
+          },
+            h('div:flex items-center justify-between px-2 py-1', {
+              className: isProbed ? 'bg-amber-100' : 'bg-gray-50'
+            },
+              h('span:flex items-center gap-1.5 min-w-0', {},
+                isProbed && h('span:text-[9px] font-bold uppercase tracking-wide text-amber-700 bg-amber-200 rounded px-1', {}, 'probed'),
+                h('span:truncate text-xs font-semibold', {
+                  className: isProbed ? 'text-amber-900' : 'text-gray-700',
+                  title: comp
+                }, comp.split('>').pop())
+              ),
+              h('span:tabular-nums text-[10px] text-gray-400 ml-2', {}, `${sum}`)
+            ),
+            h('div:flex flex-col divide-y divide-gray-50', {},
+              ...paths.map(([p, n]) => {
+                const suffix = p.slice(comp.length).replace(/^~/, '') || '(root)'
+                const pct = Math.max(6, Math.round((n / max) * 100))
+                return h('div:relative flex items-center overflow-hidden bg-white', { key: p },
+                  h('div', {
+                    className: `absolute inset-y-0 left-0 ${isProbed ? 'bg-amber-100' : 'bg-emerald-50'} transition-all duration-300 ease-out`,
+                    style: { width: `${pct}%` }
+                  }),
+                  h('div:relative flex items-center justify-between w-full pl-3 pr-2 py-0.5', {},
+                    h('span:truncate text-[11px] font-mono text-gray-600', { title: p }, suffix),
+                    h('span:tabular-nums text-[10px] font-medium text-gray-500 ml-2', {}, '' + n)
+                  )
+                )
+              })
+            )
+          )
+        })
+      )
+    },
+    samplePropsData: asIs({ seed: { 'test<test>coreTest.HelloWorld~impl~expectedResult': 21, 'test<test>coreTest.HelloWorld~impl~calculate~operators~0': 3 }, probed: 'test<test>coreTest.HelloWorld' })
+  })
+})
+
+// live probe-timeline stepper. Subscribes to eventEmitter 'progress' and accumulates {step:status}.
+// resolveImports runs CLIENT-side in runProbeCli (before the client sends the /run-cli-stream HTTP) so its
+// progress reaches this eventEmitter directly. imports/runCircuit originate in the spawned child
+// (server-side) and stream back as stderr JSONL, re-emitted via dispatchChildLine → eventEmitter.
+// spawn (~10ms) and calcCircuit (near-instant) are omitted - too fast to be worth a row.
+const probeSteps = [
+  ['resolveImports', 'resolve imports'],
+  ['imports',        'loading imports'],
+  ['runCircuit',     'run circuit']
+]
+const stageProgress = ReactComp('stageProgress', {
+  impl: comp({
+    hFunc: ({ }, { react: { h, useState, useEffect } }) => () => {
+      // seed 'resolveImports' running so the stepper shows an active spinner from the true client-side start,
+      // even before the real resolveImports event lands. real events overwrite it as they arrive.
+      const [state, setState] = useState({ resolveImports: 'running' })
+      const uiLog = ev => coreUtils.studioUiLogger?.info?.(ev, {}, { ctx: coreUtils.studioLoggerCtx })
+      useEffect(() => {
+        uiLog({ t: 'stageProgress subscribe' })
+        const fn = e => {
+          if (!e?.step) return
+          uiLog({ t: 'stageProgress step', step: e.step, status: e.status || 'running' })
+          // a later step arriving implies the previous ones are done
+          setState(s => ({ ...s, [e.step]: e.status || 'running' }))
+        }
+        coreUtils.eventEmitter.on('progress', fn)
+        return () => coreUtils.eventEmitter.off('progress', fn)
+      }, [])
+      return h('ul:flex flex-col gap-2', {}, ...probeSteps.map(([id, label]) => {
+        const status = state[id]
+        const done = status === 'done', running = status === 'running'
+        const dot = done
+          ? h('span:w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center shrink-0', {}, '✓')
+          : running
+          ? h('span:w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin shrink-0', {})
+          : h('span:w-4 h-4 rounded-full bg-gray-200 shrink-0', {})
+        const textCls = done ? 'text-gray-500' : running ? 'text-blue-700 font-medium' : 'text-gray-400'
+        return h('li:flex items-center gap-3', { key: id }, dot,
+          h('span:text-sm ' + textCls, {}, label))
+      }))
+    }
+  })
+})
+
 ReactComp('loadingView', {
   impl: comp({
-    hFunc: ({ }, { path, react: { h } }) => ({ status }) => {
-      return h('div:w-full h-full flex flex-col bg-gray-50', {},
-        h('div:flex items-center justify-center py-8', {},
-          h('div:text-center', {},
-            h('div:text-lg font-semibold mb-2', {}, status?.text),
-            h('div:text-sm text-gray-600', {}, path),
-            h('div:text-xs text-gray-400 mt-2', {}, 'Please wait...'),
-            h('a:mt-4 px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors inline-block cursor-pointer',
-              { href: location.href, target: '_blank' },
-              '🔗 Open in new tab'
-            ),
+    hFunc: (ctx, { path, react: { h, hh } }) => ({ status }) => {
+      return h('div:w-full h-full flex flex-col items-center bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4 overflow-auto', {},
+        h('div:w-full max-w-md flex flex-col gap-4', {},
+          // status card
+          h('div:bg-white rounded-xl shadow-sm border border-gray-100 p-5', {},
+            h('div:flex items-center gap-3', {},
+              h('span:inline-block h-5 w-5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin shrink-0', {}),
+              h('div:min-w-0 flex-1', {},
+                h('div:text-sm font-semibold text-gray-800 truncate', {}, status?.text || 'Running probe…'),
+                h('div:text-xs text-gray-400 truncate font-mono mt-0.5', { title: path }, path)
+              ),
+              h('a:text-gray-400 hover:text-gray-700 transition-colors shrink-0',
+                { href: location.href, target: '_blank', title: 'Open in new tab' },
+                h('L:ExternalLink', { className: 'w-4 h-4' })
+              )
+            )
+          ),
+          // probe-timeline stepper card
+          h('div:bg-white rounded-xl shadow-sm border border-gray-100 p-4', {},
+            hh(ctx, stageProgress, {})
+          ),
+          // live visits card
+          h('div:bg-white rounded-xl shadow-sm border border-gray-100 p-4', {},
+            hh(ctx, visitsProgress, { probed: path?.split('~')[0] })
           )
-        ),
+        )
       )
     },
     sampleCtxData: asIs({vars: {path: 'test.path~impl'}}),
@@ -224,6 +400,26 @@ ReactComp('topView', {
       abbr('ALL'),
       matchData('%$top%'),
       priority(5)
+    ]
+  })
+})
+
+// live visited-comps view: accumulates {compId: count} from eventEmitter 'visit' progress events
+// (emitted by Probe.record via cliLogger.progress). Seeds from the final probeRes.visits (grouped by
+// comp) so it also renders correctly on a completed/replayed probe. ctx.data is the visits {path:count} map.
+// post-run VIS tab: seeds visitsProgress from the final probeRes.visits (grouped by comp). ctx.data is the
+// visits {path:count} map. The shared visitsProgress also keeps listening, so a re-run updates it live too.
+ReactComp('visitsProgressView', {
+  impl: comp({
+    hFunc: (ctx, { probePath, react: { h, hh } }) => () => {
+      // ctx.data is the raw probeRes.visits (tgpPath→count). visitsProgress aggregates by comp itself.
+      return h('div:p-3', {}, hh(ctx, visitsProgress, { seed: ctx.data || {}, probed: probePath?.split('~')[0] }))
+    },
+    sampleCtxData: '%$sampleProbeRes/probeRes/visits%',
+    metadata: [
+      abbr('VIS'),
+      matchData('%$top/probeRes/visits%'),
+      priority(4.5)
     ]
   })
 })

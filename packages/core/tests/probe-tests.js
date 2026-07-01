@@ -1,15 +1,19 @@
-import { dsls, coreUtils } from '@jb6/core'
+import { dsls, coreUtils, ns } from '@jb6/core'
 import '../misc/probe.js'
+import '@jb6/rx'
+import '@jb6/rx/rx-common.js'
+import '@jb6/rx/rx-misc.js'
 import '@jb6/testing'
 
 const { runProbe, runProbeCli, runNodeCli } = coreUtils
 
-const { 
-  tgp: { Const, TgpType, 
-    'ctx-enricher': { Var } 
+const {
+  tgp: { Const, TgpType,
+    'ctx-enricher': { Var }
   },
+  rx: { 'reactive-source': { interval } },
   common: { Data, Action, Boolean,
-    data: { pipeline, filter, join, property, obj, delay, asIs }, 
+    data: { pipeline, filter, join, property, obj, delay, asIs, pipe },
     Boolean: { contains, equals, and },
     Prop: { prop }
   },
@@ -17,6 +21,7 @@ const {
     test: { dataTest }
   }
 } = dsls
+const { rx } = ns
 
 Test('coreTest.HelloWorld', {
   impl: dataTest(pipeline('hello world', '%%', join('')), and(contains('hello'), contains('world')))
@@ -26,6 +31,18 @@ Test('probeTest.helloWorld', {
   impl: dataTest({
     calculate: () => runProbe('test<test>coreTest.HelloWorld~impl~expectedResult'),
     expectedResult: equals('hello world', '%result.0.in.data%')
+  })
+})
+
+Test('probeCliTest.helloWorld', {
+  impl: dataTest({
+    calculate: async () => {
+      const repoRoot = await coreUtils.calcRepoRoot()
+      const entryPointPaths = `${repoRoot}/hosts/test-project/a-tests.js`
+      return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',{entryPointPaths})
+    },
+    expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
+    timeout: 1000
   })
 })
 
@@ -43,6 +60,18 @@ Test('probeTest.innerInPipeline', {
   })
 })
 
+// slow probe target: an rx interval emitting every 100ms, taken 5 times → the probe runs ~500ms.
+// pipeline "does not wait for promises", but rx `pipe` DOES wait for reactive/callbag data, so the
+// interval emits are spread over real time. this keeps the studio's live visitsProgress view mounted
+// long enough to receive several throttled progress emits (one per ~100ms window) instead of a single
+// final flush on a sub-10ms run. defined in probe-tests via @jb6/rx so it's available to the probe.
+Test('probeTest.slowInterval', {
+  impl: dataTest({
+    calculate: pipe(rx.pipe(interval(100), rx.take(5)), join(',')),
+    expectedResult: equals('0,1,2,3,4')
+  })
+})
+
 const cmpAA = Data('cmpAA', {
   impl: 'cmpAA'
 })
@@ -56,6 +85,17 @@ Test('probeTest.calcCircuit', {
   impl: dataTest({
     calculate: () => runProbe('data<common>cmpAA~impl'),
     expectedResult: equals('test<test>circuitForAA', '%circuitCmpId%')
+  })
+})
+
+Test('probeTest.calcCircuitPhaseLogs', {
+  impl: dataTest({
+    calculate: async () => {
+      const { probeLogger } = coreUtils.ensureLoggers('probeLogger').vars
+      await runProbe('data<common>cmpAA~impl', { progressLogger: probeLogger })
+      return probeLogger.probeLog.filter(e => e.severity != 'progress')
+    },
+    expectedResult: equals('beforeCalcCircuit,afterCalcCircuit', pipeline('%%', '%t%', join(',')))
   })
 })
 
@@ -112,13 +152,34 @@ Test('cliTest.progressViaLogger', {
   })
 })
 
+// verifies the loading-timeline step events reach the LOCAL eventEmitter (the studio's UI hook).
+// all steps originate in the child (spawn,imports,calcCircuit,runCircuit) and travel as stderr JSONL,
+// re-emitted by dispatchChildLine → cliLogger.progress → eventEmitter.
+Test('probeCliTest.timelineSteps', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: async () => {
+      const repoRoot = await coreUtils.calcRepoRoot()
+      const entryPointPaths = `${repoRoot}/hosts/test-project/a-tests.js`
+      const steps = []
+      const onProgress = e => e?.step && steps.push(e.step)
+      coreUtils.eventEmitter.on('progress', onProgress)
+      await runProbeCli('data<common>cmpA~impl', { entryPointPaths })
+      coreUtils.eventEmitter.off('progress', onProgress)
+      return coreUtils.unique(steps).join(',')
+    },
+    expectedResult: and(contains('resolveImports'), contains('spawn'), contains('imports'), contains('calcCircuit'), contains('runCircuit')),
+    timeout: 5000
+  })
+})
+
 Test('probeCliTest.findTestFiles', {
   HeavyTest: true,
   impl: dataTest({
     calculate: async () => {
       const repoRoot = await coreUtils.calcRepoRoot()
       const entryPointPaths = `${repoRoot}/hosts/test-project/a-tests.js`
-      const probeResArr = await Promise.all(['cmpA','cmpB','cmpC'].map(cmp => 
+      const probeResArr = await Promise.all(['cmpA','cmpB','cmpC'].map(cmp =>
         runProbeCli(`data<common>${cmp}~impl`,{entryPointPaths})))
       const allData = probeResArr.map(x=>x.probeRes.result[0].in.data).join(',')
       return allData

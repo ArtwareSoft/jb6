@@ -27,6 +27,9 @@ const ensureLoggers = (names = [], {ctx = new coreUtils.Ctx(), wrapToStderr} = {
     const inst = c.vars[name] || (jb.dsls.test.logger[name] ? jb.dsls.test.logger[name].$runWithCtx(c) : undefined)
     if (!inst) return c
     if (wrapToStderr) wrapLoggerInstanceToStderr(name, inst)
+    // static-imports timing: performance.now() = ms since process start. the child's static imports are all done
+    // before its body reaches ensureLoggers, so this is the static-load window. logged onto cliLog (harvested at the end).
+    if (wrapToStderr && name == 'cliLogger') inst.info({t: 'staticImportsLoaded', staticImportsMs: Math.round(globalThis.performance?.now?.() || 0)}, {}, {ctx: c})
     return c.vars[name] ? c : c.setVars({[name]: inst})
   }, ctx)
 }

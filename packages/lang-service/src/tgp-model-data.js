@@ -2,7 +2,7 @@ import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
 
-const { jb, astToTgpObj, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData, calcRepoRoot, toCapitalType, absPathToImportUrl, discoverDslEntryPoints, tgpProfileToJson } = coreUtils
+const { jb, astToTgpObj, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData, calcRepoRoot, toCapitalType, absPathToImportUrl, discoverDslEntryPoints, tgpProfileToJson, isNode } = coreUtils
 const { calcProfileActionMap, lineColToOffset, parseWithFallback: parse } = langServiceUtils
 const {
   tgp: { TgpType, TgpTypeModifier },
@@ -30,6 +30,17 @@ export async function calcTgpModelData(resources) {
   const rootFilePaths = unique([...entryFiles, ...allTestFiles, ...allLlmGuideFiles])
   const short = p => (p || '').replace(repoRoot + '/', '')   // strip common prefix to shrink logs
   const compsByFile = {}
+
+  // fast pre-crawl: walk the static import graph WITHOUT full AST parsing (regex-harvest imports
+  // from the top lines only) just to collect the file list + mtimes. ~25ms vs ~600ms for the full
+  // crawl below, so it's the cache-invalidation fingerprint: on the next call we re-stat this list
+  // and rebuild only if any mtime changed. runs BEFORE the crawl so the measure/fingerprint is logged first.
+  const datesStart = Date.now()
+  const { files: dateFiles, mtimes } = await crawlForDates({ importMap, staticMappings, rootFilePaths, fetchByEnvHttpServer })
+  log?.info?.({ t: 'tgpModelDates', forDsls: resources.forDsls, ms: Date.now() - datesStart,
+    dateFileCount: dateFiles.length, mtimeCount: Object.keys(mtimes).length,
+    fingerprint: fingerprintOf(mtimes) }, {}, { ctx })
+
   // crawl
   const codeMap = {} , visited = {}, importGraph = {}
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
@@ -255,6 +266,69 @@ function resolvePath(b, r) {
 	return (b[0] === '/' ? '/' : '') + out.join('/')
 }
 
+// lightweight sibling of calcTgpModelData's crawl: walk the static import graph WITHOUT full AST
+// parsing. we only need the file LIST + mtimes (the cache-invalidation fingerprint), so we harvest
+// imports from the top lines via regex. static es-module imports are top-level; mid/deep-file imports
+// (e.g. a lazy import at line 445) are missed, which is fine for a leaf-level mtime check.
+const CRAWL_DATES_TOP_LINES = 40
+const importLineRe = /^\s*import\s+(?:[^'"]*\s+from\s+)?['"]([^'"]+)['"]/
+function harvestImports(src) {
+  return src.split('\n', CRAWL_DATES_TOP_LINES)
+    .map(l => (l.match(importLineRe) || [])[1])
+    .filter(spec => spec && ['/', '.', '@', '#'].some(p => spec.startsWith(p)))
+}
+function fingerprintOf(mtimes) {   // order-independent hash of the {file: mtimeMs} map
+  let h = 0
+  for (const k of Object.keys(mtimes).sort()) {
+    const s = k + ':' + mtimes[k]
+    for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
+  }
+  return h
+}
+export async function crawlForDates({ importMap, staticMappings, rootFilePaths, fetchByEnvHttpServer }) {
+  const visited = {}, mtimes = {}
+  // mtimes (and the file cache) are a node-only optimization; in the browser the real build is delegated
+  // to a node CLI. no isNode -> no stat, no fs/promises import (which would throw in the browser).
+  const stat = isNode && !fetchByEnvHttpServer ? (await import('fs/promises')).stat : null
+  async function crawl(url) {
+    if (visited[url]) return
+    visited[url] = true
+    try {
+      const rUrl = resolveWithImportMap(url, importMap, staticMappings) || url
+      const src = await fetchByEnv(rUrl, staticMappings, fetchByEnvHttpServer)
+      if (stat && rUrl.startsWith('/'))
+        mtimes[rUrl] = (await stat(rUrl)).mtimeMs
+      const imports = harvestImports(src).map(rel => resolvePath(rUrl, rel)).filter(x => !x.match(/^\/libs\//))
+      await Promise.all(imports.map(crawl))
+    } catch (e) {}   // ignore unresolved leaves (bare pkg specifiers etc.)
+  }
+  await rootFilePaths.reduce((acc, f) => acc.then(() => crawl(f)), Promise.resolve())
+  return { files: Object.keys(visited), mtimes }
+}
+
+// cache key = hash(query + graph mtimes). query change OR file edit -> new key. null in http mode (no mtimes).
+async function calcTgpModelCacheKey({ query, importMap, staticMappings, rootFilePaths, fetchByEnvHttpServer }) {
+  if (fetchByEnvHttpServer) return { key: null, mtimes: {} }
+  const { mtimes } = await crawlForDates({ importMap, staticMappings, rootFilePaths, fetchByEnvHttpServer })
+  if (!Object.keys(mtimes).length) return { key: null, mtimes }
+  const canon = JSON.stringify(query) + '|' + Object.keys(mtimes).sort().map(k => k + ':' + mtimes[k]).join(',')  // sort: crawl order varies
+  return { key: String(fingerprintOf({ canon }) >>> 0), mtimes }
+}
+const TGP_MODEL_CACHE_DIR = '/tmp/.jb6/tgpModel'   // node-only; key is null in the browser so these no-op
+async function readTgpModelCache(key) {
+  if (!key || !isNode) return null
+  try { return JSON.parse(await (await import('fs/promises')).readFile(`${TGP_MODEL_CACHE_DIR}/${key}.json`, 'utf8')) }
+  catch (e) { return null }
+}
+async function writeTgpModelCache(key, value) {
+  if (!key || !isNode) return
+  try {
+    const fs = await import('fs/promises')
+    await fs.mkdir(TGP_MODEL_CACHE_DIR, { recursive: true })
+    await fs.writeFile(`${TGP_MODEL_CACHE_DIR}/${key}.json`, JSON.stringify(value))
+  } catch (e) {}
+}
+
 function offsetToLineCol(text, offset) {
   const cut = text.slice(0, offset)
   return {
@@ -396,6 +470,7 @@ async function calcExpectedDslsSection(tgpModel, filePath) {
 // plus projectDir + importMapsInCli for runCliInContext.
 async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer, entryPointPaths, ctx} = {}) {
   const log = ctx?.vars?.snippetLogger
+  const lsLog = ctx?.vars?.langServiceLogger
   // entryPointPaths mode crawls explicit files (e.g. host tests outside /packages) - forRepo mode
   // ignores entryPointPaths and only crawls the repo's discovered files, so the two are exclusive.
   if (!entryPointPaths) repoRoot = repoRoot || await calcRepoRoot()
@@ -406,7 +481,28 @@ async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer, ent
   const parsed = allFullIds.map(id => { const m = id.match(/^([^<]+)<([^>]+)>(.+)$/); return m && { type: m[1], dsl: m[2], shortId: m[3], fullId: id } }).filter(Boolean)
   if (!parsed.length) return { error: `no valid {$: 'type<dsl>id'} found in profile`, topLevelImports: [], importsStr: '' }
   const allDsls = unique(parsed.map(p => p.dsl))
-  const tgpModel = await calcTgpModelData({forRepo: entryPointPaths ? undefined : repoRoot, forDsls: allDsls.join(','), fetchByEnvHttpServer, entryPointPaths, ctx })
+  const modelResources = {forRepo: entryPointPaths ? undefined : repoRoot, forDsls: allDsls.join(','), fetchByEnvHttpServer, entryPointPaths, ctx}
+
+  // file cache: the returned import list is JSON-safe and all probe.js needs (not the heavy tgpModel).
+  // hit skips the ~600ms crawl (897ms->128ms end-to-end probe). key from calcTgpModelCacheKey.
+  const cacheQuery = { ids: allFullIds.slice().sort(), repoRoot: repoRoot || '', entryPointPaths: [].concat(entryPointPaths || []).join(',') }
+  let cacheKey = null
+  if (isNode) try {   // node-only: browser delegates the build to a node CLI, so skip the cache dance
+    const { importMap, staticMappings, entryFiles, testFiles, llmGuideFiles, jb6_llmGuideFiles, jb6_testFiles } = await calcImportData(modelResources)
+    const rootFilePaths = unique([...entryFiles, ...(testFiles || []), ...(jb6_testFiles || []), ...(llmGuideFiles || []), ...(jb6_llmGuideFiles || [])])
+    const { key } = await calcTgpModelCacheKey({ query: cacheQuery, importMap, staticMappings, rootFilePaths, fetchByEnvHttpServer })
+    cacheKey = key
+    const cached = await readTgpModelCache(cacheKey)
+    if (cached) {
+      lsLog?.info?.({ t: 'tgpModelCache', hit: true, key }, {}, { ctx })
+      return cached
+    }
+    lsLog?.info?.({ t: 'tgpModelCache', hit: false, key }, {}, { ctx })
+  } catch (e) {
+    lsLog?.error?.({ t: 'tgpModelCache', err: e.message }, {}, { ctx })
+  }
+
+  const tgpModel = await calcTgpModelData(modelResources)
   if (tgpModel.error) return { error: tgpModel.error }
   const projectDir = tgpModel.projectDir || repoRoot
   const comps = parsed.map(p => tgpModel.dsls[p.dsl]?.[p.type]?.[p.shortId]).filter(Boolean)
@@ -421,7 +517,10 @@ async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer, ent
   const entryFiles = unique(allComps.map(c => c.$location?.path).filter(Boolean))
   const topLevelImports = calcMinimalImports([...dslsEntryPoints, ...entryFiles], tgpModel.importGraph)
   const importsStr = topLevelImports.map(f => `await import('${f}')`).join('\n')
-  return { topLevelImports, importsStr, projectDir, importMapsInCli: tgpModel.importMap.importMapsInCli, tgpModel }
+  // cached shape (JSON-safe, self-contained); tgpModel returned live but NOT persisted (comp impls don't survive JSON).
+  const res = { topLevelImports, importsStr, projectDir, importMapsInCli: tgpModel.importMap.importMapsInCli, testFiles: tgpModel.testFiles || [] }
+  await writeTgpModelCache(cacheKey, res)
+  return { ...res, tgpModel }
 }
 
 function collectTransitiveComps(initialComps, tgpModel) {
