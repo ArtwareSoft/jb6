@@ -209,10 +209,10 @@ Component('setData', {
 Component('enrichCtx', {
   type: 'ctx-enricher<tgp>',
     params: [
-    {id: 'enrichers', type: 'ctx-enricher<tgp>[]', dynamic: true, composite: true }
+    {id: 'enrichers', type: 'ctx-enricher<tgp>[]', dynamic: true }
   ],
   impl: (ctx, {}, { enrichers }) =>
-    asArray(enrichers.profile).flat().reduce((res, e) => Promise.resolve(res).then(c => c.run(e)), ctx)
+    asArray(enrichers.profile).reduce((res, e) => Promise.resolve(res).then(c => c.run(e)), ctx)
 })
 
 // common dsl
