@@ -1,3 +1,4 @@
+// REAL browser with REAL modules (no stubs), use the mcp tool `playwrightHarvest`
 import { dsls, ns, coreUtils, jb } from '@jb6/core'
 import { reactUtils } from '@jb6/react' 
 import '@jb6/testing'

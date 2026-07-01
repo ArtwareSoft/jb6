@@ -166,11 +166,17 @@ Tool('scrambleText', {
 
 Tool('playwrightHarvest', {
   description: `Load a live react-comp url in headless Chromium (Playwright) and harvest its jb6 loggers + browser errors - no screenshots.
-Use it to verify a bare comp url (e.g. a tests.html ?showOnly url) actually mounts and behaves in a REAL browser with REAL modules (no test stubs), when node/jsdom is not enough.
-Returns { hasLoggers, consoleErrors, pageErrors, logs }: consoleErrors = console messages of type error/warning, pageErrors = uncaught exceptions + failed requests, logs = harvestLogs from window.jbLoggers (add &logger=... and &spy=... to the url to populate them).`,
+Use it to verify a ReactComp actually mounts and behaves in a REAL browser with REAL modules (no jsdom/test stubs), when a reactTest under node is not enough.
+Typically point url at react-comp-view.html, which sets window.jbLoggers=ctx.vars, mounts a comp and runs a uiAction on it (see the url param for the query params it accepts).
+Returns { hasLoggers, consoleErrors, pageErrors, logs }: consoleErrors = console error/warning, pageErrors = uncaught exceptions + failed requests, logs = harvestLogs from window.jbLoggers. Assert on logs.<logger>.<logName>, e.g. logs.uiLogger.uiLog contains 'selected: lect-a'.`,
   params: [
-    {id: 'url', as: 'string', mandatory: true, description: 'full comp url incl. loggers, e.g. http://localhost:8083/packages/testing/tests.html?test=reactTest.codeMirrorSelect&showOnly&spy=test&logger=uiLogger'},
-    {id: 'settleMs', as: 'number', defaultValue: 5000, description: 'ms to wait after networkidle for async imports/effects to settle before harvesting'},
+    {id: 'url', as: 'string', mandatory: true, description: `full comp url. use react-comp-view.html with these query params:
+  logger=<name>   loggers to enable, e.g. uiLogger - REQUIRED or logs come back empty
+  cmpId=<id>      ReactComp to mount, e.g. codeMirrorTest
+  urlsToLoad=<m>  module(s) defining the comp, e.g. @jb6/react/tests/react-tests.js
+  uiAction=<json> a ui-action<test> profile to run on the mounted comp, e.g. {"$":"ui-action<test>selectInCodeMirror","from":2,"to":8}
+full example: http://localhost:8083/packages/react/react-comp-view.html?logger=uiLogger&cmpId=codeMirrorTest&urlsToLoad=@jb6/react/tests/react-tests.js&uiAction={"$":"ui-action<test>selectInCodeMirror","from":2,"to":8}`},
+    {id: 'settleMs', as: 'number', defaultValue: 5000, description: 'ms to wait after networkidle for async imports/effects (spinner -> real modules) to settle before harvesting. lower (~1000) is usually fine once the dev server is warm'},
   ],
   impl: mcpTool(async (ctx, {}, {url, settleMs}) => {
     const script = `
