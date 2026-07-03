@@ -65,16 +65,15 @@ function run(profile, ctx = new Ctx(), settings = {}) {
     return res
 }
 
-// apply a ctx-enricher (or array of them) to ctx, sequentially. each enricher is run via the
-// regular TGP run() and returns a Ctx (await-by-default: a later enricher sees the resolved ctx
-// of the prior one). stays sync unless an enricher returns a Promise<Ctx>, in which case it chains.
 function applyCtxEnrichers(enrichers, ctx, settings) {
-    const basePath = ctx.jbCtx.path
-    return asArray(enrichers).reduce((ctx, e, i) =>
+    const { path, parentParam, profile } = ctx.jbCtx   // caller's lexical position - enrichers only add vars/data, not a new lexical frame
+    const restore = c => c.setJbCtx(new JBCtx({...c.jbCtx, path, parentParam, profile}))
+    const enriched = asArray(enrichers).reduce((ctx, e, i) =>
         isPromise(ctx)
-            ? ctx.then(c => run(e, c.setJbCtx(new JBCtx({...c.jbCtx, path: `${basePath}~vars~${i}`})), settings))
-            : run(e, ctx.setJbCtx(new JBCtx({...ctx.jbCtx, path: `${basePath}~vars~${i}`})), settings)
+            ? ctx.then(c => run(e, c.setJbCtx(new JBCtx({...c.jbCtx, path: `${path}~vars~${i}`})), settings))
+            : run(e, ctx.setJbCtx(new JBCtx({...ctx.jbCtx, path: `${path}~vars~${i}`})), settings)
     , ctx)
+    return isPromise(enriched) ? enriched.then(restore) : restore(enriched)
 }
 
 function toRTType(parentParam, value) {

@@ -14,21 +14,13 @@ const Logger = TgpType('logger', 'test')
 jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
 Object.assign(jb.coreRegistry.urlReservedParams, {logger: true, spy: true})
 
-// ensureLoggers: the single logger-init entry point. Instantiates named loggers into ctx.vars (idempotent).
-// wrapToStderr is passed by the PARENT into the child script it generates (probe/snippet) - the child is the only
-// place that should tee logs to stderr (the only channel back to the parent router). When set, it also turns spy on
-// and wraps each requested logger instance. Parents call without it, so they never wrap themselves; browsers never
-// pass it (and process.stderr guard in wrapLoggerInstanceToStderr is a backstop).
-// errorLogger is ALWAYS ensured — errors must be visible regardless of which tracing loggers the caller opted into.
 const ensureLoggers = (names = [], {ctx = new coreUtils.Ctx(), wrapToStderr} = {}) => {
   names = (Array.isArray(names) ? names : String(names).split(',')).map(s => s.trim()).filter(Boolean)
   if (wrapToStderr) initSpy({spyParam: 'all'})
   return [...new Set(['errorLogger', ...names])].reduce((c, name) => {
-    const inst = c.vars[name] || (jb.dsls.test.logger[name] ? jb.dsls.test.logger[name].$runWithCtx(c) : undefined)
-    if (!inst) return c
+    const comp = jb.dsls.test.logger[name] || Logger(name, { impl: domainLogger(name.replace(/Logger$/, '')) })   // unregistered name -> register a default domain logger on the fly
+    const inst = c.vars[name] || comp.$runWithCtx(c)
     if (wrapToStderr) wrapLoggerInstanceToStderr(name, inst)
-    // static-imports timing: performance.now() = ms since process start. the child's static imports are all done
-    // before its body reaches ensureLoggers, so this is the static-load window. logged onto cliLog (harvested at the end).
     if (wrapToStderr && name == 'cliLogger') inst.info({t: 'staticImportsLoaded', staticImportsMs: Math.round(globalThis.performance?.now?.() || 0)}, {}, {ctx: c})
     return c.vars[name] ? c : c.setVars({[name]: inst})
   }, ctx)
