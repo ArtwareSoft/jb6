@@ -130,7 +130,7 @@ function log(logNames, _record, {takeFrom} = {}) {
 
     logs.push(record)
     if (logs.length > settings.MAX_LOG_SIZE *1.1)
-        logs = logs.slice(-1* settings.MAX_LOG_SIZE)
+        logs.splice(0, logs.length - settings.MAX_LOG_SIZE)
     _obs?.next(record)
 }
 

@@ -27,7 +27,7 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
     const loggerNames = (resources.logger || '').split(',').map(s => s.trim()).filter(Boolean)
     // always ensure probeLogger in the routing ctx so live visit-progress (emitted on probeLogger.progress in the
     // child) routes back via dispatchChildLine → eventEmitter. harvestLogs below uses loggerNames only, not harvested.
-    const ctx = resources.ctx || coreUtils.ensureLoggers(['probeLogger', 'cliLogger', ...loggerNames])
+    const ctx = coreUtils.ensureLoggers(['probeLogger', 'cliLogger', ...loggerNames], {ctx: resources.ctx})
     // real "starting" signal: runProbeCli runs browser-side in the studio, so this cliLogger.progress
     // reaches the studio eventEmitter directly - marks the true start, before the ~800ms import resolution.
     ctx.vars.cliLogger?.progress?.({step: 'resolveImports', status: 'running'})
@@ -41,15 +41,17 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
     //     resolves to a real comp here, the circuit lives in those files (e.g. probing a test, or a comp
     //     whose test/caller is in the same file) - importing entryPointPaths is enough, no scan.
     // only when the circuit can't be found locally (its caller is in some other, un-named file) do we scan.
+    //   - circuitCmpId + entryPointPaths: the caller names both the circuit AND the file that defines it,
+    //     so there's nothing to discover - import those files and skip the scan.
     const circuitInLoadedFiles = entryPointPaths && !circuitCmpId && (() => {
       const normPath = probePath.indexOf('<') == -1 ? `test<test>${probePath}` : probePath
       const c = calcCircuit(normPath)
       return typeof c == 'string' && !!compByFullId(c, jb)
     })()
     let imp, strategy
-    if (entryPointPaths && (extraCode || circuitInLoadedFiles)) {
-      strategy = extraCode ? 'files:extraCode' : 'files:circuitInLoadedFiles'
-      imp = await coreUtils.calcImportsForFiles(coreUtils.asArray(entryPointPaths), {repoRoot})
+    if (entryPointPaths && (extraCode || circuitCmpId || circuitInLoadedFiles)) {
+      strategy = extraCode ? 'files:extraCode' : circuitCmpId ? 'files:circuitCmpId' : 'files:circuitInLoadedFiles'
+      imp = await coreUtils.calcImportsForFiles(coreUtils.asArray(entryPointPaths), {repoRoot, ctx})
     } else {
       strategy = 'scan:calcImportsForProfile'
       if (!coreUtils.calcImportsForProfile)
@@ -87,8 +89,9 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
         console.error(e)
       }
     `
-    const { result, error, cmd } = await coreUtils.runCliInContext(script,
+    const { result: rawResult, error, cmd } = await coreUtils.runCliInContext(script,
       {projectDir, importMapsInCli, ctx, bindLoggers: ['probeLogger', 'cliLogger', ...loggerNames].join(','), stream: 'both'}, onStatus)
+    const result = coreUtils.resolveRefs(rawResult)   // child JSON-serializes with stripData ref-dedup ([jbReference:...]); rebuild the graph so out isn't a dangling ref
     const probeLog = ctx ? coreUtils.harvestLogs(ctx, loggerNames) : {}
     if (resolution == 'all')
       return { probeRes: result, error, cmd, projectDir, topLevelImports: allImportFiles, ...probeLog }

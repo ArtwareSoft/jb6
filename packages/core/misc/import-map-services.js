@@ -176,11 +176,17 @@ function createErrorResult(error, entryFiles = [], pkgJson = {}) {
 // Build the import list for running a SYNTHETIC comp (one that has no on-disk definition, e.g. a comp
 // defined inline in probe extraCode). We can't resolve its imports from the comp, so we import the
 // given entry files + the repo's entryFiles + ALL repo test files (where Const()/circuits may live).
-async function calcImportsForFiles(files, {repoRoot} = {}) {
+async function calcImportsForFiles(files, {repoRoot, ctx} = {}) {
   repoRoot = repoRoot || await calcRepoRoot()
   const { entryFiles = [], testFiles = [], importMap, projectDir, error } = await calcImportData({ forRepo: repoRoot })
   if (error) return { error }
-  const topLevelImports = unique([...entryFiles, ...files, ...testFiles])
+  // files may be browser served-URL paths (comp.$location.path, e.g. '/wonder-admin/bi/bi-tests.js'); the CLI child imports by disk path.
+  const diskFiles = files.map(f => ({ url: f, disk: urlToDisk(f, importMap?.staticMappings) }))
+  const mapped = diskFiles.filter(f => f.url != f.disk)                                      // served-URLs rewritten to disk (the tricky area)
+  const unmapped = diskFiles.filter(f => f.disk[0] == '/' && !f.disk.startsWith(repoRoot))   // still a URL after mapping → child crashes ERR_MODULE_NOT_FOUND
+  mapped.length && ctx?.vars?.cliLogger?.info?.({ t: 'urlToDisk', mapped }, {}, { ctx })
+  unmapped.length && ctx?.vars?.cliLogger?.warn?.({ t: 'unmappedImport', unmapped, hint: 'no staticMappings urlPath matched - [eval1] child cannot import this' }, {}, { ctx })
+  const topLevelImports = unique([...entryFiles, ...diskFiles.map(f => f.disk), ...testFiles])
   return { topLevelImports, projectDir: projectDir || repoRoot, importMapsInCli: importMap?.importMapsInCli, tgpModel: { testFiles } }
 }
 
@@ -326,23 +332,27 @@ async function discoverFiles(staticMappings, pkgJson, {projectDir}) {
 }
 
 
+// inverse of absPathToUrl: map a served-URL path (e.g. '/wonder-admin/bi/x.js') to its disk path via the longest urlPath match. non-served paths (real disk) match nothing → returned unchanged.
+function urlToDisk(url, staticMappings = []) {
+  const m = staticMappings.reduce((best, e) => e.diskPath != e.urlPath && url.startsWith(e.urlPath) && e.urlPath.length > (best?.urlPath.length||0) ? e : best, null)
+  return m ? pathJoin(m.diskPath, url.slice(m.urlPath.length)) : url
+}
+
 function resolveWithImportMap(specifier, importMap, staticMappings) {
-  if (specifier[0] == '/') return specifier
+  if (specifier[0] == '/') return urlToDisk(specifier, staticMappings)
   const imports = importMap?.imports
   if (!imports || !staticMappings) return undefined
-  
+
   let winner = ''
   for (const key in imports) {
     if ((specifier === key || specifier.startsWith(key)) && key.length > winner.length) winner = key
   }
   if (!winner) return undefined
-  
+
   const target = imports[winner]
   const rest = specifier.slice(winner.length)
   const urlToBeServed = target.endsWith('/') ? target + rest : target
-  const dirEntry = staticMappings.reduce((best, m) => urlToBeServed.startsWith(m.urlPath) && m.urlPath.length > (best?.urlPath.length||0) ? m : best, null)
-  if (dirEntry) return pathJoin(dirEntry.diskPath, urlToBeServed.slice(dirEntry.urlPath.length))
-  return urlToBeServed
+  return urlToDisk(urlToBeServed, staticMappings)
 }
 
 function absPathToUrl(path, staticMappings = []) {

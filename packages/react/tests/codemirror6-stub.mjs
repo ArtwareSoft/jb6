@@ -37,6 +37,7 @@ export class EditorView {
     this.state.selection.main = { from, to, head: to }
     this.listeners.forEach(fn => fn({ selectionSet: true, view: this }))
   }
+  destroy() { this.dom.remove() }
 }
 EditorView.updateListener = { of: fn => ({ cm6: 'updateListener', fn }) }
 EditorView.theme = () => ({})
