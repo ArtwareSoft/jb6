@@ -16,7 +16,7 @@ const {
 const getFilesContent = Data('getFilesContent', {
   description: 'Read the content of one or more files from the repository. Essential for understanding existing code before making changes.',
   params: [
-    {id: 'filesPaths', as: 'string', mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")'},
+    {id: 'filesPaths', as: 'string', asIs: true, mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")'},
   ],
   impl: async (ctx, {}, { filesPaths}) => {
       const repoRoot = jb.coreRegistry.repoRoot
@@ -42,7 +42,7 @@ const getFilesContent = Data('getFilesContent', {
 
 Action('saveToFile', {
   params: [
-    {id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where timestamp will be added'},
+    {id: 'filePath', as: 'string', asIs: true, mandatory: true, description: 'Relative file path where timestamp will be added'},
     {id: 'content', as: 'string', asIs: true, mandatory: true, description: 'Content to add to the file'},
   ],
   impl: async (ctx, {}, {filePath, content}) => {
@@ -59,7 +59,7 @@ Action('saveToFile', {
 Tool('getFilesContent', {
   description: 'Read the content of one or more files from the repository. Essential for understanding existing code before making changes.',
   params: [
-    {id: 'filesPaths', as: 'string', mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")'},
+    {id: 'filesPaths', as: 'string', asIs: true, mandatory: true, description: 'Comma-separated relative file paths (e.g., "packages/common/jb-common.js,packages/ui/ui-core.js")'},
   ],
   impl: mcpTool(getFilesContent('%$filesPaths%'))
 })
@@ -67,7 +67,7 @@ Tool('getFilesContent', {
 Tool('replaceFileSection', {
     description: 'Replace a section in a file with new text, starting from a specific line and matching old section text',
     params: [
-      { id: 'filePath', as: 'string', mandatory: true, description: 'relative filePath of the file in the repo' },
+      { id: 'filePath', as: 'string', asIs: true, mandatory: true, description: 'relative filePath of the file in the repo' },
       { id: 'newSectionText', as: 'string', asIs: true, mandatory: true, description: 'new section text to replace with' },
       { id: 'fromLine', as: 'number', mandatory: true, description: 'line number to start replacement from (1-indexed)' },
       { id: 'oldSectionText', as: 'string', asIs: true, mandatory: true, description: 'old section text to find and replace for validation' }
@@ -101,7 +101,7 @@ Tool('replaceFileSection', {
 Tool('appendToFile', {
   description: 'Add a timestamp to a file, useful for logging or tracking changes.',
   params: [
-    {id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where timestamp will be added'},
+    {id: 'filePath', as: 'string', asIs: true, mandatory: true, description: 'Relative file path where timestamp will be added'},
     {id: 'content', as: 'string', asIs: true, mandatory: true, description: 'Content to add to the file'},
     {id: 'timeStamp', as: 'boolean', description: 'If true, prepend a timestamp to the content'}
   ],
@@ -124,16 +124,15 @@ Tool('appendToFile', {
 
 Tool('saveToFile', {
   params: [
-    {id: 'filePath', as: 'string', mandatory: true, description: 'Relative file path where timestamp will be added'},
-    {id: 'repoRoot', as: 'string', mandatory: true, description: 'Absolute path to repository root'},
-    {id: 'content', as: 'string', dynamic: true, mandatory: true, description: 'Content to add to the file'},
+    {id: 'filePath', as: 'string', asIs: true, mandatory: true, description: 'Relative file path where timestamp will be added'},
+    {id: 'repoRoot', as: 'string', asIs: true, mandatory: true, description: 'Absolute path to repository root'},
+    {id: 'content', as: 'string', asIs: true, mandatory: true, description: 'Content to add to the file'},
   ],
-  impl: async (ctx, {}, args) => {
+  impl: async (ctx, {}, {repoRoot, filePath, content}) => {
     try {
       const { writeFileSync } = await import('fs')
       const { join } = await import('path')
 
-      const { repoRoot, filePath, content } = { ...args, content: args.content.profile }
       const fullPath = join(repoRoot, filePath)
       writeFileSync(fullPath, content, 'utf8')
       
@@ -292,7 +291,7 @@ const createDirectoryStructure = Component('createDirectoryStructure', {
   type: 'tool<mcp>',
   description: 'Create a directory structure with files based on JSON input. Directories are objects, files are strings with content.',
   params: [
-    {id: 'dirPath', as: 'string', mandatory: true, description: 'Relative path within repo where to create the structure'},
+    {id: 'dirPath', as: 'string', asIs: true, mandatory: true, description: 'Relative path within repo where to create the structure'},
     {id: 'structure', as: 'object', mandatory: true, description: 'JSON describing directory structure. Objects are directories, strings are file contents.'}
   ],
   impl: async (ctx, {}, {dirPath, structure}) => {
@@ -342,7 +341,7 @@ const createDirectoryStructure = Component('createDirectoryStructure', {
 Component('createResearchDir', {
   type: 'tool<mcp>',
   params: [
-    {id: 'researchId', as: 'string', mandatory: true}
+    {id: 'researchId', as: 'string', asIs: true, mandatory: true}
   ],
   impl: createDirectoryStructure('research/%$researchId%', asIs({theory: {}, examples: {}, tests: {}}))
 })

@@ -53,7 +53,7 @@ Test('stripCtxTest.doubleDynamicTrue', {
 // resolve {%$var%} in the SQL's DEFINITION ctx (lexical params like minTotal), merged with the RUNTIME ctx vars (e.g. region).
 const lexEmbed = Data('lexEmbed', {
   params: [{id: 'sql', dynamic: true}],
-  impl: (ctx, {}, {sql}) => coreUtils.safeToEmbed(sql.profile, sql.lexicalCtx.setVars(ctx.vars))
+  impl: (ctx, {}, {sql}) => coreUtils.embedBraceVars(sql.profile, sql.lexicalCtx.setVars(ctx.vars))
 })
 
 const reportSql = Data('reportSql', {
@@ -61,14 +61,14 @@ const reportSql = Data('reportSql', {
   impl: lexEmbed({ sql: 'total >= {%$minTotal%}' })
 })
 
-Test('lexEmbedTest.DyanmicSafeToEmbedParam', {
+Test('lexEmbedTest.dynamicEmbedBraceVarsParam', {
   impl: dataTest({
     calculate: reportSql({ minTotal: 200 }),
     expectedResult: equals('total >= 200')
   })
 })
 
-// reportSqlVar embeds a runtime VAR (region) AND the lexical param (minTotal) — both via safeToEmbed's {%$ %} token.
+// reportSqlVar embeds a runtime VAR (region) AND the lexical param (minTotal) — both via embedBraceVars's {%$ %} token.
 const reportSqlVar = Data('reportSqlVar', {
   params: [{id: 'minTotal', as: 'number'}],
   impl: lexEmbed({ sql: '{%$region%} total >= {%$minTotal%}' })
@@ -128,9 +128,9 @@ Test('cliTest.stripCtxProgress', {
   })
 })
 
-// OVER THE WIRE (the lambda mechanism, in jb6): dynamic param + safeToEmbed + a var, all crossing to a fresh process.
+// OVER THE WIRE (the lambda mechanism, in jb6): dynamic param + embedBraceVars + a var, all crossing to a fresh process.
 // stripCtx harvests minTotal (lexical, from the SQL's DEFINITION frame) AND region (a var) → remote lexEmbed resolves both.
-Test('cliTest.stripCtxSafeToEmbed', {
+Test('cliTest.stripCtxEmbedBraceVars', {
   HeavyTest: true,
   impl: dataTest({
     calculate: runOverCli({ vars: Var('region', 'US'), prof: reportSqlVar({ minTotal: 200 }) }),

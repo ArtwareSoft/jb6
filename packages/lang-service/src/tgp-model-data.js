@@ -13,7 +13,7 @@ const {
 Logger('langServiceLogger', { impl: domainLogger('langService') })
 Logger('detailedTgpModelDataLogger', { impl: domainLogger('detailedTgpModelData') })   // verbose per-crawl/per-comp firehose
 
-Object.assign(coreUtils, { calcTgpModelData, calcExpectedDslsSection, calcImportsForProfile})
+Object.assign(coreUtils, { calcTgpModelData, calcExpectedDslsSection, calcImportsForProfile, scanDsl})
 
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
@@ -546,10 +546,6 @@ function collectTransitiveComps(initialComps, tgpModel) {
   }
 }
 
-// Future-LLM bug detector: when a {$:'type<dsl>id'} ref fails to resolve, the unique fingerprint is
-// dslLoaded:true + definingFileCrawled:false ⇒ the defining file (e.g. *-tests.js) sits outside any dsl
-// entry-point import-graph and the discoverFiles scan, so it was never crawled.
-// For the full file inventory / per-comp registration, enable langServiceLogger + detailedTgpModelDataLogger.
 function calcResolveFailedDiagnostic(parsed, tgpModel) {
   const files = tgpModel.files || []
   return {
@@ -579,4 +575,39 @@ function collectImported(file, importGraph, imported, visited) {
     imported.add(dep)
     collectImported(dep, importGraph, imported, visited)
   }
+}
+
+async function scanDsl({dsl, details = 'comps', repoRoot}) {
+  repoRoot = repoRoot || await calcRepoRoot()
+  const short = p => p.replace(repoRoot + '/', '')
+  const wanted = new Set((Array.isArray(dsl) ? dsl : (dsl||'').split(',')).map(d => d.trim()).filter(Boolean))
+  const tgpModel = await calcTgpModelData({forRepo: repoRoot})
+  if (tgpModel.error) return tgpModel.error
+
+  const tgpTypes = [], byFile = {}
+  const file = c => byFile[c.$location.path] ||= {comps: [], tests: []}
+  const line = (c, id) => `${id} :${c.$location.line}${c.description ? ` — ${c.description}` : ''}`
+  Object.entries(tgpModel.dsls).filter(([d]) => wanted.has(d)).forEach(([d, dslObj]) =>
+    Object.entries(dslObj).forEach(([key, val]) => {
+      if (typeof val == 'function' && val.dslType) return tgpTypes.push(val.dslType)
+      if (!val || typeof val != 'object') return
+      Object.values(val).forEach(comp => {
+        if (!comp?.$location?.path || comp.dsl != d) return
+        file(comp).comps.push(line(comp, `${comp.type}/${comp.id}`))
+      })
+    }))
+  Object.values(tgpModel.dsls.test?.test || {}).forEach(t => {
+    if (t.$location?.path && byFile[t.$location.path]) file(t).tests.push(line(t, t.id))
+  })
+
+  const paths = Object.keys(byFile).sort()
+  const header = `## TgpTypes\n${unique(tgpTypes).sort().join('\n')}`
+  if (details == 'full') {
+    const { staticMappings } = await calcImportData({forRepo: repoRoot})
+    const srcs = await Promise.all(paths.map(async p => `### ${short(p)}\n\`\`\`js\n${await fetchByEnv(p, staticMappings)}\n\`\`\``))
+    return `${header}\n\n${srcs.join('\n\n')}`
+  }
+  const files = paths.map(p => details == 'files' ? `### ${short(p)}`
+    : [`### ${short(p)}`, ...unique(byFile[p].comps).sort(), ...byFile[p].tests.sort().map(t => `- ${t}`)].join('\n'))
+  return `${header}\n\n## files\n${files.join(details == 'files' ? '\n' : '\n\n')}`
 }

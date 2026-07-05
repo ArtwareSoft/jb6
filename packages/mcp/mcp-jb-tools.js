@@ -23,6 +23,58 @@ Tool('setupInfo', {
   impl: mcpTool(() => `repoRoot: ${jb.coreRegistry.repoRoot}, jb6Root: ${jb.coreRegistry.jb6Root}`)
 })
 
+Tool('repoRoot', {
+  description: 'get repo root',
+  impl: mcpTool(() => jb.coreRegistry.repoRoot)
+})
+
+Tool('scanDsl', {
+  description: 'map a dsl (or comma-separated dsls) from the registered model: its TgpType defs and, grouped by the file that defines them, its comps and tests. details: files|comps|full',
+  params: [
+    {id: 'dsl', as: 'string', asIs: true, defaultValue: 'common', description: 'comma separated e.g. test,llm-guide,common' },
+    {id: 'details', as: 'string', asIs: true, defaultValue: 'comps', description: 'files=TgpTypes+file names, comps=+id:line comp/test lines with descriptions, full=+full source of each file' },
+  ],
+  impl: mcpTool(async (ctx, {}, {dsl, details}) => {
+    await import('@jb6/lang-service')
+    return coreUtils.scanDsl({dsl, details})
+  })
+})
+
+Tool('sourceCodeOfComp', {
+  description: 'F12 get source code and fileName:line for a tgp comp',
+  params: [
+    {id: 'cmpFullId', as: 'string', asIs: true },
+  ],
+  impl: mcpTool(async (ctx, {}, {cmpFullId}) => {
+    await import('@jb6/lang-service')
+    const repoRoot = await coreUtils.calcRepoRoot()
+    const { staticMappings } = await coreUtils.calcImportData({forRepo: repoRoot})
+    const tgpModel = await coreUtils.calcTgpModelData({forRepo: repoRoot})
+    const loc = coreUtils.compByFullId(cmpFullId, tgpModel)?.$location
+    if (!loc) return `comp not found: ${cmpFullId}`
+    const src = await coreUtils.fetchByEnv(loc.path, staticMappings)
+    return `${loc.path}:${loc.line}\n${src.split('\n').slice(loc.line, loc.to.line).join('\n')}`
+  })
+})
+
+
+/*
+Tool('dslDocs', {
+  description: 'get TGP (Type-generic component-profile) model relevant for dsls',
+  params: [
+    {id: 'dsls', as: 'string', asIs: true, defaultValue: 'common,llm-guide', description: 'Comma-separated other options: rx,llm-api,testing'}
+  ],
+  impl: mcpTool(dslDocs('%$dsls%'))
+})
+
+Tool('tgpModel', {
+  description: 'get TGP (Type-generic component-profile) model relevant for dsls',
+  params: [
+    {id: 'forDsls', as: 'string', asIs: true, defaultValue: 'common', description: 'comma separated e.g. test,llm-guide,common' },
+  ],
+  impl: mcpTool(tgpModel('%$forDsls%'))
+})
+
 Tool('listBooklets', {
   description: 'names of all booklets',
   impl: mcpTool(pipe(tgpModel('llm-guide'), '%dsls/llm-guide/booklet%', keys(), filter('%% != booklet'), join()))
@@ -31,32 +83,12 @@ Tool('listBooklets', {
 Tool('bookletsContentTool', {
   description: 'the content of a booklet, which is the content of a list of doclets',
   params: [
-    {id: 'booklets', as: 'text', description: 'comma delimited names'},
+    {id: 'booklets', as: 'text', asIs: true, description: 'comma delimited names'},
     {id: 'maxLength', as: 'number', defaultValue: 20000}
   ],
   impl: mcpTool(bookletsContent('%$booklets%'), { maxLength: '%$maxLength%' })
 })
-
-Tool('repoRoot', {
-  description: 'get repo root',
-  impl: mcpTool(() => jb.coreRegistry.repoRoot)
-})
-
-Tool('dslDocs', {
-  description: 'get TGP (Type-generic component-profile) model relevant for dsls',
-  params: [
-    {id: 'dsls', as: 'string', defaultValue: 'common,llm-guide', description: 'Comma-separated other options: rx,llm-api,testing'}
-  ],
-  impl: mcpTool(dslDocs('%$dsls%'))
-})
-
-Tool('tgpModel', {
-  description: 'get TGP (Type-generic component-profile) model relevant for dsls',
-  params: [
-    {id: 'forDsls', as: 'string', defaultValue: 'common', description: 'comma separated e.g. test,llm-guide,common' },
-  ],
-  impl: mcpTool(tgpModel('%$forDsls%'))
-})
+*/
 
 Tool('macroToJson', {
   description: 'Convert TGP macro syntax to JSON profile. e.g. pipeline([1,2,3], join("-")) → {$: "data<common>pipeline", ...}. Use tgpModel tool to discover available components.',
@@ -90,8 +122,8 @@ Profile: {$: 'gradient<css>linearGradient', direction: 'to right', stops: [{$: '
 Use tgpModel tool to discover available components and their params.`,
   params: [
     {id: 'profileText', as: 'string', asIs: true, mandatory: true, description: `JSON profile to execute, e.g. {$: 'data<common>pipeline', items: [...]}`},
-    {id: 'logger', as: 'string', description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
-    {id: 'repoRoot', as: 'string', description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
+    {id: 'logger', as: 'string', asIs: true, description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
+    {id: 'repoRoot', as: 'string', asIs: true, description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
     {id: 'fetchByEnvHttpServer', as: 'string', description: `cross-repo: http server serving that repo, e.g. http://localhost:3000`},
   ],
   impl: mcpTool({
@@ -117,8 +149,8 @@ Returns the recorded {in,out} at that path plus visits, circuitRes, logs and err
     {id: 'probePath', as: 'string', asIs: true, mandatory: true, description: `probe path, e.g. test<test>myTest~impl~expectedResult~items~0`},
     {id: 'resolution', as: 'string', options: 'default,input,output,all', defaultValue: 'default', description: `result detail: 'default' = {in,out} at path + visits + circuitRes + errors; 'input'/'output' = only that side of the captured records; 'all' adds logs, cmd, imports`},
     {id: 'circuit', as: 'string', description: `the comp run end-to-end to reach the probePath - its ctx (args/vars) flows down to the probed spot. Full comp id, NO ~path, e.g. test<test>roomLambdaTest.perm.admin.usersRO. Auto-detected from the probePath's root (a test->itself, else a caller); OVERRIDE when that root is a generic/reusable comp with mandatory params that only a specific caller fills (e.g. probe mcpToolTest under the leaf scrambleText test, or accessGranted under perm.admin.usersRO) - pass that caller.`},
-    {id: 'logger', as: 'string', description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
-    {id: 'repoRoot', as: 'string', description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
+    {id: 'logger', as: 'string', asIs: true, description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
+    {id: 'repoRoot', as: 'string', asIs: true, description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
     {id: 'fetchByEnvHttpServer', as: 'string', description: `cross-repo: http server serving that repo, e.g. http://localhost:3000`},
   ],
   impl: mcpTool({
@@ -137,8 +169,8 @@ Returns the recorded {in,out} at that path plus visits, circuitRes, logs and err
 Tool('runTest', {
   description: 'Run a jb6 test by its test ID. Wraps the test as a snippet and executes it.',
   params: [
-    {id: 'testId', as: 'string', mandatory: true, description: 'The test ID to run (e.g., "jqTest.tryCatch")'},
-    {id: 'logger', as: 'string', description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
+    {id: 'testId', as: 'string', asIs: true, mandatory: true, description: 'The test ID to run (e.g., "jqTest.tryCatch")'},
+    {id: 'logger', as: 'string', asIs: true, description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
   ],
   impl: mcpTool({
     text: async (ctx, {}, {testId, logger}) => {
@@ -152,10 +184,11 @@ Tool('runTest', {
   })
 })
 
+/*
 Tool('scrambleText', {
   description: 'Hide/reveal learning content for predict-then-verify methodology. Encodes text to prevent accidental answer viewing during quiz preparation.',
   params: [
-    {id: 'texts', as: 'string', mandatory: true, description: 'content to hide/reveal, separate multiple parts with ##'},
+    {id: 'texts', as: 'string', asIs: true, mandatory: true, description: 'content to hide/reveal, separate multiple parts with ##'},
     {id: 'unscramble', as: 'string', description: '"true" to reveal hidden content, omit to hide content'}
   ],
   impl: mcpTool(pipeline('%$texts%', split('##'),
@@ -163,6 +196,7 @@ Tool('scrambleText', {
     join('##\n')
   ))
 })
+*/
 
 Tool('playwrightHarvest', {
   description: `Load a live react-comp url in headless Chromium (Playwright) and harvest its jb6 loggers + browser errors - no screenshots.
@@ -170,7 +204,7 @@ Use it to verify a ReactComp actually mounts and behaves in a REAL browser with 
 Typically point url at react-comp-view.html, which sets window.jbLoggers=ctx.vars, mounts a comp and runs a uiAction on it (see the url param for the query params it accepts).
 Returns { hasLoggers, consoleErrors, pageErrors, logs }: consoleErrors = console error/warning, pageErrors = uncaught exceptions + failed requests, logs = harvestLogs from window.jbLoggers. Assert on logs.<logger>.<logName>, e.g. logs.uiLogger.uiLog contains 'selected: lect-a'.`,
   params: [
-    {id: 'url', as: 'string', mandatory: true, description: `full comp url. use react-comp-view.html with these query params:
+    {id: 'url', as: 'string', asIs: true, mandatory: true, description: `full comp url. use react-comp-view.html with these query params:
   logger=<name>   loggers to enable, e.g. uiLogger - REQUIRED or logs come back empty
   cmpId=<id>      ReactComp to mount, e.g. codeMirrorTest
   urlsToLoad=<m>  module(s) defining the comp, e.g. @jb6/react/tests/react-tests.js
@@ -178,7 +212,8 @@ Returns { hasLoggers, consoleErrors, pageErrors, logs }: consoleErrors = console
 full example: http://localhost:8083/packages/react/react-comp-view.html?logger=uiLogger&cmpId=codeMirrorTest&urlsToLoad=@jb6/react/tests/react-tests.js&uiAction={"$":"ui-action<test>selectInCodeMirror","from":2,"to":8}`},
     {id: 'settleMs', as: 'number', defaultValue: 5000, description: 'ms to wait after networkidle for async imports/effects (spinner -> real modules) to settle before harvesting. lower (~1000) is usually fine once the dev server is warm'},
   ],
-  impl: mcpTool(async (ctx, {}, {url, settleMs}) => {
+  impl: mcpTool(async (ctx, {}, {url: rawUrl, settleMs}) => {
+    const url = rawUrl.replace(/\s+/g, '')   // llms often paste a pretty-printed uiAction=... json with spaces; raw whitespace is never valid in a url, so strip it
     const script = `
 import { coreUtils } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'

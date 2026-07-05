@@ -6,7 +6,13 @@ const { log, logError, isRefType, resolveFinishedPromise, toString, toNumber, RT
 const isRef = v => jb.dbUtils?.isRef(v)
 const objHandler = v => jb.dbUtils ? jb.dbUtils.objHandler(v) : null
 
-Object.assign(coreUtils, {calcExpression: calc, calcVar, calcBool, trackOrigins })
+Object.assign(coreUtils, {calcExpression: calc, calcVar, calcBool, embedBraceVars })
+
+// embedBraceVars: resolve ONLY the {%...%} slots (full expr, path-aware — {%$floor/0/v%}) from ctx; a bare literal % (LIKE
+// '%x%', strftime('%Y'), '%$x%') is never inside a {%...%} block so it passes through untouched — unlike the general %...% interp.
+function embedBraceVars(text, ctx) {
+    return String(text).replace(/\{%(.*?)%\}/g, (_, e) => ctx.exp(`{%${e}%}`, 'string'))
+}
 const { consts } = jb.coreRegistry
 
 function calcVar(varname, ctx) {
@@ -193,61 +199,4 @@ function calcBool(exp, ctx, parentParam) {
     function doCalcNumber(exp) {
         return toNumber(calc(trim(exp), ctx, {as: 'number'}))
     }
-}
-
-
-function trackOrigins(str, ctx) {
-  const { stringsOrigins } = ctx.vars
-  const records = stringsOrigins[str]
-  if (!records) return
-  
-  const record = records[0]
-  if (records.length > 1)
-    console.log('trackOrigins: more then one origins for string',str, records)
-  const exp = record.exp
-  const recordCtx = record.ctx
-  
-  const segments = []
-  let position = 0, lastIndex = 0
-  
-  exp.replace(/%([^%]+)%/g, (match, innerExp, offset) => {
-    if (offset > lastIndex) {
-      const literalText = exp.slice(lastIndex, offset)
-      segments.push({ text: literalText, range: [position, position + literalText.length - 1], source: recordCtx.jbCtx.path, posInExp: lastIndex })
-      position += literalText.length
-    }
-    
-    const value = toString(evalExpressionPart(innerExp, recordCtx, record.overrideParentParam))
-    const varName = (innerExp.match(/\$(.*)/) || [])[1]
-    if (recordCtx.jbCtx?.args?.[varName] !== undefined) {
-      const source = `${recordCtx.jbCtx.lexicalStack.slice(-1)[0]}~${varName}`
-      segments.push({ text: value, range: [position, position + value.length - 1], source })
-    } else if (recordCtx.vars?.[varName] !== undefined) {
-      const varSegments = trackOrigins(value, recordCtx)
-      if (varSegments && varSegments.length) {
-        varSegments.forEach(segment => {
-          segments.push({
-            text: segment.text,
-            range: [position + segment.range[0], position + segment.range[1]],
-            source: segment.source
-          })
-        })
-      } else {
-        segments.push({ text: value, range: [position, position + value.length - 1], source: `var:${varName}`})
-      }
-    } else {
-      // Fallback
-      segments.push({ text: value, range: [position, position + value.length - 1], source: `exp:${innerExp}`})
-    }
-    
-    position += value.length
-    lastIndex = offset + match.length
-  })
-  
-  if (lastIndex < exp.length) {
-    const literalText = exp.slice(lastIndex)
-    segments.push({ text: literalText, range: [position, position + literalText.length - 1], source: recordCtx.jbCtx.path, posInExp: lastIndex })
-  }
-  
-  return segments
 }
