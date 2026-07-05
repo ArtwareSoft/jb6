@@ -30,7 +30,7 @@ function logMs(ctx, t, ms, extra) { if (ms) ctx.vars.uiLogger?.info?.({t, ms, ..
 const { tgp: { TgpType, Component }, test: { Logger, logger: { domainLogger } }} = dsls
 Logger('uiLogger', { impl: domainLogger('ui') })
 
-const ReactComp = TgpType('react-comp','react') // actually jb-react-comp
+const ReactComp = TgpType('react-comp','react', { isCircuit: true }) // actually jb-react-comp
 TgpType('vdom','react') // actually react-comp
 TgpType('react-metadata','react') // actually jb-metadata-for-react-comp
 const ProgressIndicator = TgpType('progress-indicator','react', {

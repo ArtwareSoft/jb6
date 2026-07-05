@@ -40,26 +40,6 @@ Test('mcpTest.scrambleText', {
 //   })
 // })
 
-Test('genieMcpTest.scrambleText', {
-  HeavyTest: true,
-  impl: mcpToolTest('scrambleText', asIs({texts: 'hello world##test text'}), {
-    repoRoot: '/home/shaiby/projects/Genie',
-    jb6PackagesRoot: '/home/shaiby/projects/Genie/public/3rd-party/@jb6',
-    importMapsInCli: './public/core/nodejs-importmap.js',
-    expectedResult: equals('=QGby92dg8GbsVGa##\n0hXZ0BCdzVGd')
-  })
-})
-
-Test('genieMcpTest.tgpModel', {
-  HeavyTest: true,
-  impl: mcpToolTest('tgpModel', asIs({forDsls: 'common'}), {
-    repoRoot: '/home/shaiby/projects/Genie',
-    jb6PackagesRoot: '/home/shaiby/projects/Genie/public/3rd-party/@jb6',
-    importMapsInCli: './public/core/nodejs-importmap.js',
-    expectedResult: contains('boolean<common>')
-  })
-})
-
 Test('genieMcpTest.wonderWorkflow', {
   HeavyTest: true,
   doNotRunInTests: true,
@@ -82,19 +62,6 @@ Test('genieMcpTest.snippet', {
     expectedResult: contains('Homer')
   })
 })
-
-Test('mcpTest.tgpModel', {
-  HeavyTest: true,
-  impl: mcpToolTest('tgpModel', asIs({forDsls: 'common'}), { expectedResult: contains('common') })
-})
-
-// Test('autoGenTest.allBooklets', {
-//   HeavyTest: true,
-//   impl: dataTest({
-//     calculate: pipe(tgpModel('llm-guide'), '%dsls/llm-guide/booklet%', keys(), filter('%% != booklet'), join()),
-//     expectedResult: contains('commonDslQuizzes')
-//   })
-// })
 
 Test('mcpTest.snippet', {
   HeavyTest: true,

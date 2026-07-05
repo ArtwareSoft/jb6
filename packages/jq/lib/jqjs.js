@@ -1045,6 +1045,7 @@ class IndexNode extends ParseNode {
             if (t === 'array' && nameType(i) !== 'number') continue
             if (t === 'object' && nameType(i) !== 'string') continue
             if (t !== 'array' && t !== 'object') continue
+            if (t === 'array' && i < 0) i = l.length + i
             if (typeof l[i] !== 'undefined') yield l[i]
            }
        }
@@ -1728,8 +1729,10 @@ class AlternativeOperator extends ParseNode {
    * apply(input, conf) {
        let found = false
        for (let v of this.lhs.apply(input, conf)) {
-           if (v !== null) found = true
-           yield v
+           if (v !== null && v !== false) {
+               found = true
+               yield v
+           }
        }
        if (!found)
            yield* this.rhs.apply(input, conf)

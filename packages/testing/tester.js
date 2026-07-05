@@ -10,7 +10,7 @@ const {
   test: { Logger, logger: { domainLogger } }
 } = dsls
 
-const Test = TgpType('test', 'test')
+const Test = TgpType('test', 'test', { isCircuit: true })
 Logger('testLogger', { impl: domainLogger('test') })
 
 Component('dataTest', {
@@ -151,9 +151,12 @@ export async function runTest(testID, {fullTestId, singleTest, action, httpReqId
     const start = Date.now()
     if (!isNode && jbComp.nodeOnly) {
         const profile = { $: `${jbComp.type}<${jbComp.dsl}>${jbComp.id}`, ...(params || {}) }
-        const cliRes = await coreUtils.runSnippetCli({ profile })
+        const logCtx = coreUtils.ensureLoggers(['testLogger', 'snippetLogger', 'cliLogger'])
+        const cliRes = await coreUtils.runSnippetCli({ profile, logger: 'snippetLogger,cliLogger', ctx: logCtx })
         res = cliRes?.result || cliRes || { success: false, reason: 'no result from node CLI' }
         res.duration = Date.now() - start
+        logCtx.vars.testLogger?.info?.({t: 'nodeOnly via web server', testID, totalMs: res.duration}, {}, {ctx: logCtx})
+        if (!isNode) globalThis.jbLoggers = logCtx.vars   // expose to playwrightHarvest
         return res
     }
     try {

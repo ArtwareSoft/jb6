@@ -2,7 +2,7 @@ import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
 import { langServiceUtils } from './lang-service-parsing-utils.js'
 
-const { jb, astToTgpObj, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, logVsCode, calcImportData, calcRepoRoot, toCapitalType, absPathToImportUrl, discoverDslEntryPoints, tgpProfileToJson, isNode } = coreUtils
+const { jb, astToTgpObj, asJbComp, logError, resolveWithImportMap, fetchByEnv, unique, asArray, logVsCode, calcImportData, calcRepoRoot, toCapitalType, absPathToImportUrl, discoverDslEntryPoints, tgpProfileToJson, isNode } = coreUtils
 const { calcProfileActionMap, lineColToOffset, parseWithFallback: parse } = langServiceUtils
 const {
   tgp: { TgpType, TgpTypeModifier },
@@ -13,7 +13,7 @@ const {
 Logger('langServiceLogger', { impl: domainLogger('langService') })
 Logger('detailedTgpModelDataLogger', { impl: domainLogger('detailedTgpModelData') })   // verbose per-crawl/per-comp firehose
 
-Object.assign(coreUtils, { calcTgpModelData, calcExpectedDslsSection, calcImportsForProfile, scanDsl})
+Object.assign(coreUtils, { calcTgpModelData, calcExpectedDslsSection, calcImportsForProfile, scanDsl, hashAndGetCache, writeTgpModelCache})
 
 // calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
 // it is used by language services and wrapped by the class tgpModelForLangService
@@ -71,12 +71,12 @@ export async function calcTgpModelData(resources) {
     allDefs.filter(d => d?.callee?.name === 'TgpType').forEach(decl=> {
       const args = decl.arguments.map(ast =>astToObj(ast))
       args.push(...Array(3 - args.length).fill(null), tgpModel)
-      TgpType(...args)
+      TgpType(...args).$location = { path: url, ...offsetToLineCol(src, decl.start) }
     })
     allDefs.filter(d => d?.callee?.name === 'TgpTypeModifier').forEach(decl=> {
       const args = decl.arguments.map(ast =>astToObj(ast))
       args.push(...Array(2 - args.length).fill(null), tgpModel)
-      TgpTypeModifier(...args)
+      TgpTypeModifier(...args).$location = { path: url, ...offsetToLineCol(src, decl.start) }
     })
   })
 
@@ -329,6 +329,39 @@ async function writeTgpModelCache(key, value) {
   } catch (e) {}
 }
 
+// hit -> { result }, miss -> { key } (write under it after building). needs fs.stat so it runs node-side;
+// in the browser it delegates itself to node via jb-cli /run-cli, exactly like getStaticServeConfig.
+async function hashAndGetCache({ cacheQuery, modelResources, fetchByEnvHttpServer, ctx }) {
+  if (!isNode) {
+    const script = `import { coreUtils } from '@jb6/core'
+import '@jb6/lang-service'
+;(async()=>{
+try {
+  const result = await coreUtils.hashAndGetCache(${JSON.stringify({ cacheQuery, modelResources: { ...modelResources, ctx: undefined }, fetchByEnvHttpServer })})
+  await coreUtils.writeServiceResult(result)
+} catch (e) { console.error(e) }
+})()`
+    const res = await coreUtils.runCliInContext(script, { ctx })
+    return res.result
+  }
+  const lsLog = ctx?.vars?.langServiceLogger
+  try {
+    const { importMap, staticMappings, entryFiles, testFiles, llmGuideFiles, jb6_llmGuideFiles, jb6_testFiles } = await calcImportData(modelResources)
+    const rootFilePaths = unique([...entryFiles, ...(testFiles || []), ...(jb6_testFiles || []), ...(llmGuideFiles || []), ...(jb6_llmGuideFiles || [])])
+    const { key } = await calcTgpModelCacheKey({ query: cacheQuery, importMap, staticMappings, rootFilePaths, fetchByEnvHttpServer })
+    const cached = await readTgpModelCache(key)
+    if (cached) {
+      lsLog?.info?.({ t: 'tgpModelCache', hit: true, key }, {}, { ctx })
+      return { result: cached }
+    }
+    lsLog?.info?.({ t: 'tgpModelCache', hit: false, key }, {}, { ctx })
+    return { key }
+  } catch (e) {
+    lsLog?.error?.({ t: 'tgpModelCache', err: e.message }, {}, { ctx })
+    return {}
+  }
+}
+
 function offsetToLineCol(text, offset) {
   const cut = text.slice(0, offset)
   return {
@@ -483,24 +516,11 @@ async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer, ent
   const allDsls = unique(parsed.map(p => p.dsl))
   const modelResources = {forRepo: entryPointPaths ? undefined : repoRoot, forDsls: allDsls.join(','), fetchByEnvHttpServer, entryPointPaths, ctx}
 
-  // file cache: the returned import list is JSON-safe and all probe.js needs (not the heavy tgpModel).
-  // hit skips the ~600ms crawl (897ms->128ms end-to-end probe). key from calcTgpModelCacheKey.
+  // file cache: hash the graph mtimes + query, look it up. hit -> return the cached imports; miss -> get
+  // back the key to write under after building. hashAndGetCache runs node-side (browser delegates via /run-cli).
   const cacheQuery = { ids: allFullIds.slice().sort(), repoRoot: repoRoot || '', entryPointPaths: [].concat(entryPointPaths || []).join(',') }
-  let cacheKey = null
-  if (isNode) try {   // node-only: browser delegates the build to a node CLI, so skip the cache dance
-    const { importMap, staticMappings, entryFiles, testFiles, llmGuideFiles, jb6_llmGuideFiles, jb6_testFiles } = await calcImportData(modelResources)
-    const rootFilePaths = unique([...entryFiles, ...(testFiles || []), ...(jb6_testFiles || []), ...(llmGuideFiles || []), ...(jb6_llmGuideFiles || [])])
-    const { key } = await calcTgpModelCacheKey({ query: cacheQuery, importMap, staticMappings, rootFilePaths, fetchByEnvHttpServer })
-    cacheKey = key
-    const cached = await readTgpModelCache(cacheKey)
-    if (cached) {
-      lsLog?.info?.({ t: 'tgpModelCache', hit: true, key }, {}, { ctx })
-      return cached
-    }
-    lsLog?.info?.({ t: 'tgpModelCache', hit: false, key }, {}, { ctx })
-  } catch (e) {
-    lsLog?.error?.({ t: 'tgpModelCache', err: e.message }, {}, { ctx })
-  }
+  const { result, key: cacheKey } = await hashAndGetCache({ cacheQuery, modelResources, fetchByEnvHttpServer, ctx })
+  if (result) return result
 
   const tgpModel = await calcTgpModelData(modelResources)
   if (tgpModel.error) return { error: tgpModel.error }
@@ -509,7 +529,11 @@ async function calcImportsForProfile(input, {repoRoot, fetchByEnvHttpServer, ent
   if (!comps.length) {
     const diagnostic = calcResolveFailedDiagnostic(parsed, tgpModel)
     log?.error?.({ t: 'snippetResolveFailed', requested: allFullIds, ...diagnostic }, {}, { ctx })
-    return { error: `can not find ${allFullIds.join(', ')}`, diagnostic }
+    // cache the failure too: it's keyed on the graph mtimes, so ADDING the missing comp's file bumps the
+    // key and re-resolves. avoids re-crawling (~630ms) on every repeat of a genuinely-missing comp.
+    const failRes = { error: `can not find ${allFullIds.join(', ')}`, diagnostic }
+    await writeTgpModelCache(cacheKey, failRes)
+    return failRes
   }
   const allComps = collectTransitiveComps(comps, tgpModel)
   const allCompDsls = unique([...allDsls, ...allComps.map(c => c.dsl)])
@@ -577,37 +601,85 @@ function collectImported(file, importGraph, imported, visited) {
   }
 }
 
-async function scanDsl({dsl, details = 'comps', repoRoot}) {
+async function scanDsl({dsl, details = 'comps', repoRoot, ctx}) {
   repoRoot = repoRoot || await calcRepoRoot()
   const short = p => p.replace(repoRoot + '/', '')
   const wanted = new Set((Array.isArray(dsl) ? dsl : (dsl||'').split(',')).map(d => d.trim()).filter(Boolean))
   const tgpModel = await calcTgpModelData({forRepo: repoRoot})
   if (tgpModel.error) return tgpModel.error
 
-  const tgpTypes = [], byFile = {}
-  const file = c => byFile[c.$location.path] ||= {comps: [], tests: []}
-  const line = (c, id) => `${id} :${c.$location.line}${c.description ? ` — ${c.description}` : ''}`
-  Object.entries(tgpModel.dsls).filter(([d]) => wanted.has(d)).forEach(([d, dslObj]) =>
-    Object.entries(dslObj).forEach(([key, val]) => {
-      if (typeof val == 'function' && val.dslType) return tgpTypes.push(val.dslType)
-      if (!val || typeof val != 'object') return
-      Object.values(val).forEach(comp => {
-        if (!comp?.$location?.path || comp.dsl != d) return
-        file(comp).comps.push(line(comp, `${comp.type}/${comp.id}`))
+  // comps are grouped by the scanned type-bucket they sit in. moreTypes registers a comp in extra buckets (tgp.js), so a data<common> comp with moreTypes:'etl<etl>' also lives in dsls.etl.etl and shows there when etl is scanned - no synthetic type needed
+  const tgpTypes = [], comps = [], grouped = [], tsByType = {}, demoComp = {}, typeLoc = {}   // grouped: {comp, groupKey}; demoComp: typeKey -> demoProfile id(s); typeLoc: typeKey -> TgpType def $location
+  Object.entries(tgpModel.dsls).forEach(([d, dslObj]) =>
+    Object.entries(dslObj).forEach(([bucket, val]) => {
+      if (typeof val == 'function' && val.dslType) {
+        if (!wanted.has(d)) return
+        tgpTypes.push(val.dslType); typeLoc[val.dslType] = val.$location
+        if (val.demoProfile) demoComp[val.dslType] = val.demoProfile
+        return
+      }
+      if (!val || typeof val != 'object' || !wanted.has(d)) return
+      const groupKey = `${bucket}<${d}>`
+      Object.values(val).forEach(v => {
+        const comp = v?.[asJbComp] || v   // moreTypes buckets hold jbCompProxy - unwrap to the raw comp def
+        if (!comp?.$location?.path) return
+        if (comp.typescript) tsByType[bucket] = comp.typescript
+        comps.push(comp); grouped.push({ comp, groupKey })
       })
     }))
-  Object.values(tgpModel.dsls.test?.test || {}).forEach(t => {
-    if (t.$location?.path && byFile[t.$location.path]) file(t).tests.push(line(t, t.id))
-  })
-
-  const paths = Object.keys(byFile).sort()
-  const header = `## TgpTypes\n${unique(tgpTypes).sort().join('\n')}`
-  if (details == 'full') {
-    const { staticMappings } = await calcImportData({forRepo: repoRoot})
+  const groupKey = c => grouped.find(g => g.comp == c)?.groupKey || `${c.type}<${c.dsl}>`
+  const usedBy = {}   // dslType -> [type<dsl>id~params~paramId] of scanned comps whose param accepts it
+  comps.forEach(c => (c.params || []).forEach(p => {
+    if (!p.type) return
+    const dt = p.type.replace(/\[\]$/, '')
+    const full = dt.includes('<') ? dt : `${dt}<${c.dsl}>`
+    ;(usedBy[full] ||= []).push(`${c.type}<${c.dsl}>${c.id}~params~${p.id}`)
+  }))
+  const { staticMappings, importMap } = await calcImportData({forRepo: repoRoot})
+  const locRank = dt => { const l = typeLoc[dt]; return l ? `${l.path}:${String(l.line).padStart(6,'0')}` : '~' }
+  const orderedTypes = unique(tgpTypes).sort((a, b) => locRank(a) < locRank(b) ? -1 : 1)   // TgpType/modifier source-file order
+  ctx?.vars?.langServiceLogger?.info?.({ t: 'scanDsl', dsl, details, orderedTypes: orderedTypes.map(dt => `${dt} @ ${short(typeLoc[dt]?.path || '')}:${typeLoc[dt]?.line}`), compCount: comps.length }, {}, { ctx })
+  const demoIds = dt => asArray(demoComp[dt])   // demoProfile is a single id or a list — normalize to ids[]
+  const typeHeader = dt => [dt, demoIds(dt).length && `  demo: ${demoIds(dt).join(', ')}`, usedBy[dt] && `  usedBy: ${usedBy[dt].join(', ')}`].filter(Boolean).join('\n')
+  const header = `## TgpTypes\n${orderedTypes.map(typeHeader).join('\n')}`
+  if (details == 'files' || details == 'full') {
+    const paths = unique(comps.map(c => c.$location.path)).sort()
+    if (details == 'files') return `${header}\n\n## files\n${paths.map(p => `### ${short(p)}`).join('\n')}`
     const srcs = await Promise.all(paths.map(async p => `### ${short(p)}\n\`\`\`js\n${await fetchByEnv(p, staticMappings)}\n\`\`\``))
     return `${header}\n\n${srcs.join('\n\n')}`
   }
-  const files = paths.map(p => details == 'files' ? `### ${short(p)}`
-    : [`### ${short(p)}`, ...unique(byFile[p].comps).sort(), ...byFile[p].tests.sort().map(t => `- ${t}`)].join('\n'))
-  return `${header}\n\n## files\n${files.join(details == 'files' ? '\n' : '\n\n')}`
+  const compById = id => { const [type, dsl, sid] = id.match(/^(.+)<(.+)>(.+)$/)?.slice(1) || []; return tgpModel.dsls[dsl]?.[type]?.[sid] }
+  async function demoSrc(id) {   // demoProfile id → its comp source, sliced from the defining file (impl is a live fn at runtime, so pretty-print can't recover it)
+    const c = compById(id); if (!c?.$location?.to) return `  demo: ${id}`
+    const src = await fetchByEnv(resolveWithImportMap(c.$location.path, importMap, staticMappings) || c.$location.path, staticMappings)
+    const body = src.slice(lineColToOffset(src, c.$location), lineColToOffset(src, c.$location.to))
+    return `  demo ${id}:\n\`\`\`js\n${body}\n\`\`\``
+  }
+  const demoBlocks = Object.fromEntries(await Promise.all(unique(Object.values(demoComp).flatMap(asArray)).map(async id => [id, await demoSrc(id)])))
+  const withParams = details == 'all-comps-with-params'
+  const implLines = c => (c.$location.to?.line || c.$location.line) - c.$location.line + 1
+  const at = c => `${c.$location.path.split('/').pop()}:${c.$location.line}`
+  const compLine = c => `${c.id} ${at(c)} ${(c.params || []).length} prms, ${implLines(c)} lines${c.description ? ` — ${c.description}` : ''}`
+  const paramLine = p => `    ${p.id}${p.type ? ` <${p.type}>` : p.as ? ` (${p.as})` : ''}${p.defaultValue != null ? ` = ${JSON.stringify(p.defaultValue)}` : ''}${p.description ? ` — ${p.description}` : ''}`
+  const compLines = c => withParams ? [`${c.id} ${at(c)}`, ...(c.params || []).map(paramLine)] : [compLine(c)]
+  const byType = {}
+  comps.forEach(c => (byType[groupKey(c)] ||= []).push(c))
+  const compRank = c => `${c.$location.path}:${String(c.$location.line).padStart(6,'0')}`
+  const typeBlock = ([typeKey, comps]) => {
+    const sorted = comps.sort((a, b) => compRank(a) < compRank(b) ? -1 : 1)
+    const shown = withParams ? sorted : sorted.slice(0, 12)
+    const more = sorted.length - shown.length
+    const demos = demoIds(typeKey).map(id => demoBlocks[id]), ts = tsByType[typeKey.replace(/<.*/, '')]
+    const heading = `### ${typeKey}${ts ? ` — RT: ${ts}` : ''}${demos.length ? `\n${demos.join('\n')}` : ''}`
+    return [heading, ...shown.flatMap(compLines), ...(more > 0 ? [`...${more} more comps`] : [])].join('\n')
+  }
+  const compsSection = `## comps by type\n${Object.entries(byType).sort((a, b) => locRank(a[0]) < locRank(b[0]) ? -1 : 1).map(typeBlock).join('\n\n')}`
+
+  const compFiles = new Set(comps.map(c => c.$location.path))
+  const tests = Object.values(tgpModel.dsls.test?.test || {})
+    .filter(t => compFiles.has(t.$location?.path)).sort((a, b) => a.id < b.id ? -1 : 1)
+  const testLines = [...tests.slice(0, 10).map(t => `- ${t.id} ${at(t)}${t.description ? ` — ${t.description}` : ''}`),
+    ...(tests.length > 10 ? [`...${tests.length - 10} more tests`] : [])]
+  const testsSection = tests.length ? `\n\n## tests\n${testLines.join('\n')}` : ''
+  return `${compsSection}${testsSection}`
 }

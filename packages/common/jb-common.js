@@ -26,7 +26,7 @@ Component('pipeline', {
     {id: 'source', type: 'data', dynamic: true, mandatory: true, composite: true},
     {id: 'operators', type: 'data[]', dynamic: true, mandatory: true, secondParamAsArray: true, description: 'chain/map data functions'}
   ],
-  impl: (ctx, {}, { operators, source }) => asArray(operators.profile).reduce( (dataArray, profile ,index) => runAsAggregator(ctx, operators, index,dataArray,profile), source())
+  impl: (ctx, {}, { operators, source }) => asArray(operators.profile).reduce( (dataArray, profile ,index) => logPipeStep(ctx, index, profile, runAsAggregator(ctx, operators, index,dataArray,profile)), source())
 })
 
 Component('pipe', {
@@ -37,7 +37,7 @@ Component('pipe', {
   ],
   impl: async (ctx, {}, {operators,source}) => waitForInnerElements(asArray(operators.profile).reduce(async (dataArrayPromise, profile,index) => {
       const dataArray = await waitForInnerElements(dataArrayPromise)
-      return runAsAggregator(ctx, operators, index, dataArray, profile)
+      return logPipeStep(ctx, index, profile, await runAsAggregator(ctx, operators, index, dataArray, profile))
     }, waitForInnerElements(source()) ))
 })
 
@@ -666,4 +666,9 @@ function runAsAggregator(ctx, arg, index, dataArray, profile) {
       .map(item => ctx.setData(item).runInnerArg(arg, index))
       .filter(x=>x!=null)
       .flatMap(x=> asArray(calcValue(x)))
+}
+
+function logPipeStep(ctx, index, profile, out) {
+    ctx.vars.pipeLogger?.info({t: 'step', pipe: ctx.jbCtx.path, index, op: profile?.$ || profile?.$$, out}, {}, {ctx})
+    return out
 }

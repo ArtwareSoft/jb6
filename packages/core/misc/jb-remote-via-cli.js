@@ -34,7 +34,9 @@ export async function calc() {
     loggers.cliLogger?.info?.({t: 'lambda js code load', lambdaJsCodeLoadMs, buildCtxMs: tBeforeProfileRun - tBeforeBuildCtx, profileRunMs: Date.now() - tBeforeProfileRun}, {}, {ctx})
     if (raw instanceof Error) process.stderr.write('CHILD_ERR_STACK '+raw.stack+'\\n')   // log to delete
     const result = coreUtils.stripData(raw)
-    const logs = Object.fromEntries(${JSON.stringify(test)}.filter(n => loggers[n]?.logsAndErrors).map(n => [n, loggers[n].logsAndErrors()]))   // testLoggers → returned (inlined: child bundle may predate coreUtils.harvestLogs)
+    const metaCliRecords = new Set(['staticImportsLoaded', 'lambda js code load'])   // wrap-to-stderr timing meta - not part of the snippet's own logs
+    const stripMeta = (name, le) => name != 'cliLogger' ? le : Object.fromEntries(Object.entries(le).map(([k, arr]) => [k, Array.isArray(arr) ? arr.filter(r => !metaCliRecords.has(r?.t)) : arr]))
+    const logs = Object.fromEntries(${JSON.stringify(test)}.filter(n => loggers[n]?.logsAndErrors).map(n => [n, stripMeta(n, loggers[n].logsAndErrors())]))   // testLoggers → returned (inlined: child bundle may predate coreUtils.harvestLogs)
     return ${JSON.stringify(test.length > 0)} ? { result, logs } : { result }
   } catch (e) { process.stderr.write('CHILD_CATCH_STACK '+e.stack+'\\n'); return { error: e.stack } }
 }

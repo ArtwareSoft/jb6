@@ -1,7 +1,7 @@
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 const { coreUtils } = jb
-const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, logError, enrichCtxWithDataContext, compByFullId } = coreUtils
+const { asJbComp, resolveProfileTop, jbComp, jbCompProxy, splitDslType, Ctx, asArray, isPromise, logError, enrichCtxWithDataContext, compByFullId } = coreUtils
 
 Object.assign(coreUtils, { globalsOfType, globalsOfTypeIds, toCapitalType, findCompDefById, CompDefByDslType, callerCompId, parseCompFieldModifier, getCompField })
 
@@ -98,6 +98,7 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
     return dsls[dsl][capitalLetterId]
 
   const dslType = `${type}<${dsl}>`
+  const { demoProfile, isCircuit, ...compProps } = extraCompProps || {}   // type props (on tgpType), never spread onto comps
   const tgpType = (arg0,arg1) => {
     let [id,comp] = ['',null]
     if (typeof arg0 == 'string')
@@ -105,7 +106,7 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
     else
       comp = arg0
 
-    tgpType[id] = Component({...comp, id, dsl, type, ...extraCompProps})
+    tgpType[id] = Component({...comp, id, dsl, type, ...compProps})
     ;[type, ...(comp.moreTypes||'').split(',')].filter(x=>x).forEach(typeInStr=> {
       let [_type,_dsl] = [typeInStr,dsl]
       if (typeInStr.indexOf('<') != -1)
@@ -125,7 +126,7 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
   }
 
   const forward = id => forwardProxy(dsl,type,id)
-  Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward, coerce: extraCompProps?.coerce})
+  Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward, coerce: extraCompProps?.coerce, demoProfile, isCircuit})
   dsls[dsl][type] = dsls[dsl][type] || {}
   dsls[dsl][capitalLetterId] = tgpType
   return tgpType
@@ -212,7 +213,9 @@ Component('enrichCtx', {
     {id: 'enrichers', type: 'ctx-enricher<tgp>[]', dynamic: true }
   ],
   impl: (ctx, {}, { enrichers }) =>
-    asArray(enrichers.profile).reduce((res, e) => Promise.resolve(res).then(c => c.run(e)), ctx)
+    asArray(enrichers.profile).flat().reduce((res, e) =>
+        isPromise(res) ? res.then(c => c.run(e)) : res.run(e)
+    , ctx)
 })
 
 // common dsl

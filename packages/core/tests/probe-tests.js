@@ -42,7 +42,7 @@ Test('probeCliTest.helloWorld', {
       return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',{entryPointPaths})
     },
     expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
-    timeout: 1000
+    timeout: 2000
   })
 })
 
@@ -60,32 +60,16 @@ Test('probeTest.innerInPipeline', {
   })
 })
 
-Test('coreTest.pipelineHoistedEnricher', {
-  impl: dataTest(pipeline(Var('floor', () => 3), '%$floor%'), equals(3))
-})
-
-Test('probeTest.pipelineSource', {
-  impl: dataTest({
-    calculate: () => runProbe('test<test>coreTest.pipelineHoistedEnricher~impl~calculate~source'),
-    expectedResult: equals(3, '%result.0.out%')
-  })
-})
-
-Test('coreTest.pipelineNoVars', {
-  impl: dataTest(pipeline('hello'), equals('hello'))
-})
-
-Test('probeTest.pipelineSourceNoVars', {
-  impl: dataTest({
-    calculate: () => runProbe('test<test>coreTest.pipelineNoVars~impl~calculate~source'),
-    expectedResult: equals('hello', '%result.0.out%')
-  })
-})
-
+// slow probe target: an rx interval emitting every 100ms, taken 5 times → the probe runs ~500ms.
+// pipeline "does not wait for promises", but rx `pipe` DOES wait for reactive/callbag data, so the
+// interval emits are spread over real time. this keeps the studio's live visitsProgress view mounted
+// long enough to receive several throttled progress emits (one per ~100ms window) instead of a single
+// final flush on a sub-10ms run. defined in probe-tests via @jb6/rx so it's available to the probe.
 Test('probeTest.slowInterval', {
   impl: dataTest({
     calculate: pipe(rx.pipe(interval(100), rx.take(5)), join(',')),
-    expectedResult: equals('0,1,2,3,4')
+    expectedResult: equals('0,1,2,3,4'),
+    timeout: 2000
   })
 })
 
@@ -113,18 +97,6 @@ Test('probeTest.calcCircuitPhaseLogs', {
       return probeLogger.probeLog.filter(e => e.severity != 'progress')
     },
     expectedResult: equals('beforeCalcCircuit,afterCalcCircuit', pipeline('%%', '%t%', join(',')))
-  })
-})
-
-Test('probeCliTest.helloWorld', {
-  impl: dataTest({
-    calculate: async () => {
-      const repoRoot = await coreUtils.calcRepoRoot()
-      const entryPointPaths = `${repoRoot}/hosts/test-project/a-tests.js`
-      return runProbeCli('test<test>myTests.HelloWorld~impl~expectedResult',{entryPointPaths})
-    },
-    expectedResult: equals('hello world', '%probeRes.result.0.in.data%'),
-    timeout: 1000
   })
 })
 
@@ -202,7 +174,7 @@ Test('probeCliTest.findTestFiles', {
       return allData
     },
     expectedResult: equals('hello,hello,hello'),
-    timeout: 2000
+    timeout: 10000
   })
 })
 

@@ -99,17 +99,18 @@ async function runNodeCli(script, options = {}) {
   const {spawn} = await import('child_process')
   const { cmd, importParts } = buildNodeCliCmd(script, options)
   const cwd = options.projectDir
+  const childArgs = ['--experimental-vm-modules', '--expose-gc', '--input-type=module', ...importParts]   // real spawn args; the `cmd` string is display-only (its --inspect-brk is NOT used here)
   const scriptToRun = `console.log = () => {};\n${script}`
   const router = makeChildOutputRouter(options)
   const onChunk = options.onChunk  // raw {stream,text} chunks — used by SSE server to broadcast
-  options.ctx?.vars?.cliLogger?.info?.({t: 'spawn cli', cmd, cwd}, {}, {ctx: options.ctx})
+  options.ctx?.vars?.cliLogger?.info?.({t: 'spawn cli', realArgs: childArgs, cmd, cwd}, {}, {ctx: options.ctx})
 
   return new Promise(resolve => {
     let out = '', err = ''
     try {
       const _spawnAt = Date.now(), _log = ev => options.ctx?.vars?.cliLogger?.info?.(ev, {}, {ctx: options.ctx})   // log to delete
       let _firstOut = 0   // log to delete
-      const child = spawn(process.execPath, ['--experimental-vm-modules', '--expose-gc', '--input-type=module', ...importParts, '-e', scriptToRun], {cwd})
+      const child = spawn(process.execPath, [...childArgs, '-e', scriptToRun], {cwd})
       _log({t: 'node spawned (process.execPath)', spawnCallMs: Date.now() - _spawnAt})   // log to delete
       options.onChild?.(child)
       child.stdout.on('data', d => { const text = '' + d; out += text; router?.({stream: 'stdout', text}); onChunk?.({stream: 'stdout', text}) })

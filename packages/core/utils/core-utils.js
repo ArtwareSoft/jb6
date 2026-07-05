@@ -406,6 +406,7 @@ const omitProps = (obj, keys) => {
     Object.entries(obj).filter(([key]) => !keySet.has(key))
   )
 }
+const omitEmptyProps = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v != null && v !== '' && !(Array.isArray(v) && !v.length)))
 
 function calcHash(str) {
   let hash = 0, i, chr;
@@ -454,7 +455,7 @@ const eventEmitter = {
 
 Object.assign(jb.coreUtils, {
   jb, RT_types, log, logError, logException, logVsCode, isNode,
-  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps, 
+  isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps, omitEmptyProps,
   enrichCtxWithDataContext, compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
   calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus, eventEmitter

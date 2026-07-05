@@ -29,14 +29,14 @@ Tool('repoRoot', {
 })
 
 Tool('scanDsl', {
-  description: 'map a dsl (or comma-separated dsls) from the registered model: its TgpType defs and, grouped by the file that defines them, its comps and tests. details: files|comps|full',
+  description: 'map a dsl (or comma-separated dsls) from the registered model: its TgpType defs and, grouped by the file that defines them, its comps and tests. details: files|comps|all-comps-with-params|full',
   params: [
     {id: 'dsl', as: 'string', asIs: true, defaultValue: 'common', description: 'comma separated e.g. test,llm-guide,common' },
-    {id: 'details', as: 'string', asIs: true, defaultValue: 'comps', description: 'files=TgpTypes+file names, comps=+id:line comp/test lines with descriptions, full=+full source of each file' },
+    {id: 'details', as: 'string', asIs: true, defaultValue: 'comps', description: 'files=TgpTypes+file names, comps=+comps grouped by TgpType (first 3 per type, +N more) with #params & impl length, all-comps-with-params=all comps grouped by TgpType with their params, full=+full source of each file' },
   ],
   impl: mcpTool(async (ctx, {}, {dsl, details}) => {
     await import('@jb6/lang-service')
-    return coreUtils.scanDsl({dsl, details})
+    return coreUtils.scanDsl({dsl, details, ctx})
   })
 })
 
@@ -141,16 +141,15 @@ Use tgpModel tool to discover available components and their params.`,
 
 Tool('runProbe', {
   description: `Probe a TGP circuit: run it and capture intermediate {in,out} at a probePath.
-The circuit is the comp run end-to-end to reach the probePath; a probePath addresses a location inside it, e.g.
+A probePath addresses a location inside a runnable circuit, e.g.
 'test<test>coreTest.HelloWorld~impl~calculate~operators~0' or 'data<common>cmpA~impl'.
-To probe a generic comp (mandatory params filled only by a caller), set probePath to a spot inside the generic comp and circuit to the leaf that supplies its args - e.g. probePath 'test<test>mcpToolTest~impl~calculate' with circuit 'test<test>scrambleText...', so the leaf's args/vars flow into the probed spot.
 Returns the recorded {in,out} at that path plus visits, circuitRes, logs and errors.`,
   params: [
     {id: 'probePath', as: 'string', asIs: true, mandatory: true, description: `probe path, e.g. test<test>myTest~impl~expectedResult~items~0`},
     {id: 'resolution', as: 'string', options: 'default,input,output,all', defaultValue: 'default', description: `result detail: 'default' = {in,out} at path + visits + circuitRes + errors; 'input'/'output' = only that side of the captured records; 'all' adds logs, cmd, imports`},
-    {id: 'circuit', as: 'string', description: `the comp run end-to-end to reach the probePath - its ctx (args/vars) flows down to the probed spot. Full comp id, NO ~path, e.g. test<test>roomLambdaTest.perm.admin.usersRO. Auto-detected from the probePath's root (a test->itself, else a caller); OVERRIDE when that root is a generic/reusable comp with mandatory params that only a specific caller fills (e.g. probe mcpToolTest under the leaf scrambleText test, or accessGranted under perm.admin.usersRO) - pass that caller.`},
-    {id: 'logger', as: 'string', asIs: true, description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
-    {id: 'repoRoot', as: 'string', asIs: true, description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
+    {id: 'circuit', as: 'string', description: `force circuit comp id (overrides auto-detect), e.g. test<test>circuitForAA`},
+    {id: 'logger', as: 'string', description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
+    {id: 'repoRoot', as: 'string', description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
     {id: 'fetchByEnvHttpServer', as: 'string', description: `cross-repo: http server serving that repo, e.g. http://localhost:3000`},
   ],
   impl: mcpTool({
@@ -184,7 +183,6 @@ Tool('runTest', {
   })
 })
 
-/*
 Tool('scrambleText', {
   description: 'Hide/reveal learning content for predict-then-verify methodology. Encodes text to prevent accidental answer viewing during quiz preparation.',
   params: [
@@ -196,7 +194,6 @@ Tool('scrambleText', {
     join('##\n')
   ))
 })
-*/
 
 Tool('playwrightHarvest', {
   description: `Load a live react-comp url in headless Chromium (Playwright) and harvest its jb6 loggers + browser errors - no screenshots.

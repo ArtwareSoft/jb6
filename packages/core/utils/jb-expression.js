@@ -8,11 +8,6 @@ const objHandler = v => jb.dbUtils ? jb.dbUtils.objHandler(v) : null
 
 Object.assign(coreUtils, {calcExpression: calc, calcVar, calcBool, embedBraceVars })
 
-// embedBraceVars: resolve ONLY the {%...%} slots (full expr, path-aware — {%$floor/0/v%}) from ctx; a bare literal % (LIKE
-// '%x%', strftime('%Y'), '%$x%') is never inside a {%...%} block so it passes through untouched — unlike the general %...% interp.
-function embedBraceVars(text, ctx) {
-    return String(text).replace(/\{%(.*?)%\}/g, (_, e) => ctx.exp(`{%${e}%}`, 'string'))
-}
 const { consts } = jb.coreRegistry
 
 function calcVar(varname, ctx) {
@@ -199,4 +194,8 @@ function calcBool(exp, ctx, parentParam) {
     function doCalcNumber(exp) {
         return toNumber(calc(trim(exp), ctx, {as: 'number'}))
     }
+}
+
+function embedBraceVars(text, ctx) {
+    return String(text).replace(/\{%(.*?)%\}/g, (_, e) => ctx.exp(`{%${e}%}`, 'string'))
 }
