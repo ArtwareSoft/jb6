@@ -98,7 +98,7 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
     return dsls[dsl][capitalLetterId]
 
   const dslType = `${type}<${dsl}>`
-  const { demoProfile, isCircuit, ...compProps } = extraCompProps || {}   // type props (on tgpType), never spread onto comps
+  const { demoProfile, isCircuit, probeExec, typescript, ...compProps } = extraCompProps || {}   // type props (on tgpType), never spread onto comps
   const tgpType = (arg0,arg1) => {
     let [id,comp] = ['',null]
     if (typeof arg0 == 'string')
@@ -126,7 +126,7 @@ function TgpType(type, dsl, extraCompProps, tgpModel = jb) {
   }
 
   const forward = id => forwardProxy(dsl,type,id)
-  Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward, coerce: extraCompProps?.coerce, demoProfile, isCircuit})
+  Object.assign(tgpType, {capitalLetterId, type, dsl, dslType, forward, coerce: extraCompProps?.coerce, demoProfile, isCircuit, probeExec, typescript})
   dsls[dsl][type] = dsls[dsl][type] || {}
   dsls[dsl][capitalLetterId] = tgpType
   return tgpType

@@ -144,12 +144,24 @@ function calcCircuit(probePath, ctx) {
 
     const [type, dsl] = fullCmpId.match(/^([^<]+)<([^>]+)>/).slice(1)
     const t0 = Date.now()
-    const [strategy, circuitCmpId] = [
+    // strategies tried in order; first with a truthy id wins. logged as a trace so a future llm sees WHY a
+    // circuit was chosen - and, when it resolves to the comp itself, why no real circuit was found.
+    const isCircuitType = !!jb.dsls[dsl]?.[toCapitalType(type)]?.isCircuit
+    const callers = circuitOptions(fullCmpId)   // comps (in the profile ref graph) that reach fullCmpId
+    const strategies = [
       ['comp names its circuit',      comp.circuit],
-      ['TgpType is circuit',          jb.dsls[dsl]?.[toCapitalType(type)]?.isCircuit && fullCmpId],
-      ['backtrace best caller',       circuitOptions(fullCmpId)[0]?.id]
-    ].find(([, id]) => id) || ['self - no circuit found', fullCmpId]
-    ctx?.vars?.probeLogger?.info?.({t: 'calcCircuit', fullCmpId, strategy, circuitCmpId, ms: Date.now() - t0}, {}, {ctx})
+      ['TgpType is circuit',          isCircuitType && fullCmpId],
+      ['backtrace best caller',       callers[0]?.id]
+    ]
+    const [strategy, circuitCmpId] = strategies.find(([, id]) => id) || ['self - no circuit found', fullCmpId]
+    const isSelf = circuitCmpId == fullCmpId
+    ctx?.vars?.probeLogger?.info?.({t: 'calcCircuit', fullCmpId, strategy, circuitCmpId, isSelf, isCircuitType,
+      callerCount: callers.length, callerIds: callers.map(c => c.id),
+      tried: strategies.map(([name, id]) => ({name, id: id || null})),
+      // isSelf via backtrace means: not a circuit type AND no profile-level caller was found (JS .$run()/.calc()
+      // callers are invisible to the ref scanner) - a bare run may leave dynamic:true branches unexecuted.
+      hint: isSelf && !isCircuitType ? `${fullCmpId} is not a circuit type and has no profile-level caller; running it bare - dynamic params may stay un-invoked. probe from a circuit that calls it (e.g. a Test).` : undefined,
+      ms: Date.now() - t0}, {}, {ctx})
     return circuitCmpId
 }
 
@@ -250,20 +262,33 @@ class Probe {
 
         try {
             this.active = true
-            let res
-            if (this.circuitCmpId.match(/^react-comp</)) {
-              const { reactUtils } = await import('@jb6/react')
-              const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(this.circuitCmpId, this.circuitCtx)
-              res = reactUtils.probeReactComp(ctx, reactCmp, props)
-            } else {
-              res = await this.circuitComp.runProfile({}, this.circuitCtx)
-            }
+            // run the circuit as a plain profile → the (often passive) result. probeExec then ACTIVATES that
+            // passive result for types where the bare result is inert closures/vdom: visualized-data returns
+            // {calc,showResult} → calc(ctx) drives the steps; react-comp returns a comp → mount+render it.
+            // both get circuitCtx so jbCtx.probe survives and jb_run records fire; circuitComp/circuitCmpId
+            // are reachable via ctx.jbCtx.probe.
+            const [type, dsl] = this.circuitCmpId.match(/^([^<]+)<([^>]+)>/).slice(1)
+            const passiveRes = await this.circuitComp.runProfile({}, this.circuitCtx)
+            const probeExec = jb.dsls[dsl]?.[toCapitalType(type)]?.probeExec
+            const res = probeExec ? await probeExec(passiveRes, this.circuitCtx) : passiveRes
 
             this.circuitRes = await waitForInnerElements(res)
             this.result = this.records[probePath] || []
             this.result = await waitForInnerElements(this.result)
             const resolvedOuts = await Promise.all(this.result.map(x=>waitForInnerElements(x.out)))
-            this.progressLogger?.info?.({t: 'probe completed', probePath, visits: this.visits}, {}, {ctx: this.circuitCtx})
+            // empty result diagnostics: the probe records {in,out} only when a jb_run actually fires AT probePath.
+            // 0 records + a circuitRes made of un-called functions means the circuit returned lazy closures
+            // (e.g. dynamic:true params) that this circuit never invoked - so probePath was never reached.
+            const probePathVisited = !!this.visits[probePath]
+            const uncalledCircuitFns = this.circuitRes && typeof this.circuitRes == 'object' && !Array.isArray(this.circuitRes)
+              ? Object.entries(this.circuitRes).filter(([,v]) => typeof v == 'function').map(([k]) => k) : []
+            this.progressLogger?.info?.({t: 'probe completed', probePath, records: this.result.length,
+              probePathVisited, uncalledCircuitFns, visits: this.visits}, {}, {ctx: this.circuitCtx})
+            if (!this.result.length)
+              this.progressLogger?.info?.({t: 'probe empty result', probePath, probePathVisited, uncalledCircuitFns,
+                hint: uncalledCircuitFns.length
+                  ? `circuit returned un-called fn(s) [${uncalledCircuitFns.join(', ')}]; probePath sits under a dynamic branch this circuit never invoked. probe from a circuit that calls it (e.g. a Test).`
+                  : 'probePath was never reached during this circuit run'}, {}, {ctx: this.circuitCtx})
             // ref to values
             this.result.forEach((obj,i)=> { obj.out = calcValue(resolvedOuts[i]) ; obj.in.data = calcValue(obj.in.data)})
             this.emitVisits(true)   // final flush so the last window's totals reach the view

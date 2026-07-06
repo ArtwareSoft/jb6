@@ -80,8 +80,8 @@ ${origin ? `<base href="${origin}/">` : ''}
     const root = reactUtils.createRoot(document.getElementById('show'))
     let compArgs = null
     const render = async (args) => {
-      const { reactCmp, props, ctx: rCtx } = await reactUtils.wrapReactCompWithSampleData('${compId}', ctx, args)
-      root.render(h('div', {}, hh(rCtx, reactCmp, props)))
+      const { reactCmp, ctx: rCtx } = await reactUtils.runOnHost('${compId}', ctx, args)
+      root.render(h('div', {}, hh(rCtx, reactCmp)))
     }
 
     await app.connect()

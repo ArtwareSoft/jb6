@@ -2,10 +2,10 @@ import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/probe-studio/probe-studio-dsl.js'
 import '@jb6/jq'
 
-const { 
-  tgp: { Const},
+const {
+  tgp: { 'ctx-enricher': { Var } },
   common: {
-    data: { jq, asIs }, 
+    data: { jq },
   },
   react: { ReactComp, ReactMetadata,
     'react-comp': { comp, codeMirrorJson },
@@ -71,10 +71,7 @@ ReactComp('cmdView', {
         h('pre:bg-gray-900 text-green-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono border border-gray-600 whitespace-pre-wrap', {}, `$ ${cmd}`)
       )
     },
-    enrichCtx: (ctx, {top}) => ctx.setVars({projectDir: top.projectDir}),
-    sampleCtxData: jq('$sampleProbeRes | .. | .cmd? | { data: ., vars: {top: $sampleProbeRes}}', {
-      first: true
-    }),
+    enrichCtx: Var('projectDir', '%$top/projectDir%'),
     metadata: [
       abbr('CMD'),
       matchData('%$top/cmd%'),

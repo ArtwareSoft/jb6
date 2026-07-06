@@ -1,9 +1,6 @@
 import { dsls, coreUtils, jb } from '@jb6/core'
 
 const {
-  common: {
-    data: { asIs },
-  },
   react: { ReactComp,
     'react-comp': { comp },
     'react-metadata': { importUrl }
@@ -115,10 +112,6 @@ export const codeMirrorJsonCollapsible = ReactComp('codeMirrorJsonCollapsible', 
 
       return h('div:h-full w-full overflow-hidden', { ref: host })
     },
-    samplePropsData: asIs({json: {
-      hello: 'world',
-      items: Array.from({length: 100}, (_, i) => ({ id: i, name: `Item ${i}` }))
-    }}),
     metadata: importUrl(CM6_IMPORT)
   })
 })

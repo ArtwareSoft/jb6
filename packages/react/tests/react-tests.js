@@ -6,7 +6,7 @@ import '@jb6/react/codemirror-utils.js'
 
 const { json } = ns
 const {
-  tgp: { Component },
+  tgp: { Component, 'ctx-enricher': { Var } },
   test: { Test,
       'ui-action': { click, longPress, actions, waitForText, clickInCodeMirror, selectInCodeMirror, keyPressInCodeMirror },
       test: { dataTest, reactTest }
@@ -58,7 +58,7 @@ const compWithP1AndV1 = ReactComp('compWithP1AndV1', {
   ],
   impl: comp({
     hFunc: ({}, {v1, react: {h}}) => ({p1}) => h('div', {}, `myComp p1: ${p1}, v1: ${v1}`),
-    enrichCtx: ctx => ctx.setVars({v1: 'v1Val'})
+    enrichCtx: Var('v1', 'v1Val')
   })
 })
 
@@ -196,8 +196,7 @@ Component('showMe', {
   ],
   impl: comp({
     hFunc: ({}, {text1, v1, react: {h}}, {textToShowAfter}) => ({}) => h('div', {}, text1, v1, textToShowAfter),
-    enrichCtx: ctx => ctx.setVars({text1: ctx.data.text}),
-    sampleCtxData: asIs({data: {text: 'hello world'}, vars: {v1: 'v1Val'}})
+    enrichCtx: Var('text1', '%%/text%')
   })
 })
 

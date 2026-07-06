@@ -11,9 +11,6 @@ const {
 
 Object.assign(coreUtils, { calcTgpModelData, calcExpectedDslsSection, calcImportsForProfile, scanDsl, hashAndGetCache, writeTgpModelCache})
 
-// calculating tgpModel data from the files system, by parsing the import files starting from the entry point of file path.
-// it is used by language services and wrapped by the class tgpModelForLangService
-
 export async function calcTgpModelData(resources) {
   const { fetchByEnvHttpServer, ctx } = resources
   const log = ctx?.vars?.langServiceLogger
@@ -27,10 +24,6 @@ export async function calcTgpModelData(resources) {
   const short = p => (p || '').replace(repoRoot + '/', '')   // strip common prefix to shrink logs
   const compsByFile = {}
 
-  // fast pre-crawl: walk the static import graph WITHOUT full AST parsing (regex-harvest imports
-  // from the top lines only) just to collect the file list + mtimes. ~25ms vs ~600ms for the full
-  // crawl below, so it's the cache-invalidation fingerprint: on the next call we re-stat this list
-  // and rebuild only if any mtime changed. runs BEFORE the crawl so the measure/fingerprint is logged first.
   const datesStart = Date.now()
   const { files: dateFiles, mtimes } = await crawlForDates({ importMap, staticMappings, rootFilePaths, fetchByEnvHttpServer })
   log?.info?.({ t: 'tgpModelDates', forDsls: resources.forDsls, ms: Date.now() - datesStart,
@@ -40,8 +33,6 @@ export async function calcTgpModelData(resources) {
   // crawl
   const codeMap = {} , visited = {}, importGraph = {}
   await rootFilePaths.reduce((acc, filePath) => acc.then(() => crawl(filePath)), Promise.resolve())
-  // discovery trace: a comp is resolvable only if its file is among crawledFiles. files reachable ONLY from a
-  // non-entry aggregator (e.g. all-tests.js) and outside discoverFiles' jb6Dirs/tests scan never appear here.
   log?.info?.({ t: 'tgpModelDiscovery', forDsls: resources.forDsls, repoRoot, entryFileCount: entryFiles.length,
     testFileCount: allTestFiles.length, crawledFileCount: Object.keys(codeMap).length,
     entryFiles: entryFiles.map(short), testFiles: allTestFiles.map(short) }, {}, { ctx })
@@ -612,6 +603,7 @@ async function scanDsl({dsl, details = 'comps', repoRoot, ctx}) {
         if (!wanted.has(d)) return
         tgpTypes.push(val.dslType); typeLoc[val.dslType] = val.$location
         if (val.demoProfile) demoComp[val.dslType] = val.demoProfile
+        if (val.typescript) tsByType[val.dslType] = val.typescript   // RT contract lives on the TgpType def
         return
       }
       if (!val || typeof val != 'object' || !wanted.has(d)) return
@@ -619,7 +611,6 @@ async function scanDsl({dsl, details = 'comps', repoRoot, ctx}) {
       Object.values(val).forEach(v => {
         const comp = v?.[asJbComp] || v   // moreTypes buckets hold jbCompProxy - unwrap to the raw comp def
         if (!comp?.$location?.path) return
-        if (comp.typescript) tsByType[bucket] = comp.typescript
         comps.push(comp); grouped.push({ comp, groupKey })
       })
     }))
@@ -665,7 +656,7 @@ async function scanDsl({dsl, details = 'comps', repoRoot, ctx}) {
     const sorted = comps.sort((a, b) => compRank(a) < compRank(b) ? -1 : 1)
     const shown = withParams ? sorted : sorted.slice(0, 12)
     const more = sorted.length - shown.length
-    const demos = demoIds(typeKey).map(id => demoBlocks[id]), ts = tsByType[typeKey.replace(/<.*/, '')]
+    const demos = demoIds(typeKey).map(id => demoBlocks[id]), ts = tsByType[typeKey]
     const heading = `### ${typeKey}${ts ? ` — RT: ${ts}` : ''}${demos.length ? `\n${demos.join('\n')}` : ''}`
     return [heading, ...shown.flatMap(compLines), ...(more > 0 ? [`...${more} more comps`] : [])].join('\n')
   }

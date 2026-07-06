@@ -276,7 +276,7 @@ UiAction('keyPressInCodeMirror', {
   })
 })
 
-async function probeReactComp(ctx, reactCmp, props) {
+async function probeReactComp(ctx, reactCmp) {
   const win = globalThis.window
   if (!win)
     return {error: 'reactTest: no global window' }
@@ -287,7 +287,7 @@ async function probeReactComp(ctx, reactCmp, props) {
   testSimulation.id = 'test-simulation'
   let hFuncRes
   try {
-    hFuncRes = reactUtils.hh(ctx, reactCmp, props)
+    hFuncRes = reactUtils.hh(ctx, reactCmp)
   } catch (error) {
     return { error: error.stack}
   }

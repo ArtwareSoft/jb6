@@ -6,8 +6,8 @@ import '@jb6/react'
 import '@jb6/mcp'
 
 const {
-  tgp: { Component },
-  common: { 
+  tgp: { Component, 'ctx-enricher': { Var } },
+  common: {
     data: { asIs, bookletsContent, dslDocs, filter, join, keys, pipe, pipeline, split, tgpModel }
   },
   mcp: { Tool,
@@ -246,7 +246,6 @@ Component('helloMcp', {
   ],
   impl: comp({
     hFunc: ({}, {text1, v1, react: {h}}, {textToShowAfter}) => ({}) => h('div', {}, text1, v1, textToShowAfter),
-    enrichCtx: ctx => ctx.setVars({text1: ctx.data?.text}),
-    sampleCtxData: asIs({data: {text: 'hello world'}, vars: {v1: 'v1Val'}})
+    enrichCtx: Var('text1', '%%/text%')
   })
 })

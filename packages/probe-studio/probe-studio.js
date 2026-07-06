@@ -9,10 +9,7 @@ import '@jb6/probe-studio/probe-studio-dsl.js'
 Object.assign(coreUtils, { runProbeStudio })
 
 const {
-  tgp: { Const },
-  common: {
-    data: { jq, asIs },
-  },
+  tgp: { 'ctx-enricher': { Var } },
   react: { ReactComp, ReactMetadata,
     'react-comp': { comp },
     'react-metadata': { abbr, matchData, priority, importUrl }
@@ -213,8 +210,7 @@ const visitsProgress = ReactComp('visitsProgress', {
           )
         })
       )
-    },
-    samplePropsData: asIs({ seed: { 'test<test>coreTest.HelloWorld~impl~expectedResult': 21, 'test<test>coreTest.HelloWorld~impl~calculate~operators~0': 3 }, probed: 'test<test>coreTest.HelloWorld' })
+    }
   })
 })
 
@@ -291,9 +287,7 @@ ReactComp('loadingView', {
           )
         )
       )
-    },
-    sampleCtxData: asIs({vars: {path: 'test.path~impl'}}),
-    samplePropsData: asIs({status: 'Loading...'})
+    }
   })
 })
 
@@ -312,14 +306,12 @@ ReactComp('cmdErrorView', {
         cmd && h('pre:bg-gray-900 text-green-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono border border-gray-600 whitespace-pre-wrap mt-3', {}, `$ ${cmd}`)
       )
     },
-    enrichCtx: (ctx, { top }) => ctx.setVars({ cmd: top.cmd }),
+    enrichCtx: Var('cmd', '%$top/cmd%'),
     metadata: [
       abbr('ERR'),
       matchData('%$error%'),
       priority(1)
-    ],
-
-    sampleCtxData: asIs({ vars: { error: 'Sample error message', cmd: 'node --run test' } })
+    ]
   })
 })
 
@@ -381,7 +373,6 @@ ReactComp('resultsView', {
         result.map(({ in: In, out }, i) => hh(ctx, codeMirrorInputOutput, { in: In, out, key: i }))
       )
     },
-    sampleCtxData: jq('$sampleProbeRes | .. | .result? | { data: . }', { first: true }),
     metadata: [
       abbr('RES'),
       matchData('%$top/probeRes/result%'),
@@ -393,7 +384,6 @@ ReactComp('resultsView', {
 ReactComp('topView', {
   impl: comp({
     hFunc: (ctx, { react: { hh } }) => () => hh(ctx, codeMirrorJson, { json: ctx.data }),
-    sampleCtxData: '%$sampleProbeRes%',
     metadata: [
       abbr('ALL'),
       matchData('%$top%'),
@@ -413,7 +403,6 @@ ReactComp('visitsProgressView', {
       // ctx.data is the raw probeRes.visits (tgpPath→count). visitsProgress aggregates by comp itself.
       return h('div:p-3', {}, hh(ctx, visitsProgress, { seed: ctx.data || {}, probed: probePath?.split('~')[0] }))
     },
-    sampleCtxData: '%$sampleProbeRes/probeRes/visits%',
     metadata: [
       abbr('VIS'),
       matchData('%$top/probeRes/visits%'),
@@ -519,14 +508,12 @@ const codeMirrorJson = ReactComp('codeMirrorJson', {
 
       return h('div:h-full', { ref: host })
     },
-    samplePropsData: asIs({ json: { hello: 'world' } }),
     metadata: importUrl(CM6_IMPORT)
   })
 })
 
 const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
   impl: comp({
-    samplePropsData: '%$sampleProbeRes/probeRes/result/0%',
     hFunc: ({ }, { react: { h, useRef, useEffect } }) => ({ in: In, out }) => {
       const format = v => print(v)
       const inputData = In?.data ?? In
@@ -574,33 +561,3 @@ const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
   })
 })
 
-Const('sampleProbeRes', {
-  probeRes: {
-    circuitCmpId: 'test<test>reactTest.helloWorld',
-    probePath: 'test<test>reactTest.helloWorld~impl~expectedResult',
-    visits: {
-      'test<test>reactTest.helloWorld~impl': 5,
-      'test<test>reactTest.helloWorld~impl~expectedResult~text': 1,
-      'test<test>reactTest.helloWorld~impl~expectedResult~allText': 1,
-      'test<test>reactTest.helloWorld~impl~expectedResult': 2
-    },
-    totalTime: 25,
-    result: [
-      {
-        from: null,
-        out: true,
-        in: {
-          data: '<div>hello world</div>\n',
-          params: null,
-          vars: { singleTest: true, testID: 'test<test>reactTest', isTest: true, testSessionId: 'test-1767382961872' }
-        }
-      },
-    ],
-    circuitRes: { id: 'test<test>reactTest', success: true, testRes: '<div>\nhello world</div>\n', counters: {} },
-    errors: [],
-    logs: []
-  },
-  error: undefined,
-  cmd: `node --inspect-brk --experimental-vm-modules --expose-gc --input-type=module  -e "\n      import { writeFile } from 'fs/promises'\n      import { jb, dsls, coreUtils } from '@jb6/core'\n      import '@jb6/testing'\n      import '@jb6/core/misc/probe.js'\n      const imports = [\"/home/shaiby/projects/jb6/packages/react/tests/react-tests.js\"]\n      try {\n        \n        await Promise.all(imports.map(f => import(f))) // .catch(e => console.error(e.stack) )\n        const result = await jb.coreUtils.runProbe(\"test<test>reactTest.helloWorld~impl~expectedResult\")\n        await coreUtils.writeServiceResult(result)\n      } catch (e) {\n        await coreUtils.writeServiceResult({error: e.stack})\n        console.error(e)\n      }\n    "`,
-  projectDir: '/home/shaiby/projects/jb6/packages/react'
-})

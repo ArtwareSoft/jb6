@@ -1,13 +1,8 @@
 import { jb, coreUtils, dsls } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
-export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, wrapReactCompWithSampleData, extendCtxWithUrl, imported }
+export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, runOnHost, rebuildNativeComp, extendCtxWithUrl, imported }
 
-// get a resolved import module. always keyed by the REAL url (importUrl), even when a stub was loaded under win.testing
-function imported(url) { return jb.reactRepository.importCache[url] }
-
-
-jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
-Object.assign(jb.coreRegistry.urlReservedParams, {cmpId: true, urlsToLoad: true, wlaForceRebuild: true, wlaDryRun: true})
+const { tgp: { TgpType, Component } } = dsls
 
 jb.reactRepository = {
   comps: {},
@@ -15,8 +10,15 @@ jb.reactRepository = {
   importCache: {}
 }
 const repo = jb.reactRepository
+const hostInfo = Symbol.for('hostInfo')
 
-// Extend a Ctx with URL params: `ctx-*` (prefix stripped) and names in `urlReservedParams` → ctx vars. Loggers via `?logger=...` (jb-logging).
+jb.coreRegistry.urlReservedParams = jb.coreRegistry.urlReservedParams || {}
+Object.assign(jb.coreRegistry.urlReservedParams, {cmpId: true, urlsToLoad: true, wlaForceRebuild: true, wlaDryRun: true})
+
+function logMs(ctx, t, ms, extra) { if (ms) ctx.vars.uiLogger?.info?.({t, ms, ...extra}, {}, {ctx}) }
+
+function imported(url) { return repo.importCache[url] }
+
 function extendCtxWithUrl({ctx = new coreUtils.Ctx(), href} = {}) {
   href = href ?? globalThis.window?.location?.href ?? ''
   const urlParams = new URLSearchParams(href.split('?')[1] || '')
@@ -25,13 +27,15 @@ function extendCtxWithUrl({ctx = new coreUtils.Ctx(), href} = {}) {
   return coreUtils.loggersFromUrl(urlParams, ctx.setVars(urlVars))
 }
 
-function logMs(ctx, t, ms, extra) { if (ms) ctx.vars.uiLogger?.info?.({t, ms, ...extra}, {}, {ctx}) }
-
-const { tgp: { TgpType, Component } } = dsls
-
-const ReactComp = TgpType('react-comp','react', { isCircuit: true }) // actually jb-react-comp
-TgpType('vdom','react') // actually react-comp
-TgpType('react-metadata','react') // actually jb-metadata-for-react-comp
+const ReactComp = TgpType('react-comp','react', { isCircuit: true,
+  typescript: '(props) => vdom & { [hostInfo]: { hFunc, enrichCtx, importMetas, progressIndicator } }',
+  probeExec: (passiveRes, circuitCtx) => {
+    const probeCtx = circuitCtx.setVars({react: reactUtils})
+    return reactUtils.probeReactComp(probeCtx, reactUtils.rebuildNativeComp(passiveRes, probeCtx))
+  }
+})
+TgpType('vdom','react', { typescript: '(ctx, ctxVars, compParams) => (reactProps) => vdom' })
+TgpType('react-metadata','react')
 const ProgressIndicator = TgpType('progress-indicator','react', {
   typescript: '(ctx) => () => vdom'
 })
@@ -48,119 +52,61 @@ Component('importUrl', {
   ]
 })
 
-function resolveImportUrl(m) {
-  const key = m.importUrl // always cache under the real url, even when a stub is loaded
-  if (repo.importCache[key]) return repo.importCache[key] // sync - 99%
-  const url = (globalThis.window?.testing && m.stubUrl && !globalThis.window?.noStubs) ? m.stubUrl : key
-  return import(url).then(mod => repo.importCache[key] = mod)
-}
+Component('containerComp', {
+  description: 'certain react comps need containers to run in. containers usually provide ctx.vars',
+  type: 'react-metadata<react>',
+  params: [
+    {id: 'containerComp', as: 'string', description: 'runOnHost will mount this comp inside the container for preview'},
+    {id: 'cntrImportPath', as: 'string', description: 'runOnHost will load the container from there' }
+  ]
+})
 
-/*  hFunc signature: (ctx, ctxVars, compParams) => (reactProps) => vdom
-      ctx        – jb context object
-      ctxVars    – ctx.vars destructured, e.g. {react: {h, useState}, myVar}
-      compParams – resolved component params from the params[] definition
-      reactProps – React props passed by parent / ontoolresult render(args)
-
-    Example:
-      hFunc: (ctx, {react: {h}}, {testId}) => ({success, error}) =>
-        h('div', {}, testId, success ? 'PASSED' : error)
-*/
 ReactComp('comp', {
   params: [
     {id: 'hFunc', type: 'vdom', dynamic: true, byName: true},
     {id: 'enrichCtx', type: 'ctx-enricher<tgp>', dynamic: true, byName: true, description: 'enrich the react comp ctx at the *first time*. to run on every refresh use hhStrongRefresh'},
-    {id: 'sampleCtxData', dynamic: true, description: '{ data , vars {} }'},
-    {id: 'samplePropsData', dynamic: true, description: '{ status: "hello" }'},
     {id: 'metadata', type: 'react-metadata[]', dynamic: true},
     {id: 'progressIndicator', type: 'progress-indicator<react>', dynamic: true, byName: true, defaultValue: {$: 'progress-indicator<react>spinner'}},
   ],
-  impl: (_ctx, {strongRefresh, react: {useState, useEffect} }, { hFunc, enrichCtx, metadata, progressIndicator }) => {
+  impl: (_ctx, {strongRefresh}, { hFunc, enrichCtx, metadata, progressIndicator }) => {
     const ctx = _ctx.setVars({strongRefresh: false})
     const jbid = ctx.jbCtx.lexicalStack?.join(';')
-    const varsKey = Object.keys(ctx.vars || {}).sort().join(',')
-    const id = strongRefresh ? '' : (jbid && `${jbid}|${varsKey}`)
-
+    const id = strongRefresh ? '' : jbid && `${jbid}|${Object.keys(ctx.vars || {}).sort().join(',')}`
+    if (id && repo.comps[id]) return repo.comps[id]
     const importMetas = coreUtils.asArray(metadata()).filter(m => m.importUrl)
-    const ctxOrPromise = readyCtxPromise(ctx, importMetas, enrichCtx)
-    const isPromise = coreUtils.isPromise(ctxOrPromise)
-
-    if (isPromise) {
-      const ctxPromise = (id && repo.promises[id]) || ctxOrPromise
-      if (id && !repo.promises[id])
-        repo.promises[id] = ctxPromise
-      if (!id || !repo.comps[id]) {
-        const comp = (args) => {
-          const [ctx, setCtx] = useState(null)
-          const [loading, setLoading] = useState(true)
-
-          useEffect(() => {
-            let mounted = true
-            ctxPromise.then(resolvedCtx => {
-              if (mounted) {
-                setCtx(resolvedCtx)
-                setLoading(false)
-              }
-            })
-            return () => { mounted = false }
-          }, [])
-
-          if (loading)
-            return h(progressIndicator(_ctx))
-          return h(hFunc(ctx), args)
-        }
-        if (id && !repo.comps[id])
-          repo.comps[id] = comp
-        Object.defineProperty(comp, 'name', { value: id })
-        comp.jbid = jbid
-        return comp
-      }
-    } else {
-      if (!id || !repo.comps[id]) {
-        const comp = hFunc(ctxOrPromise)
-        comp.jbid = jbid
-        if (id && !repo.comps[id])
-          repo.comps[id] = comp
-        Object.defineProperty(comp, 'name', { value: id })
-        return comp
-      }
-    }
-    return id ? repo.comps[id] : null
-
-    function readyCtxPromise() {
-      const tImp = Date.now()
-      const imports = importMetas.map(m => resolveImportUrl(m))
-      let pending = imports.find(r => coreUtils.isPromise(r))
-      if (pending)
-        pending = Promise.all(imports).then(() => logMs(ctx, 'jb6.importUrls', Date.now() - tImp, {urls: importMetas.map(m => m.importUrl)}))
-      const tEnr = Date.now()
-      const enriched = enrichCtx(ctx) || ctx
-      logMs(ctx, 'jb6.enrichCtx', Date.now() - tEnr)
-      if (!pending) return enriched
-      return Promise.resolve(pending).then(() => enriched)
-    }
+    const native = buildNativeComp({ hFunc, enrichCtx, importMetas, progressIndicator }, ctx)
+    native.jbid = jbid
+    Object.defineProperty(native, 'name', { value: id })
+    return id ? (repo.comps[id] = native) : native
   }
 })
 
-function hh(ctx, t, p = {}, ...c) {
-  if (!(ctx instanceof coreUtils.Ctx))
-    console.error('hh: first param of hh must be ctx')
-  t = t[coreUtils.asJbComp] ? t.$runWithCtx(ctx) : t
-  return h(t,p,...c)
-}
+// # HOST
+async function runOnHost(cmpId, _ctx, args) {
+  const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
+  try {
+    const fullId = cmpId.indexOf('<') == -1 ? `react-comp<react>${cmpId}` : cmpId
+    const jbComp = coreUtils.compByFullId(fullId)
+    coreUtils.resolveCompArgs(jbComp)
+    const metadata = coreUtils.asArray(jbComp.impl.metadata)
+    const containerComp = metadata.find(m => m.containerComp)?.containerComp
+    const cntrImportPath = metadata.find(m => m.containerComp)?.cntrImportPath
+    if (cntrImportPath) {
+      const _t = Date.now()
+      await import(cntrImportPath)
+      logMs(ctx, 'jb6.cntrImport', Date.now() - _t, {cntrImportPath})
+    }
+    const compToRun = containerComp && dsls.react['react-comp'][containerComp] || coreUtils.proxyByFullId(fullId)
 
-function hhStrongRefresh(ctx, t, p = {}, ...c) {
-  if (!(ctx instanceof coreUtils.Ctx))
-    console.error('hhStrongRefresh: first param of hh must be ctx')
-  if (t[coreUtils.asJbComp]) {
-    const id = 'react:' + t[coreUtils.asJbComp].id
-    t = t.$runWithCtx(ctx.setVars({strongRefresh: true}))
-    // set wrapper function name to jbComp id - so it shows in the debugger
-    const f = id ? ({ [id]: () => h(t,p,...c) })[id] : (() => h(t,p,...c))
-    return f()
+    const ctxWithComp = containerComp ? ctx.setVars({testedComp: cmpId}) : ctx
+    const reactCmp = compToRun.$runWithCtx(ctxWithComp, args != null ? args : {})
+    return { ctx: ctxWithComp, reactCmp }
+  } catch(error) {
+    return { ctx, reactCmp: () => reactUtils.h('pre',{},error.stack) }
   }
-  return h(t,p,...c)
 }
 
+// # RENDER (hyperscript)
 function h(t, p = {}, ...c) {
   let [tag,cls]= typeof t==="string" ? t.split(/:(.+)/) : [t]
   if (tag == 'L') {
@@ -176,6 +122,26 @@ function h(t, p = {}, ...c) {
   return vdom
 }
 
+function hh(ctx, t, p = {}, ...c) {
+  if (!(ctx instanceof coreUtils.Ctx))
+    console.error('hh: first param of hh must be ctx')
+  t = t[coreUtils.asJbComp] ? t.$runWithCtx(ctx) : t
+  return h(t,p,...c)
+}
+
+function hhStrongRefresh(ctx, t, p = {}, ...c) {
+  if (!(ctx instanceof coreUtils.Ctx))
+    console.error('hhStrongRefresh: first param of hh must be ctx')
+  if (t[coreUtils.asJbComp]) {
+    const id = 'react:' + t[coreUtils.asJbComp].id
+    t = t.$runWithCtx(ctx.setVars({strongRefresh: true}))
+    const f = id ? ({ [id]: () => h(t,p,...c) })[id] : (() => h(t,p,...c))
+    return f()
+  }
+  return h(t,p,...c)
+}
+
+// # ICONS (Lucide)
 const toPascal = s => s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')
 const unknow = [["path",{"d":"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"}],["path",{"d":"M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"}],["path",{"d":"M12 17h.01"}]]
 function L(iconName) {
@@ -194,8 +160,52 @@ async function loadLucid05() {
   return jb.reactUtils.icons = await import('@jb6/react/lib/lucide-0.5.mjs')
 }
 
+// # KERNEL (recipe + ctx → native React fn)
+function resolveImportUrl(m) {
+  const key = m.importUrl
+  if (repo.importCache[key]) return repo.importCache[key]
+  const url = (globalThis.window?.testing && m.stubUrl && !globalThis.window?.noStubs) ? m.stubUrl : key
+  return import(url).then(mod => repo.importCache[key] = mod)
+}
+
+function readyReactCtx(ctx, importMetas, enrichCtx) {
+  const tImp = Date.now()
+  const imports = importMetas.map(m => resolveImportUrl(m))
+  const pending = imports.some(coreUtils.isPromise) &&
+    Promise.all(imports).then(() => logMs(ctx, 'jb6.importUrls', Date.now() - tImp, {urls: importMetas.map(m => m.importUrl)}))
+  const tEnr = Date.now()
+  const enriched = enrichCtx(ctx) || ctx
+  logMs(ctx, 'jb6.enrichCtx', Date.now() - tEnr)
+  return pending ? Promise.resolve(pending).then(() => enriched) : enriched
+}
+
+function buildNativeComp(host, ctx, {rebuilt} = {}) {
+  const { hFunc, enrichCtx, importMetas, progressIndicator } = host
+  const { useState, useEffect } = ctx.vars.react
+  const readyCtx = readyReactCtx(ctx, importMetas, enrichCtx)
+  const async = coreUtils.isPromise(readyCtx)
+  ctx.vars.uiLogger?.info?.({t: 'buildNativeComp', comp: ctx.jbCtx.path, rebuilt: !!rebuilt, async, imports: importMetas.length}, {}, {ctx})
+  const native = async
+    ? args => {
+        const [rctx, setCtx] = useState(null)
+        useEffect(() => { let live = true; readyCtx.then(c => live && setCtx(c)); return () => { live = false } }, [])
+        return rctx ? h(hFunc(rctx), args) : h(progressIndicator(ctx))
+      }
+    : hFunc(readyCtx)
+  native[hostInfo] = host
+  return native
+}
+
+function rebuildNativeComp(native, ctx) {
+  const host = native[hostInfo]
+  if (!host)
+    ctx.vars.uiLogger?.info?.({t: 'rebuildNativeComp.noHost', comp: ctx.jbCtx.path}, {}, {ctx})
+  return host ? buildNativeComp(host, ctx, {rebuilt: true}) : native
+}
+
+// # BOOTSTRAP
 let initReact = () => {}
-if (!globalThis.window) { // used in nodejs
+if (!globalThis.window) {
   initReact = async () => {
     const cli = Object.fromEntries(process.argv.slice(2).filter(a=>a.startsWith('--')).map(a=>a.slice(2).split('=')))
     const url = globalThis.builtIn?.window?.url || cli.url || 'http://localhost'
@@ -222,20 +232,16 @@ if (!globalThis.window) { // used in nodejs
       removeItem(k) { delete this.db[k] }
     }
 
-// Also mock scrollIntoView if needed
     ;['Image','Node','Element','HTMLElement','Document','MutationObserver','document'].forEach(k => globalThis[k] = win[k])
     ;['navigator','location'].forEach(k => Object.defineProperty(globalThis, k, { value: win[k], writable: true, configurable: true, enumerable: true }))
     const ver = isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
     const {React,ReactDomClient,ReactDom} = await import(`@jb6/react/lib/react-all-${ver}.mjs`)
     Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient })
   }
-} else { // browser
+} else {
   initReact = async () => {
-    console.log('initReact browser')
     const isLocalHost = typeof location !== 'undefined' && location.hostname === 'localhost'
-    let ver = isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
-    //ver = '19.2.0-prod'
-
+    const ver = isLocalHost ? '19.2.0-dev' : '19.2.0-prod'
     if (typeof process === 'undefined')
       globalThis.process = { env: { NODE_ENV: 'development' }, platform: 'browser', version: '', versions: {} }
     if (!reactUtils.reactPromise)
@@ -244,45 +250,6 @@ if (!globalThis.window) { // used in nodejs
         Object.assign(reactUtils, { ...React, ...ReactDomClient, ...ReactDom, React, ReactDOM: ReactDomClient  })
       })()
     return reactUtils.reactPromise
-  }  
-}
-
-Component('containerComp', {
-  description: 'certain react comps need containers to run in. containers usually provide ctx.vars',
-  type: 'react-metadata<react>',
-  params: [
-    {id: 'containerComp', as: 'string', description: 'will run by wrapReactCompWithSampleData for preview'},
-    {id: 'cntrImportPath', as: 'string', description: 'wrapReactCompWithSampleData will load the container from there' }
-  ]
-})
-
-async function wrapReactCompWithSampleData(cmpId, _ctx, args) {
-  const ctx = (_ctx || new coreUtils.Ctx()).setVars({react: reactUtils})
-  try {
-    const fullId = cmpId.indexOf('<') == -1 ? `react-comp<react>${cmpId}` : cmpId
-    const jbComp = coreUtils.compByFullId(fullId)
-    //const jbComp = comp[coreUtils.asJbComp]
-    coreUtils.resolveCompArgs(jbComp)
-    const metadata = coreUtils.asArray(jbComp.impl.metadata)
-    const containerComp = metadata.find(m => m.containerComp)?.containerComp
-    const cntrImportPath = metadata.find(m => m.containerComp)?.cntrImportPath
-    if (cntrImportPath) {
-      const _t = Date.now()
-      await import(cntrImportPath)
-      logMs(ctx, 'jb6.cntrImport', Date.now() - _t, {cntrImportPath})
-    }
-    const compToRun = containerComp && dsls.react['react-comp'][containerComp] || coreUtils.proxyByFullId(fullId)
-
-    const ctxData = jbComp.impl.sampleCtxData && await ctx.run(jbComp.impl.sampleCtxData)
-    const props = jbComp.impl.samplePropsData && await ctx.run(jbComp.impl.samplePropsData)
-    let ctxWithData = ctxData ? ctx.setData(ctxData.data).setVars(ctxData.vars) : ctx
-    if (containerComp)
-      ctxWithData = ctxWithData.setVars({testedComp: cmpId})
-
-    const reactCmp = args != null ? compToRun.$runWithCtx(ctxWithData,args) : compToRun.$runWithCtx(ctxWithData, {})
-    return { ctx: ctxWithData, reactCmp, props }
-  } catch(error) {
-    return { ctx, reactCmp: () => reactUtils.h('pre',{},error.stack), props: {} }
   }
 }
 
