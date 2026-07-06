@@ -8,13 +8,9 @@ import './jb-cli.js'
 import './import-map-services.js'
 
 const { coreUtils } = jb
-const { Ctx, log, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays,
+const { Ctx, logError, logException, compByFullId, calcValue, waitForInnerElements, compareArrays,
   asJbComp, compIdOfProfile, stripData, unique, toCapitalType } = coreUtils
-const { tgp: { Component }, test: { Logger, logger: { domainLogger } } } = jb.dsls
-
-// probeLogger: dedicated carrier for live probe progress (visited comps). Wrapped-to-stderr in the child and
-// routed browser-side via dispatchChildLine → eventEmitter, where the studio's visitsProgress view listens.
-Logger('probeLogger', { impl: domainLogger('probe') })
+const { tgp: { Component } } = jb.dsls
 
 jb.probeRepository = {
     probeCounter: 0
@@ -105,7 +101,6 @@ async function runProbe(_probePath, {circuitCmpId, timeout, progressLogger, ctx 
        return { error: `probe runCircuit missing probe path` }
     }
     const probePath = _probePath.indexOf('<') == -1 ? `test<test>${_probePath}` : _probePath
-    log('probe start run circuit',{probePath})
     progressLogger?.info?.({t: 'beforeCalcCircuit', probePath}, {}, {ctx})
     progressLogger?.progress?.({step: 'calcCircuit', status: 'running', probePath})   // stepper step: circuit inference (progress channel → eventEmitter → studio)
     let circuit = circuitCmpId || calcCircuit(probePath, ctx)
@@ -249,7 +244,6 @@ class Probe {
     async runCircuit(probePath,maxTime) {
         this.maxTime = maxTime || 50
         this.startTime = Date.now()
-        log('probe run circuit',{probePath, probe: this})
         this.records[probePath]
         this.probePath = probePath
         this.emitStart()   // immediate "probe is alive" signal, before the (slow-booting) circuit runs
@@ -269,7 +263,7 @@ class Probe {
             this.result = this.records[probePath] || []
             this.result = await waitForInnerElements(this.result)
             const resolvedOuts = await Promise.all(this.result.map(x=>waitForInnerElements(x.out)))
-            log('probe completed',{probePath, probe: this})
+            this.progressLogger?.info?.({t: 'probe completed', probePath, visits: this.visits}, {}, {ctx: this.circuitCtx})
             // ref to values
             this.result.forEach((obj,i)=> { obj.out = calcValue(resolvedOuts[i]) ; obj.in.data = calcValue(obj.in.data)})
             this.emitVisits(true)   // final flush so the last window's totals reach the view
@@ -301,7 +295,6 @@ class Probe {
 
         const _ctx = data ? ctx = ctx.setData(data).setVars(vars||{}) : ctx // used by ctx.data(..,) in rx
         if (probe.id < jb.probeRepository.probeCounter) {
-            log('probe probeCounter is larger than current',{ctx, probe, counter: jb.probeRepository.probeCounter})
             // probe.active = false
             //throw { error: `probeCounter is larger than current. id: ${probe.id} counter: ${jb.probeRepository.probeCounter}`, path }
             //return
@@ -320,7 +313,6 @@ class Probe {
             found.counter++
         else
             probe.records[path].push({in: _ctx, out, counter: 0})
-        log('probe record',{path,out,found,ctx})
 
         return out
     }

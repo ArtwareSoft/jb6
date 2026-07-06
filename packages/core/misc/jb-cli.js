@@ -9,15 +9,10 @@ const { coreUtils } = jb
 
 const {
   tgp: { Component },
-  common: { Data },
-  test: { Logger, logger: { domainLogger } }
+  common: { Data }
 } = jb.dsls
 const { logException, logError, isNode } = coreUtils
 Object.assign(coreUtils, {runNodeCli, runNodeCliViaJbWebServer, runCliInContext, runBashScript, runNodeCliStreamViaJbWebServer, runBashScriptStreamViaJbWebServer, buildNodeCliCmd, makeChildOutputRouter})
-
-Logger('cliLogger', { impl: domainLogger('cli') })
-Logger('cliLineLogger', { impl: domainLogger('cliLine') })
-Logger('cliDetailedLogger', { impl: domainLogger('cliDetailed') })   // verbose per-line dispatch diagnostics (LOG 3/4/5) — kept off cliLogger so the timeline stays small
 
 function buildNodeCliCmd(script, options = {}) {
   options.importMapsInCli = options.importMapsInCli || jb.coreRegistry.importMapsInCli

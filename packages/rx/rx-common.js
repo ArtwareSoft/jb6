@@ -1,12 +1,14 @@
 import { coreUtils, dsls, ns, jb } from '@jb6/core'
 
-const { toArray, logError, log } = coreUtils
+const { toArray, logError, ensureLoggers } = coreUtils
 const {
   tgp: { TgpType, Component },
   rx: { ReactiveOperator, ReactiveSource },
-  common: { Data, Action, Boolean, 
-  },  
+  common: { Data, Action, Boolean,
+  },
 } = dsls
+
+const { detailedRxLogger } = ensureLoggers('detailedRxLogger').vars   // subject callbag internals have no ctx; module-level sink for hot-path diagnostics
 
 const Subject = TgpType('subject', 'rx')
 
@@ -162,20 +164,20 @@ Object.assign(jb.rxUtils, {
       function subj(t, d, transactive) {
           if (t === 0) {
               const sink = d
-              id && log(`${id} subject sink registered`,{sink})
+              id && detailedRxLogger?.info?.({t: `${id} subject sink registered`, sink})
               sinks.push(sink)
               sink(0, function subject(t,d) {
                   if (t === 2) {
                       const i = sinks.indexOf(sink)
                       if (i > -1) {
                         const sink = sinks.splice(i, 1)
-                        id && log(`${id} subject sink unregistered`,{sink})
+                        id && detailedRxLogger?.info?.({t: `${id} subject sink unregistered`, sink})
                       }
                   }
               })
           } else {
-            id && t == 1 && log(`${id} subject next`,{d, sinks: sinks.slice(0)})
-            id && t == 2 && log(`${id} subject complete`,{d, sinks: sinks.slice(0)})
+            id && t == 1 && detailedRxLogger?.info?.({t: `${id} subject next`, d, sinks: sinks.slice(0)})
+            id && t == 2 && detailedRxLogger?.info?.({t: `${id} subject complete`, d, sinks: sinks.slice(0)})
             sinks.slice(0).forEach(sink=> {
               const td = transactive ? jb.rxUtils.childTxInData(d,sinks.length) : d
               sinks.indexOf(sink) > -1 && sink(t, td)

@@ -7,11 +7,7 @@ const { calcProfileActionMap, lineColToOffset, parseWithFallback: parse } = lang
 const {
   tgp: { TgpType, TgpTypeModifier },
   common: { Data },
-  test: { Logger, logger: { domainLogger } },
 } = dsls
-
-Logger('langServiceLogger', { impl: domainLogger('langService') })
-Logger('detailedTgpModelDataLogger', { impl: domainLogger('detailedTgpModelData') })   // verbose per-crawl/per-comp firehose
 
 Object.assign(coreUtils, { calcTgpModelData, calcExpectedDslsSection, calcImportsForProfile, scanDsl, hashAndGetCache, writeTgpModelCache})
 

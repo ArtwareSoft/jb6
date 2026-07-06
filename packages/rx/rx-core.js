@@ -1,10 +1,12 @@
 import { coreUtils, dsls, ns } from '@jb6/core'
 
-const { toArray, jb, logError, isPromise, isCallbag, log } = coreUtils
+const { toArray, jb, logError, isPromise, isCallbag, ensureLoggers } = coreUtils
 const {
   tgp: { TgpType, any: { If }, Component },
   rx: { ReactiveOperator, ReactiveSource },
 } = dsls
+
+const { detailedRxLogger } = ensureLoggers('detailedRxLogger').vars   // callbag internals have no ctx; module-level sink for hot-path diagnostics
 
 const ReactiveFlow = TgpType('reactive-flow', 'rx')
 
@@ -326,7 +328,7 @@ ReactiveOperator('rx.log',{
     {id: 'name', as: 'string', dynamic: true, description: 'log names'},
     {id: 'extra', as: 'single', dynamic: true, description: 'object. more properties to log'}
   ],
-  impl: rx.do((ctx, vars, {name, extra}) => log(name(ctx), {data: ctx.data, vars, ...extra(ctx), ctx: ctx.cmpCtx}))
+  impl: rx.do((ctx, vars, {name, extra}) => ctx.vars.rxLogger?.info?.({t: name(ctx), data: ctx.data, vars, ...extra(ctx)}, {}, {ctx: ctx.cmpCtx}))
 })
 
 ReactiveOperator('rx.consoleLog',{
@@ -666,16 +668,16 @@ jb.rxUtils = {
   fromPromise: pr => (start, sink) => {
     let sinkDone
     if (start !== 0) return
-    Promise.resolve(pr).then(d =>{ 
-      log('callbag promise resolved',{d, sinkDone})
+    Promise.resolve(pr).then(d =>{
+      detailedRxLogger?.info?.({t: 'callbag promise resolved', d, sinkDone})
       if (!sinkDone) {
         sink(1,d)
-        sink(2) 
+        sink(2)
       }
     }).catch(err => sink(2,err))
 
     sink(0, function mapPromiseTB(t,d) {
-      log('callbag promise talkback',{t,d})
+      detailedRxLogger?.info?.({t: 'callbag promise talkback', cbT: t, d})
       if (t == 2) sinkDone = true
     })
   },

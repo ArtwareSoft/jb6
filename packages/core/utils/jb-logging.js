@@ -44,7 +44,7 @@ Component('ensureLogger', {
   impl: (ctx, {}, {name}) => ensureLoggers(name, {ctx})
 })
 
-const takeFromVars = (ids, ctx) => Object.fromEntries((ids||'').split(',').map(x=>x.trim()).filter(x=>x).filter(p=>ctx.vars[p] != null).map(p=>[p,ctx.vars[p]]))
+const takeFromVars = (ids, ctx) => Object.fromEntries((ids||'').split(',').map(x=>x.trim()).filter(x=>x).filter(p=>ctx?.vars[p] != null).map(p=>[p,ctx.vars[p]]))
 
 let $source = 'browser'   // machine:pid, computed once. stamped on every entry so parent & child logs both carry their origin
 if (typeof process != 'undefined')
@@ -96,32 +96,26 @@ export const domainLogger = Logger('domainLogger', {
         return stripData ? coreUtils?.stripData(res) || res : res
       }
     }
-    function enrichParams(r1,r2,r3) {
-      const {ctx} = r3
+    function enrichParams(r1, r2, r3 = {}) {
+      const {ctx} = r3   // ctx is optional — callbag/no-ctx call sites (rx internals) log without it
       const error = r3.error ? {error: r3.error.stack || r3.error.message || r3.error } : {}
       const resp = r3.response ? { status: r3.response.status, statusText: r3.response.statusText } : {}
-      const enrichedR1 = { ...takeFromVars(addToR1,ctx), ...error, ...resp, at: Date.now() - startTime, $source, tgpPath: ctx.jbCtx.lexicalParentPath, ...r1 }
+      const enrichedR1 = { ...takeFromVars(addToR1,ctx), ...error, ...resp, at: Date.now() - startTime, $source, tgpPath: ctx?.jbCtx.lexicalParentPath, ...r1 }
       const enrichedR2 = { ...takeFromVars(addToR2,ctx), ...r2 }
       return [enrichedR1, enrichedR2]
     }
   }
 })
 
-Logger('errorLogger', { impl: domainLogger('error') })   // always-on (ensureLoggers) sink — every domain .error() tees here
-Logger('jbLogger', { impl: domainLogger('jb') })          // generic sink that coreUtils.log routes into (was browserSpy)
-
-const bridgeCtx = ensureLoggers('jbLogger')   // prebuilt once: carries jbLogger + errorLogger instances
-coreUtils.log = (logNames, logObj = {}, severity) => {
-  const {ctx: callerCtx, ...data} = logObj
+// coreUtils.log: the sole remaining caller is logError/logException (core-utils.js), always severity 'error'.
+// All plain-info call sites now log via `xxLogger?.info?.(...)` off ctx.vars. This routes errors to the always-on
+// errorLogger (the auto-fail test gate). `error` = a raw Error/exception; enrichParams extracts its .stack.
+const bridgeCtx = ensureLoggers('errorLogger')   // prebuilt once: carries the always-on errorLogger
+coreUtils.log = (logNames, logObj = {}) => {
+  const {ctx: callerCtx, error, ...data} = logObj
   // NEVER instantiate loggers on the hot log() path (running comps mid-probe re-enters the probe machinery -> recursion).
-  // Prefer the caller ctx's already-present logger instance; else fall back to the prebuilt bridgeCtx instances.
   const errorLogger = callerCtx?.vars?.errorLogger || bridgeCtx.vars.errorLogger
-  const jbLogger = callerCtx?.vars?.jbLogger || bridgeCtx.vars.jbLogger
-  const ctx = callerCtx || bridgeCtx
-  if (severity === 'error')
-    errorLogger.error({t: logNames, ...data}, {}, {ctx})   // .error populates errorErrors -> the auto-fail test gate
-  else
-    jbLogger.info({t: logNames, ...data}, {}, {ctx})
+  errorLogger.error({t: logNames, ...data}, {}, {ctx: callerCtx || bridgeCtx, error})
 }
 
 const wrapLoggerInstanceToStderr = (name, inst) => {

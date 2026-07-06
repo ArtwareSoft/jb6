@@ -143,8 +143,8 @@ const toNumber = RT_types.number
 const toSingle = RT_types.single
 const toJstype = (val,type) => RT_types[type](val)
 
-// pre-boot fallback: jb-logging.js overrides coreUtils.log to route through jbLogger (a real domain logger).
-// Until that module loads, log() is a no-op so early core code can call it safely.
+// pre-boot fallback: jb-logging.js overrides coreUtils.log to route errors through the always-on errorLogger.
+// Until that module loads, log() is a no-op so early logError/logException calls are safe.
 function log(logNames, logObj) {}
 
 function logError(err,logObj) {
@@ -154,15 +154,15 @@ function logError(err,logObj) {
   globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, dynamicStack, lexicalStack)
   const errObj = { err , ...logObj, dynamicStack, lexicalStack}
   logVsCode('error', stripData(errObj))
-  log('error', {...errObj, ctx}, 'error')   // severity 'error' -> jbLogger.error, which tees into the always-on errorLogger
+  log('error', {...errObj, ctx})   // -> errorLogger.error, the always-on auto-fail gate
 }
 
 function logException(e,err,logObj) {
   globalThis.window && globalThis.console.log('%c Exception: ','color: red', err, e, logObj)
-  const errObj = { message: e.message, err, stack: e.stack||'', ...logObj, e}
+  const errObj = { message: e.message, err, stack: e.stack||'', ...logObj }
   globalThis.process?.stderr?.write(`${err}\n${e}`)
   logVsCode('exception', stripData(errObj))
-  log('exception error', errObj, 'error')   // severity 'error' -> jbLogger.error, which tees into the always-on errorLogger
+  log('exception error', {...errObj, error: e})   // error: e -> enrichParams extracts e.stack; routed to errorLogger.error
 }
 
 function Const(id, val) {

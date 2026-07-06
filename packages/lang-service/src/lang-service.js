@@ -1,7 +1,7 @@
 import { coreUtils, dsls } from '@jb6/core'
 import { update } from '../lib/immutable.js'
 
-const { jb, resolveCompArgs, prettyPrint, prettyPrintComp, isPrimitiveValue, logError, log, calcPath, compByFullId, parentPath, unique, calcHash, splitDslType, calcExpectedDslsSection } = coreUtils
+const { jb, resolveCompArgs, prettyPrint, prettyPrintComp, isPrimitiveValue, logError, calcPath, compByFullId, parentPath, unique, calcHash, splitDslType, calcExpectedDslsSection } = coreUtils
 const { calcCompProps, cloneProfile, deltaFileContent, provideCompletionItems, filePosOfPath, getPosOfPath, tgpEditorHost, tgpModelForLangService } = jb.langServiceUtils
 const { calcTgpModelData } = coreUtils
 
@@ -34,7 +34,7 @@ Data('langService.completionItems', {
             },
             }))
             title = paramDef && `${paramDef.id}: ${(paramDef.$dslType||'').replace('<>','')}`
-            log('completion items', { items, ...compProps, ctx })
+            ctx.vars.langServiceLogger?.info?.({t: 'completion items', items, ...compProps}, {}, {ctx})
         } else if (errors) {
             logError('completion provideCompletionItems', {errors, compProps})
             items = [ {
@@ -240,14 +240,14 @@ Data('langService.duplicateEdits', {
             const newComp = update(comp,opOnComp)
             const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel, filePath })
             const edit = deltaFileContent(text, newcompText , compPos)
-            log('lang services duplicate', { edit, ...compProps })
+            ctx.vars.langServiceLogger?.info?.({t: 'lang services duplicate', edit, ...compProps}, {}, {ctx})
             const targetPath = [compId,...pathAr.slice(0, -1),indexInArray+1].join('~')
             return { edit, cursorPos: calcNewPos(targetPath, newcompText), hash: calcHashNoTitle(text) }
         } else if (path.indexOf('~') == -1) { // duplicate component
             const noOfLines = (text.match(/\n/g) || []).length+1
             const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel, filePath })
             const edit = deltaFileContent('', newcompText, compPos+noOfLines)
-            log('lang services duplicate comp', { edit, ...compProps })
+            ctx.vars.langServiceLogger?.info?.({t: 'lang services duplicate comp', edit, ...compProps}, {}, {ctx})
             return { edit, cursorPos: {line: compPos+noOfLines+1, col: 0}}
         }
         return { errors: ['duplicate - bad format'], ...compProps }
@@ -275,7 +275,7 @@ Data('langService.createTestEdits', {
         const newText = `\nTest('dataTest.${shortId}', {\n  impl: ${impl}\n})\n`        
         const noOfLines = (text.match(/\n/g) || []).length+1
         const edit = deltaFileContent('', newText, {line: compPos.line +noOfLines, col: 0})
-        log('lang services duplicate comp', { edit, ...compProps })
+        ctx.vars.langServiceLogger?.info?.({t: 'lang services create test', edit, ...compProps}, {}, {ctx})
         return { edit, cursorPos: {line: compPos.line+noOfLines+1, col: 0}}
     }
 })
@@ -304,7 +304,7 @@ Data('langService.moveInArrayEdits', {
                 const newComp = update(comp,opOnComp)
                 const newcompText = prettyPrintComp(newComp, { initialPath: compId, tgpModel, filePath })
                 const edit = deltaFileContent(text, newcompText , compPos)
-                log('tgpTextEditor moveInArray', { op, edit, ...compProps })
+                ctx.vars.langServiceLogger?.info?.({t: 'tgpTextEditor moveInArray', op, edit, ...compProps}, {}, {ctx})
 
                 const origPath = compProps.path.split('~')
                 const index = origPath.length - indexOfElem

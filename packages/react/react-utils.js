@@ -27,8 +27,7 @@ function extendCtxWithUrl({ctx = new coreUtils.Ctx(), href} = {}) {
 
 function logMs(ctx, t, ms, extra) { if (ms) ctx.vars.uiLogger?.info?.({t, ms, ...extra}, {}, {ctx}) }
 
-const { tgp: { TgpType, Component }, test: { Logger, logger: { domainLogger } }} = dsls
-Logger('uiLogger', { impl: domainLogger('ui') })
+const { tgp: { TgpType, Component } } = dsls
 
 const ReactComp = TgpType('react-comp','react', { isCircuit: true }) // actually jb-react-comp
 TgpType('vdom','react') // actually react-comp

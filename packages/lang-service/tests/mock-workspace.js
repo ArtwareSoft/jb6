@@ -1,5 +1,5 @@
 import { jb, coreUtils } from '@jb6/core'
-const { log } = coreUtils
+const { langServiceLogger } = coreUtils.ensureLoggers('langServiceLogger').vars   // mock editor host log() method has no ctx
 
 jb.workspaceRegistry = {
     activeUri: null, 
@@ -60,7 +60,7 @@ jb.ext.tgpTextEditor = { host: {
             const to = lineColToOffset(docText, selection.start)
             return docText.slice(from,to)
         },
-        log(arg) { log(arg,{})},
+        log(arg) { langServiceLogger?.info?.({t: 'mock editor host', op: arg}) },
         async gotoFilePos(path,line,col) {},
         lastEdit: () => jb.workspaceRegistry.lastEdit
 }}

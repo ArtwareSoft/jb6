@@ -9,7 +9,7 @@ Object.assign(reactUtils, {registerMutObs, prettyPrintNode, probeReactComp})
 const { delay } = coreUtils
 const {
   tgp: { TgpType },
-  test: { Test, Logger, logger: { domainLogger },
+  test: { Test,
     test: { dataTest }
   },
   react: { ReactComp, HFunc,
@@ -17,8 +17,6 @@ const {
   },
   common: { Data }
 } = dsls
-
-Logger('uiHtmlLogger', { impl: domainLogger('uiHtml') })
 
 const UiAction = TgpType('ui-action', 'test')
 Test('reactTest', {

@@ -13,9 +13,6 @@ const { coreUtils } = jb
 const {resolveWithImportMap, calcImportData, logError } = coreUtils
 Object.assign(coreUtils, { getOrCreateVm })
 
-const { test: { Logger, logger: { domainLogger } } } = jb.dsls
-Logger('vmLogger', { impl: domainLogger('vm') })
-
 const vmCache = {}
 
 async function getOrCreateVm(options) {

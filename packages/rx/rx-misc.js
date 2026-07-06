@@ -1,12 +1,14 @@
 import { coreUtils, dsls, ns, jb } from '@jb6/core'
 
-const { log, logError, isPromise, calcPath } = coreUtils
+const { logError, isPromise, calcPath, ensureLoggers } = coreUtils
 const {
   tgp: { TgpType, any: {If } },
   rx: { ReactiveOperator, ReactiveSource,
   },
 } = dsls
 const { rx } = ns
+
+const { detailedRxLogger } = ensureLoggers('detailedRxLogger').vars   // jbLog helper runs inside callbags without ctx
 
 const ReactiveSink = TgpType('reactive-sink', 'rx')
 
@@ -554,7 +556,7 @@ Object.assign(jb.rxUtils, {
     return cbs
   },  
   log: name => jb.rxUtils.Do(x=>console.log(name,x)),
-  jbLog: (name,...params) => jb.rxUtils.Do(data => log(name,{data,...params})),
+  jbLog: (name,...params) => jb.rxUtils.Do(data => detailedRxLogger?.info?.({t: name, data, ...params})),
   valueFromfunctionOrConstant(val,data) {
     return typeof val == 'function' ? val(val.runCtx && val.runCtx.setData(data)) : val
   },

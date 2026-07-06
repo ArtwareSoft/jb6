@@ -6,7 +6,7 @@ import '@jb6/testing'
 
 
 const { rxUtils } = jb
-const { log, logError, isPromise, calcPath } = coreUtils
+const { logError, isPromise, calcPath } = coreUtils
 const {
   tgp: { TgpType, 'ctx-enricher': { Var } },
   rx: { ReactiveSource,ReactiveOperator,

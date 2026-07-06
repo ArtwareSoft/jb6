@@ -1,7 +1,7 @@
 import { jb } from '@jb6/repo'
 import './core-utils.js'
 const { coreUtils } = jb
-const { log, logError, isRefType, resolveFinishedPromise, toString, toNumber, RT_types, calcValue } = coreUtils
+const { logError, isRefType, resolveFinishedPromise, toString, toNumber, RT_types, calcValue } = coreUtils
 
 const isRef = v => jb.dbUtils?.isRef(v)
 const objHandler = v => jb.dbUtils ? jb.dbUtils.objHandler(v) : null
@@ -133,8 +133,10 @@ function evalExpressionPart(expressionPart, ctx, calculatedParentParam ) {
     }
 }
 
+let expressionLogger   // lazy: ensureLoggers isn't ready at module-eval; this fn runs only at expression runtime
 function implicitlyCreateInnerObject(parent,prop,refHandler) {
-    log('core innerObject created',{parent,prop,refHandler})
+    expressionLogger = expressionLogger || coreUtils.ensureLoggers?.('expressionLogger').vars.expressionLogger
+    expressionLogger?.info?.({t: 'innerObject created', parent, prop, refHandler})
     parent[prop] = {}
     refHandler?.refreshMapDown && refHandler.refreshMapDown(parent)
     return parent[prop]

@@ -1,10 +1,10 @@
 import { coreUtils, dsls } from '@jb6/core'
-const { asArray, log, logError, waitForInnerElements, toArray, toString, isPromise, calcValue, toJstype, objectDiff, toSingle, sessionStorage, delay } = coreUtils
+const { asArray, logError, waitForInnerElements, toArray, toString, isPromise, calcValue, toJstype, objectDiff, toSingle, sessionStorage, delay } = coreUtils
 
-const { 
+const {
   tgp: { Any, DefComponents, Const, TgpType, TgpTypeModifier, Component,
-    'ctx-enricher': { Var }, 
-    any: { If } 
+    'ctx-enricher': { Var },
+    any: { If }
   },
   common: { Data, Action, Boolean,
     data: {asIs}
@@ -17,7 +17,7 @@ Component('log', {
     {id: 'logName', as: 'string', mandatory: 'true'},
     {id: 'logObj', as: 'single', defaultValue: '%%'}
   ],
-  impl: (ctx, {}, {logName,logObj}) => { log(logName,{...logObj,ctx}); return ctx.data }
+  impl: (ctx, {}, {logName,logObj}) => { ctx.vars.commonLogger?.info?.({t: logName, ...logObj}, {}, {ctx}); return ctx.data }
 })
 
 Component('pipeline', {
@@ -585,13 +585,13 @@ Data('waitFor', {
             timesoFar += interval
             if (timesoFar >= timeout) {
               clearInterval(toRelease)
-              log('waitFor timeout',{ctx})
+              ctx.vars.commonLogger?.info?.({t: 'waitFor timeout'}, {}, {ctx})
               logOnError() && logError(logOnError() + ` timeout: ${timeout}, waitingTime: ${timesoFar}`,{ctx})
               reject('timeout')
             }
             if (waitingForPromise) return
             const v = check()
-            log('waitFor check',{v, ctx})
+            ctx.vars.commonLogger?.info?.({t: 'waitFor check', v}, {}, {ctx})
             if (isPromise(v)) {
               waitingForPromise = true
               v.then(_v=> {

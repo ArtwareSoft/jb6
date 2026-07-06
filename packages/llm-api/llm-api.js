@@ -12,7 +12,7 @@ const {
 } = dsls
 const { rx } = ns
 
-const { calcHash, log, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript, waitForInnerElements, calcRepoRoot } = coreUtils
+const { calcHash, delay, logError, logException, isNode, asArray, calcPath, globalsOfType, runBashScript, waitForInnerElements, calcRepoRoot } = coreUtils
 
 const Provider = TgpType('provider', 'llm-api')
 const Model = TgpType('model', 'llm-api')
@@ -34,7 +34,7 @@ ReactiveSource('llm.completionsRx', {
       sink(0, (t,d) => {
         if (t == 2) {
           const aborted = controller && controller.signal.aborted
-          log('llm source connection abort request', {aborted, ctx})
+          ctx.vars.llmApiLogger?.info?.({t: 'llm source connection abort request', aborted}, {}, {ctx})
           delay(1).then(()=> controller?.signal.aborted && controller.abort())
           connectionAborted = true
         }
@@ -42,9 +42,11 @@ ReactiveSource('llm.completionsRx', {
       ;(async ()=>{
         const messages = await waitForInnerElements(prompt())
   
-        const key = 'llm' + calcHash(model.name + JSON.stringify(messages))        
+        const key = 'llm' + calcHash(model.name + JSON.stringify(messages))
         if (useLocalStorageCache && globalThis.localStorage && localStorage.getItem(key)) {
-            sink(1,ctx.dataObj(fullContent, {...ctx.vars, fullContent: localStorage.getItem(key) }))
+            const cached = localStorage.getItem(key)
+            ctx.vars.llmTrafficLogger?.info?.({t: 'llm response', model: model.name, source: 'localStorageCache', chars: cached.length, fullContent: cached}, {}, {ctx})
+            sink(1,ctx.dataObj(fullContent, {...ctx.vars, fullContent: cached }))
             sink(2)
             return
         }
@@ -55,7 +57,7 @@ ReactiveSource('llm.completionsRx', {
         return reader.read().then(async function processResp({ done, value, fullResponse }) {
           //console.log(fullContent)
           if (done) {
-            log('llm source done from reader', {ctx})
+            ctx.vars.llmApiLogger?.info?.({t: 'llm source done from reader'}, {}, {ctx})
             if (!DONE) {
               DONE = true
               if (fullResponse) {// for cli cases
@@ -74,9 +76,9 @@ ReactiveSource('llm.completionsRx', {
             if (DONE) return
             try {
               const val = line == 'data: [DONE]' ? 'done' : (line.startsWith('data: ') && line.endsWith('}') ? JSON.parse(line.slice(6)) : line)
-              //log('llm processing val', {val, ctx})
+              ctx.vars.detailedLlmTrafficLogger?.info?.({t: 'llm processing val', val}, {}, {ctx})   // per-SSE-chunk firehose; llmTrafficLogger keeps the clean request/response transcript
               if (val == 'done') {
-                log('llm source done from content', {ctx})
+                ctx.vars.llmApiLogger?.info?.({t: 'llm source done from content'}, {}, {ctx})
                 if (DONE) logError('source.llmCompletions already DONE error', {val, ctx})
                 DONE = true
                 onEnd()
@@ -85,7 +87,7 @@ ReactiveSource('llm.completionsRx', {
               }
               if (typeof val == 'string') {
                 chunkLeft = val
-                log('llm chunkLeft', {chunkLeft, ctx})
+                ctx.vars.detailedLlmTrafficLogger?.info?.({t: 'llm chunkLeft', chunkLeft}, {}, {ctx})
               }
               if (typeof val == 'object') {
                 if (val.usage) {
@@ -115,7 +117,8 @@ ReactiveSource('llm.completionsRx', {
               duration: new Date().getTime() - start_time,
               model: model.name
             }
-            log('llm finished', {res, ctx})
+            ctx.vars.llmApiLogger?.info?.({t: 'llm finished', res}, {}, {ctx})
+            ctx.vars.llmTrafficLogger?.info?.({t: 'llm response', model: model.name, source: 'stream', chars: fullContent.length, duration: res.duration, fullContent}, {}, {ctx})
             useLocalStorageCache && globalThis.localStorage && localStorage.setItem(key,res.fullContent)
           }
       })      
@@ -340,9 +343,12 @@ jb.llmUtils = {
       reqObj.url = '/proxy'
     }
 
+    ctx.vars.llmTrafficLogger?.info?.({t: 'llm request', model: model.name, url: reqObj.url, stream,
+      turns: asArray(messages).map(m => ({role: m.role, chars: (typeof m.content == 'string' ? m.content : JSON.stringify(m.content||'')).length})),   // compact conversation shape for scanning
+      messages}, {}, {ctx})   // headers omitted — carry apiKey
     const response = await fetch(reqObj.url, {...reqObj, signal: controller.signal}).catch(e => {
         if (e instanceof DOMException && e.name == "AbortError") {
-          log('llm source done from app logic', {ctx})
+          ctx.vars.llmApiLogger?.info?.({t: 'llm source done from app logic'}, {}, {ctx})
         } else {
           logException(e, 'llm connection', {ctx})
         }

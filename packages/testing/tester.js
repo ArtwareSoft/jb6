@@ -1,7 +1,7 @@
 import { coreUtils, dsls } from '@jb6/core'
 import '@jb6/common'
 
-const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfTypeIds, unique, isNode } = coreUtils
+const { Ctx, jb, logException, asJbComp, delay, waitForInnerElements, globalsOfTypeIds, unique, isNode } = coreUtils
 jb.testingUtils = {runTest, runTests, runTestVm, runTestInVm}
 jb.testingRepository = {}
 
@@ -11,7 +11,6 @@ const {
 } = dsls
 
 const Test = TgpType('test', 'test', { isCircuit: true })
-Logger('testLogger', { impl: domainLogger('test') })
 
 Component('dataTest', {
   type: 'test<test>',
@@ -69,7 +68,7 @@ Component('dataTest', {
 			const expectedResultRes = !testFailure && await expectedResult(expectedResultCtx)
 			testFailure = expectedResultRes?.testFailure
 			const success = !! (expectedResultRes && !countersErr && !testFailure)
-			log('check test result',{testRes, success,expectedResultRes, testFailure, countersErr, expectedResultCtx})
+			ctxToUse.vars.testLogger?.info?.({t: 'check test result', testRes, success, expectedResultRes, testFailure, countersErr, expectedResultCtx}, {}, {ctx: ctxToUse})
 			result = { id: testID, success, reason: countersErr || testFailure, testRes: withLogs(testRes), counters}
 		} catch (e) {
 			logException(e,'error in test',{ctx})
@@ -142,7 +141,8 @@ async function runTestInVm(testID, params, httpReqId) {
 export async function runTest(testID, {fullTestId, singleTest, action, httpReqId, params} = {}) {
     !singleTest && await cleanBeforeRun()
     const jbComp = Test[testID][asJbComp]
-    log('start test',{testID})
+    const testCtx = coreUtils.ensureLoggers('testLogger')
+    testCtx.vars.testLogger?.info?.({t: 'start test', testID}, {}, {ctx: testCtx})
     let res = null
     const start = Date.now()
     if (!isNode && jbComp.nodeOnly) {
@@ -172,7 +172,7 @@ export async function runTest(testID, {fullTestId, singleTest, action, httpReqId
         res = { success: false, reason: e}
     }
     res.duration = Date.now() - start
-    log('end test',{testID,res})
+    testCtx.vars.testLogger?.info?.({t: 'end test', testID, res}, {}, {ctx: testCtx})
     if (!singleTest && !jbComp.doNotTerminateWorkers)
         await jb.jbm?.terminateAllChildren(tstCtx)		
     return res

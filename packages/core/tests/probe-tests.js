@@ -96,7 +96,7 @@ Test('probeTest.calcCircuitPhaseLogs', {
       await runProbe('data<common>cmpAA~impl', { progressLogger: probeLogger })
       return probeLogger.probeLog.filter(e => e.severity != 'progress')
     },
-    expectedResult: equals('beforeCalcCircuit,afterCalcCircuit', pipeline('%%', '%t%', join(',')))
+    expectedResult: equals('beforeCalcCircuit,afterCalcCircuit,probe completed', pipeline('%%', '%t%', join(',')))
   })
 })
 

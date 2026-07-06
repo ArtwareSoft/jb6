@@ -8,9 +8,6 @@ import { parse } from '../lib/acorn-loose.mjs'
 const { runCliInContext, toCapitalType, calcRepoRoot, unique } = coreUtils
 Object.assign(coreUtils, { runSnippetCli, macroToJson })
 
-const { test: { Logger, logger: { domainLogger } } } = dsls
-Logger('snippetLogger', { impl: domainLogger('snippet') })
-
 function macroToJson(macroText, tgpModel) {
   const cleanText = macroText.replace(/^[^<]+<[^>]+>:?/, '')
   const allComps = Object.values(tgpModel.dsls).flatMap(type => Object.values(type)).filter(x => typeof x == 'object').flatMap(x => Object.values(x))
