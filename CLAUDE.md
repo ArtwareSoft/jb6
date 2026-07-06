@@ -90,3 +90,6 @@ Before you try to fix anti-pattern. read carefully again jb-core,jb-args,tgp.js
   - explain in details how 'fake' param dynamic: true can replace ctx.run in the impl
   - explain why export is tgp anti-pattern
 
+## probe and ctrl-j
+when asked about probe internals or ctrl-j read in details packages/core/misc/probe.js, packages/core/tests/probe-tests.js
+read about ctrl-J from /home/shaiby/projects/jb6/hosts/vscode-tgp-lang/tgp-lang-extension-utils.mjs
