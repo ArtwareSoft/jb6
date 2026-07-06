@@ -143,9 +143,9 @@ const toNumber = RT_types.number
 const toSingle = RT_types.single
 const toJstype = (val,type) => RT_types[type](val)
 
-function log(logNames, logObj) {
-  jb.ext.spy?.log(logNames, logObj)
-}
+// pre-boot fallback: jb-logging.js overrides coreUtils.log to route through jbLogger (a real domain logger).
+// Until that module loads, log() is a no-op so early core code can call it safely.
+function log(logNames, logObj) {}
 
 function logError(err,logObj) {
   const { ctx, url, line, col } = logObj || {}
@@ -153,9 +153,8 @@ function logError(err,logObj) {
   const srcLink = url && globalThis.window ? `${window.location.origin}${url}:${line+1}:${col} ` : ''
   globalThis.window && globalThis.console.error(srcLink+'%c Error: ','color: red', err, logObj, dynamicStack, lexicalStack)
   const errObj = { err , ...logObj, dynamicStack, lexicalStack}
-  //globalThis.process?.stderr.write(err)
   logVsCode('error', stripData(errObj))
-  //jb.ext.spy?.log('error', errObj)
+  log('error', {...errObj, ctx}, 'error')   // severity 'error' -> jbLogger.error, which tees into the always-on errorLogger
 }
 
 function logException(e,err,logObj) {
@@ -163,7 +162,7 @@ function logException(e,err,logObj) {
   const errObj = { message: e.message, err, stack: e.stack||'', ...logObj, e}
   globalThis.process?.stderr?.write(`${err}\n${e}`)
   logVsCode('exception', stripData(errObj))
-  jb.ext.spy?.log('exception error', errObj)
+  log('exception error', errObj, 'error')   // severity 'error' -> jbLogger.error, which tees into the always-on errorLogger
 }
 
 function Const(id, val) {

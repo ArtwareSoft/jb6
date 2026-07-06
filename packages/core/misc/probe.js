@@ -90,7 +90,7 @@ async function runProbeCli(probePath, resources = {}, {onStatus = null, claudeDi
       : { in: i && { data: i.data }, out, from }
     const projectResult = r => r.map(projectRec)
     return { probeRes: result && { circuitCmpId: result.circuitCmpId, probePath: result.probePath,
-      result: result.result && projectResult(result.result), visits: result.visits, circuitRes: result.circuitRes, errors: result.errors }, error, ...probeLog }
+      result: result.result && projectResult(result.result), visits: result.visits, circuitRes: result.circuitRes }, error, ...probeLog }
   } catch (error) {
     return { probeRes: null, error: error.stack || String(error) }
   }
@@ -128,14 +128,12 @@ async function runProbe(_probePath, {circuitCmpId, timeout, progressLogger, ctx 
     } catch (e) {}
 
     const result = {
-        circuitCmpId: circuit, 
+        circuitCmpId: circuit,
         probePath,
         visits: probeObj.visits,
         totalTime: probeObj.totalTime,
         result: stripProbeResult(probeObj.result),
-        circuitRes: stripData(probeObj.circuitRes),
-        errors: stripData(jb.ext.spy?.search('error')),
-        logs: stripData(jb.ext.spy?.logs)
+        circuitRes: stripData(probeObj.circuitRes)
     }
 
     return result

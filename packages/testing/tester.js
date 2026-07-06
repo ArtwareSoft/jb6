@@ -1,7 +1,7 @@
 import { coreUtils, dsls } from '@jb6/core'
 import '@jb6/common'
 
-const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfTypeIds, unique, isNode, spy } = coreUtils
+const { Ctx, jb, log, logException, asJbComp, delay, waitForInnerElements, globalsOfTypeIds, unique, isNode } = coreUtils
 jb.testingUtils = {runTest, runTests, runTestVm, runTestInVm}
 jb.testingRepository = {}
 
@@ -23,14 +23,13 @@ Component('dataTest', {
     {id: 'timeout', as: 'number', defaultValue: 200},
     {id: 'allowError', as: 'boolean', dynamic: true, type: 'boolean'},
     {id: 'cleanUp', type: 'action', dynamic: true},
-    {id: 'expectedCounters', as: 'single'},
-    {id: 'spy', as: 'string'},
+    {id: 'expectedCounters', as: 'single', description: 'per-logger expected entry count, e.g. {retryLogger: 5} asserts ctx.vars.retryLogger.retryLog.length === 5'},
     {id: 'logger', as: 'string', description: 'e.g "dbLogger" or comma-separated "makeLogger,dbLogger"'}
   ],
-  impl: async (ctx,{}, { calculate,expectedResult,runBefore,setup,timeout,allowError,cleanUp,expectedCounters,spy: _spy, logger }) => {
+  impl: async (ctx,{}, { calculate,expectedResult,runBefore,setup,timeout,allowError,cleanUp,expectedCounters, logger }) => {
         const loggerNames = [...new Set(['errorLogger', ...(logger || '').split(',').map(s => s.trim()).filter(Boolean)])]   // errorLogger always-on + always harvested
         const loggerObj = Object.fromEntries(
-          loggerNames.filter(n => dsls.test.logger[n]).map(n => [n, dsls.test.logger[n].$runWithCtx(ctx)])
+          loggerNames.map(n => [n, (dsls.test.logger[n] || Logger(n, { impl: domainLogger(n.replace(/Logger$/, '')) })).$runWithCtx(ctx)])   // unregistered xxLogger name -> register a default domainLogger('xx') on the fly
         )
         const testID = ctx.vars.testID || (ctx.jbCtx.lexicalStack.slice(-1)[0]||'').split('~')[0]
 		let ctxToUse = ctx.setVars({testID, isTest: true, testSessionId: `test-${Date.now()}`, testLoggers: logger, ...loggerObj})
@@ -39,7 +38,6 @@ Component('dataTest', {
 		const remoteTimeout = testID.match(/([rR]emote)|([wW]orker)|(jbm)/) ? 15000 : null
 		const _timeout = singleTest ? Math.max(1000,timeout) : (remoteTimeout || timeout)
 		ctxToUse = ctxToUse.setVars({testTimeout: _timeout})   // ambient: lambda layer derives a shorter server deadline from it
-		_spy && spy.setLogs(_spy+',error')
 		let result = null, testRes
 		const withLogs = r => {
 			const logResults = Object.fromEntries(loggerNames.flatMap(n => Object.entries(ctxToUse.vars[n]?.logsAndErrors?.() || {})))
@@ -66,7 +64,7 @@ Component('dataTest', {
 			].filter(Boolean))
 			let testFailure = testRes?.[0]?.testFailure || testRes?.testFailure
 			const countersErr = countersErrors(expectedCounters,allowError,ctxToUse)
-            const counters = Object.fromEntries(Object.keys(expectedCounters || {}).map(exp => [exp, spy.count(exp)]))
+            const counters = Object.fromEntries(Object.keys(expectedCounters || {}).map(loggerName => [loggerName, loggerLogCount(ctxToUse, loggerName)]))
 			const expectedResultCtx = ctxToUse.setData(testRes)
 			const expectedResultRes = !testFailure && await expectedResult(expectedResultCtx)
 			testFailure = expectedResultRes?.testFailure
@@ -77,7 +75,6 @@ Component('dataTest', {
 			logException(e,'error in test',{ctx})
 			result = { testID, success: false, reason: 'Exception ' + e, testRes: withLogs(testRes) }
 		} finally {
-			_spy && spy.setLogs('error')
 			const doNotClean = ctx.probe || singleTest
 			if (!doNotClean) await (!singleTest && cleanUp())
 		} 
@@ -87,7 +84,6 @@ Component('dataTest', {
 
 // run tests
 
-globalThis.spy = spy
 globalThis.jb = jb
 
 async function runTestVm(args, ctx) {
@@ -182,32 +178,32 @@ export async function runTest(testID, {fullTestId, singleTest, action, httpReqId
     return res
 }
 
+// expectedCounters gate reads the LOGGER INSTANCES in ctx.vars (the real test gate), not the browser-only browserSpy.
+// key = logger name, value = expected number of entries in that logger's main <domain>Log (e.g. {retryLogger: 5}).
+function loggerLogCount(ctx, loggerName) {
+    const inst = ctx?.vars?.[loggerName]
+    const logsAndErrors = inst?.logsAndErrors?.({stripData: false}) || {}
+    const mainLog = Object.values(logsAndErrors)[0]   // domainLogger returns {[<domain>Log]: [...], [<domain>Errors]: [...]}; first is the log
+    return Array.isArray(mainLog) ? mainLog.length : 0
+}
+
 function countersErrors(expectedCounters,allowError,ctx) {
     // automatic error gate: every domain .error() tees into the always-on errorLogger (jb-logging.js), so its errorErrors
     // aggregates ALL logger errors. Unless the test opts in via allowError, any such error fails the test.
     const loggedErrors = ctx?.vars?.errorLogger?.errorErrors || []
     if (!allowError() && loggedErrors.length) return loggedErrors[0].error || loggedErrors[0].t || JSON.stringify(loggedErrors[0])
 
-    return Object.keys(expectedCounters || {}).map(
-        exp => expectedCounters[exp] != spy.count(exp)
-            ? `${exp}: ${spy.count(exp)} instead of ${expectedCounters[exp]}` : '')
-        .filter(x=>x)
-        .join(', ')
+    return Object.keys(expectedCounters || {}).map(loggerName => {
+        const actual = loggerLogCount(ctx, loggerName)
+        return expectedCounters[loggerName] != actual ? `${loggerName}: ${actual} instead of ${expectedCounters[loggerName]}` : ''
+    }).filter(x=>x).join(', ')
 }
 
 let cleaners = []
 
 async function cleanBeforeRun() {
     cleaners.forEach(c=>c())
-    if (!spy.isEnabled())
-        spy.initSpy({spyParam: 'test'})
-    spy.clear()
 }
-
-
-spy.registerEnrichers([
-    r => r.logNames == 'check test result' && ({ props: {success: r.success, data: r.expectedResultCtx.data, id: r.expectedResultCtx.vars.testId }}),
-])
 
 let success_counter= 0, fail_counter = 0
 const startTime = Date.now()
@@ -312,7 +308,7 @@ function testResultHtml(res, repo) {
     const studioUrl = ''
     const _repo = repo ? `&repo=${repo}` : ''
     return `<div class="${success ? 'success' : 'failure'}">
-        <a href="${baseUrl}/tests.html?test=${testID}${_repo}&show&spy=${spyParamForTest(testID)}" style="color:${success ? 'green' : 'red'}">${testID}</a>
+        <a href="${baseUrl}/tests.html?test=${testID}${_repo}&show&browserSpy=${spyParamForTest(testID)}" style="color:${success ? 'green' : 'red'}">${testID}</a>
         <span> ${duration}mSec</span> 
         <a class="test-button" href="javascript:goto_editor('${testID}','${repo||''}')">src</a>
         <a class="test-button" href="${studioUrl}">studio</a>

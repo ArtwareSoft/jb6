@@ -8,7 +8,7 @@ dotenv.config()
 
 function usage() {
   console.error(`Usage:
-  run-tests <module-path> [--test=<name>] [--not=<pattern>] [--pattern=<pattern>] [--take=<number>] [--spy=<spyModules>]
+  run-tests <module-path> [--test=<name>] [--not=<pattern>] [--pattern=<pattern>] [--take=<number>]
   run-tests --serve      # start HTTP server and open browser`)
   process.exit(1)
 }

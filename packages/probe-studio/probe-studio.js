@@ -82,11 +82,10 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
   const success = probeRes?.circuitRes?.success
   const visits = probeRes?.visits?.[probeRes?.probePath] || 0
   const totalTime = probeRes?.totalTime
-  const logsCount = probeRes?.logs?.length || 0
   const titleShort = (probeRes?.circuitCmpId || '').split('>').pop() || ''
   const probePath = probeRes?.probePath
 
-  const viewCtx = ctx.setVars({ top, error, path, urlsToLoad, probeRes, firstResInput, cmd, success, visits, totalTime, logsCount, titleShort, probePath, claudeDir })
+  const viewCtx = ctx.setVars({ top, error, path, urlsToLoad, probeRes, firstResInput, cmd, success, visits, totalTime, titleShort, probePath, claudeDir })
   const allViews = coreUtils.globalsOfTypeIds(dsls.react['react-comp'])
     .map(id => {
       const comp = dsls.react['react-comp'][id]
@@ -326,7 +325,7 @@ ReactComp('cmdErrorView', {
 
 const probeResultView = ReactComp('probeResultView', {
   impl: comp({
-    hFunc: (ctx, { probeRes, probePath, success, visits, totalTime, logsCount, titleShort, allViews, react: { h, hh, useState } }) => () => {
+    hFunc: (ctx, { probeRes, probePath, success, visits, totalTime, titleShort, allViews, react: { h, hh, useState } }) => () => {
       const [activeView, setActiveView] = useState(allViews[0]?.id || 'resultsView')
 
       const TabBtn = ({ id, abbr, isActive }) =>
@@ -339,8 +338,7 @@ const probeResultView = ReactComp('probeResultView', {
         success ? h('L:Check', { className: 'text-green-600' }) : h('L:X', { className: 'text-red-600' }),
         h('span:font-semibold', { className: !success ? 'text-red-800' : '' }, titleShort),
         h('span:text-gray-500', {}, `(${visits}v)`),
-        totalTime != null && h('span:bg-blue-100 text-blue-700 px-1 rounded', {}, `${totalTime}ms`),
-        h('span:bg-gray-100 text-gray-600 px-1 rounded', {}, `${logsCount}L`)
+        totalTime != null && h('span:bg-blue-100 text-blue-700 px-1 rounded', {}, `${totalTime}ms`)
       )
 
       const headerRight = h('div:flex gap-1 items-center', {},

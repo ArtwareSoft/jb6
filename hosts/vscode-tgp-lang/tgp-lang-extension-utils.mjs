@@ -267,7 +267,7 @@ export const commands = {
         const docProps = host().compTextAndCursor()
         const testID = docProps.shortId
         // todo: move base url to setup
-        vscodeNS.env.openExternal(`http://localhost8083/packages/tests-runner/tests.html?test=${testID}&show&spy=test`)
+        vscodeNS.env.openExternal(`http://localhost8083/packages/tests-runner/tests.html?test=${testID}&show&browserSpy=test`)
     },
 
     async delete() {

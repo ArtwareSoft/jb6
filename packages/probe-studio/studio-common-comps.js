@@ -17,7 +17,7 @@ ReactComp('testIframeView', {
   impl: comp({
     hFunc: (ctx, {react: {h}}) => () => {
       const testId = ctx.data
-      const src = `/packages/testing/tests.html?test=${testId}&spy=all`
+      const src = `/packages/testing/tests.html?test=${testId}&browserSpy=all`
       return h('div:w-full h-full flex flex-col', {},
         h('div:flex p-1', {},
           h('a:text-gray-500 hover:text-gray-800', { href: src, target: '_blank', title: 'Open in new tab' }, 

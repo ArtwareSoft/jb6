@@ -573,38 +573,6 @@ Test('rxTest.throwErrorInterval', {
   })
 })
 
-// Test('rxTest.retrySrc', {
-//   impl: dataTest({
-//     vars: [
-//       Var('counters', () => ({ counter: 0, retries: 0})),
-//       Var('interval', 3),
-//       Var('times', 10)
-//     ],
-//     calculate: rx.pipe(
-//       rx.data([1,2]),
-//       rx.var('inp'),
-//       rx.concatMap(
-//         rx.pipe(
-//           interval('%$interval%'),
-//           rx.throwError('%%>%$times%', 'retry failed after %$times% times'),
-//           rx.map('%$inp%'),
-//           rx.map(({data},{counters}) => {
-//           if (counters.counter > data) {
-//             counters.counter = 0
-//             return 'done'
-//           }
-//           counters.counter++
-//           counters.retries++
-//           return null // failed - will retry
-//         }),
-//           rx.filter('%%'),
-//           rx.take(1)
-//         )
-//       )
-//     ),
-//     expectedResult: '%$counters/retries%==5'
-//   })
-// })
 
 Test('rxTest.emptyVar', {
   impl: dataTest(rx.pipe(rx.data(1), rx.var('')), '%%==1')
