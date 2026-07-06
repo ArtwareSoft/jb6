@@ -143,7 +143,8 @@ const Any = TgpType('any','tgp')
 // ctx-enricher RT interface: impl is (ctx, {}, args) => Ctx — given the current ctx, return a new enriched ctx
 // (build it via enrichCtxWithDataContext(ctx, {vars, data}), or return ctx as-is). enrichers chain: each receives
 // the previous one's ctx. compose a list with enrichCtx; run one via ctx.run(enricher) -> enriched ctx.
-TgpType('ctx-enricher','tgp')
+// coerce: a raw array in a single ctx-enricher slot folds into one enrichCtx (whose enrichers is ctx-enricher<tgp>[], so it is not re-coerced)
+TgpType('ctx-enricher','tgp', { coerce: e => Array.isArray(e) ? jb.dsls.tgp['ctx-enricher'].enrichCtx(e) : e })
 TgpType('comp','tgp')
 TgpType('param','tgp')
 

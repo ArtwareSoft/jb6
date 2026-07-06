@@ -166,7 +166,8 @@ function resolveProfileArgs(prof) {
   } else if (comp) {
     ;[...(comp.params || []), ...systemParams].forEach(p=> {
       const val = prof[p.id]
-      if (typeof val === 'string' && val[0] !== '%') {
+      const arrayInSingleSlot = Array.isArray(val) && p.type && p.type.indexOf('[]') == -1 // raw array folds via coerce; a [] slot is a legit array, left as-is (fixed point)
+      if ((typeof val === 'string' && val[0] !== '%') || arrayInSingleSlot) {
         const coerce = coerceOfDslType(p.$dslType)
         if (coerce) {
           const coerced = coerce(val)

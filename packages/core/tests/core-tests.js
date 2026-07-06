@@ -197,6 +197,18 @@ Test('coreTest.vars.leadingEnricherInPipeline', {
   impl: dataTest(pipeline(setData('hi'), '%%!'), equals('hi!'))
 })
 
+const testScript = Component('testScript', {
+  params: [
+    {id: 'setup', type: 'ctx-enricher<tgp>', dynamic: true, byName: true},
+    {id: 'result', type: 'ctx-enricher<tgp>', dynamic: true}
+  ],
+  impl: (ctx,{},{setup, result}) => result(setup(ctx))
+})
+
+Test('coreTest.testScript', {
+  impl: dataTest(testScript({setup: [Var('a', '1'), Var('b', '2')], result: '%$a%,%$b%' }), equals('1,2'))
+})
+
 Test('coreTest.waitForInnerElements.promiseInArray', {
   impl: dataTest(()=> [coreUtils.delay(1,1)], equals(()=>[1]))
 })
