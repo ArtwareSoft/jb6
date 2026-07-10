@@ -316,8 +316,6 @@ async function writeTgpModelCache(key, value) {
   } catch (e) {}
 }
 
-// hit -> { result }, miss -> { key } (write under it after building). needs fs.stat so it runs node-side;
-// in the browser it delegates itself to node via jb-cli /run-cli, exactly like getStaticServeConfig.
 async function hashAndGetCache({ cacheQuery, modelResources, fetchByEnvHttpServer, ctx }) {
   if (!isNode) {
     const script = `import { coreUtils } from '@jb6/core'
