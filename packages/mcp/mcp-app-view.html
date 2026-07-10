@@ -27,7 +27,7 @@
     const app = globalThis.mcpApp = new App({ name: cmpId, version: '1.0.0' })
 
     const render = async (compArgs) => {
-      const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(cmpId, null, compArgs)
+      const { reactCmp, props, ctx } = await reactUtils.runOnHost(cmpId, reactUtils.extendCtxWithUrl(), compArgs)
       root.render(reactUtils.hh(ctx, reactCmp, props))
     }
 

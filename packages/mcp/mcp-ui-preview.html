@@ -119,7 +119,7 @@
     app.connect()
 
     async function render(toolResultData) {
-      const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(cmpId)
+      const { reactCmp, props, ctx } = await reactUtils.runOnHost(cmpId, reactUtils.extendCtxWithUrl())
       const finalCtx = toolResultData ? ctx.setData(toolResultData.data).setVars(toolResultData.vars) : ctx
       const finalProps = toolResultData?.props ? { ...props, ...toolResultData.props } : props
       root.render(reactUtils.hh(finalCtx, reactCmp, finalProps))
