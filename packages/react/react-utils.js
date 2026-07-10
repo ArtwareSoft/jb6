@@ -1,6 +1,6 @@
 import { jb, coreUtils, dsls } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
-export const reactUtils = jb.reactUtils = { h, L, loadLucid05, hh, hhStrongRefresh, runOnHost, rebuildNativeComp, extendCtxWithUrl, imported }
+export const reactUtils = jb.reactUtils = { h, L, loadLucid05, loadReveal, hh, hhStrongRefresh, runOnHost, rebuildNativeComp, extendCtxWithUrl, imported }
 
 const { tgp: { TgpType, Component } } = dsls
 
@@ -158,6 +158,10 @@ function L(iconName) {
 
 async function loadLucid05() {
   return jb.reactUtils.icons = await import('@jb6/react/lib/lucide-0.5.mjs')
+}
+
+async function loadReveal() {
+  return jb.reactUtils.reveal = await import('@jb6/react/lib/reveal-5.2.1.mjs')
 }
 
 // # KERNEL (recipe + ctx → native React fn)

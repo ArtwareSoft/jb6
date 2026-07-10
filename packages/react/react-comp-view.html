@@ -37,7 +37,7 @@
 
     const cmpId = urlParams.get('cmpId') || 'showMe'
     const seedCtx = reactUtils.extendCtxWithUrl()
-    const { reactCmp, props, ctx } = await reactUtils.wrapReactCompWithSampleData(cmpId, seedCtx)
+    const { reactCmp, props, ctx } = await reactUtils.runOnHost(cmpId, seedCtx)
     window.jbLoggers = ctx.vars
     reactUtils.createRoot(document.getElementById('show')).render(
       h('div', {}, hh(ctx, JbPickerStarter), hh(ctx, reactCmp, props))
