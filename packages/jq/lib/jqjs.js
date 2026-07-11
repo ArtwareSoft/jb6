@@ -59,12 +59,13 @@ function compile(prog) {
 
 function compileJb(prog) {
     let filter = parse(tokenise(prog).tokens)
-    const ret = ctx => { 
+    const ret = ctx => {
         if (!ctx) debugger
         return filter.node.apply(ctx.data, {
             userFuncArgs: {},
+            script: prog,
             variables: { ...jb?.coreRegistry?.consts, ...ctx.vars}
-        }) 
+        })
     }
     ret.filter = filter
     ret.ast = filter.node
@@ -1350,9 +1351,19 @@ class PipeNode extends ParseNode {
        return `${this.lhs} | ${this.rhs}`
    }
    * apply(input, conf) {
-       for (let v of this.lhs.apply(input, conf))
+       const logStage = conf.variables?.jqLogger && !(this.lhs instanceof GenericIndex) && this.lhs
+       let count = 0, firstValue
+       for (let v of this.lhs.apply(input, conf)) {
+           if (logStage) {
+               if (count == 0) firstValue = v
+               count++
+               if (typeof v == 'number' && Number.isNaN(v))
+                   conf.variables.jqLogger.warning?.({t: 'pipe NaN', stage: String(this.lhs), value: v})
+           }
            for (let q of this.rhs.apply(v, conf))
                yield q
+       }
+       if (logStage && count) conf.variables.jqLogger.info?.({t: 'pipe', stage: String(this.lhs), count, firstValue})
    }
    * paths(input, conf) {
        for (let [p, v] of this.zip(this.lhs.paths(input, conf),
@@ -1462,9 +1473,31 @@ class OperatorNode extends ParseNode {
        this.r = r
    }
    * apply(input, conf) {
+       const jqLogger = conf.variables?.jqLogger
        for (let rr of this.r.apply(input, conf))
-           for (let ll of this.l.apply(input, conf))
-               yield this.combine(ll, rr, nameType(ll), nameType(rr))
+           for (let ll of this.l.apply(input, conf)) {
+               const result = this.combine(ll, rr, nameType(ll), nameType(rr))
+               if (jqLogger) this.logBadNumber(jqLogger, ll, rr, result, conf.script)
+               yield result
+           }
+   }
+   logBadNumber(jqLogger, l, r, result, script) {
+       if (typeof result != 'number' || Number.isFinite(result)) return
+       const lFinite = typeof l == 'number' && Number.isFinite(l)
+       const rFinite = typeof r == 'number' && Number.isFinite(r)
+       const bornHere = lFinite && rFinite   // both inputs were clean -> this operator created the bad value
+       const expr = String(this)
+       jqLogger.warning?.({
+           t: Number.isNaN(result) ? 'NaN produced' : 'Infinity produced',
+           op: this.constructor.name.replace(/Operator$/, ''),
+           expr,
+           script,
+           where: script && script.indexOf(expr) != -1 ? `${script.slice(0, script.indexOf(expr))}⟪${expr}⟫${script.slice(script.indexOf(expr) + expr.length)}` : undefined,
+           left: {src: String(this.l), value: l},
+           right: {src: String(this.r), value: r},
+           result,
+           origin: bornHere ? 'this operator' : 'propagated from operand'
+       })
    }
    trace(input, conf, dest) {
        for (let v of this.l.apply(input, conf)) {
@@ -2324,8 +2357,11 @@ const functions = {
        }
        yield sum
    }, {params: [{label: 'source'}]}),
-   'tonumber/0': function*(input) {
-       yield Number.parseFloat(input)
+   'tonumber/0': function*(input, conf) {
+       const n = Number.parseFloat(input)
+       if (Number.isNaN(n))
+           conf?.variables?.jqLogger?.warnOnce?.('tonumber ' + nameType(input), {t: 'tonumber non-numeric', inputType: nameType(input), sample: input})
+       yield n
    },
    'toboolean/0': function*(input) {
        if (input === "false" || input === false)

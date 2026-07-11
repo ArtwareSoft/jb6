@@ -75,6 +75,10 @@ export const domainLogger = Logger('domainLogger', {
         this[logName].push({severity: 'warning', ...enriched[0], ...enriched[1]})
         spyLog(logName, {severity: 'warning', r1: enriched[0], r2: enriched[1], ctx: r3?.ctx})
       },
+      warnOnce(key,r1,r2,r3) {   // collapse per-element warning spam: warn first time per key, count the rest
+        const seen = this._warnCount || (this._warnCount = {})
+        if ((seen[key] = (seen[key]||0)+1) == 1) this.warning({...r1, warnKey: key}, r2, r3)
+      },
       error(r1,r2,r3) {
         const enriched = enrichParams(r1, r2, r3)
         this[logName].push({severity: 'error', ...enriched[0], ...enriched[1]})
@@ -90,7 +94,11 @@ export const domainLogger = Logger('domainLogger', {
         spyLog(logName, {severity: 'progress', r1: entry})
         coreUtils.eventEmitter.emit('progress', entry)
       },
-      $stripData() { return { $: `${domain}Logger`, logCount: this[logName].length, errorCount: this[errorsName].length, last: this[logName].at(-1)?.t } },
+      $stripData() {
+        const custom = coreUtils.loggerSummaries?.[domain]   // per-domain summary override (e.g. rx node rollup); keeps auto-logger path intact
+        if (custom) return custom(this[logName], this[errorsName])
+        return { $: `${domain}Logger`, logCount: this[logName].length, errorCount: this[errorsName].length, last: this[logName].at(-1)?.t }
+      },
       logsAndErrors({stripData = true} = {}) {
         const res = {[logName]: this[logName], [errorsName]: this[errorsName]}
         return stripData ? coreUtils?.stripData(res) || res : res
