@@ -104,6 +104,21 @@ Test('mcpTest.probeWithLogger', {
   })
 })
 
+Test('mcpTest.playwrightHarvest', {
+  HeavyTest: true,
+  doNotRunInTests: true,
+  impl: mcpToolTest({
+    tool: 'playwrightHarvest',
+    args: asIs({
+      url: 'http://localhost:8083/packages/react/react-comp-view.html?logger=uiLogger&cmpId=codeMirrorTest&urlsToLoad=@jb6/react/tests/react-tests.js',
+      uiActionJsonStr: `{"$":"ui-action<test>actions","actions":[{"$":"ui-action<test>selectInCodeMirror","from":2,"to":8}]}`,
+      seedLocalStorage: 'mockAuthSeed',
+      domSelector: 'body'
+    }),
+    expectedResult: and(contains('selected: lect-a'), contains('cm-editor'))
+  })
+})
+
 Test('mcpReactTest.helloMcp', {
   HeavyTest: true,
   doNotRunInTests: true,

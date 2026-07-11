@@ -57,39 +57,6 @@ Tool('sourceCodeOfComp', {
   })
 })
 
-
-/*
-Tool('dslDocs', {
-  description: 'get TGP (Type-generic component-profile) model relevant for dsls',
-  params: [
-    {id: 'dsls', as: 'string', asIs: true, defaultValue: 'common,llm-guide', description: 'Comma-separated other options: rx,llm-api,testing'}
-  ],
-  impl: mcpTool(dslDocs('%$dsls%'))
-})
-
-Tool('tgpModel', {
-  description: 'get TGP (Type-generic component-profile) model relevant for dsls',
-  params: [
-    {id: 'forDsls', as: 'string', asIs: true, defaultValue: 'common', description: 'comma separated e.g. test,llm-guide,common' },
-  ],
-  impl: mcpTool(tgpModel('%$forDsls%'))
-})
-
-Tool('listBooklets', {
-  description: 'names of all booklets',
-  impl: mcpTool(pipe(tgpModel('llm-guide'), '%dsls/llm-guide/booklet%', keys(), filter('%% != booklet'), join()))
-})
-
-Tool('bookletsContentTool', {
-  description: 'the content of a booklet, which is the content of a list of doclets',
-  params: [
-    {id: 'booklets', as: 'text', asIs: true, description: 'comma delimited names'},
-    {id: 'maxLength', as: 'number', defaultValue: 20000}
-  ],
-  impl: mcpTool(bookletsContent('%$booklets%'), { maxLength: '%$maxLength%' })
-})
-*/
-
 Tool('macroToJson', {
   description: 'Convert TGP macro syntax to JSON profile. e.g. pipeline([1,2,3], join("-")) → {$: "data<common>pipeline", ...}. Use tgpModel tool to discover available components.',
   params: [
@@ -196,76 +163,45 @@ Tool('scrambleText', {
 })
 
 Tool('playwrightHarvest', {
-  description: `Load a live react-comp url in headless Chromium (Playwright) and harvest its jb6 loggers + browser errors - no screenshots.
-Use it to verify a ReactComp actually mounts and behaves in a REAL browser with REAL modules (no jsdom/test stubs), when a reactTest under node is not enough.
-Typically point url at react-comp-view.html, which sets window.jbLoggers=ctx.vars, mounts a comp and runs a uiAction on it (see the url param for the query params it accepts).
-Returns { hasLoggers, consoleErrors, pageErrors, logs, dom? }: consoleErrors = console error/warning, pageErrors = uncaught exceptions + failed requests, logs = harvestLogs from window.jbLoggers. Assert on logs.<logger>.<logName>, e.g. logs.uiLogger.uiLog contains 'selected: lect-a'. Pass domSelector to also get a geometry+markup snapshot (rect w/h, display/visibility/opacity, text) of that element and its descendants - use it to diagnose visual issues the loggers can't show, e.g. a zero-height host or a spinner that never unmounts.`,
+  description: `Load a react-comp-view.html url in headless Chromium, run a ui-action<test> profile against the mounted comp and harvest its jb6 loggers + browser errors.
+url carries query params: logger, cmpId, urlsToLoad.
+Returns { done, errors, logs, html?, timeline }.`,
   params: [
-    {id: 'url', as: 'string', asIs: true, mandatory: true, description: `full comp url. use react-comp-view.html with these query params:
-  logger=<name>   loggers to enable, e.g. uiLogger - REQUIRED or logs come back empty
-  cmpId=<id>      ReactComp to mount, e.g. codeMirrorTest
-  urlsToLoad=<m>  module(s) defining the comp, e.g. @jb6/react/tests/react-tests.js
-  uiAction=<json> a ui-action<test> profile to run on the mounted comp, e.g. {"$":"ui-action<test>selectInCodeMirror","from":2,"to":8}
-full example: http://localhost:8083/packages/react/react-comp-view.html?logger=uiLogger&cmpId=codeMirrorTest&urlsToLoad=@jb6/react/tests/react-tests.js&uiAction={"$":"ui-action<test>selectInCodeMirror","from":2,"to":8}`},
-    {id: 'settleMs', as: 'number', defaultValue: 5000, description: 'ms to wait after networkidle for async imports/effects (spinner -> real modules) to settle before harvesting. lower (~1000) is usually fine once the dev server is warm'},
-    {id: 'domSelector', as: 'string', description: 'optional css selector, e.g. #show or .reveal. when set, returns a dom snapshot: the matched element + descendants with tag/class/rect(w,h)/display/visibility/opacity/text (text and depth trimmed). leave empty for not showing html'},
-    {id: 'domDepth', as: 'number', defaultValue: 4, description: 'how many levels deep to walk the dom snapshot under domSelector'},
+    {id: 'url', as: 'string', asIs: true, mandatory: true, description: 'full react-comp-view.html url incl. logger/cmpId/urlsToLoad query params'},
+    {id: 'uiActionJsonStr', as: 'string', asIs: true, description: 'ui-action<test> profile to run against the mounted comp. MUST be the JSON escaped as a string (inner quotes escaped), NOT an object - an object becomes "[object Object]" and fails. e.g. "{\\"$\\":\\"ui-action<test>selectInCodeMirror\\",\\"from\\":2,\\"to\\":8}"'},
+    {id: 'timeout', as: 'number', defaultValue: 5000, description: 'ms to wait for the page to mount and its uiAction to finish'},
+    {id: 'domSelector', as: 'string', description: 'optional css selector; when set returns that element outerHTML'},
+    {id: 'seedLocalStorage', as: 'string', asIs: true, description: 'id of a data<common> comp whose result object seeds localStorage before boot (e.g. an auth token to render as a logged-in user)'},
   ],
-  impl: mcpTool(async (ctx, {}, {url: rawUrl, settleMs, domSelector, domDepth}) => {
-    const url = rawUrl.replace(/\s+/g, '')   // llms often paste a pretty-printed uiAction=... json with spaces; raw whitespace is never valid in a url, so strip it
+  impl: mcpTool(async (ctx, {}, {url, uiActionJsonStr, timeout, domSelector, seedLocalStorage}) => {
+    let seed = null
+    if (seedLocalStorage) {
+      await import('@jb6/lang-service')
+      const { result, error } = await coreUtils.runSnippetCli({ profileText: `{$: 'data<common>${seedLocalStorage}'}` })
+      if (error) return JSON.stringify({ error: `seedLocalStorage '${seedLocalStorage}' failed: ${error}` }, null, 2)
+      seed = result
+    }
     const script = `
 import { coreUtils } from '@jb6/core'
 import '@jb6/core/misc/import-map-services.js'
+const t0 = Date.now(), timeline = [], mark = phase => timeline.push({ phase, atMs: Date.now() - t0 })
 const { chromium } = await import(coreUtils.pathJoin(await coreUtils.calcRepoRoot(), 'node_modules/playwright/index.mjs'))
-const browser = await chromium.launch()
+const browser = await chromium.launch(); mark('launched')
 const page = await browser.newPage()
-const consoleErrors = [], pageErrors = []
-const noise = /cdn\\.tailwindcss\\.com should not be used in production|favicon\\.ico/  // dev-page noise, not real failures
-page.on('console', m => { const t = m.text(); if (/error|warning/i.test(m.type()) && !noise.test(t)) consoleErrors.push(\`[\${m.type()}] \${t}\`) })
-page.on('pageerror', e => pageErrors.push(String(e?.stack || e)))
-page.on('requestfailed', r => { if (!noise.test(r.url())) pageErrors.push(\`requestfailed \${r.url()} - \${r.failure()?.errorText}\`) })
-await page.goto(${JSON.stringify(url)}, { waitUntil: 'networkidle', timeout: 20000 })
-const hasLoggers = await page.waitForFunction(() => window.jbLoggers, { timeout: 15000 }).then(() => true).catch(() => false)
-await page.waitForTimeout(${Number(settleMs) || 5000})
-const domSelector = ${JSON.stringify(domSelector || '')}, domDepth = ${Number(domDepth) || 4}
-// when a selector is given, snapshot geometry+markup of the element + descendants - the layout dimension the
-// loggers can't show (zero-height host, collapsed deck, stuck spinner). we flatten it for a future LLM: one
-// readable line per element ("div.reveal 1280x0 [HIDDEN:zero-height]"), plus a warnings[] that names the anomaly
-// up front, so the fault is obvious without walking a nested tree. pushed into uiLogger to ride the same stream.
-const dom = domSelector ? await page.evaluate(({ sel, maxDepth }) => {
-  const warnings = [], lines = []
-  const walk = (el, depth) => {
-    const r = el.getBoundingClientRect(), cs = getComputedStyle(el)
-    const w = Math.round(r.width), h = Math.round(r.height)
-    const id = el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '')
-    const flags = []
-    if (w === 0 || h === 0) flags.push('zero-' + (h === 0 ? 'height' : 'width'))
-    if (cs.display === 'none') flags.push('display:none')
-    if (cs.visibility === 'hidden') flags.push('visibility:hidden')
-    if (+cs.opacity === 0) flags.push('opacity:0')
-    const hidden = flags.length ? ' [HIDDEN:' + flags.join(',') + ']' : ''
-    const own = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).filter(Boolean).join(' ').slice(0, 40)
-    lines.push('  '.repeat(depth) + id + ' ' + w + 'x' + h + hidden + (own ? ' "' + own + '"' : ''))
-    if (flags.length && depth <= 1) warnings.push(id + ': ' + flags.join(','))
-    if (depth < maxDepth) [...el.children].forEach(c => walk(c, depth + 1))
-  }
-  const el = document.querySelector(sel)
-  if (!el) { const res = { notFound: sel }; window.jbLoggers?.uiLogger?.info?.({ t: 'domSnapshot', selector: sel, warnings: ['selector not found'] }, {}, { ctx: { vars: window.jbLoggers } }); return res }
-  walk(el, 0)
-  const res = { selector: sel, warnings, tree: lines.join('\\n') }
-  window.jbLoggers?.uiLogger?.info?.({ t: 'domSnapshot', selector: sel, warnings, tree: lines.join('\\n') }, {}, { ctx: { vars: window.jbLoggers } })
-  return res
-}, { sel: domSelector, maxDepth: domDepth }) : undefined
-const logs = hasLoggers ? await page.evaluate(() => jb.coreUtils.harvestLogs({ vars: window.jbLoggers })) : null
-await browser.close()
-await coreUtils.writeServiceResult({ hasLoggers, consoleErrors, pageErrors, logs, dom })`
-    try {
-      await coreUtils.calcJb6RepoRootAndImportMapsInCli()
-      const { result, error } = await coreUtils.runCliInContext(script, { importMapsInCli: jb.coreRegistry.importMapsInCli })
-      return JSON.stringify(error ? { error } : result, null, 2)
-    } catch (error) {
-      return `Error running playwrightHarvest: ${error.stack || error}`
-    }
+const errors = []
+page.on('console', m => /error|warning/i.test(m.type()) && errors.push(m.text()))
+page.on('pageerror', e => errors.push(String(e?.stack || e)))
+const seed = ${JSON.stringify(seed)}
+if (seed) await page.addInitScript(s => Object.entries(s).forEach(([k, v]) => localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v))), seed)
+await page.goto(${JSON.stringify(url)}, { waitUntil: 'domcontentloaded', timeout: ${timeout} }); mark('loaded')
+await page.waitForFunction(() => window.jbMounted, null, { timeout: ${timeout} }); mark('mounted')
+const uiActionJsonStr = ${JSON.stringify(uiActionJsonStr || '')}
+const { done, logs } = await page.evaluate(([s, limit]) => window.jbRunAndHarvest(s, limit), [uiActionJsonStr, ${timeout}]); mark('done')
+const html = ${JSON.stringify(domSelector || '')} ? await page.evaluate(s => document.querySelector(s)?.outerHTML, ${JSON.stringify(domSelector || '')}) : undefined
+await browser.close(); mark('closed')
+await coreUtils.writeServiceResult({ done, errors, logs, html, timeline })`
+    const { result, error } = await coreUtils.runCliInContext(script)
+    return JSON.stringify(error ? { error } : result, null, 2)
   })
 })
 

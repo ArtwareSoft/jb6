@@ -2,9 +2,9 @@
 import { dsls, ns, coreUtils, jb } from '@jb6/core'
 import { reactUtils } from '@jb6/react' 
 import '@jb6/testing'
-const { asArray, logError } = coreUtils
+const { asArray, logException } = coreUtils
 
-Object.assign(reactUtils, {registerMutObs, prettyPrintNode, probeReactComp})
+Object.assign(reactUtils, {registerMutObs, prettyPrintNode, probeReactComp, runAndHarvest})
 
 const { delay } = coreUtils
 const {
@@ -275,6 +275,45 @@ UiAction('keyPressInCodeMirror', {
     }
   })
 })
+
+// a mock localStorage auth seed for playwrightHarvest(seedLocalStorage) - stands in for a real auth-token minter
+// (e.g. Wonder's mintWonderAuth2). NOTE: seeds localStorage, not cookies - Wonder's auth2 also lives in
+// localStorage (localStorage.getItem('auth2')). its result object is written to localStorage before the page
+// boots so the comp renders "as a logged-in user"; object values are JSON.stringified into localStorage by the tool.
+Data('mockAuthSeed', {
+  impl: () => ({ auth2: { id_token: 'mock-id-token', expiresAt: 9999999999999 }, user: { name: 'Homer' } })
+})
+
+// run a ui-action<test> profile (object or json string) against the already-mounted comp in `win`, then
+// harvest its loggers. owns the whole live-page lifecycle: run actions (bounded by `limit` ms) → set
+// window.jbDone → return { done, logs }. shared by react-comp-view.html and the playwrightHarvest mcp tool.
+async function runAndHarvest(ctx, win, uiActionJsonStr, limit = 10000) {
+  const { uiLogger } = ctx.vars
+  let done = true
+  try {
+    // log the raw input so a failing run shows exactly what crossed the wire (e.g. an object stringified to '[object Object]' = a serialization bug upstream)
+    uiLogger?.info?.({t: 'runAndHarvest.start', type: typeof uiActionJsonStr, uiActionJsonStr: String(uiActionJsonStr).slice(0, 200), limit}, {}, {ctx})
+    if (uiActionJsonStr) {
+      registerMutObs(win)
+      const profile = typeof uiActionJsonStr === 'string' ? JSON.parse(uiActionJsonStr) : uiActionJsonStr
+      coreUtils.restoreProfile$(profile)
+      const action = await ctx.run(profile)
+      await win.waitForMutations(10)
+      // race the action against the limit; whichever wins tells us if the action completed or timed out
+      const timedOut = await Promise.race([
+        action.exec(ctx.setVars({ win })).then(() => false),
+        delay(limit).then(() => true)
+      ])
+      if (timedOut) done = false
+      uiLogger?.info?.({t: 'runAndHarvest.actionsDone', timedOut}, {}, {ctx})
+    }
+  } catch (error) {
+    logException(error, 'runAndHarvest', {ctx})
+    done = false
+  }
+  win.jbDone = true
+  return { done, logs: coreUtils.harvestLogs({ vars: win.jbLoggers || ctx.vars }) }
+}
 
 async function probeReactComp(ctx, reactCmp) {
   const win = globalThis.window
