@@ -2,6 +2,14 @@ import http from 'http'
 import https from 'https'
 import { parse } from 'url'
 
+export function expressRedirect(app) {
+  app.get('/redirect', (req, res) => {
+    const { to, status = 302 } = req.query
+    if (!to) return res.status(400).send('No "to" query param specified')
+    res.redirect(Number(status), to)
+  })
+}
+
 export function expressProxy(app) {
 app.post('/proxy', (req, res) => {
     try {

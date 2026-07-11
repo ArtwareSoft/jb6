@@ -175,11 +175,19 @@ Returns { done, errors, logs, html?, timeline }.`,
   ],
   impl: mcpTool(async (ctx, {}, {url, uiActionJsonStr, timeout, domSelector, seedLocalStorage}) => {
     let seed = null
+    await coreUtils.ensureImportMapsInCli() // needed for external repos with import maps
     if (seedLocalStorage) {
       await import('@jb6/lang-service')
       const { result, error } = await coreUtils.runSnippetCli({ profileText: `{$: 'data<common>${seedLocalStorage}'}` })
       if (error) return JSON.stringify({ error: `seedLocalStorage '${seedLocalStorage}' failed: ${error}` }, null, 2)
       seed = result
+    }
+    let redirect = null
+    const res = await fetch(url, { redirect: 'manual' })
+    if (res.status >= 300 && res.status < 400) {
+      const location = new URL(res.headers.get('location'), url).href
+      redirect = { from: url, status: res.status, to: location }
+      url = location
     }
     const script = `
 import { coreUtils } from '@jb6/core'
@@ -193,13 +201,21 @@ page.on('console', m => /error|warning/i.test(m.type()) && errors.push(m.text())
 page.on('pageerror', e => errors.push(String(e?.stack || e)))
 const seed = ${JSON.stringify(seed)}
 if (seed) await page.addInitScript(s => Object.entries(s).forEach(([k, v]) => localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v))), seed)
+await page.addInitScript(() => {
+  window.__jbOnMounted = async (ctx, reactUtils) => {
+    await import('@jb6/react/tests/react-testers.js')
+    window.jbRunAndHarvest = (uiActionJsonStr, limit) => reactUtils.runAndHarvest(ctx, window, uiActionJsonStr, limit)
+    ctx.vars.uiLogger?.info?.({ t: 'jbOnMounted.installed', msg: 'test harness injected externally into prod page; driver ready' }, {}, { ctx })
+  }
+})
 await page.goto(${JSON.stringify(url)}, { waitUntil: 'domcontentloaded', timeout: ${timeout} }); mark('loaded')
 await page.waitForFunction(() => window.jbMounted, null, { timeout: ${timeout} }); mark('mounted')
 const uiActionJsonStr = ${JSON.stringify(uiActionJsonStr || '')}
 const { done, logs } = await page.evaluate(([s, limit]) => window.jbRunAndHarvest(s, limit), [uiActionJsonStr, ${timeout}]); mark('done')
 const html = ${JSON.stringify(domSelector || '')} ? await page.evaluate(s => document.querySelector(s)?.outerHTML, ${JSON.stringify(domSelector || '')}) : undefined
 await browser.close(); mark('closed')
-await coreUtils.writeServiceResult({ done, errors, logs, html, timeline })`
+const redirect = ${JSON.stringify(redirect)}
+await coreUtils.writeServiceResult({ done, errors, logs, html, timeline, redirect })`
     const { result, error } = await coreUtils.runCliInContext(script)
     return JSON.stringify(error ? { error } : result, null, 2)
   })

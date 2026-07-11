@@ -38,7 +38,7 @@ async function serveMcp(app, { express }) {
 
 async function serveMcpViaCli(app, { express }) {
   await import('@jb6/core/misc/import-map-services.js')
-  await coreUtils.calcJb6RepoRootAndImportMapsInCli()
+  await coreUtils.ensureImportMapsInCli()
   const repoRoot = await coreUtils.calcRepoRoot()
   const { projectDir, importMap, staticMappings } = await coreUtils.calcImportData({forRepo: repoRoot})
   if ((process.env.PORT || 8083) == 8083) {

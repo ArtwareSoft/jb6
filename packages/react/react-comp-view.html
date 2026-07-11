@@ -43,9 +43,8 @@
       h('div', {}, hh(ctx, JbPickerStarter), hh(ctx, reactCmp, props))
     )
 
-    // playwrightHarvest drives the mounted comp by calling window.jbRunAndHarvest(uiActionJson) via page.evaluate.
-    await import('@jb6/react/tests/react-testers.js')
-    window.jbRunAndHarvest = (uiActionJsonStr, limit) => reactUtils.runAndHarvest(ctx, window, uiActionJsonStr, limit)
+    // prod-clean: tests inject window.__jbOnMounted externally; undefined here = no-op
+    await window.__jbOnMounted?.(ctx, reactUtils)
     window.jbMounted = true
 
   </script>

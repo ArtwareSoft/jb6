@@ -8,7 +8,7 @@ const { isNode, logException, pathJoin,pathParent, unique, asArray } = coreUtils
 jb.importMapCache = {
   fileContext: {}
 }
-Object.assign(coreUtils, { getStaticServeConfig, calcImportData, calcImportsForFiles, resolveWithImportMap, fetchByEnv, calcRepoRoot, calcJb6RepoRootAndImportMapsInCli, discoverDslEntryPoints, absPathToImportUrl })
+Object.assign(coreUtils, { getStaticServeConfig, calcImportData, calcImportsForFiles, resolveWithImportMap, fetchByEnv, calcRepoRoot, calcJb6RepoRootAndImportMapsInCli, ensureImportMapsInCli, discoverDslEntryPoints, absPathToImportUrl })
 
 const ignoreDirs = [ 'node_modules', '3rd-party', '.git'] 
 async function calcRepoRoot(options) {
@@ -55,6 +55,11 @@ async function calcJb6RepoRootAndImportMapsInCli() {
     || `${repoRoot}/node_modules/@jb6`
   jb.coreRegistry.importMapsInCli = pkgJson.importMapsInCli && path.resolve(repoRoot,pkgJson.importMapsInCli)
   return jb.coreRegistry.jb6Root
+}
+
+async function ensureImportMapsInCli() {
+  if (!jb.coreRegistry.importMapsInCli) await calcJb6RepoRootAndImportMapsInCli()
+  return jb.coreRegistry.importMapsInCli
 }
 
 async function discoverDslEntryPoints({forDsls, repoRoot}) {

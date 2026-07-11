@@ -3,8 +3,7 @@ import '@jb6/core/misc/jb-cli.js'
 import '@jb6/core/misc/import-map-services.js'
 import pty from 'node-pty'
 
-const { runNodeCli, runBashScript, buildNodeCliCmd, calcJb6RepoRootAndImportMapsInCli } = coreUtils
-const ensureImportMapsInCli = async () => (jb.coreRegistry.importMapsInCli || (await calcJb6RepoRootAndImportMapsInCli(), jb.coreRegistry.importMapsInCli))
+const { runNodeCli, runBashScript, buildNodeCliCmd, ensureImportMapsInCli } = coreUtils
 
 jb.serverUtils = jb.serverUtils || {}
 Object.assign(jb.serverUtils, {serveCli, serveCliStream })
