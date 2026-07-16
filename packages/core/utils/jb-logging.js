@@ -88,6 +88,10 @@ export const domainLogger = Logger('domainLogger', {
         if (errLog && errLog !== this) errLog.error(r1, r2, r3)
       },
       status(text) { this.progress({t: text, status: true}) },
+      step(step, text) { this.progress({step, t: text, status: 'running'}) },
+      stepDone(step, text) { this.progress({step, ...(text && {t: text}), status: 'done'}) },
+      stepPct(step, pct, text) { this.progress({step, pct, ...(text && {t: text})}) },
+      stepPlan(steps, labels) { this.progress({stepPlan: steps, ...(labels && {stepLabels: labels}), status: 'plan'}) },
       progress(payload) {
         const entry = {severity: 'progress', seq: ++progressSeq, at: Date.now() - startTime, $source, logger: `${domain}Logger`, ...payload}
         this[logName].push(entry)

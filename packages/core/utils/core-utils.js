@@ -355,6 +355,14 @@ function stripData(value, { MAX_OBJ_DEPTH = 100, MAX_ARRAY_LENGTH = 10000, resho
   }
 }
 
+function squeeze(obj, {k = 30} = {}) {
+  if (typeof obj !== 'object' || obj === null) return obj
+  if (Array.isArray(obj))
+    return obj.length <= k*2 ? obj.map(v => squeeze(v, {k}))
+      : [...obj.slice(0,k), `${obj.length - k*2} items were here`, ...obj.slice(-k)].map(v => squeeze(v, {k}))
+  return Object.fromEntries(Object.entries(obj).map(([key, value]) => [key, squeeze(value, {k})]))
+}
+
 function resolveRefs(obj, root = obj, visited = new WeakSet()) {
   if (typeof obj === 'string') {
     const match = obj.match(/^\[jbReference: ([^\]]+)\]$/)
@@ -457,5 +465,5 @@ Object.assign(jb.coreUtils, {
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps, omitEmptyProps,
   enrichCtxWithDataContext, compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus, eventEmitter
+  calcValue, stripData, squeeze, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus, eventEmitter
 })

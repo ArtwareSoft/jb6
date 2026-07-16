@@ -110,15 +110,20 @@ Component('stepper', {
   ],
   impl: (ctx, {react: {useState, useEffect}, uiLogger}, {title, steps, labels}) => () => {
     const stepIds = (steps || '').split(',').map(s => s.trim()).filter(Boolean)
-    const labelArr = (labels || '').split(',').map(s => s.trim())
+    const staticLabels = (labels || '').split(',').map(s => s.trim())
     const [state, setState] = useState({})
+    const [plan, setPlan] = useState(null)   // runtime-announced plan (stepPlan) fixes the denominator from event #1 when steps aren't known at mount
     useEffect(() => {
       uiLogger?.info?.({t: 'progress.mount', indicator: 'stepper', title}, {}, {ctx})
-      const fn = e => e?.step && setState(s => ({...s, [e.step]: e.status || 'running'}))
+      const fn = e => {
+        if (e?.stepPlan) return setPlan({ids: e.stepPlan.map(String), labels: e.stepLabels || []})
+        if (e?.step != null) setState(s => ({...s, [e.step]: e.status || 'running'}))
+      }
       coreUtils.eventEmitter.on('progress', fn)
       return () => coreUtils.eventEmitter.off('progress', fn)
     }, [])
-    const ids = stepIds.length ? stepIds : Object.keys(state)
+    const ids = stepIds.length ? stepIds : plan ? plan.ids : Object.keys(state)
+    const labelArr = stepIds.length ? staticLabels : plan ? plan.labels : []
     const doneCount = ids.filter(id => state[id] === 'done').length
     const runningCount = ids.filter(id => state[id] === 'running').length
     const pct = ids.length ? Math.round(100 * (doneCount + runningCount * 0.5) / ids.length) : 0

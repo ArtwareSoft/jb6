@@ -26,8 +26,6 @@ curl -s -X POST http://localhost:8083/mcp -H 'Content-Type: application/json' -d
 - `runTgpSnippet({profileText: '...', logger})` — execute a JSON profile. All `$` references are auto-resolved — source files discovered and imported automatically. Returns execution result + logger output.
 - `runTest({testId: 'asset.crud'})` — shorthand for `runTgpSnippet({profileText: "{$: 'test<test>asset.crud'}"})`
 - `runProbe({probePath: 'test<test>myTest~impl~calculate~items~0'})` — run a circuit and capture the intermediate `{in,out}` at a probePath (a `~`-path into a runnable comp). Auto-detects the enclosing circuit; returns the recorded `{in,out}` + visits + circuitRes + logs/errors. Use it to inspect what flows through a specific spot mid-run. `resolution: 'input'|'output'|'all'` narrows/expands the detail.
-- `wonderFetch({url, method, body, logger})` — read/write room content via wUrls (GET/list, PUT/POST/PATCH); `body` is a JSON string. Wraps the `wFetch` comp (db-drivers.js).
-- `harvestLiveCompViaPlaywright({url, settleMs?, logger})` — verify a bare live react-comp url (react-comp-view.html/wComp.html WITH `&logger=uiLogger,...`); launches Playwright in a jb-cli child and returns the harvested `{log,errors}` per logger. Use before handing a clickable link.
 
 ## TGP Tests and Loggers
 Domain loggers produce logs as parts of tests results. Enable loggers with `{"$": "test<test>AnyTester", "logger": "logger1,logger2", .
