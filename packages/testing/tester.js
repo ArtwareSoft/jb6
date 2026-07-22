@@ -26,9 +26,10 @@ Component('dataTest', {
     {id: 'logger', as: 'string', description: 'e.g "dbLogger" or comma-separated "makeLogger,dbLogger"'}
   ],
   impl: async (ctx,{}, { calculate,expectedResult,runBefore,setup,timeout,allowError,cleanUp,expectedCounters, logger }) => {
+        logger = ctx.vars.overrideTestLoggers ?? logger   // ambient override (e.g. from runTest mcp) wins over the profile's logger param, without editing the test
         const loggerNames = [...new Set(['errorLogger', ...(logger || '').split(',').map(s => s.trim()).filter(Boolean)])]   // errorLogger always-on + always harvested
         const loggerObj = Object.fromEntries(
-          loggerNames.map(n => [n, (dsls.test.logger[n] || Logger(n, { impl: domainLogger(n.replace(/Logger$/, '')) })).$runWithCtx(ctx)])   // unregistered xxLogger name -> register a default domainLogger('xx') on the fly
+          loggerNames.map(n => [n, (dsls.test.logger[n] || Logger(n, { impl: domainLogger(n.replace(/Logger$/, '')) })).$runWithCtx(ctx)])     // domainLogger('xx') is registered on the fly
         )
         const testID = ctx.vars.testID || (ctx.jbCtx.lexicalStack.slice(-1)[0]||'').split('~')[0]
 		let ctxToUse = ctx.setVars({testID, isTest: true, testSessionId: `test-${Date.now()}`, testLoggers: logger, ...loggerObj})

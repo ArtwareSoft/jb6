@@ -38,8 +38,11 @@ function dispatchChildLine({ctx, line, stream}) {
       try { ev.channel === 'progress' || ev.channel === 'status' ? fn.call(lg, ev.event) : fn.call(lg, ev.event, {}, {ctx}) } catch (e) {
         ctx?.vars?.errorLogger?.error?.({t: 'dispatch error', logger: ev.logger, channel: ev.channel, err: e.stack}, {}, {ctx})
       }
-    } else {
-      ctx?.vars?.errorLogger?.error?.({t: 'dispatch missing', logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function'), pid: process?.pid, ctxLoggers: ctx?.vars && Object.keys(ctx.vars).filter(n=>ctx.vars[n]?.logsAndErrors), registeredDef: !!jb.dsls?.test?.logger?.[ev.logger]}, {}, {ctx})
+    } else if (!(ev.event?.src === 'cpp' && !lg)) {   // cpp emits blind (no ctx to guard on) → unsubscribed cpp line is normal, drop silently. any other unrouted line is a real misconfig
+      const hint = !lg
+        ? `logger '${ev.logger}' not in this process's ctx.vars → add it to the caller's \`logger\` field (testLoggers ∪ progressLoggers → ensureLoggers instantiates it here). This line came from a child's stderr (JS wrapLoggerInstanceToStderr, or the duckdb C++ CppLog envelope).`
+        : `logger '${ev.logger}' exists but has no '${ev.channel}' channel`
+      ctx?.vars?.errorLogger?.error?.({t: `jb-cli missing logger in ctx ${ev.logger}`, hint, logger: ev.logger, channel: ev.channel, hasLogger: !!lg, availableChannels: lg && Object.keys(lg).filter(k=>typeof lg[k]==='function'), pid: process?.pid, ctxLoggers: ctx?.vars && Object.keys(ctx.vars).filter(n=>ctx.vars[n]?.logsAndErrors), registeredDef: !!jb.dsls?.test?.logger?.[ev.logger]}, {}, {ctx})
     }
     return
   }
@@ -297,7 +300,8 @@ async function runBashScriptStreamViaJbWebServer(script, { onStdoutLine, onStder
 }
 
 async function runBashScript(script, callbacks) {
-  const { onStdoutLine, onStderrLine, onStart, _onChunk } = callbacks || {}
+  const { onStdoutLine, onStderrLine, onStart, _onChunk, cliLogger, ctx } = callbacks || {}
+  cliLogger?.info?.({ t: 'runBashScript', scriptLen: script.length, argMax: 131072 }, {}, { ctx })   // bash -c argv carries the whole script → E2BIG when scriptLen > OS ARG_MAX
   if (!isNode) {
     if (onStdoutLine || onStderrLine || onStart)
       return runBashScriptStreamViaJbWebServer(script, { onStdoutLine, onStderrLine, onStart })
@@ -321,7 +325,13 @@ async function runBashScript(script, callbacks) {
       lines.forEach(cb)
     }
 
-    const child = spawn('bash', ['-c', script], { encoding: 'utf8', detached: true })
+    let child
+    try {
+      child = spawn('bash', ['-c', script], { encoding: 'utf8', detached: true })
+    } catch (err) {   // spawn throws synchronously on E2BIG (script > ARG_MAX) — surface it as a structured error, not an uncaught reject
+      cliLogger?.error?.({ t: 'spawn failed', code: err.code, scriptLen: script.length }, {}, { ctx, error: err })
+      return resolve({ error: `spawn ${err.code || err.message}`, scriptLen: script.length, script })
+    }
     if (onStart) {
       const kill = (signal = 'SIGTERM') => { try { process.kill(-child.pid, signal) } catch (e) {} }
       onStart({ pid: child.pid, kill })

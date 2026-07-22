@@ -46,6 +46,16 @@ Component('ensureLogger', {
 
 const takeFromVars = (ids, ctx) => Object.fromEntries((ids||'').split(',').map(x=>x.trim()).filter(x=>x).filter(p=>ctx?.vars[p] != null).map(p=>[p,ctx.vars[p]]))
 
+// scrubSignatures: elide signed-url query strings (X-Goog-*/X-Amz-*/Signature=…) in any logged string so log lines stay short & readable.
+// only the logged copy is touched; the marker keeps the elided length for diagnostics. no-op for non-matching strings.
+const sigRe = /\?[^'")\]\s]*(?:X-Goog-|X-Amz-|Signature=)[^'")\]\s]*/g
+const scrubSignatures = v =>
+  typeof v === 'string' ? v.replace(sigRe, m => `?<signature:${m.length - 1}chars>`)
+  : Array.isArray(v) ? v.map(scrubSignatures)
+  : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrubSignatures(x)]))
+  : v
+coreUtils.scrubSignatures = scrubSignatures
+
 let $source = 'browser'   // machine:pid, computed once. stamped on every entry so parent & child logs both carry their origin
 if (typeof process != 'undefined')
   import('os').then(os => $source = `${os.hostname()}:${process.pid}`)
@@ -114,7 +124,7 @@ export const domainLogger = Logger('domainLogger', {
       const resp = r3.response ? { status: r3.response.status, statusText: r3.response.statusText } : {}
       const enrichedR1 = { ...takeFromVars(addToR1,ctx), ...error, ...resp, at: Date.now() - startTime, $source, tgpPath: ctx?.jbCtx.lexicalParentPath, ...r1 }
       const enrichedR2 = { ...takeFromVars(addToR2,ctx), ...r2 }
-      return [enrichedR1, enrichedR2]
+      return [scrubSignatures(enrichedR1), scrubSignatures(enrichedR2)]
     }
   }
 })

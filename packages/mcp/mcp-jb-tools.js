@@ -8,7 +8,7 @@ import '@jb6/mcp'
 const {
   tgp: { Component, 'ctx-enricher': { Var } },
   common: {
-    data: { asIs, bookletsContent, dslDocs, filter, join, keys, pipe, pipeline, split, tgpModel }
+    data: { asIs, bookletsContent, filter, join, keys, pipe, pipeline, split, tgpModel }
   },
   mcp: { Tool,
     tool: { mcpTool }
@@ -32,7 +32,7 @@ Tool('scanDsl', {
   description: 'map a dsl (or comma-separated dsls) from the registered model: its TgpType defs and, grouped by the file that defines them, its comps and tests. details: files|comps|all-comps-with-params|full',
   params: [
     {id: 'dsl', as: 'string', asIs: true, defaultValue: 'common', description: 'comma separated e.g. test,llm-guide,common' },
-    {id: 'details', as: 'string', asIs: true, defaultValue: 'comps', description: 'files=TgpTypes+file names, comps=+comps grouped by TgpType (first 3 per type, +N more) with #params & impl length, all-comps-with-params=all comps grouped by TgpType with their params, full=+full source of each file' },
+    {id: 'details', as: 'string', asIs: true, defaultValue: 'files', description: 'files=TgpTypes+file names, comps=+comps grouped by TgpType (first 3 per type, +N more) with #params & impl length, all-comps-with-params=all comps grouped by TgpType with their params, full=+full source of each file' },
   ],
   impl: mcpTool(async (ctx, {}, {dsl, details}) => {
     await import('@jb6/lang-service')
@@ -136,13 +136,14 @@ Tool('runTest', {
   description: 'Run a jb6 test by its test ID. Wraps the test as a snippet and executes it.',
   params: [
     {id: 'testId', as: 'string', asIs: true, mandatory: true, description: 'The test ID to run (e.g., "jqTest.tryCatch")'},
-    {id: 'logger', as: 'string', asIs: true, description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
+    {id: 'logger', as: 'string', asIs: true, description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger. OVERRIDES the test's own logger list, so you get only these logs.`},
   ],
   impl: mcpTool({
     text: async (ctx, {}, {testId, logger}) => {
       try {
         await import('@jb6/lang-service')
-        return coreUtils.runSnippetCli({profileText: `{$: 'test<test>${testId}'}`, logger})
+        const ctxEnricher = logger ? {$: 'ctx-enricher<tgp>setVars', obj: {$: 'data<common>asIs', val: {overrideTestLoggers: logger}}} : undefined
+        return coreUtils.runSnippetCli({profileText: `{$: 'test<test>${testId}'}`, logger, ctxEnricher})
       } catch (error) {
         return `Error running test: ${error.stack || error}`
       }
@@ -199,6 +200,7 @@ const page = await browser.newPage()
 const errors = []
 page.on('console', m => /error|warning/i.test(m.type()) && errors.push(m.text()))
 page.on('pageerror', e => errors.push(String(e?.stack || e)))
+await page.addInitScript(() => window.addEventListener('unhandledrejection', e => console.error('unhandledrejection: ' + (e.reason?.stack || e.reason))))
 const seed = ${JSON.stringify(seed)}
 if (seed) await page.addInitScript(s => Object.entries(s).forEach(([k, v]) => localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v))), seed)
 await page.addInitScript(() => {
@@ -208,14 +210,18 @@ await page.addInitScript(() => {
     ctx.vars.uiLogger?.info?.({ t: 'jbOnMounted.installed', msg: 'test harness injected externally into prod page; driver ready' }, {}, { ctx })
   }
 })
-await page.goto(${JSON.stringify(url)}, { waitUntil: 'domcontentloaded', timeout: ${timeout} }); mark('loaded')
-await page.waitForFunction(() => window.jbMounted, null, { timeout: ${timeout} }); mark('mounted')
-const uiActionJsonStr = ${JSON.stringify(uiActionJsonStr || '')}
-const { done, logs } = await page.evaluate(([s, limit]) => window.jbRunAndHarvest(s, limit), [uiActionJsonStr, ${timeout}]); mark('done')
-const html = ${JSON.stringify(domSelector || '')} ? await page.evaluate(s => document.querySelector(s)?.outerHTML, ${JSON.stringify(domSelector || '')}) : undefined
+let done, logs, html, harvestError
+try {
+  await page.goto(${JSON.stringify(url)}, { waitUntil: 'domcontentloaded', timeout: ${timeout} }); mark('loaded')
+  await page.waitForFunction(() => window.jbMounted, null, { timeout: ${timeout} }); mark('mounted')
+  const uiActionJsonStr = ${JSON.stringify(uiActionJsonStr || '')}
+  ;({ done, logs } = await page.evaluate(([s, limit]) => window.jbRunAndHarvest(s, limit), [uiActionJsonStr, ${timeout}])); mark('done')
+  await page.waitForTimeout(500)   // drain late async render errors / unhandled rejections before closing
+  html = ${JSON.stringify(domSelector || '')} ? await page.evaluate(s => document.querySelector(s)?.outerHTML, ${JSON.stringify(domSelector || '')}) : undefined
+} catch (e) { harvestError = String(e?.message || e); mark('failed:' + (timeline.at(-1)?.phase || 'goto')) }
 await browser.close(); mark('closed')
 const redirect = ${JSON.stringify(redirect)}
-await coreUtils.writeServiceResult({ done, errors, logs, html, timeline, redirect })`
+await coreUtils.writeServiceResult({ done, harvestError, errors, logs, html, timeline, redirect })`
     const { result, error } = await coreUtils.runCliInContext(script)
     return JSON.stringify(error ? { error } : result, null, 2)
   })
