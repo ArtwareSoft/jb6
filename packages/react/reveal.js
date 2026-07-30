@@ -9,7 +9,8 @@ const cdn = path => `https://cdn.jsdelivr.net/npm/reveal.js@${REVEAL_VERSION}/di
 Component('loadReveal', {
   type: 'ctx-enricher<tgp>',
   params: [
-    {id: 'theme', as: 'string', options: 'black,white,league,beige,sky,night,serif,simple,solarized,moon,dracula,blood', description: 'reveal theme name - fetches full CSS (core + theme) from CDN. empty = use the bundled black theme (offline)'}
+    {id: 'theme', as: 'string', options: 'black,white,league,beige,sky,night,serif,simple,solarized,moon,dracula,blood',
+      description: 'theme name. empty uses the bundled offline black theme'}
   ],
   impl: async (ctx, {}, {theme}) => {
     const { Reveal, css } = await reactUtils.loadReveal()
@@ -18,8 +19,8 @@ Component('loadReveal', {
       : css
     if (!document.getElementById('reveal-css'))
       document.head.appendChild(Object.assign(document.createElement('style'), { id: 'reveal-css', textContent: styleText }))
-    const mount = hostEl => {
-      const deck = new Reveal(hostEl, { embedded: true })
+    const mount = (hostEl, options) => {
+      const deck = new Reveal(hostEl, { embedded: true, ...options })
       deck.initialize()
 
       const decorate = () => deck.sync()

@@ -51,7 +51,7 @@ import '@jb6/lang-service'
 ;(async()=>{ try {
   await coreUtils.writeServiceResult(await coreUtils.runSnippetCli(${JSON.stringify({ ...args, profile: undefined, profileText, ctxEnricher, repoRoot, bindLoggers, logger: undefined, ctx: undefined })}))
 } catch (e) { console.error(e) } })()`
-    const res = await coreUtils.runCliInContext(script, { ctx, bindLoggers, stream: 'both' })
+    const res = await coreUtils.runCliInContext(script, { ctx, bindLoggers })
     return { ...(res.result || res), ...harvest() }
   }
 
@@ -74,7 +74,7 @@ import '@jb6/lang-service'
   try {
     const result = await runCliInContext(
       `${ecmScript}\n await coreUtils.writeServiceResult(await calc())`,
-      {projectDir, importMapsInCli, ctx, bindLoggers, stream: 'both'}
+      {projectDir, importMapsInCli, ctx, bindLoggers}
     )
     const value = { ...result.result, topLevelImports }   // JSON-safe run result (logs excluded - harvested per call)
     if (!value.error) await coreUtils.writeTgpModelCache(cacheKey, value)

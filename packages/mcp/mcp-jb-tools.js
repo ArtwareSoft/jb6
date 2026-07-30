@@ -198,7 +198,8 @@ const { chromium } = await import(coreUtils.pathJoin(await coreUtils.calcRepoRoo
 const browser = await chromium.launch(); mark('launched')
 const page = await browser.newPage()
 const errors = []
-page.on('console', m => /error|warning/i.test(m.type()) && errors.push(m.text()))
+page.on('console', m => /error|warning/i.test(m.type()) &&
+  !m.text().startsWith('cdn.tailwindcss.com should not be used in production') && errors.push(m.text()))
 page.on('pageerror', e => errors.push(String(e?.stack || e)))
 await page.addInitScript(() => window.addEventListener('unhandledrejection', e => console.error('unhandledrejection: ' + (e.reason?.stack || e.reason))))
 const seed = ${JSON.stringify(seed)}

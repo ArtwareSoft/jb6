@@ -18,16 +18,30 @@ const ensureLoggers = (names = [], {ctx = new coreUtils.Ctx(), wrapToStderr} = {
   names = (Array.isArray(names) ? names : String(names).split(',')).map(s => s.trim()).filter(Boolean)
   if (wrapToStderr) coreUtils.browserSpy?.initSpy({spyParam: 'all'})
   return [...new Set(['errorLogger', ...names])].reduce((c, name) => {
-    const comp = jb.dsls.test.logger[name] || Logger(name, { impl: domainLogger(name.replace(/Logger$/, '')) })   // unregistered name -> register a default domain logger on the fly
+    const comp = jb.dsls.test.logger[name]
+      || Logger(name, { impl: domainLogger(name.replace(/Logger$/, '')) })   // unregistered name -> register a default domain logger on the fly
     const inst = c.vars[name] || comp.$runWithCtx(c)
     if (wrapToStderr) wrapLoggerInstanceToStderr(name, inst)
     if (wrapToStderr && name == 'cliLogger') inst.info({t: 'staticImportsLoaded', staticImportsMs: Math.round(globalThis.performance?.now?.() || 0)}, {}, {ctx: c})
-    return c.vars[name] ? c : c.setVars({[name]: inst})
+    if (c.vars[name]) return c
+    c = c.setVars({[name]: inst})
+    return inst.onCreation ? inst.onCreation(c) : c   // onCreation(ctx)->ctx: composite loggers arm ctx (e.g. set benchmark, pull dep loggers)
   }, ctx)
 }
 coreUtils.ensureLoggers = ensureLoggers
 
 coreUtils.harvestLogs = (ctx, names) => Object.fromEntries((names || Object.keys(ctx.vars)).filter(n => ctx.vars[n]?.logsAndErrors).map(n => [n, ctx.vars[n].logsAndErrors()]))
+jb.loggingUtils ||= {}
+jb.loggingUtils.preserveForBigLog = (ctx, names) => ctx.vars.bigLogLogger.bigLogLog.push(Object.fromEntries(names.map(name =>
+  [name, Object.fromEntries(Object.entries(ctx.vars[name].logsAndErrors({stripData: false})).map(([channel, entries]) => [channel, [...entries]]))])))
+coreUtils.harvestBigLog = ctx => {
+  const logs = coreUtils.harvestLogs(ctx)
+  ;[...(ctx.vars.bigLogLogger?.bigLogLog || [])].reverse().forEach(extra => Object.entries(extra).forEach(([name, channels]) =>
+    Object.entries(channels).forEach(([channel, entries]) =>
+      (logs[name] ||= {})[channel] = [...entries, ...(logs[name]?.[channel] || [])])))
+  delete logs.bigLogLogger
+  return logs
+}
 coreUtils.activeLoggers = ctx => Object.keys(ctx.vars).filter(n => /Logger$/.test(n)).join(',')
 
 // loggersFromUrl: instantiate loggers named by `?logger=...` URL param + activate spy. Returns ctx with logger vars.
@@ -148,7 +162,7 @@ const wrapLoggerInstanceToStderr = (name, inst) => {
     const o = inst[ch]?.bind(inst)
     if (!o) continue
     inst[ch] = (...args) => {
-      const event = args[0] && typeof args[0] === 'object' ? {...args[0], $source} : args[0]
+      const event = scrubSignatures(args[0] && typeof args[0] === 'object' ? {...args[0], $source} : args[0])
       try { process.stderr.write(JSON.stringify({kind:'log', logger:name, channel:ch, event}).replace(/\n/g, '\\n') + '\n') } catch {}
       return o(event, ...args.slice(1))
     }
@@ -156,4 +170,3 @@ const wrapLoggerInstanceToStderr = (name, inst) => {
   return inst
 }
 coreUtils.wrapLoggerInstanceToStderr = wrapLoggerInstanceToStderr
-
