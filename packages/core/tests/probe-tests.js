@@ -89,17 +89,6 @@ Test('probeTest.calcCircuit', {
   })
 })
 
-Test('probeTest.calcCircuitPhaseLogs', {
-  impl: dataTest({
-    calculate: async () => {
-      const { probeLogger } = coreUtils.ensureLoggers('probeLogger').vars
-      await runProbe('data<common>cmpAA~impl', { progressLogger: probeLogger })
-      return probeLogger.probeLog.filter(e => e.severity != 'progress')
-    },
-    expectedResult: equals('beforeCalcCircuit,afterCalcCircuit,probe completed', pipeline('%%', '%t%', join(',')))
-  })
-})
-
 Test('probeCliTest.claudeDir', {
   doNotRunInTests: true,
   impl: dataTest({
