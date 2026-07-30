@@ -60,13 +60,12 @@ Component('ensureLogger', {
 
 const takeFromVars = (ids, ctx) => Object.fromEntries((ids||'').split(',').map(x=>x.trim()).filter(x=>x).filter(p=>ctx?.vars[p] != null).map(p=>[p,ctx.vars[p]]))
 
-// scrubSignatures: elide signed-url query strings (X-Goog-*/X-Amz-*/Signature=…) in any logged string so log lines stay short & readable.
-// only the logged copy is touched; the marker keeps the elided length for diagnostics. no-op for non-matching strings.
 const sigRe = /\?[^'")\]\s]*(?:X-Goog-|X-Amz-|Signature=)[^'")\]\s]*/g
-const scrubSignatures = v =>
+const scrubSignatures = (v, seen = new WeakSet()) =>   // seen: cycle guard - logged graphs (ctx/dataObj) are circular; without it recursion overflows the stack
   typeof v === 'string' ? v.replace(sigRe, m => `?<signature:${m.length - 1}chars>`)
-  : Array.isArray(v) ? v.map(scrubSignatures)
-  : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrubSignatures(x)]))
+  : v && typeof v === 'object' ? (seen.has(v) ? v : (seen.add(v),
+      Array.isArray(v) ? v.map(x => scrubSignatures(x, seen))
+      : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrubSignatures(x, seen)]))))
   : v
 coreUtils.scrubSignatures = scrubSignatures
 
