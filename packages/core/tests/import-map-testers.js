@@ -20,7 +20,7 @@ const Jb6 = Repo('Jb6', {
   impl: ({}, {}) => calcRepoRoot()
 })
 
-const Genie = Repo('Genie', {
+const Wonder = Repo('Wonder', {
   impl: ({}, {}) => '/home/shaiby/projects/wonder'
 })
 

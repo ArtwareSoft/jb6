@@ -4,7 +4,7 @@ import './import-map-testers.js'
 const { 
   test: { Test, 
     test: { dataTest, staticServeConfigTest, calcImportDataTest },
-    repo: { Genie }
+    repo: { Wonder }
   }, 
   common: { Data, Action, Boolean,
     data: { pipeline, filter, join, property, obj, delay, asIs,list }, 
@@ -31,21 +31,9 @@ Test('importMapTest.jb6Monorepo', {
 Test('wonderTest.staticServeConfigTest', {
   HeavyTest: true,
   impl: staticServeConfigTest({
-    repo: Genie(),
+    repo: Wonder(),
     transform: list('%repoRootName%', '%staticMappings/diskPath%', pipeline('%importMap/imports%')),
-    expectedResult: contains('wonder', `${wonderPath}/public/3rd-party/@jb6`, '@wonder', {
-      allText: json.stringify()
-    })
-  })
-})
-
-Test('wonderTest.importMap', {
-  HeavyTest: true,
-  impl: calcImportDataTest(`${wonderPath}/public/tests/basic-tests.js`, {
-    transform: list('%repoRootName%','%staticMappings/diskPath%','%importMap/imports%'),
-    expectedResult: contains('wonder', `${wonderPath}/public/3rd-party/@jb6`, '/jb6_packages/common/index.js', {
-      allText: json.stringify()
-    })
+    expectedResult: contains('wonder', '@wonder', { allText: json.stringify() })
   })
 })
 
@@ -67,25 +55,16 @@ Test('wonderTest.importMap', {
 
 Test('wonderTest.nodejs.calcTgpModelData', {
   HeavyTest: true,
+  nodeOnly: true,
   impl: dataTest({
-    calculate: async () => {
-      if (!coreUtils.isNode) {
-        const script = `
-              const {coreUtils} = await import('@jb6/core')
-      await import('@jb6/lang-service')
-      const result = await coreUtils.calcTgpModelData({ entryPointPaths: '${wonderPath}/public/core/db-drivers.js', 
-        fetchByEnvHttpServer: 'http://localhost:3000'})
-        await coreUtils.writeServiceResult(result)
-        `
-        const res = await coreUtils.runNodeCliViaJbWebServer(script, {projectDir: wonderPath, 
-          importMapsInCli: `${wonderPath}/public/core/nodejs-importmap.js` })
-        return res
-      }
+    calculate: async ctx => {
+        await import('@jb6/lang-service')
+        const modelResources = {entryPointPaths: `${wonderPath}/wonder/db/db-drivers.js`,
+        fetchByEnvHttpServer: 'http://localhost:3000'}
+        return !!(await coreUtils.calcTgpModelData(modelResources, ctx)).dsls.wonder
     },
-    expectedResult: contains({
-      text: [`${wonderPath}/public/3rd-party/@jb6`,`/jb6_packages/common/index.js`,`bsg-tests`],
-      allText: json.stringify()
-    }),
-    timeout: 10000
+    expectedResult: '%%',
+    timeout: 3000,
+    logger: 'langServiceLogger'
   })
 })

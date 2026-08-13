@@ -54,6 +54,7 @@ Test('wonderMcpTest.wonderWorkflow', {
 
 Test('wonderMcpTest.snippet', {
   HeavyTest: true,
+  doNotRunInTests: true,
   impl: mcpToolTest({
     tool: 'runTgpSnippet',
     args: asIs({

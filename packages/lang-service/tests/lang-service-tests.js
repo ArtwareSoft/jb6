@@ -620,6 +620,12 @@ Test('completionActionTest.defaultValueAsProfile', {
   })
 })
 
+Test('completionTest.keepTgpTypeModifier', {
+  impl: completionOptionsTest(`ALL:Aggregator('join', {
+  impl: ''
+})`, [], {filePath: 'packages/common/essentials.js', notInSuggstions: '🔄 reformat'})
+})
+
 Test('completionActionTest.fixUnActivatedMacro', {
   impl: completionActionTest(`ALL:Data('cmp1', __{ impl: asIs})`, {
     completionToActivate: '🔄 reformat',

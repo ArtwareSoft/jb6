@@ -1,11 +1,12 @@
 import { jb, coreUtils, dsls } from '@jb6/core'
 import { reactUtils } from './react-utils.js'
 
-const { tgp: { Component } } = dsls
+const {
+  react: { ProgressIndicator, ProgressHfunc }
+} = dsls
 const { h, hh, L } = reactUtils
 
-Component('spinner', {
-  type: 'progress-indicator<react>',
+ProgressIndicator('spinner', {
   description: 'classic Lucide loader spinning. No events.',
   impl: ctx => ({
     requiredLoggers: () => '',
@@ -18,8 +19,7 @@ Component('spinner', {
   })
 })
 
-Component('dots', {
-  type: 'progress-indicator<react>',
+ProgressIndicator('dots', {
   description: 'time-based animated dots, no events required',
   params: [
     {id: 'title', as: 'string', defaultValue: 'Loading'},
@@ -39,14 +39,18 @@ Component('dots', {
   })
 })
 
-const byProgress = Component('byProgress', {
-  type: 'progress-indicator<react>',
+ProgressHfunc('latestProgressText', {
+  description: 'renders the latest progressEvent.t',
+  impl: ({}, {react: {h}}) => ({progressEvent}) => h('div', {}, progressEvent?.t ?? '')
+})
+
+const byProgress = ProgressIndicator('byProgress', {
   description: 'subscribes to coreUtils.eventEmitter and shows progress events',
   params: [
     {id: 'title', as: 'string', defaultValue: 'Loading'},
-    {id: 'hFunc', type: 'progress-hfunc<react>', dynamic: true, byName: true, defaultValue: {$: 'progress-hfunc<react>text'}},
+    {id: 'hFunc', type: 'progress-hfunc<react>', dynamic: true, byName: true, defaultValue: {$: 'progress-hfunc<react>latestProgressText'}},
     {id: 'filter', dynamic: true, defaultValue: true, description: '(progressEvent) => boolean; default: accept all'},
-    {id: 'requiredLoggers', as: 'string', dynamic: true, defaultValue: 'uiLogger'},
+    {id: 'requiredLoggers', as: 'string', dynamic: true, defaultValue: 'uiLogger'}
   ],
   impl: (ctx, {react: {useState, useEffect}, uiLogger}, {title, filter, hFunc: hFuncF, requiredLoggers}) => ({
     requiredLoggers,
@@ -69,48 +73,34 @@ const byProgress = Component('byProgress', {
   })
 })
 
-// byStatus is byProgress with a built-in status filter
-Component('byStatus', {
-  type: 'progress-indicator<react>',
+ProgressIndicator('byStatus', {
   description: 'byProgress filtered to status-flagged events',
   params: [
     {id: 'title', as: 'string', defaultValue: 'Loading'},
-    {id: 'hFunc', type: 'progress-hfunc<react>', dynamic: true, byName: true, defaultValue: {$: 'progress-hfunc<react>text'}},
+    {id: 'hFunc', type: 'progress-hfunc<react>', dynamic: true, byName: true, defaultValue: {$: 'progress-hfunc<react>latestProgressText'}},
     {id: 'requiredLoggers', as: 'string', dynamic: true, byName: true, defaultValue: 'uiLogger'}
   ],
-  impl: byProgress({
-    title: '%$title%',
-    filter: '%$progressEvent.status%',
+  impl: byProgress('%$title%', {
     hFunc: '%$hFunc()%',
+    filter: '%$progressEvent.status%',
     requiredLoggers: '%$requiredLoggers()%'
   })
 })
 
-// progress-hfunc<react> renderers. RT: (ctx) => ({progressEvent}) => vdom
-
-Component('text', {
-  type: 'progress-hfunc<react>',
-  description: 'renders progressEvent.t',
-  impl: ({}, {react: {h}}) => ({progressEvent}) => h('div', {}, progressEvent?.t ?? '')
-})
-
-Component('textWithPct', {
-  type: 'progress-hfunc<react>',
+ProgressHfunc('textWithPct', {
   description: 'renders "t — pct%"',
   impl: ({}, {react: {h}}) => ({progressEvent}) =>
     h('div', {}, `${progressEvent?.t ?? ''} — ${progressEvent?.pct ?? 0}%`)
 })
 
-Component('progressBar', {
-  type: 'progress-hfunc<react>',
+ProgressHfunc('progressBar', {
   description: 'horizontal bar reading progressEvent.pct',
   impl: ({}, {react: {h}}) => ({progressEvent}) =>
     h('div:bg-gray-200 h-2 w-full', {},
       h('div:bg-blue-500 h-2', {style: {width: `${progressEvent?.pct ?? 0}%`}}))
 })
 
-Component('stepper', {
-  type: 'progress-indicator<react>',
+ProgressIndicator('stepper', {
   description: 'accumulates progress events keyed by .step and renders a vertical checklist',
   params: [
     {id: 'title', as: 'string', defaultValue: 'Loading'},

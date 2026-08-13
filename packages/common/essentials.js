@@ -28,7 +28,7 @@ const Aggregator = TgpTypeModifier('Aggregator', { aggregator: true, dsl: 'commo
 Aggregator('join', {
   params: [
     {id: 'separator', as: 'string', defaultValue: ','},
-    {id: 'prefix', as: 'string', byName: true },
+    {id: 'prefix', as: 'string', byName: true},
     {id: 'suffix', as: 'string'},
     {id: 'items', as: 'array', defaultValue: '%%'},
     {id: 'itemText', as: 'string', dynamic: true, defaultValue: '%%'}

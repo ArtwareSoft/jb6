@@ -8,7 +8,7 @@ const {
 Aggregator('aggregate', {
   description: 'in pipeline, calc function on all items, rather then one by one',
   params: [
-    {id: 'aggregator', type: 'data', mandatory: true, dynamic: true}
+    {id: 'aggregator', mandatory: true, dynamic: true}
   ],
   impl: ({}, {}, {aggregator}) => aggregator()
 })
