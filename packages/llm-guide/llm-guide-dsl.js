@@ -1,11 +1,20 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/core/misc/pretty-print.js'
+import './essentials.js'
 
 const { 
   tgp: { TgpType, Component },
+  'llm-guide': { Doclet, Booklet }
 } = dsls
 
 Object.assign(coreUtils, {bookletContent, docletContent})
+coreUtils.sourceRefs ||= {
+  wrap: (id, text) => `<!--sourceRef:doclet<llm-guide>${id}-->\n${text}\n<!--/sourceRef:doclet<llm-guide>${id}-->`,
+  strip: text => String(text || '').replace(/<!--\/?sourceRef:[^>]+-->\n?/g, ''),
+  ids: value => [...new Set((JSON.stringify(value).match(/doclet<llm-guide>[\w.-]+/g) || []).map(x => x.split('>').pop()))]
+}
+coreUtils.evaluateDoclet = (text, vars) => String(text).replace(/<BOOKLET-EVALUATE>%\$([^%]+)%<\/BOOKLET-EVALUATE>/g,
+  (match, name) => coreUtils.prettyPrint(vars[name], {noMacros: true}) ?? match)
 
 // ============================================================================= 
 // DOCLET DSL - 
@@ -14,14 +23,12 @@ Object.assign(coreUtils, {bookletContent, docletContent})
 // =============================================================================
 
 // Define the DSL types
-const Doclet = TgpType('doclet', 'llm-guide')           // Main documentation container
 const Guidance = TgpType('guidance', 'llm-guide')       // Solution/anti-pattern components
 const Evidence = TgpType('evidence', 'llm-guide') 
 const ExplanationPoint = TgpType('explanationPoint', 'llm-guide') // Individual explanation components
 const ProblemStatement = TgpType('problemStatement', 'llm-guide') // New: Problem statement container
 const Validation = TgpType('validation', 'llm-guide')
 const Concept = TgpType('concept', 'llm-guide')
-const Booklet = TgpType('booklet', 'llm-guide') // documentation package for llm prompt
 
 // =============================================================================
 // TYPE: doclet - Main documentation container
@@ -365,21 +372,12 @@ Validation('buildQuiz', {
   ]
 })
 
-Booklet('booklet', {
-  params: [
-    {id: 'doclets', as: 'string', description: 'comma delimited names of doclets', mandatory: true},
-    {id: 'whenToUse', as: 'text'}
-  ]
-})
-
 function docletContent(docletId, ctx, tgpModel = jb) {
   const doclet = tgpModel.dsls['llm-guide'].doclet[docletId]
   if (!doclet) return null
   
   const docletCtx = ctx.setVars({doNotCalcExpression: true})
-  return coreUtils.prettyPrintComp(doclet, {tgpModel})
-    .replace(/<BOOKLET-EVALUATE>%\$([^%]+)%<\/BOOKLET-EVALUATE>/g, 
-      (match, varName) => coreUtils.prettyPrint(docletCtx.vars[varName], {noMacros: true}) ?? match)
+  return coreUtils.sourceRefs.wrap(docletId, coreUtils.evaluateDoclet(coreUtils.prettyPrintComp(doclet, {tgpModel}), docletCtx.vars))
 }
 
 function bookletContent(bookletId, ctx, tgpModel = jb) {
