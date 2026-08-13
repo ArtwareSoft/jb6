@@ -426,27 +426,36 @@ function calcHash(str) {
   return hash
 }
 
+const SERVICE_RESULT_FILE_THRESHOLD = 40000
+
 async function writeServiceResult(result, _httpReqId) {
   const httpReqId = _httpReqId || globalThis.httpReqId
   if (httpReqId)
-    return httpRequests[httpReqId].res.json(result)
+    return httpRequests[httpReqId].res.json(result)   // HTTP response has no stdout-buffer limit → always inline
 
   const res = JSON.stringify(result, null, 2)
-  const writeRes = process.stdout.write(res)
-
-  if (res.length < 40000)
+  if (res.length < SERVICE_RESULT_FILE_THRESHOLD) {   // small → inline on stdout, the fast path parseServiceResult reads directly
+    process.stdout.write(res)
     return process.exit(0)
-
-  const timeout = 5000 // Math.max(5000, res.length / 10) // wait time defined by res size ~10KB/s worst case
-  if (!writeRes) {
-    const { once } = await import('events')
-    await Promise.race([
-      once(process.stdout, 'drain'),
-      new Promise(r => setTimeout(r, timeout))
-    ])
   }
 
+  // big → write to /tmp and emit only a small self-describing envelope. parseServiceResult resolves+deletes the file.
+  const os = await import('os'), pathMod = await import('path'), fs = await import('fs')
+  const path = pathMod.join(os.tmpdir(), `jb-service-result-${process.pid}-${calcHash(res)}.json`)
+  fs.writeFileSync(path, res)
+  process.stdout.write(JSON.stringify({ $jbResultFile: path, description: 'large stdout saved to tmp file', fileSize: res.length }))
   process.exit(0)
+}
+
+// Decoder mirroring writeServiceResult: parse child stdout, and if it's a {$jbResultFile} envelope
+// read+parse that tmp file then best-effort delete it. Node-only file access; small results parse inline.
+async function parseServiceResult(out) {
+  const parsed = JSON.parse(out)
+  if (!parsed || typeof parsed !== 'object' || !parsed.$jbResultFile) return parsed
+  const fs = await import('fs')
+  const result = JSON.parse(fs.readFileSync(parsed.$jbResultFile, 'utf8'))
+  // try { fs.unlinkSync(parsed.$jbResultFile) } catch {}   // TEMP: keep tmp files for inspection during testing
+  return result
 }
 
 function broadcastStatus(text) {
@@ -465,5 +474,5 @@ Object.assign(jb.coreUtils, {
   isPromise, isPrimitiveValue, isRefType, resolveFinishedPromise, unique, asArray, toArray, toString, toNumber, toSingle, toJstype, deepMapValues, omitProps, omitEmptyProps,
   enrichCtxWithDataContext, compIdOfProfile, compParams, parentPath, calcPath, splitDslType,
   delay, isDelayed, waitForInnerElements, isCallbag, callbagToPromiseArray, subscribe, objectDiff, sortedArraysDiff, compareArrays,
-  calcValue, stripData, squeeze, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, broadcastStatus, eventEmitter
+  calcValue, stripData, squeeze, resolveRefs, estimateTokens, pathJoin, pathParent, calcHash, writeServiceResult, parseServiceResult, broadcastStatus, eventEmitter
 })

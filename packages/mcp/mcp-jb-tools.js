@@ -29,10 +29,12 @@ Tool('repoRoot', {
 })
 
 Tool('scanDsl', {
-  description: 'map a dsl (or comma-separated dsls) from the registered model: its TgpType defs and, grouped by the file that defines them, its comps and tests. details: files|comps|all-comps-with-params|full',
+  description: `map a dsl (or comma-separated dsls) from the registered model: its TgpType defs and, grouped by the file that defines them,
+its comps and tests. details: files|comps|all-comps-with-params|full`,
   params: [
     {id: 'dsl', as: 'string', asIs: true, defaultValue: 'common', description: 'comma separated e.g. test,llm-guide,common' },
-    {id: 'details', as: 'string', asIs: true, defaultValue: 'files', description: 'files=TgpTypes+file names, comps=+comps grouped by TgpType (first 3 per type, +N more) with #params & impl length, all-comps-with-params=all comps grouped by TgpType with their params, full=+full source of each file' },
+    {id: 'details', as: 'string', asIs: true, defaultValue: 'files', description: `files=TgpTypes+file names, comps=+comps grouped by TgpType
+(first 3 per type, +N more) with #params & impl length, all-comps-with-params=all comps grouped by TgpType with their params, full=+full source of each file`},
   ],
   impl: mcpTool(async (ctx, {}, {dsl, details}) => {
     await import('@jb6/lang-service')
@@ -57,8 +59,49 @@ Tool('sourceCodeOfComp', {
   })
 })
 
+Tool('formatAndValidateTgpComp', {
+  description: 'Format a TGP component and update its source file',
+  params: [
+    {id: 'fullCompId', as: 'string', asIs: true, mandatory: true,
+      description: `full component ID, e.g. test<test>coreTest.HelloWorld`},
+    {id: 'compHeader', options: 'tgpTypeName,component', defaultValue: 'tgpTypeName'},
+    {id: 'logger', as: 'string', asIs: true, description: `comma-separated loggers, e.g. langServiceLogger`},
+  ],
+  impl: mcpTool(async (ctx, {}, {fullCompId, compHeader, logger}) => {
+    const loggerNames = (logger || '').split(',').map(x=>x.trim()).filter(Boolean)
+    const logCtx = coreUtils.ensureLoggers(loggerNames, {ctx})
+    const done = result => JSON.stringify({...result, ...coreUtils.harvestLogs(logCtx, loggerNames)}, null, 2)
+    try {
+      await import('@jb6/lang-service')
+      const repoRoot = await coreUtils.calcRepoRoot()
+      const tgpModel = await coreUtils.calcTgpModelData({forRepo: repoRoot, ctx: logCtx})
+      const comp = coreUtils.compByFullId(fullCompId, tgpModel)
+      if (!comp?.$location) throw new Error(`fullCompId '${fullCompId}' not found`)
+      const {readFile, writeFile} = await import('fs/promises')
+      const {lineColToOffset, calcProfileActionMap} = jb.langServiceUtils
+      const {importMap, staticMappings} = await coreUtils.calcImportData({forRepo: repoRoot})
+      const {to} = comp.$location
+      const path = coreUtils.resolveWithImportMap(comp.$location.path, importMap, staticMappings) || comp.$location.path
+      const src = await readFile(path, 'utf8')
+      const from = lineColToOffset(src, comp.$location), end = lineColToOffset(src, to)
+      const {comp: parsedComp, error} = calcProfileActionMap(src.slice(from, end), {tgpModel, filePath: path, ctx: logCtx})
+      if (error || parsedComp?.syntaxError) throw new Error(error?.syntaxError || error || parsedComp.syntaxError)
+      const formatted = coreUtils.prettyPrintComp(parsedComp, {tgpModel, filePath: path, initialPath: fullCompId, compHeader})
+      const changed = formatted != src.slice(from, end)
+      if (changed) await writeFile(path, src.slice(0, from) + formatted + src.slice(end))
+      logCtx.vars.langServiceLogger?.info?.({t: 'formatComp', fullCompId, path, changed}, {}, {ctx: logCtx})
+      return done({fullCompId, path, changed})
+    } catch (error) {
+      logCtx.vars.langServiceLogger?.warning?.({t: 'formatCompError', fullCompId, error: error.stack || String(error)}, {}, {ctx: logCtx})
+      logCtx.vars.errorLogger?.error?.({t: 'formatCompError', fullCompId, error: error.stack || String(error)}, {}, {ctx: logCtx})
+      return done({error: error.message || String(error)})
+    }
+  })
+})
+
 Tool('macroToJson', {
-  description: 'Convert TGP macro syntax to JSON profile. e.g. pipeline([1,2,3], join("-")) → {$: "data<common>pipeline", ...}. Use tgpModel tool to discover available components.',
+  description: `Convert TGP macro syntax to JSON profile. e.g. pipeline([1,2,3], join("-")) → {$: "data<common>pipeline", ...}.
+Use tgpModel tool to discover available components.`,
   params: [
     {id: 'macroText', as: 'string', asIs: true, mandatory: true, description: `macro expression, e.g. pipeline([1,2,3], join('-')). Prefix with type<dsl>: for non-common dsls`},
   ],
@@ -113,7 +156,8 @@ A probePath addresses a location inside a runnable circuit, e.g.
 Returns the recorded {in,out} at that path plus visits, circuitRes, logs and errors.`,
   params: [
     {id: 'probePath', as: 'string', asIs: true, mandatory: true, description: `probe path, e.g. test<test>myTest~impl~expectedResult~items~0`},
-    {id: 'resolution', as: 'string', options: 'default,input,output,all', defaultValue: 'default', description: `result detail: 'default' = {in,out} at path + visits + circuitRes + errors; 'input'/'output' = only that side of the captured records; 'all' adds logs, cmd, imports`},
+    {id: 'resolution', as: 'string', options: 'default,input,output,all', defaultValue: 'default',
+      description: `result detail: 'default' = {in,out} at path + visits + circuitRes + errors; 'input'/'output' = only that side; 'all' adds logs, cmd, imports`},
     {id: 'circuit', as: 'string', description: `force circuit comp id (overrides auto-detect), e.g. test<test>circuitForAA`},
     {id: 'logger', as: 'string', description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger`},
     {id: 'repoRoot', as: 'string', description: `cross-repo: target repo root, e.g. /home/shaiby/projects/Genie`},
@@ -123,7 +167,9 @@ Returns the recorded {in,out} at that path plus visits, circuitRes, logs and err
     text: async (ctx, {}, {probePath, resolution, circuit, logger, repoRoot, fetchByEnvHttpServer}) => {
       try {
         await import('@jb6/lang-service')
-        const res = await coreUtils.runProbeCli(probePath, {circuitCmpId: circuit, logger, forRepo: repoRoot, fetchByEnvHttpServer, resolution})
+        const res = await coreUtils.runProbeCli(probePath, {
+          circuitCmpId: circuit, logger, forRepo: repoRoot, fetchByEnvHttpServer, resolution
+        })
         return JSON.stringify(res, null, 2)
       } catch (error) {
         return `Error running probe: ${error.stack}`
@@ -136,7 +182,8 @@ Tool('runTest', {
   description: 'Run a jb6 test by its test ID. Wraps the test as a snippet and executes it.',
   params: [
     {id: 'testId', as: 'string', asIs: true, mandatory: true, description: 'The test ID to run (e.g., "jqTest.tryCatch")'},
-    {id: 'logger', as: 'string', asIs: true, description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger. OVERRIDES the test's own logger list, so you get only these logs.`},
+    {id: 'logger', as: 'string', asIs: true,
+      description: `comma-separated loggers, e.g. snippetLogger,langServiceLogger,dbLogger. OVERRIDES the test's own logger list.`},
   ],
   impl: mcpTool({
     text: async (ctx, {}, {testId, logger}) => {
@@ -169,10 +216,12 @@ url carries query params: logger, cmpId, urlsToLoad.
 Returns { done, errors, logs, html?, timeline }.`,
   params: [
     {id: 'url', as: 'string', asIs: true, mandatory: true, description: 'full react-comp-view.html url incl. logger/cmpId/urlsToLoad query params'},
-    {id: 'uiActionJsonStr', as: 'string', asIs: true, description: 'ui-action<test> profile to run against the mounted comp. MUST be the JSON escaped as a string (inner quotes escaped), NOT an object - an object becomes "[object Object]" and fails. e.g. "{\\"$\\":\\"ui-action<test>selectInCodeMirror\\",\\"from\\":2,\\"to\\":8}"'},
+    {id: 'uiActionJsonStr', as: 'string', asIs: true, description: `ui-action<test> profile to run against the mounted comp.
+MUST be JSON escaped as a string, NOT an object. e.g. "{\\"$\\":\\"ui-action<test>selectInCodeMirror\\",\\"from\\":2,\\"to\\":8}"`},
     {id: 'timeout', as: 'number', defaultValue: 5000, description: 'ms to wait for the page to mount and its uiAction to finish'},
     {id: 'domSelector', as: 'string', description: 'optional css selector; when set returns that element outerHTML'},
-    {id: 'seedLocalStorage', as: 'string', asIs: true, description: 'id of a data<common> comp whose result object seeds localStorage before boot (e.g. an auth token to render as a logged-in user)'},
+    {id: 'seedLocalStorage', as: 'string', asIs: true,
+      description: 'id of a data<common> comp whose result object seeds localStorage before boot'},
   ],
   impl: mcpTool(async (ctx, {}, {url, uiActionJsonStr, timeout, domSelector, seedLocalStorage}) => {
     let seed = null

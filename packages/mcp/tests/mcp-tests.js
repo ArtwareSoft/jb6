@@ -1,4 +1,4 @@
-import { dsls, ns } from '@jb6/core'
+import { dsls, ns, coreUtils } from '@jb6/core'
 import './mcp-testers.js'
 
 const {
@@ -11,6 +11,7 @@ const {
     boolean: { equals, contains, notContains, and, not },
     prop: { prop },
   },
+  mcp: { tool: { formatComp } },
 } = dsls
 const { json } = ns
 
@@ -56,7 +57,8 @@ Test('genieMcpTest.snippet', {
   impl: mcpToolTest({
     tool: 'runTgpSnippet',
     args: asIs({
-        profileText: `{$: 'data<common>pipeline', source: {$: 'data<common>asIs', val: [{name: 'Homer'}, {name: 'Bart'}]}, operators: ['%name%', {$: 'data<common>join', separator: ','}]}`
+        profileText: `{$: 'data<common>pipeline', source: {$: 'data<common>asIs',
+          val: [{name: 'Homer'}, {name: 'Bart'}]}, operators: ['%name%', {$: 'data<common>join', separator: ','}]}`
     }),
     mcpUrl: 'http://localhost:3000/mcp',
     expectedResult: contains('Homer')
@@ -68,7 +70,8 @@ Test('mcpTest.snippet', {
   impl: mcpToolTest({
     tool: 'runTgpSnippet',
     args: asIs({
-        profileText: `{$: 'data<common>pipeline', source: {$: 'data<common>asIs', val: [{name: 'Homer'}, {name: 'Bart'}]}, operators: ['%name%', {$: 'data<common>join', separator: ','}]}`
+        profileText: `{$: 'data<common>pipeline', source: {$: 'data<common>asIs',
+          val: [{name: 'Homer'}, {name: 'Bart'}]}, operators: ['%name%', {$: 'data<common>join', separator: ','}]}`
     }),
     expectedResult: contains('Homer')
   })
@@ -104,6 +107,36 @@ Test('mcpTest.probeWithLogger', {
   })
 })
 
+Test('mcpTest.formatCompNotFound', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: async () => (await formatComp.$run({fullCompId: 'test<test>notThere', logger: 'langServiceLogger'})).content[0].text,
+    expectedResult: and(contains(`fullCompId 'test<test>notThere' not found`), contains('formatCompError')),
+    timeout: 5000
+  })
+})
+
+Test('mcpTest.formatComp', {
+  HeavyTest: true,
+  impl: dataTest({
+    calculate: async () => (await formatComp.$run({
+      fullCompId: 'test<test>mcpTest.formatCompNotFound', logger: 'langServiceLogger'
+    })).content[0].text,
+    expectedResult: and(contains('mcpTest.formatCompNotFound'), contains('"t": "formatComp"')),
+    timeout: 5000
+  })
+})
+
+Test('mcpTest.prettyPrintCompHeader', {
+  impl: dataTest({
+    calculate: () => [
+      coreUtils.prettyPrintComp(formatComp, {tgpModel: jb}),
+      coreUtils.prettyPrintComp(formatComp, {tgpModel: jb, compHeader: 'component'})
+    ].join('\n'),
+    expectedResult: and(contains(`Tool('formatComp'`), contains(`Component('formatComp'`), contains(`type: 'tool<mcp>'`))
+  })
+})
+
 Test('mcpTest.playwrightHarvest', {
   HeavyTest: true,
   doNotRunInTests: true,
@@ -130,4 +163,3 @@ Test('mcpReactTest.helloMcp.react', {
   doNotRunInTests: true,
   impl: mcpReactTest('helloMcp', ()=>({ textToShowAfter: '--hello mcp--' }))
 })
-

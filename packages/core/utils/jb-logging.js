@@ -107,6 +107,7 @@ export const domainLogger = Logger('domainLogger', {
         this[logName].push({severity: 'error', ...enriched[0], ...enriched[1]})
         this[errorsName].push({...enriched[0], ...enriched[1]})
         spyLog(logName, {severity: 'error', r1: enriched[0], r2: enriched[1], ctx: r3?.ctx})
+        if (domain === 'error' && !this._wrappedToStderr) globalThis.console?.error?.(enriched[0].$source, enriched[0], enriched[1])
         const errLog = r3?.ctx?.vars?.errorLogger   // tee: every error is ALSO recorded in the always-on errorLogger
         if (errLog && errLog !== this) errLog.error(r1, r2, r3)
       },

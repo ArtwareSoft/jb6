@@ -15,7 +15,7 @@ const {
 Test('nodeOnly.basic', {
   nodeOnly: true,
   impl: dataTest({
-    calculate: () => typeof process !== 'undefined' && !!process.versions?.node,
+    calculate: () => globalThis.process?.versions?.node,
     expectedResult: equals(true)
   })
 })

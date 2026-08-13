@@ -23,7 +23,9 @@ function buildNodeCliCmd(script, options = {}) {
 
 // Reverse of wrapLoggerInstanceToStderr: parses JSONL `{kind:'log',logger,channel,event}` from child output and routes to ctx loggers.
 // Non-JSONL lines flow through cliLogger as info events so nothing is silently dropped.
-const tryParse = line => { try { return JSON.parse(line) } catch { return null } }
+const tryParse = line => { const text = line.trim()
+  if (!['{}', '[]'].some(([first, last]) => text.startsWith(first) && text.endsWith(last))) return null
+  try { return JSON.parse(text) } catch { return null } }
 function dispatchChildLine({ctx, line, stream}) {
   if (!line) return
   const ev = tryParse(line)
@@ -113,7 +115,7 @@ async function runNodeCli(script, options = {}) {
       options.onChild?.(child)
       child.stdout.on('data', d => { const text = '' + d; out += text; router?.({stream: 'stdout', text}); onChunk?.({stream: 'stdout', text}) })
       child.stderr.on('data', d => { const text = '' + d; if (!_firstOut) { _firstOut = Date.now(); _log({t: 'child first stderr (node boot+envelope import done)', bootMs: _firstOut - _spawnAt}) } err += text; router?.({stream: 'stderr', text}); onChunk?.({stream: 'stderr', text}) })   // log to delete
-      child.on('close', code => {
+      child.on('close', async code => {
         _log({t: 'child process closed', childWallMs: Date.now() - _spawnAt, bootToFirstOutMs: _firstOut ? _firstOut - _spawnAt : null})   // log to delete
         router?.flush?.()
         if (code !== 0) {
@@ -121,7 +123,7 @@ async function runNodeCli(script, options = {}) {
           logException(error, 'error in run node cli stream', {cmd, cwd, stdout: out})
           return resolve({error, cmd, cwd, code, stderr: err})
         }
-        try { const result = JSON.parse(out); resolve({result, error: result?.error, cmd, cwd, stderr: err}) }
+        try { const result = await coreUtils.parseServiceResult(out); resolve({result, error: result?.error, cmd, cwd, stderr: err}) }
         catch (e) { resolve({error: e.stack || e, cmd, cwd, textToParse: out, stderr: err}) }
       })
     } catch(e) {
@@ -153,11 +155,14 @@ async function runNodeCliViaJbWebServer(script, options = {}) {
     const json = await res.json()
     const { result, error } = json
     cliLogger?.info?.({t: '/run-cli json', hasResult: !!result, error, stderr: String(result?.stderr || '').slice(0,500), textToParse: String(result?.textToParse || '').slice(0,500)}, {}, {ctx})
-    if (error)
+    if (error) {
+      ctx.vars.errorLogger.error({t: '/run-cli error', error}, {}, {ctx})
       return { error, cmd, ...optionsToSend }
+    }
 
     return { ...result, cmd }
   } catch (e) {
+    ctx?.vars?.errorLogger?.error?.({t: '/run-cli exception'}, {}, {ctx, error: e})
     return { error: `runNodeCliViaJbWebServer exception: ${e.stack}`, ...optionsToSend }
   }
 }
@@ -230,8 +235,8 @@ async function streamViaSSE({ startUrl, body, onStatus, onUrls }) {
 }
 
 async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
+  const { ctx, expressUrl = '', ...optionsToPass } = options
   try {
-    const { ctx, expressUrl = '', ...optionsToPass } = options
     const { cmd } = buildNodeCliCmd(script, optionsToPass)
     let _nFwd = 0   // log to delete
     const sseOnStatus = chunk => {
@@ -250,9 +255,13 @@ async function runNodeCliStreamViaJbWebServer(script, options = {}, onStatus) {
       onStatus: sseOnStatus
     })
     onStatus?.flush?.()
-    if (result.error) return { error: result.error, cmd, ...options }
+    if (result.error) {
+      ctx.vars.errorLogger.error({t: '/run-cli-stream error', error: result.error}, {}, {ctx})
+      return { error: result.error, cmd, ...options }
+    }
     return { ...result, cmd }
   } catch (e) {
+    ctx?.vars?.errorLogger?.error?.({t: '/run-cli-stream exception'}, {}, {ctx, error: e})
     return { error: `runNodeCliStreamViaJbWebServer exception: ${e.stack}`, ...options }
   }
 }
@@ -339,7 +348,7 @@ async function runBashScript(script, callbacks) {
     child.stdout.on('data', d => emit(d, false))
     child.stderr.on('data', d => emit(d, true))
 
-    child.on('close', code => {
+    child.on('close', async code => {
       if (onStdoutLine && outBuf) onStdoutLine(outBuf)
       if (onStderrLine && errBuf) onStderrLine(errBuf)
       if (code !== 0) {
@@ -348,7 +357,7 @@ async function runBashScript(script, callbacks) {
         return resolve({ error, stdout, stderr, script })
       }
       try {
-        stdout = JSON.parse(stdout)
+        stdout = await coreUtils.parseServiceResult(stdout)
       } catch (e) {}
       resolve({ stdout, stderr, script })
     })

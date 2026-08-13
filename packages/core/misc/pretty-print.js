@@ -22,7 +22,8 @@ Data('prettyPrint', {
 const emptyLineWithSpaces = Array.from(new Array(200)).map(_=>' ').join('')
 
 function prettyPrintComp(comp,settings={}) {
-  const { tgpModel, filePath } = settings
+  const { tgpModel, filePath, compHeader = 'tgpTypeName' } = settings
+  const genericHeader = compHeader == 'component'
   comp = comp[asJbComp] ? comp[asJbComp] : comp
   const originalParams = comp.params ? (comp.params || []).map(p=> {
     const cleaned = {...p}
@@ -32,14 +33,14 @@ function prettyPrintComp(comp,settings={}) {
   }) : undefined
   resolveProfileTop(comp)
   const resolvedParams = comp.params || []
-  const id = CompDefByDslType({tgpModel, filePath, dslType: comp.$dslType })
+  const id = genericHeader ? 'Component' : CompDefByDslType({tgpModel, filePath, dslType: comp.$dslType })
   const compToPrint = {
     ...comp, params: originalParams,
     $: new jbComp({...jb.dsls.tgp.tgpComp[coreUtils.asJbComp], $dslType: comp.$dslType, id }), 
-    type: undefined, dsl: undefined
+    type: genericHeader ? comp.$dslType : undefined, dsl: undefined
   }
   
-  return prettyPrintWithPositions(compToPrint,{...settings, resolvedParams}).text
+  return prettyPrintWithPositions(compToPrint,{...settings, compHeader, resolvedParams}).text
 }
 
 function prettyPrint(val,settings = {}) {
@@ -51,7 +52,8 @@ function compHeader(compId) {
   return `component('${compId.split('>').pop()}', `
 }
 
-function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noMacros, tgpNoMacros, singleLine, depth, tgpModel, type, resolvedParams, filePath, newLinesInCode} = {}) {
+function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='', noMacros, tgpNoMacros, singleLine, depth,
+  tgpModel, type, resolvedParams, filePath, newLinesInCode, compHeader} = {}) {
   noMacros = noMacros || tgpNoMacros
   newLinesInCode = newLinesInCode ?? noMacros  // default to true when noMacros is set
   val = (val && val[asJbComp]) || val
@@ -261,7 +263,9 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
       return asIsProps(profile,path)
     let id = fullptId.split('>').pop()
     if (fullptId == 'comp<tgp>tgpComp') {
-      if (profile.$?.type == 'comp') {
+      if (compHeader == 'tgpTypeName')
+        id = profile.$?.id
+      else if (profile.$?.type == 'comp') {
         const isComp = (profile.params || []).length > 0
         id =  isComp ? 'Component' : coreUtils.toCapitalType(profile.$dslType.split('<')[0])
         if (isComp && profile.$dslType != 'data<common>')
@@ -465,4 +469,3 @@ function prettyPrintWithPositions(val,{colWidth=100,tabSize=2,initialPath='',noM
     return props[path] = { token: text, fixedPropName, len: text.length, action: `function!${path}` }
   }
 }
-

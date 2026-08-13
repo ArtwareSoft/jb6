@@ -87,14 +87,6 @@ Aggregator('last', {
   impl: ({}, {}, {items}) => items.slice(-1)[0]
 })
 
-Aggregator('count', {
-  description: 'length, size of array',
-  params: [
-    {id: 'items', as: 'array', defaultValue: '%%'}
-  ],
-  impl: ({}, {}, {items}) => items.length
-})
-
 Aggregator('reverse', {
   params: [
     {id: 'items', as: 'array', defaultValue: '%%'}

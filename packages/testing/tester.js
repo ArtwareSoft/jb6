@@ -1,5 +1,5 @@
 import { coreUtils, dsls } from '@jb6/core'
-import '@jb6/common'
+import '@jb6/common/essentials.js'
 
 const { Ctx, jb, logException, asJbComp, delay, waitForInnerElements, globalsOfTypeIds, unique, isNode } = coreUtils
 jb.testingUtils = {runTest, runTests, runTestVm, runTestInVm}

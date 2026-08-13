@@ -90,7 +90,7 @@ function deltaFileContent(compText, newCompText, compPos) {
     }
 }
 
-function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePath, inCompOffset = -1, expectedPath = ''}) {
+function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePath, inCompOffset = -1, expectedPath = '', ctx}) {
     let topComp
     try {
         topComp = astToTgpObj(parse(compText, { ecmaVersion: 'latest', sourceType: 'module' }).body[0], compText)
@@ -117,7 +117,8 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
         Object.assign(topComp, {$dslType: dslType, $$: compId, type, dsl})
         topComp.$originalParams = topComp.params ? (topComp.params || []).map(p=>({...p})) : undefined // for pretty print
         try {
-            resolveProfileTypes(topComp, {tgpModel, expectedType: dslType, topComp, tgpPath: topComp?.id, filePath})
+            ctx?.vars?.langServiceLogger?.info?.({t: 'tgpProfileResolveStart', compId, expectedType: dslType}, {}, {ctx})
+            resolveProfileTypes(topComp, {tgpModel, expectedType: dslType, topComp, tgpPath: topComp?.id, filePath, ctx})
             resolveProfileTop(topComp)
         } catch (error) {
             if (error.syntaxError)

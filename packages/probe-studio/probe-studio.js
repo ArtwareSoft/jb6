@@ -318,7 +318,7 @@ ReactComp('cmdErrorView', {
 const probeResultView = ReactComp('probeResultView', {
   impl: comp({
     hFunc: (ctx, { probeRes, probePath, success, visits, totalTime, titleShort, allViews, react: { h, hh, useState } }) => () => {
-      const [activeView, setActiveView] = useState(allViews[0]?.id || 'resultsView')
+      const [activeView, setActiveView] = useState(allViews.find(x => x.id == 'resultsView')?.id || allViews[0]?.id)
 
       const TabBtn = ({ id, abbr, isActive }) =>
         h('button:text-xs px-1 rounded', {
@@ -560,4 +560,3 @@ const codeMirrorInputOutput = ReactComp('codeMirrorInputOutput', {
     metadata: importUrl(CM6_IMPORT)
   })
 })
-
