@@ -22,8 +22,7 @@ Data('prettyPrint', {
 const emptyLineWithSpaces = Array.from(new Array(200)).map(_=>' ').join('')
 
 function prettyPrintComp(comp,settings={}) {
-  const { tgpModel, filePath, compHeader = 'tgpTypeName' } = settings
-  const genericHeader = compHeader == 'component'
+  const {tgpModel, filePath, compDef} = settings
   comp = comp[asJbComp] ? comp[asJbComp] : comp
   const originalParams = comp.params ? (comp.params || []).map(p=> {
     const cleaned = {...p}
@@ -33,14 +32,14 @@ function prettyPrintComp(comp,settings={}) {
   }) : undefined
   resolveProfileTop(comp)
   const resolvedParams = comp.params || []
-  const id = genericHeader ? 'Component' : CompDefByDslType({tgpModel, filePath, dslType: comp.$dslType })
+  const id = compDef?.capitalLetterId || CompDefByDslType({tgpModel, filePath, dslType: comp.$dslType})
   const compToPrint = {
     ...comp, params: originalParams,
-    $: new jbComp({...jb.dsls.tgp.tgpComp[coreUtils.asJbComp], $dslType: comp.$dslType, id }), 
-    type: genericHeader ? comp.$dslType : undefined, dsl: undefined
+    $: new jbComp({...jb.dsls.tgp.tgpComp[coreUtils.asJbComp], $dslType: comp.$dslType, id}),
+    type: undefined, dsl: undefined
   }
   
-  return prettyPrintWithPositions(compToPrint,{...settings, compHeader, resolvedParams}).text
+  return prettyPrintWithPositions(compToPrint, {...settings, resolvedParams}).text
 }
 
 function prettyPrint(val,settings = {}) {
@@ -48,17 +47,17 @@ function prettyPrint(val,settings = {}) {
   return prettyPrintWithPositions(val,settings).text
 }
 
-function compHeader(compId) {
+function noMacroCompPrefix(compId) {
   return `component('${compId.split('>').pop()}', `
 }
 
 function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='', noMacros, tgpNoMacros, singleLine, depth,
-  tgpModel, type, resolvedParams, filePath, newLinesInCode, compHeader} = {}) {
+  tgpModel, type, resolvedParams, filePath, newLinesInCode} = {}) {
   noMacros = noMacros || tgpNoMacros
   newLinesInCode = newLinesInCode ?? noMacros  // default to true when noMacros is set
   val = (val && val[asJbComp]) || val
   const props = {}
-  const startOffset = val.$comp ? compHeader(fullPTId(val)).length : 0
+  const startOffset = val.$comp ? noMacroCompPrefix(fullPTId(val)).length : 0
 
   if (!val || typeof val !== 'object')
     return { text: val != null && val.toString ? val.toString() : JSON.stringify(val), map: {} }
@@ -262,17 +261,8 @@ function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='',
     if (!comp)
       return asIsProps(profile,path)
     let id = fullptId.split('>').pop()
-    if (fullptId == 'comp<tgp>tgpComp') {
-      if (compHeader == 'tgpTypeName')
-        id = profile.$?.id
-      else if (profile.$?.type == 'comp') {
-        const isComp = (profile.params || []).length > 0
-        id =  isComp ? 'Component' : coreUtils.toCapitalType(profile.$dslType.split('<')[0])
-        if (isComp && profile.$dslType != 'data<common>')
-          profile.type = profile.$dslType
-      } else if (profile.$?.id)
-        id = profile.$?.id
-    }
+    if (fullptId == 'comp<tgp>tgpComp' && profile.$?.id)
+      id = profile.$.id
 
     const params = (comp.params || []).slice(0)
     const param0 = params[0] || {}

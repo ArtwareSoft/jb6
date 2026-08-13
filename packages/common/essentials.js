@@ -61,6 +61,17 @@ Component('list', {
   impl: ({}, {}, {items}) => items.flatMap(item=>Array.isArray(item) ? item : [item])
 })
 
+Aggregator('slice', {
+  params: [
+    {id: 'start', as: 'number', defaultValue: 0, description: '0-based index', mandatory: true},
+    {id: 'end', as: 'number', mandatory: true, description: '0-based index of where to end the selection (not including itself)'}
+  ],
+  impl: ({data}, {}, {start,end}) => {
+		if (!data || !data.slice) return null
+		return end ? data.slice(start,end) : data.slice(start)
+	}
+})
+
 Aggregator('count', {
   description: 'length, size of array',
   params: [

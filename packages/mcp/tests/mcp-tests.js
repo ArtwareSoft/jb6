@@ -11,7 +11,7 @@ const {
     boolean: { equals, contains, notContains, and, not },
     prop: { prop },
   },
-  mcp: { tool: { formatComp } },
+  mcp: { tool: { formatAndValidateTgpComp } },
 } = dsls
 const { json } = ns
 
@@ -41,18 +41,18 @@ Test('mcpTest.scrambleText', {
 //   })
 // })
 
-Test('genieMcpTest.wonderWorkflow', {
+Test('wonderMcpTest.wonderWorkflow', {
   HeavyTest: true,
   doNotRunInTests: true,
   impl: mcpToolTest('wonderWorkflow', asIs({userMessage: 'say hello'}), {
-    repoRoot: '/home/shaiby/projects/Genie',
-    jb6PackagesRoot: '/home/shaiby/projects/Genie/public/3rd-party/@jb6',
+    repoRoot: '/home/shaiby/projects/wonder',
+    jb6PackagesRoot: '/home/shaiby/projects/wonder/public/3rd-party/@jb6',
     importMapsInCli: './public/core/nodejs-importmap.js',
     expectedResult: contains('ello')
   })
 })
 
-Test('genieMcpTest.snippet', {
+Test('wonderMcpTest.snippet', {
   HeavyTest: true,
   impl: mcpToolTest({
     tool: 'runTgpSnippet',
@@ -110,7 +110,7 @@ Test('mcpTest.probeWithLogger', {
 Test('mcpTest.formatCompNotFound', {
   HeavyTest: true,
   impl: dataTest({
-    calculate: async () => (await formatComp.$run({fullCompId: 'test<test>notThere', logger: 'langServiceLogger'})).content[0].text,
+    calculate: async () => (await formatAndValidateTgpComp.$run({fullCompId: 'test<test>notThere', logger: 'langServiceLogger'})).content[0].text,
     expectedResult: and(contains(`fullCompId 'test<test>notThere' not found`), contains('formatCompError')),
     timeout: 5000
   })
@@ -118,8 +118,9 @@ Test('mcpTest.formatCompNotFound', {
 
 Test('mcpTest.formatComp', {
   HeavyTest: true,
+  nodeOnly: true,
   impl: dataTest({
-    calculate: async () => (await formatComp.$run({
+    calculate: async () => (await formatAndValidateTgpComp.$run({
       fullCompId: 'test<test>mcpTest.formatCompNotFound', logger: 'langServiceLogger'
     })).content[0].text,
     expectedResult: and(contains('mcpTest.formatCompNotFound'), contains('"t": "formatComp"')),
@@ -127,13 +128,10 @@ Test('mcpTest.formatComp', {
   })
 })
 
-Test('mcpTest.prettyPrintCompHeader', {
+Test('mcpTest.prettyPrintCompDef', {
   impl: dataTest({
-    calculate: () => [
-      coreUtils.prettyPrintComp(formatComp, {tgpModel: jb}),
-      coreUtils.prettyPrintComp(formatComp, {tgpModel: jb, compHeader: 'component'})
-    ].join('\n'),
-    expectedResult: and(contains(`Tool('formatComp'`), contains(`Component('formatComp'`), contains(`type: 'tool<mcp>'`))
+    calculate: () => coreUtils.prettyPrintComp(formatAndValidateTgpComp, {tgpModel: jb}),
+    expectedResult: contains(`Tool('formatAndValidateTgpComp'`)
   })
 })
 

@@ -4,18 +4,18 @@ import { reactUtils } from './react-utils.js'
 const { tgp: { Component } } = dsls
 const { h, hh, L } = reactUtils
 
-// progress-indicator<react> built-ins. RT: (ctx) => () => vdom
-// Mounted only during the enrichCtx wait of react-comp.comp. Unmounted on resolve.
-
 Component('spinner', {
   type: 'progress-indicator<react>',
   description: 'classic Lucide loader spinning. No events.',
-  impl: ctx => () => {
-    const {react: {useEffect}, uiLogger} = ctx.vars
-    useEffect(() => { uiLogger?.info?.({t: 'progress.mount', indicator: 'spinner'}, {}, {ctx}) }, [])
-    return h('div:flex items-center justify-center h-full w-full', {},
-      h(L('Loader'), { className: 'animate-spin w-4 h-4' }))
-  }
+  impl: ctx => ({
+    requiredLoggers: () => '',
+    hFunc: () => {
+      const {react: {useEffect}, uiLogger} = ctx.vars
+      useEffect(() => { uiLogger?.info?.({t: 'progress.mount', indicator: 'spinner'}, {}, {ctx}) }, [])
+      return h('div:flex items-center justify-center h-full w-full', {},
+        h(L('Loader'), { className: 'animate-spin w-4 h-4' }))
+    }
+  })
 })
 
 Component('dots', {
@@ -25,15 +25,18 @@ Component('dots', {
     {id: 'title', as: 'string', defaultValue: 'Loading'},
     {id: 'dotsPerSec', as: 'number', defaultValue: 2}
   ],
-  impl: (ctx, {react: {useState, useEffect}, uiLogger}, {title, dotsPerSec}) => () => {
-    const [n, setN] = useState(0)
-    useEffect(() => {
-      uiLogger?.info?.({t: 'progress.mount', indicator: 'dots', title}, {}, {ctx})
-      const id = setInterval(() => setN(x => (x+1) % 4), 1000 / (dotsPerSec || 2))
-      return () => clearInterval(id)
-    }, [])
-    return h('div', {}, title + '.'.repeat(n))
-  }
+  impl: (ctx, {react: {useState, useEffect}, uiLogger}, {title, dotsPerSec}) => ({
+    requiredLoggers: () => '',
+    hFunc: () => {
+      const [n, setN] = useState(0)
+      useEffect(() => {
+        uiLogger?.info?.({t: 'progress.mount', indicator: 'dots', title}, {}, {ctx})
+        const id = setInterval(() => setN(x => (x+1) % 4), 1000 / (dotsPerSec || 2))
+        return () => clearInterval(id)
+      }, [])
+      return h('div', {}, title + '.'.repeat(n))
+    }
+  })
 })
 
 const byProgress = Component('byProgress', {
@@ -42,24 +45,28 @@ const byProgress = Component('byProgress', {
   params: [
     {id: 'title', as: 'string', defaultValue: 'Loading'},
     {id: 'hFunc', type: 'progress-hfunc<react>', dynamic: true, byName: true, defaultValue: {$: 'progress-hfunc<react>text'}},
-    {id: 'filter', dynamic: true, byName: true, defaultValue: true, description: '(progressEvent) => boolean; default: accept all'},
+    {id: 'filter', dynamic: true, defaultValue: true, description: '(progressEvent) => boolean; default: accept all'},
+    {id: 'requiredLoggers', as: 'string', dynamic: true, defaultValue: 'uiLogger'},
   ],
-  impl: (ctx, {react: {useState, useEffect}, uiLogger}, {title, filter, hFunc: hFuncF}) => () => {
-    const hFunc = hFuncF(ctx)
-    const [progressEvent, setEvent] = useState(null)
-    useEffect(() => {
-      uiLogger?.info?.({t: 'progress.mount', indicator: 'byProgress', title}, {}, {ctx})
-      const fn = e => {
-        if (filter && !filter(ctx.setVars({progressEvent: e}))) return
-        uiLogger?.info?.({t: 'progress.event', indicator: 'byProgress', event: e}, {}, {ctx})
-        setEvent(e)
-      }
-      coreUtils.eventEmitter.on('progress', fn)
-      return () => coreUtils.eventEmitter.off('progress', fn)
-    }, [])
-    if (progressEvent == null) return h('div', {}, title)
-    return hh(ctx, hFunc, {progressEvent})
-  }
+  impl: (ctx, {react: {useState, useEffect}, uiLogger}, {title, filter, hFunc: hFuncF, requiredLoggers}) => ({
+    requiredLoggers,
+    hFunc: () => {
+      const hFunc = hFuncF(ctx)
+      const [progressEvent, setEvent] = useState(null)
+      useEffect(() => {
+        uiLogger?.info?.({t: 'progress.mount', indicator: 'byProgress', title}, {}, {ctx})
+        const fn = e => {
+          if (filter && !filter(ctx.setVars({progressEvent: e}))) return
+          uiLogger?.info?.({t: 'progress.event', indicator: 'byProgress', event: e}, {}, {ctx})
+          setEvent(e)
+        }
+        coreUtils.eventEmitter.on('progress', fn)
+        return () => coreUtils.eventEmitter.off('progress', fn)
+      }, [])
+      if (progressEvent == null) return h('div', {}, title)
+      return hh(ctx, hFunc, {progressEvent})
+    }
+  })
 })
 
 // byStatus is byProgress with a built-in status filter
@@ -68,12 +75,14 @@ Component('byStatus', {
   description: 'byProgress filtered to status-flagged events',
   params: [
     {id: 'title', as: 'string', defaultValue: 'Loading'},
-    {id: 'hFunc', type: 'progress-hfunc<react>', dynamic: true, byName: true, defaultValue: {$: 'progress-hfunc<react>text'}}
+    {id: 'hFunc', type: 'progress-hfunc<react>', dynamic: true, byName: true, defaultValue: {$: 'progress-hfunc<react>text'}},
+    {id: 'requiredLoggers', as: 'string', dynamic: true, byName: true, defaultValue: 'uiLogger'}
   ],
   impl: byProgress({
     title: '%$title%',
     filter: '%$progressEvent.status%',
-    hFunc: '%$hFunc()%'
+    hFunc: '%$hFunc()%',
+    requiredLoggers: '%$requiredLoggers()%'
   })
 })
 
@@ -106,28 +115,31 @@ Component('stepper', {
   params: [
     {id: 'title', as: 'string', defaultValue: 'Loading'},
     {id: 'steps', as: 'string', description: 'comma-delimited expected step ids in order'},
-    {id: 'labels', as: 'string', description: 'comma-delimited friendly labels (parallel to steps)'}
+    {id: 'labels', as: 'string', description: 'comma-delimited friendly labels (parallel to steps)'},
+    {id: 'requiredLoggers', as: 'string', dynamic: true, byName: true, defaultValue: 'cliLogger'}
   ],
-  impl: (ctx, {react: {useState, useEffect}, uiLogger}, {title, steps, labels}) => () => {
-    const stepIds = (steps || '').split(',').map(s => s.trim()).filter(Boolean)
-    const staticLabels = (labels || '').split(',').map(s => s.trim())
-    const [state, setState] = useState({})
-    const [plan, setPlan] = useState(null)   // runtime-announced plan (stepPlan) fixes the denominator from event #1 when steps aren't known at mount
-    useEffect(() => {
-      uiLogger?.info?.({t: 'progress.mount', indicator: 'stepper', title}, {}, {ctx})
-      const fn = e => {
-        if (e?.stepPlan) return setPlan({ids: e.stepPlan.map(String), labels: e.stepLabels || []})
-        if (e?.step != null) setState(s => ({...s, [e.step]: e.status || 'running'}))
-      }
-      coreUtils.eventEmitter.on('progress', fn)
-      return () => coreUtils.eventEmitter.off('progress', fn)
-    }, [])
-    const ids = stepIds.length ? stepIds : plan ? plan.ids : Object.keys(state)
-    const labelArr = stepIds.length ? staticLabels : plan ? plan.labels : []
-    const doneCount = ids.filter(id => state[id] === 'done').length
-    const runningCount = ids.filter(id => state[id] === 'running').length
-    const pct = ids.length ? Math.round(100 * (doneCount + runningCount * 0.5) / ids.length) : 0
-    return h('div:max-w-md mx-auto mt-10 p-6 bg-white rounded-xl shadow-md border border-gray-100 font-sans', {},
+  impl: (ctx, {react: {useState, useEffect}, uiLogger}, {title, steps, labels, requiredLoggers}) => ({
+    requiredLoggers,
+    hFunc: () => {
+      const stepIds = (steps || '').split(',').map(s => s.trim()).filter(Boolean)
+      const staticLabels = (labels || '').split(',').map(s => s.trim())
+      const [state, setState] = useState({})
+      const [plan, setPlan] = useState(null)   // runtime-announced plan (stepPlan) fixes the denominator from event #1 when steps aren't known at mount
+      useEffect(() => {
+        uiLogger?.info?.({t: 'progress.mount', indicator: 'stepper', title}, {}, {ctx})
+        const fn = e => {
+          if (e?.stepPlan) return setPlan({ids: e.stepPlan.map(String), labels: e.stepLabels || []})
+          if (e?.step != null) setState(s => ({...s, [e.step]: e.status || 'running'}))
+        }
+        coreUtils.eventEmitter.on('progress', fn)
+        return () => coreUtils.eventEmitter.off('progress', fn)
+      }, [])
+      const ids = stepIds.length ? stepIds : plan ? plan.ids : Object.keys(state)
+      const labelArr = stepIds.length ? staticLabels : plan ? plan.labels : []
+      const doneCount = ids.filter(id => state[id] === 'done').length
+      const runningCount = ids.filter(id => state[id] === 'running').length
+      const pct = ids.length ? Math.round(100 * (doneCount + runningCount * 0.5) / ids.length) : 0
+      return h('div:max-w-md mx-auto mt-10 p-6 bg-white rounded-xl shadow-md border border-gray-100 font-sans', {},
       h('div:flex items-center justify-between mb-4', {},
         h('h2:text-base font-semibold text-gray-800', {}, title),
         h('span:text-xs text-gray-400 tabular-nums', {}, pct + '%')),
@@ -146,5 +158,6 @@ Component('stepper', {
         return h('li:flex items-center gap-3', {}, dot,
           h('span:text-sm ' + textCls, {}, labelArr[i] || id))
       })))
-  }
+    }
+  })
 })

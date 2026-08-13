@@ -13,7 +13,7 @@ const {
   }
 } = dsls
 const { json } = ns
-const geniePath = '/home/shaiby/projects/Genie'
+const wonderPath = '/home/shaiby/projects/wonder'
 
 Test('importMapTest.jb6Monorepo', {
   impl: staticServeConfigTest({
@@ -28,35 +28,35 @@ Test('importMapTest.jb6Monorepo', {
   })
 })
 
-Test('genieTest.staticServeConfigTest', {
+Test('wonderTest.staticServeConfigTest', {
   HeavyTest: true,
   impl: staticServeConfigTest({
     repo: Genie(),
     transform: list('%repoRootName%', '%staticMappings/diskPath%', pipeline('%importMap/imports%')),
-    expectedResult: contains('genie', `${geniePath}/public/3rd-party/@jb6`, '@wonder', {
+    expectedResult: contains('wonder', `${wonderPath}/public/3rd-party/@jb6`, '@wonder', {
       allText: json.stringify()
     })
   })
 })
 
-Test('genieTest.importMap', {
+Test('wonderTest.importMap', {
   HeavyTest: true,
-  impl: calcImportDataTest(`${geniePath}/public/tests/basic-tests.js`, {
+  impl: calcImportDataTest(`${wonderPath}/public/tests/basic-tests.js`, {
     transform: list('%repoRootName%','%staticMappings/diskPath%','%importMap/imports%'),
-    expectedResult: contains('genie', `${geniePath}/public/3rd-party/@jb6`, '/jb6_packages/common/index.js', {
+    expectedResult: contains('wonder', `${wonderPath}/public/3rd-party/@jb6`, '/jb6_packages/common/index.js', {
       allText: json.stringify()
     })
   })
 })
 
-// Test('genieTest.calcTgpModelData', {
+// Test('wonderTest.calcTgpModelData', {
 //   HeavyTest: true,
 //   impl: dataTest({
 //     calculate: async () => {
 //       const {coreUtils} = await import('@jb6/core')
 //       await import('@jb6/lang-service')
 //       return coreUtils.calcTgpModelData({
-//         entryPointPaths: `${geniePath}/public/llm-flow/reports-dsl.js`, fetchByEnvHttpServer: 'http://localhost:3000'})
+//         entryPointPaths: `${wonderPath}/public/llm-flow/reports-dsl.js`, fetchByEnvHttpServer: 'http://localhost:3000'})
 //     },
 //     expectedResult: contains('/public/3rd-party/@jb6', '/jb6_packages/common/index.js', {
 //       allText: json.stringify()
@@ -65,7 +65,7 @@ Test('genieTest.importMap', {
 //   })
 // })
 
-Test('genieTest.nodejs.calcTgpModelData', {
+Test('wonderTest.nodejs.calcTgpModelData', {
   HeavyTest: true,
   impl: dataTest({
     calculate: async () => {
@@ -73,17 +73,17 @@ Test('genieTest.nodejs.calcTgpModelData', {
         const script = `
               const {coreUtils} = await import('@jb6/core')
       await import('@jb6/lang-service')
-      const result = await coreUtils.calcTgpModelData({ entryPointPaths: '${geniePath}/public/core/db-drivers.js', 
+      const result = await coreUtils.calcTgpModelData({ entryPointPaths: '${wonderPath}/public/core/db-drivers.js', 
         fetchByEnvHttpServer: 'http://localhost:3000'})
         await coreUtils.writeServiceResult(result)
         `
-        const res = await coreUtils.runNodeCliViaJbWebServer(script, {projectDir: geniePath, 
-          importMapsInCli: `${geniePath}/public/core/nodejs-importmap.js` })
+        const res = await coreUtils.runNodeCliViaJbWebServer(script, {projectDir: wonderPath, 
+          importMapsInCli: `${wonderPath}/public/core/nodejs-importmap.js` })
         return res
       }
     },
     expectedResult: contains({
-      text: [`${geniePath}/public/3rd-party/@jb6`,`/jb6_packages/common/index.js`,`bsg-tests`],
+      text: [`${wonderPath}/public/3rd-party/@jb6`,`/jb6_packages/common/index.js`,`bsg-tests`],
       allText: json.stringify()
     }),
     timeout: 10000

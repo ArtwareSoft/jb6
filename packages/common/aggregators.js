@@ -1,4 +1,5 @@
 import { coreUtils, dsls } from '@jb6/core'
+import './essentials.js'
 const { RT_types, unique } = coreUtils
 const { 
   common: { Data, Aggregator },

@@ -21,7 +21,7 @@ const Jb6 = Repo('Jb6', {
 })
 
 const Genie = Repo('Genie', {
-  impl: ({}, {}) => '/home/shaiby/projects/Genie'
+  impl: ({}, {}) => '/home/shaiby/projects/wonder'
 })
 
 Test('staticServeConfigTest', {

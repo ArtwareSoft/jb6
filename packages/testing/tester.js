@@ -102,7 +102,7 @@ async function runTestVm(args, ctx) {
     } catch (e) { console.error('[trace cli-script] EXCEPTION', e.stack || e) }
     })()`
           vmLogger?.info?.({t: 'calling runNodeCliViaJbWebServer', testID}, {}, {ctx})
-          const res = await coreUtils.runNodeCliViaJbWebServer(script, {}, ctx)
+          const res = await coreUtils.runNodeCliViaJbWebServer(script, {ctx})
           vmLogger?.info?.({t: 'runNodeCliViaJbWebServer returned', testID, hasResult: !!res?.result, error: res?.error, keys: Object.keys(res||{}), stderr: String(res?.stderr || '').slice(0,500), textToParse: String(res?.textToParse || '').slice(0,500)}, {}, {ctx})
           return res.result
       }
