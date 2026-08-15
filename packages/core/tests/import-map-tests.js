@@ -37,22 +37,6 @@ Test('wonderTest.staticServeConfigTest', {
   })
 })
 
-// Test('wonderTest.calcTgpModelData', {
-//   HeavyTest: true,
-//   impl: dataTest({
-//     calculate: async () => {
-//       const {coreUtils} = await import('@jb6/core')
-//       await import('@jb6/lang-service')
-//       return coreUtils.calcTgpModelData({
-//         entryPointPaths: `${wonderPath}/public/llm-flow/reports-dsl.js`, fetchByEnvHttpServer: 'http://localhost:3000'})
-//     },
-//     expectedResult: contains('/public/3rd-party/@jb6', '/jb6_packages/common/index.js', {
-//       allText: json.stringify()
-//     }),
-//     timeout: 2000
-//   })
-// })
-
 Test('wonderTest.nodejs.calcTgpModelData', {
   HeavyTest: true,
   nodeOnly: true,
