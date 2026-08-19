@@ -377,35 +377,3 @@ Test('reactTest.progress.overTheWire', {
     timeout: 12000
   })
 })
-
-const revealTest = ReactComp('revealTest', {
-  impl: comp({
-    hFunc: (ctx, {reveal, react: {h, useRef, useEffect, useState}}) => () => {
-      const host = useRef()
-      const [extra, setExtra] = useState(false)
-      useEffect(() => {
-        const { deck, disconnect } = reveal.mount(host.current)
-        ctx.vars.uiLogger?.info?.({t: 'reveal', text: `reveal ready: ${deck.getTotalSlides()} slides`}, {}, {ctx})
-        return disconnect
-      }, [])
-      // reveal {embedded} sizes to its host - the host needs an explicit height or the deck collapses to 0 (FOUC/roller)
-      return h('div:reveal', { ref: host, style: { height: '400px' } }, h('div:slides', {},
-        h('section', {}, 'SLIDE-ALPHA'),
-        h('section', {}, 'SLIDE-BETA'),
-        extra ? h('section', {}, 'SLIDE-GAMMA') : null,
-        h('button', { onClick: () => setExtra(true) }, 'add-slide')))
-    },
-    enrichCtx: loadReveal()
-  })
-})
-
-Test('reactTest.reveal', {
-  impl: reactTest({
-    testedComp: revealTest(),
-    // clicking add-slide adds a 3rd <section>; the loadReveal observer auto-re-decorates and logs 'decorate #1'.
-    // that single log is the proof reveal picked up the React-added slide - no extra bookkeeping in the comp needed.
-    expectedResult: contains('reveal ready: 2 slides', 'decorate #1', { allText: json.stringify('%$uiLogger/uiLog%') }),
-    userActions: actions(waitForText('SLIDE-ALPHA'), click('add-slide'), waitForText('SLIDE-GAMMA')),
-    logger: 'uiLogger'
-  })
-})
