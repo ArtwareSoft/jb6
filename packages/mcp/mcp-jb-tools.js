@@ -7,7 +7,7 @@ import '@jb6/mcp'
 
 const {
   tgp: { Component, 'ctx-enricher': { Var } },
-  common: {
+  common: { Data,
     data: { asIs, bookletsContent, filter, join, keys, pipe, pipeline, split, tgpModel }
   },
   mcp: { Tool,
@@ -38,7 +38,7 @@ its comps and tests. details: files|comps|all-comps-with-params|full`,
   ],
   impl: mcpTool(async (ctx, {}, {dsl, details}) => {
     await import('@jb6/lang-service')
-    return coreUtils.scanDsl({dsl, details, ctx})
+    return coreUtils.scanDsl({dsl, details, entryPointPaths: await coreUtils.resolveDeveloperEntryPoint(ctx), ctx})
   })
 })
 
@@ -51,7 +51,7 @@ Tool('sourceCodeOfComp', {
     await import('@jb6/lang-service')
     const repoRoot = await coreUtils.calcRepoRoot()
     const { staticMappings } = await coreUtils.calcImportData({forRepo: repoRoot})
-    const tgpModel = await coreUtils.calcTgpModelData({forRepo: repoRoot})
+    const tgpModel = await coreUtils.calcTgpModelData({entryPointPaths: await coreUtils.resolveDeveloperEntryPoint(ctx)})
     const loc = coreUtils.compByFullId(cmpFullId, tgpModel)?.$location
     if (!loc) return `comp not found: ${cmpFullId}`
     const src = await coreUtils.fetchByEnv(loc.path, staticMappings)
@@ -73,7 +73,7 @@ Tool('formatAndValidateTgpComp', {
     try {
       await import('@jb6/lang-service')
       const repoRoot = await coreUtils.calcRepoRoot()
-      const tgpModel = await coreUtils.calcTgpModelData({forRepo: repoRoot}, logCtx)
+      const tgpModel = await coreUtils.calcTgpModelData({entryPointPaths: await coreUtils.resolveDeveloperEntryPoint(logCtx)}, logCtx)
       const comp = coreUtils.compByFullId(fullCompId, tgpModel)
       if (!comp?.$location) throw new Error(`fullCompId '${fullCompId}' not found`)
       const {readFile, writeFile} = await import('fs/promises')
@@ -109,7 +109,8 @@ Tool('safeEditTgpComp', {
   impl: mcpTool(async (ctx, {}, {compText, fullCompId, location, existingCompText}) => {
     try {
       await import('@jb6/lang-service')
-      const repoRoot = await coreUtils.calcRepoRoot(), tgpModel = await coreUtils.calcTgpModelData({forRepo: repoRoot}, ctx)
+      const repoRoot = await coreUtils.calcRepoRoot()
+      const tgpModel = await coreUtils.calcTgpModelData({entryPointPaths: await coreUtils.resolveDeveloperEntryPoint(ctx)}, ctx)
       const newLocation = location && {path: location}, current = fullCompId && coreUtils.compByFullId(fullCompId, tgpModel)
       const {comp, compId, compDef, error} = jb.langServiceUtils.calcProfileActionMap(compText, {tgpModel, filePath: newLocation?.path, ctx})
       if (!comp || error || comp.syntaxError) throw new Error(error?.syntaxError || error || comp?.syntaxError || 'Invalid TGP component')
@@ -145,7 +146,7 @@ Use tgpModel tool to discover available components.`,
       try {
         await import('@jb6/lang-service')
         const forDsls = macroText.match(/^[^<]+<([^>]+)>/)?.[1] || 'common'
-        const tgpModel = await coreUtils.calcTgpModelData({forRepo: await coreUtils.calcRepoRoot(), forDsls })
+        const tgpModel = await coreUtils.calcTgpModelData({entryPointPaths: await coreUtils.resolveDeveloperEntryPoint(ctx), forDsls })
         if (tgpModel.error) return `Error: ${tgpModel.error}`
         const result = coreUtils.macroToJson(macroText, tgpModel)
         return result.error ? `Error: ${result.error}` : JSON.stringify(result, null, 2)
@@ -245,24 +246,26 @@ Tool('scrambleText', {
   ))
 })
 
-Tool('playwrightHarvest', {
+const playwrightHarvest = Data('playwrightHarvest', {
   description: `Load a tests.html, react-comp-view.html or room applet URL in Chromium, run ui-action<react> automation and harvest its loggers and browser errors.
 Returns { done, errors, logs, html?, timeline }.`,
   params: [
     {id: 'url', as: 'string', asIs: true, mandatory: true},
-    {id: 'automation', as: 'string', asIs: true, description: 'serialized ui-action<react> profile; empty only harvests the target'},
+    {id: 'automation', type: 'ui-action<react>', dynamic: true},
     {id: 'timeout', as: 'number', defaultValue: 5000, description: 'ms to wait for the page to mount and its uiAction to finish'},
     {id: 'domSelector', as: 'string', description: 'optional css selector; when set returns that element outerHTML'},
     {id: 'seedLocalStorage', as: 'string', asIs: true,
       description: 'id of a data<common> comp whose result object seeds localStorage before boot'},
   ],
-  impl: mcpTool(async (ctx, {}, {url, automation, timeout, domSelector, seedLocalStorage}) => {
+  impl: async (ctx, {}, {url, automation, timeout, domSelector, seedLocalStorage}) => {
     let seed = null
     await coreUtils.ensureImportMapsInCli() // needed for external repos with import maps
     if (seedLocalStorage) {
       await import('@jb6/lang-service')
-      const { result, error } = await coreUtils.runSnippetCli({ profileText: `{$: 'data<common>${seedLocalStorage}'}` })
-      if (error) return JSON.stringify({ error: `seedLocalStorage '${seedLocalStorage}' failed: ${error}` }, null, 2)
+      const { result, error } = await coreUtils.runSnippetCli({ profileText: `{$: 'data<common>${seedLocalStorage}'}`,
+        ctxEnricher: {$: 'ctx-enricher<tgp>setVars', obj: {$: 'data<common>asIs',
+          val: {localhostServer: new URL(url).origin, seedNonce: Date.now()}}} })
+      if (error) return {error: `seedLocalStorage '${seedLocalStorage}' failed: ${error}`}
       seed = result
     }
     let redirect = null
@@ -273,7 +276,8 @@ Returns { done, errors, logs, html?, timeline }.`,
       url = location
     }
     const targetUrl = new URL(url)
-    targetUrl.searchParams.set('automation', automation || '')
+    targetUrl.searchParams.set('automation', automation.profile
+      ? JSON.stringify(coreUtils.tgpProfileToJson(automation.profile)) : '')
     targetUrl.searchParams.set('automationTimeout', timeout)
     url = targetUrl.href
     const script = `
@@ -303,7 +307,23 @@ await browser.close(); mark('closed')
 const redirect = ${JSON.stringify(redirect)}
 await coreUtils.writeServiceResult({ done, harvestError, errors, logs, html, timeline, redirect })`
     const { result, error } = await coreUtils.runCliInContext(script)
-    return JSON.stringify(error ? { error } : result, null, 2)
+    return error ? {error} : result
+  }
+})
+
+Tool('playwrightHarvest', {
+  description: `Load a URL in Chromium, run ui-action<react> automation, and harvest logs, browser errors, HTML, and timeline.`,
+  params: [
+    {id: 'url', as: 'string', asIs: true, mandatory: true},
+    {id: 'automation', as: 'string', asIs: true},
+    {id: 'timeout', as: 'number', defaultValue: 5000},
+    {id: 'domSelector', as: 'string'},
+    {id: 'seedLocalStorage', as: 'string', asIs: true}
+  ],
+  impl: mcpTool((ctx, {}, args) => {
+    const automation = args.automation && JSON.parse(args.automation)
+    coreUtils.restoreProfile$(automation)
+    return playwrightHarvest.$runWithCtx(ctx, {...args, automation})
   })
 })
 
