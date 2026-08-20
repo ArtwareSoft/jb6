@@ -1,2 +1,3 @@
 {
+  "developerEntryPoint": "./packages/testing/all-jb6-tests.js"
 }
