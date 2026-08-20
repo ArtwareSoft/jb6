@@ -154,6 +154,91 @@ Data('langService.calcCompProps', {
   impl: (ctx, {}, { compTextAndCursor }) => calcCompProps(compTextAndCursor, ctx)
 })
 
+Data('langService.calcTgpCompChange', {
+  description: 'Calculate a safe TGP component source change for MCP before applying it through tgpEditorHost',
+  params: [
+    {id: 'tgpPath', as: 'string', asIs: true, mandatory: true},
+    {id: 'profileText', as: 'text', asIs: true, mandatory: true},
+    {id: 'existingProfileText', as: 'text', asIs: true, mandatory: true}
+  ],
+  impl: async (ctx, {}, {tgpPath, profileText, existingProfileText}) => {
+    const repoRoot = await coreUtils.calcRepoRoot()
+    const modelData = await calcTgpModelData({entryPointPaths: await coreUtils.resolveDeveloperEntryPoint(ctx)}, ctx)
+    const tgpModel = new tgpModelForLangService(modelData)
+    const ownerCompId = tgpPath.split('~')[0], innerPath = tgpPath.split('~').slice(1)
+    const firstNonWhitespaceDiff = (currentValue, expectedValue) => {
+      const current = currentValue.replace(/\s/g, ''), expected = expectedValue.replace(/\s/g, '')
+      let offset = 0
+      while (current[offset] == expected[offset] && offset < current.length && offset < expected.length) offset++
+      if (offset == current.length && offset == expected.length) return
+      const contextFrom = Math.max(0, offset - 30), contextTo = offset + 31
+      const pointer = ' '.repeat(offset - contextFrom) + '^'
+      return `existingProfileText mismatch at non-whitespace offset ${offset}\ncurrent  ${current.slice(contextFrom, contextTo)}\nexpected ${expected.slice(contextFrom, contextTo)}\n         ${pointer}`
+    }
+    const current = compByFullId(ownerCompId, tgpModel)
+    if (!current) throw new Error(`component '${ownerCompId}' not found`)
+    const {readFile} = await import('fs/promises')
+    const {importMap, staticMappings} = await coreUtils.calcImportData({forRepo: repoRoot})
+    const sourceLocation = current.$location
+    const path = coreUtils.resolveWithImportMap(sourceLocation.path, importMap, staticMappings) || sourceLocation.path
+    const source = await readFile(path, 'utf8')
+    const from = jb.langServiceUtils.lineColToOffset(source, sourceLocation)
+    const to = jb.langServiceUtils.lineColToOffset(source, sourceLocation.to)
+    const currentText = source.slice(from, to)
+    const compProps = jb.langServiceUtils.calcProfileActionMap(currentText, {tgpModel, filePath: path, ctx})
+    if (!compProps.comp || compProps.error || compProps.comp.syntaxError)
+      throw new Error(compProps.error?.syntaxError || compProps.error || compProps.comp?.syntaxError || 'Invalid current TGP component')
+
+    let proposedProfile
+    if (innerPath.length) {
+      const paramType = tgpModel.paramType(tgpPath)
+      const expectedType = paramType?.startsWith('$asParent')
+        ? innerPath.length == 1 ? compProps.comp.$dslType : tgpModel.compOfPath(parentPath(tgpPath))?.$dslType
+        : paramType
+      if (!expectedType) throw new Error(`can not resolve expected type at '${tgpPath}'`)
+      const parsedProfile = jb.langServiceUtils.calcProfileActionMap(profileText, {tgpType: expectedType, tgpModel, filePath: path, ctx})
+      if (!parsedProfile.comp || parsedProfile.error || parsedProfile.comp.syntaxError)
+        throw new Error(parsedProfile.error?.syntaxError || parsedProfile.error || parsedProfile.comp?.syntaxError || 'Invalid TGP profile')
+      proposedProfile = parsedProfile.comp
+      if (existingProfileText != null) {
+        const exactAction = compProps.actionMap.find(({action}) => action == `function!${tgpPath}`)
+        const begin = compProps.actionMap.find(({action}) => action == `begin!${tgpPath}`)
+        const end = compProps.actionMap.find(({action}) => action == `end!${tgpPath}`)
+        const currentProfileText = exactAction ? currentText.slice(exactAction.from, exactAction.to)
+          : begin && end ? currentText.slice(begin.from, end.to) : null
+        if (currentProfileText == null) throw new Error(`source span not found for '${tgpPath}'`)
+        const mismatch = firstNonWhitespaceDiff(currentProfileText, existingProfileText)
+        if (mismatch) throw new Error(mismatch)
+      }
+    } else {
+      const parsedComp = jb.langServiceUtils.calcProfileActionMap(profileText, {tgpModel, filePath: path, ctx})
+      if (!parsedComp.comp || parsedComp.error || parsedComp.comp.syntaxError)
+        throw new Error(parsedComp.error?.syntaxError || parsedComp.error || parsedComp.comp?.syntaxError || 'Invalid TGP component')
+      if (parsedComp.compId != ownerCompId)
+        throw new Error(`component id mismatch: expected '${ownerCompId}', found '${parsedComp.compId}'`)
+      proposedProfile = parsedComp.comp
+      const mismatch = firstNonWhitespaceDiff(currentText, existingProfileText)
+      if (mismatch) throw new Error(mismatch)
+    }
+
+    const opOnComp = {}
+    if (innerPath.length) calcPath(opOnComp, innerPath, {$set: proposedProfile})
+    const newComp = innerPath.length ? update(compProps.comp, opOnComp) : proposedProfile
+    resolveCompArgs(newComp, {tgpModel})
+    const formattedTgpComp = prettyPrintComp(newComp,
+      {initialPath: ownerCompId, tgpModel, filePath: path, compDef: compProps.compDef})
+    const formattedTgpProfile = innerPath.length
+      ? prettyPrint(calcPath(newComp, innerPath), {initialPath: tgpPath, tgpModel, filePath: path})
+      : formattedTgpComp
+    return {
+      path,
+      source,
+      compChange: deltaFileContent(currentText, formattedTgpComp, sourceLocation),
+      formattedTgpProfile
+    }
+  }
+})
+
 Data('langService.editAndCursorOfCompletionItem', {
   params: [
     {id: 'item'}

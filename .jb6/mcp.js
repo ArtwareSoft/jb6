@@ -1,4 +1,5 @@
 import { dsls, coreUtils } from '@jb6/core'
+import '@jb6/mcp'
 import '@jb6/react/tailwind-utils.js'
 
 const {
@@ -17,4 +18,3 @@ Tool('compileTailwindCSS', {
    ],
    impl: mcpTool(compileTailwindCSS('%$html%'))
 })
- 

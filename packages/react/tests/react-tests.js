@@ -30,12 +30,16 @@ Test('reactTest.helloWorld', {
 
 Test('reactTest.buttonToClick', {
   description: 'Renders an untouched button for playwrightHarvest to click with external automation; intentionally has no userActions',
+  params: [
+    {id: 'buttonText', as: 'string', defaultValue: 'Full comp via MCP'},
+    {id: 'clickedText', as: 'string', defaultValue: 'MCP clicked!'}
+  ],
   impl: reactTest({
-    testedComp: ({}, {react: {h, useState}}) => () => {
-      const [text, setText] = useState('Click me')
-      return h('button', { onClick: () => setText('Clicked!') }, text)
+    testedComp: ({}, {react: {h, useState}}, {buttonText, clickedText}) => () => {
+      const [text, setText] = useState(buttonText)
+      return h('button', {onClick: () => setText(clickedText)}, text)
     },
-    expectedResult: contains('Click me'),
+    expectedResult: contains('%$buttonText%'),
     logger: 'uiLogger'
   })
 })

@@ -12,10 +12,38 @@ const parseWithFallback = (src, opts, filePath) => { try { return parse(src, opt
   logError(`acorn strict failed, using acorn-loose (may mis-parse) at ${filePath || '?'}: ${e.message}`); return parseLoose(src, opts) } }
 
 export const langServiceUtils = jb.langServiceUtils = { closestComp, calcProfileActionMap, deltaFileContent, filePosOfPath, getPosOfPath,
-    lineColToOffset, offsetToLineCol, tgpEditorHost, applyCompChange, importJb6File, parseWithFallback }
+    lineColToOffset, offsetToLineCol, tgpEditorHost, localFsHost, applyCompChange, importJb6File, parseWithFallback }
 
 function tgpEditorHost() {
     return jb.ext.tgpTextEditor.host
+}
+
+function localFsHost({path, source, ctx}) {
+    let error
+    return {
+        type: 'localFs',
+        async applyEdit(compChange) {
+            try {
+                const {readFile, writeFile} = await import('fs/promises')
+                const sourceBeforeChange = await readFile(path, 'utf8')
+                if (sourceBeforeChange != source) throw new Error('source changed before applying compChange')
+                const from = lineColToOffset(sourceBeforeChange, compChange.range.start)
+                const to = lineColToOffset(sourceBeforeChange, compChange.range.end)
+                source = sourceBeforeChange.slice(0, from) + compChange.newText + sourceBeforeChange.slice(to)
+                await writeFile(path, source)
+                ctx?.vars?.langServiceLogger?.info?.({t: 'local fs compChange applied', path, range: compChange.range,
+                    newTextLength: compChange.newText.length}, {}, {ctx})
+            } catch (e) {
+                error = e
+                throw e
+            }
+        },
+        async saveDoc() {},
+        async selectRange() {},
+        async execCommand() {},
+        log(message) { ctx?.vars?.langServiceLogger?.error?.({t: 'local fs host error', message, path}, {}, {ctx}) },
+        applyError: () => error
+    }
 }
 
 async function applyCompChange(editAndCursor, {ctx} = {}) {

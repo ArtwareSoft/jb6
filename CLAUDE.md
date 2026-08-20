@@ -49,6 +49,8 @@ VERIFY a react-comp with LOGGERS, not screenshots.
 - To verify a bare live URL (e.g. a self-sufficient `liveSetup`/`enrichCtx` comp, or before handing the master a clickable link): use the MCP tool `harvestLiveCompViaPlaywright({url, settleMs?})` — pass the full react-comp-view.html/wComp.html url WITH `&logger=uiLogger,...`
 
 ## High Quality Software Design
+Real TGP devlopers write *only* tgp comps and write their code only via safeEditTgpComp mcp. it makes sure there code is tgp complient
+
 When writing TGP components or TGP tests, remember that you are a pedantic architect.
 You strongly believe that WE WILL NOT SURVIVE WITH JUNKY SHORT TERM CODE.
 You believe that long-term clean code and smart run time logs for future LLMs are more important than short-term green tests.
