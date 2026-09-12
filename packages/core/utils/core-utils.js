@@ -207,16 +207,28 @@ function isDelayed(v) {
   return typeof v === 'object' ? isPromise(v) : typeof v === 'function' && isCallbag(v)
 }
 
-function waitForInnerElements(item, {passRx} = {}) { // resolve promises in array and double promise (via array), passRx - does not wait for reactive data to end, and pass it as is
+function waitForInnerElements(item, {passRx, resolveObjectProperties = false} = {}) {
+  const options = {passRx, resolveObjectProperties}
   if (isPromise(item))
-    return item.then(r=>waitForInnerElements(r,{passRx}))
+    return item.then(r=>waitForInnerElements(r, options))
   if (!passRx && isCallbag(item))
     return callbagToPromiseArray(item)
 
+  if (resolveObjectProperties && item && [Object.prototype, null].includes(Object.getPrototypeOf(item))) {
+    const entries = Object.entries(item).map(([key, value]) => [key, waitForInnerElements(value, options)])
+    return entries.some(([, value]) => isPromise(value))
+      ? Promise.all(entries.map(async ([key, value]) => [key, await value])).then(Object.fromEntries)
+      : item
+  }
   if (Array.isArray(item)) {
+    if (resolveObjectProperties) {
+      const items = item.map(value => waitForInnerElements(value, options))
+      const flatten = item.some(value => isPromise(value) || (!passRx && isCallbag(value)))
+      return items.some(isPromise) ? Promise.all(items).then(values => flatten ? values.flatMap(value => value) : values) : item
+    }
     if (! item.find(v=> isCallbag(v) || isPromise(v))) return item
     if (passRx && ! item.find(v=>isPromise(v))) return item
-    return Promise.all(item.map(x=>waitForInnerElements(x,{passRx}))).then(items=>items.flatMap(x=>x))
+    return Promise.all(item.map(x=>waitForInnerElements(x, options))).then(items=>items.flatMap(x=>x))
   }
   return item
 }

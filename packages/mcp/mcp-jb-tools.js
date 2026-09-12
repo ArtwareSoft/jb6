@@ -1,5 +1,6 @@
 import { dsls, coreUtils } from '@jb6/core'
 import '@jb6/common'
+import '@jb6/jq'
 import '@jb6/llm-guide/guide-generator.js'
 import '@jb6/core/misc/import-map-services.js'
 import '@jb6/react'
@@ -60,60 +61,67 @@ Tool('sourceCodeOfComp', {
 })
 
 Tool('formatAndValidateTgpComp', {
-  description: 'Format a TGP component and update its source file',
+  description: 'Format TGP components and update their source files',
   params: [
-    {id: 'fullCompId', as: 'string', asIs: true, mandatory: true,
-      description: `full component ID, e.g. test<test>coreTest.HelloWorld`},
-    {id: 'logger', as: 'string', asIs: true, description: `comma-separated loggers, e.g. langServiceLogger`},
+    {id: 'fullCompIds', as: 'string', asIs: true, mandatory: true, description: 'comma-separated full component IDs, e.g. test<test>coreTest.HelloWorld,data<common>pipeline'},
+    {id: 'logger', as: 'string', asIs: true, description: 'comma-separated loggers, e.g. langServiceLogger'}
   ],
-  impl: mcpTool(async (ctx, {}, {fullCompId, logger}) => {
+  impl: mcpTool(async (ctx, {}, {fullCompIds, logger}) => {
     const loggerNames = (logger || '').split(',').map(x=>x.trim()).filter(Boolean)
     const logCtx = coreUtils.ensureLoggers(loggerNames, {ctx})
     const done = result => JSON.stringify({...result, ...coreUtils.harvestLogs(logCtx, loggerNames)}, null, 2)
     try {
       await import('@jb6/lang-service')
+      const ids = fullCompIds.split(',').map(id => id.trim()).filter(Boolean)
       const repoRoot = await coreUtils.calcRepoRoot()
-      const tgpModel = await coreUtils.calcTgpModelData({entryPointPaths: await coreUtils.resolveDeveloperEntryPoint(logCtx)}, logCtx)
-      const comp = coreUtils.compByFullId(fullCompId, tgpModel)
-      if (!comp?.$location) throw new Error(`fullCompId '${fullCompId}' not found`)
+      const entryPointPaths = await coreUtils.resolveDeveloperEntryPoint(logCtx)
       const {readFile, writeFile} = await import('fs/promises')
       const {lineColToOffset, calcProfileActionMap} = jb.langServiceUtils
       const {importMap, staticMappings} = await coreUtils.calcImportData({forRepo: repoRoot})
-      const {to} = comp.$location
-      const path = coreUtils.resolveWithImportMap(comp.$location.path, importMap, staticMappings) || comp.$location.path
-      const src = await readFile(path, 'utf8')
-      const from = lineColToOffset(src, comp.$location), end = lineColToOffset(src, to)
-      const {comp: parsedComp, compDef, error} = calcProfileActionMap(src.slice(from, end), {tgpModel, filePath: path, ctx: logCtx})
-      if (error || parsedComp?.syntaxError) throw new Error(error?.syntaxError || error || parsedComp.syntaxError)
-      const formatted = coreUtils.prettyPrintComp(parsedComp, {tgpModel, filePath: path, initialPath: fullCompId, compDef})
-      const changed = formatted != src.slice(from, end)
-      if (changed) await writeFile(path, src.slice(0, from) + formatted + src.slice(end))
-      logCtx.vars.langServiceLogger?.info?.({t: 'formatComp', fullCompId, path, changed}, {}, {ctx: logCtx})
-      return done({fullCompId, path, changed})
+      const results = []
+      for (const fullCompId of ids) {
+        const tgpModel = await coreUtils.calcTgpModelData({entryPointPaths}, logCtx)
+        const comp = coreUtils.compByFullId(fullCompId, tgpModel)
+        if (!comp?.$location) throw new Error(`fullCompId '${fullCompId}' not found`)
+        const path = coreUtils.resolveWithImportMap(comp.$location.path, importMap, staticMappings) || comp.$location.path
+        const src = await readFile(path, 'utf8'), from = lineColToOffset(src, comp.$location), end = lineColToOffset(src, comp.$location.to)
+        const {comp: parsedComp, compDef, error} = calcProfileActionMap(src.slice(from, end), {tgpModel, filePath: path, ctx: logCtx})
+        if (error || parsedComp?.syntaxError) throw new Error(error?.syntaxError || error || parsedComp.syntaxError)
+        const formatted = coreUtils.prettyPrintComp(parsedComp, {tgpModel, filePath: path, initialPath: fullCompId, compDef})
+        const changed = formatted != src.slice(from, end)
+        if (changed) await writeFile(path, src.slice(0, from) + formatted + src.slice(end))
+        results.push({fullCompId, path, changed})
+        logCtx.vars.langServiceLogger?.info?.({t: 'formatComp', fullCompId, path, changed}, {}, {ctx: logCtx})
+      }
+      return done({fullCompIds: ids, results})
     } catch (error) {
-      logCtx.vars.langServiceLogger?.warning?.({t: 'formatCompError', fullCompId, error: error.stack || String(error)}, {}, {ctx: logCtx})
-      logCtx.vars.errorLogger?.error?.({t: 'formatCompError', fullCompId, error: error.stack || String(error)}, {}, {ctx: logCtx})
+      logCtx.vars.langServiceLogger?.warning?.({t: 'formatCompError', fullCompIds, error: error.stack || String(error)}, {}, {ctx: logCtx})
+      logCtx.vars.errorLogger?.error?.({t: 'formatCompError', fullCompIds, error: error.stack || String(error)}, {}, {ctx: logCtx})
       return done({error: error.message || String(error)})
     }
   })
 })
 
 Tool('safeEditTgpComp', {
-  description: 'Validate and TGP-format a profile, replacing it at an existing tgpPath',
+  description: 'Validate and TGP-format a profile, replace it at an existing tgpPath, and optionally probe the changed element immediately',
   params: [
-    {id: 'tgpPath', as: 'string', asIs: true, mandatory: true},
-    {id: 'profileText', as: 'string', asIs: true, mandatory: true},
-    {id: 'existingProfileText', as: 'string', asIs: true, mandatory: true}
+    {id: 'tgpPath', as: 'string', asIs: true, mandatory: true, description: 'type<dsl>id[~path]; array: ~+0 prepend, ~+ append, ~0+ after first, ~!3 delete, ~![3-5] delete range'},
+    {id: 'profileText', as: 'string', asIs: true, description: 'New profile; ignored for delete'},
+    {id: 'existingProfileText', as: 'string', asIs: true, description: 'Current source; WS ignored; empty/* skips check; ignored for array insert/delete'},
+    {id: 'livePreview', as: 'string', asIs: true, description: `optional JSON string: {result?: 'in'|'out'|'all', runner?: 'node', loggers?: {loggerName: true|jq}, probePath?, circuit?}; defaults to the edited path, inferred circuit, node, and out`}
   ],
-  impl: mcpTool(async (ctx, {}, {tgpPath, profileText, existingProfileText}) => {
+  impl: mcpTool(async (ctx, {}, {tgpPath, profileText, existingProfileText, livePreview}) => {
     try {
       await import('@jb6/lang-service')
-      const result = await dsls.common.data['langService.calcTgpCompChange'].$runWithCtx(ctx, {tgpPath, profileText, existingProfileText})
-      const host = jb.langServiceUtils.localFsHost({...result, ctx})
+      const previewOptions = livePreview && JSON.parse(livePreview)
+      const host = jb.langServiceUtils.localFsHost({ctx})
       jb.ext.tgpTextEditor = {host}
-      await jb.langServiceUtils.applyCompChange({edit: result.compChange}, {ctx})
+      const result = await dsls.common.data['langService.calcTgpCompChange'].$runWithCtx(ctx, {tgpPath, profileText, existingProfileText})
+      await jb.langServiceUtils.applyCompChange({edit: result.compChange, path: result.path, expectedSource: result.source}, {ctx})
       if (host.applyError()) throw host.applyError()
-      return result.formattedTgpProfile
+      if (!previewOptions) return result.formattedTgpProfile
+      const preview = await coreUtils.runProbePreview(previewOptions.probePath || result.resultTgpPath || tgpPath, previewOptions)
+      return JSON.stringify({formattedTgpProfile: result.formattedTgpProfile, livePreview: preview}, null, 2)
     } catch (error) {
       return JSON.stringify({error: error.message || String(error)})
     }
@@ -297,7 +305,7 @@ await coreUtils.writeServiceResult({ done, harvestError, errors, logs, html, tim
 })
 
 Tool('playwrightHarvest', {
-  description: `Load a URL in Chromium, run ui-action<react> automation, and harvest logs, browser errors, HTML, and timeline.`,
+  description: 'Load a URL in Chromium, run ui-action<react> automation, and harvest logs, browser errors, HTML, and timeline.\nIn the Wonder project use roomAppletHarvest for room applet URLs.',
   params: [
     {id: 'url', as: 'string', asIs: true, mandatory: true},
     {id: 'automation', as: 'string', asIs: true},

@@ -20,8 +20,8 @@ Component('dataTest', {
     {id: 'runBefore', type: 'action', dynamic: true},
     {id: 'setup', type: 'ctx-enricher<tgp>', dynamic: true, description: 'ctx enricher that runs before runBefore and calculate'},
     {id: 'timeout', as: 'number', defaultValue: 200},
-    {id: 'allowError', as: 'boolean', dynamic: true, type: 'boolean'},
-    {id: 'cleanUp', type: 'action', dynamic: true},
+    {id: 'allowError', as: 'boolean', dynamic: true, type: 'boolean<common>'},
+    {id: 'cleanUp', type: 'action<common>', dynamic: true},
     {id: 'expectedCounters', as: 'single', description: 'per-logger expected entry count, e.g. {retryLogger: 5} asserts ctx.vars.retryLogger.retryLog.length === 5'},
     {id: 'logger', as: 'string', description: 'e.g "dbLogger" or comma-separated "makeLogger,dbLogger"'}
   ],
@@ -60,7 +60,7 @@ Component('dataTest', {
 					} catch (error) {
 						res = [{testFailure: error.stack}]	
 					}
-					const _res = await waitForInnerElements(res)
+                    const _res = await waitForInnerElements(res, {resolveObjectProperties: true})
 					return _res
 				})()
 			].filter(Boolean))
@@ -231,7 +231,8 @@ const printFail = line => {
 export async function runTests({specificTest,show,pattern,notPattern,take,repo,showOnly,includeHeavy}={}) {
     specificTest = specificTest && decodeURIComponent(specificTest).split('>').pop()
 
-    let tests = globalsOfTypeIds(Test)
+    let tests = globalsOfTypeIds(Test, 'all')
+        .filter(id => (Test[id][asJbComp].params || []).every(p => p.defaultValue !== undefined))
         .filter(id =>!specificTest || id == specificTest)
         .filter(id => specificTest || includeHeavy || !Test[id][asJbComp]?.HeavyTest)
         .filter(id => specificTest || !Test[id][asJbComp]?.doNotRunInTests)
