@@ -106,7 +106,7 @@ function waitFor(ctx, subject, timeout, check) {
   return new Promise(resolve => {
     const observer = new win.MutationObserver(checkNow)
     const timer = setTimeout(() => finish(false), timeout)
-    observer.observe(win.document, {childList: true, subtree: true})
+    observer.observe(win.document, {childList: true, subtree: true, characterData: true})
     checkNow()
     function checkNow() { if (check()) finish(true) }
     function finish(found) {
