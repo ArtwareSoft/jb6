@@ -108,7 +108,8 @@ Tool('safeEditTgpComp', {
     {id: 'tgpPath', as: 'string', asIs: true, mandatory: true, description: 'type<dsl>id[~path]; array: ~+0 prepend, ~+ append, ~0+ after first, ~!3 delete, ~![3-5] delete range'},
     {id: 'profileText', as: 'string', asIs: true, description: 'New profile; ignored for delete'},
     {id: 'existingProfileText', as: 'string', asIs: true, description: 'Current source; WS ignored; empty/* skips check; ignored for array insert/delete'},
-    {id: 'livePreview', as: 'string', asIs: true, description: `optional JSON string: {result?: 'in'|'out'|'all', runner?: 'node', loggers?: {loggerName: true|jq}, probePath?, circuit?}; defaults to the edited path, inferred circuit, node, and out`}
+    {id: 'livePreview', as: 'string', asIs: true, description: `optional JSON string:
+      {result?: 'in'|'out'|'all', runner?: 'node', loggers?: {loggerName: true|jq}, probePath?, circuit?}; defaults to the edited path, inferred circuit, node, and out`}
   ],
   impl: mcpTool(async (ctx, {}, {tgpPath, profileText, existingProfileText, livePreview}) => {
     try {
@@ -241,7 +242,7 @@ Tool('scrambleText', {
 
 const playwrightHarvest = Data('playwrightHarvest', {
   description: `Load a tests.html, react-comp-view.html or room applet URL in Chromium, run ui-action<react> automation and harvest its loggers and browser errors.
-Returns { done, errors, logs, html?, timeline }.`,
+Returns { done, errors, logs, html?, timeline, network }.`,
   params: [
     {id: 'url', as: 'string', asIs: true, mandatory: true},
     {id: 'automation', type: 'ui-action<react>', dynamic: true},
@@ -284,6 +285,11 @@ const errors = []
 page.on('console', m => /error|warning/i.test(m.type()) &&
   !m.text().startsWith('cdn.tailwindcss.com should not be used in production') && errors.push(m.text()))
 page.on('pageerror', e => errors.push(String(e?.stack || e)))
+const network = []   // every response and failed request of the page and its workers: url, status or failure, resource type, the COEP the browser enforces
+page.on('response', r => network.push({ url: r.url(), status: r.status(), type: r.request().resourceType(),
+  coep: r.headers()['cross-origin-embedder-policy'] }))
+page.on('requestfailed', r => network.push({ url: r.url(), failure: r.failure()?.errorText, type: r.resourceType() }))
+page.on('worker', w => network.push({ worker: w.url() }))
 await page.addInitScript(() => window.addEventListener('unhandledrejection', e => console.error('unhandledrejection: ' + (e.reason?.stack || e.reason))))
 const seed = ${JSON.stringify(seed)}
 if (seed) await page.addInitScript(s => Object.entries(s).forEach(([k, v]) => localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v))), seed)
@@ -298,14 +304,15 @@ try {
 } catch (e) { harvestError = String(e?.message || e); mark('failed:' + (timeline.at(-1)?.phase || 'goto')) }
 await browser.close(); mark('closed')
 const redirect = ${JSON.stringify(redirect)}
-await coreUtils.writeServiceResult({ done, harvestError, errors, logs, html, timeline, redirect })`
+await coreUtils.writeServiceResult({ done, harvestError, errors, logs, html, timeline, redirect, network })`
     const { result, error } = await coreUtils.runCliInContext(script)
     return error ? {error} : result
   }
 })
 
 Tool('playwrightHarvest', {
-  description: 'Load a URL in Chromium, run ui-action<react> automation, and harvest logs, browser errors, HTML, and timeline.\nIn the Wonder project use roomAppletHarvest for room applet URLs.',
+  description: `Load a URL in Chromium, run ui-action<react> automation, and harvest logs, browser errors, HTML, timeline and network.
+In the Wonder project use roomAppletHarvest for room applet URLs.`,
   params: [
     {id: 'url', as: 'string', asIs: true, mandatory: true},
     {id: 'automation', as: 'string', asIs: true},
