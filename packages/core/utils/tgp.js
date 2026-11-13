@@ -29,7 +29,7 @@ const tgpComp = CompDef({ // bootstraping
     {id: 'dsl', as: 'string'},
     {id: 'moreTypes', as: 'string'},
     {id: 'macroByValue', as: 'boolean'},
-    {id: 'description', as: 'string'},
+    {id: 'description', as: 'string', newLinesInCode: true},
     {id: 'whenToUse', as: 'text'},
     {id: 'HeavyTest', as: 'boolean' },
     {id: 'aggregator', as: 'boolean' },

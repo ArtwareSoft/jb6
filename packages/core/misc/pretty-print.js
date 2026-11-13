@@ -51,7 +51,7 @@ function noMacroCompPrefix(compId) {
   return `component('${compId.split('>').pop()}', `
 }
 
-function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='', noMacros, tgpNoMacros, singleLine, depth,
+function prettyPrintWithPositions(val, {colWidth=100, paramColWidth=180, tabSize=2, initialPath='', noMacros, tgpNoMacros, singleLine, depth,
   tgpModel, type, resolvedParams, filePath, newLinesInCode} = {}) {
   noMacros = noMacros || tgpNoMacros
   newLinesInCode = newLinesInCode ?? noMacros  // default to true when noMacros is set
@@ -107,9 +107,11 @@ function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='',
     const { open, close, isArray, len, singleParamAsArray, primitiveArray, longInnerValInArray, singleFunc, nameValuePattern, token, mixed } = props[path]
     
     const paramProp = path.match(/~params~[0-9]+$/)
-    const singleLine = paramProp || useSingleLine || singleFunc || nameValuePattern || primitiveArray || (len < colWidth && !multiLine())
+    const paramFitsLine = paramProp && (depth-1)*tabSize + len <= paramColWidth && !props[path].multiLineText
+    const singleLine = paramFitsLine || useSingleLine || singleFunc || nameValuePattern || primitiveArray || (!paramProp && len < colWidth && !multiLine())
     const separatorWS = primitiveArray ? '' : singleLine ? ' ' : newLine()
 
+    if (paramProp && !singleLine) return paramFillTokens()
     if (!mixed) {
       const innerVals = props[path].innerVals || []
       const vals = innerVals.reduce((acc,{innerPath}, index) => {
@@ -139,6 +141,22 @@ function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='',
 
     function newLine(offset = 0) {
       return singleLine ? '' : '\n' + emptyLineWithSpaces.slice(0,(depth+offset)*tabSize)
+    }
+
+    function paramFillTokens() { // a param too long for a line: its props fill lines of paramColWidth, a prop that would pass it starts the next
+      const innerVals = props[path].innerVals
+      const propLen = innerPath => fixPropName(innerPath).length + 2 + props[`${path}~${innerPath}`].len
+      let column = (depth-1)*tabSize + 1
+      const vals = innerVals.flatMap(({innerPath}, index) => {
+        const fullInnerPath = `${path}~${innerPath}`, next = innerVals[index+1]
+        column += propLen(innerPath) + 2
+        const wrap = next && column + propLen(next.innerPath) > paramColWidth
+        if (wrap) column = depth*tabSize
+        return [{ token: fixPropName(innerPath) + ': ' }, ...calcTokens(fullInnerPath, { depth: depth+1 }),
+          ...(next ? [{token: ',' + (wrap ? newLine() : ' '), action: `insertPT!${fullInnerPath}`}] : [])]
+      })
+      return [...asArray(open).map(x=>({...x, path, action: `propInfo!${path}`})), ...vals, {token:'', action: `end!${path}`},
+        ...asArray(close).map(x=>({...x, path, action: `appendPT!${path}`}))]
     }
 
     function multiLine() {
@@ -218,6 +236,17 @@ function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='',
 
   function calcProfileProps(profile, path, settings = {}) {
     const {forceByName, parentParam, posInArray} = settings
+    if (resolvedParams && path.match(/([0-9]+)~defaultValue$/)) {
+      const index = path.match(/([0-9]+)~defaultValue$/)[1]
+      const resolvedParam = resolvedParams[index]
+      const topComp = compByFullId(path.split('~')[0], tgpModel)
+      try {
+        resolveProfileTypes(profile, {tgpModel, expectedType: resolvedParam.$dslType, topComp, filePath})
+      } catch (error) {
+        if (error.syntaxError)
+          profile.syntaxError = error.syntaxError
+      }
+    }
     if (profile.$unresolvedArgs)
       resolveProfileArgs(profile)
     if (noMacros)
@@ -233,17 +262,6 @@ function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='',
     }
     if (profile[originCoerce] != null)
       return calcValueProps(profile[originCoerce], path)
-    if (resolvedParams && path.match(/([0-9]+)~defaultValue$/)) {
-      const index = path.match(/([0-9]+)~defaultValue$/)[1]
-      const resolvedParam = resolvedParams[index]
-      const topComp = compByFullId(path.split('~')[0], tgpModel)
-      try {
-        resolveProfileTypes(profile, {tgpModel, expectedType: resolvedParam.$dslType, topComp, filePath})
-      } catch (error) {
-        if (error.syntaxError)
-          profile.syntaxError = error.syntaxError
-      }
-    }
 
     if (profile.$comp) {
       const cleaned = {...profile }
@@ -275,7 +293,7 @@ function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='',
     let paramsByName = param0.byName ? params.slice(0) 
       : firstParamAsArray ? params.slice(1) 
       : params.slice(2)
-    if (param1.byName && paramsByValue.length)
+    if (param1.byName && paramsByValue.length && !firstParamAsArray)
       paramsByName.unshift(paramsByValue.pop())
     if (comp.macroByValue) {
       paramsByValue = params
@@ -296,8 +314,9 @@ function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='',
     //const varsByName = hasParamAsArray ? [] : ['vars']
     const systemProps = sysProps.filter(p=>p != 'vars' || !varsByValue.length).flatMap(p=>profile[p] ? [{innerPath: p, val: profile[p]}] : [])
 
-    const propsByName = systemProps.concat(paramsByName.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode || param.as == 'text'}))).filter(({val})=>val !== undefined)
-    const propsByValue = paramsByValue.map(param=>({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode || param.as == 'text'})).filter(({val})=>val !== undefined)
+    const paramProps = param => ({innerPath: param.id, val: profile[param.id], newLinesInCode: param.newLinesInCode || param.as == 'text'})
+    const propsByName = systemProps.concat(paramsByName.map(paramProps)).filter(({val})=>val !== undefined)
+    const propsByValue = paramsByValue.map(paramProps).filter(({val})=>val !== undefined)
     const firstParamVal = profile[param0.id]
     const secondParamVal = asArray(profile[param1.id])
     const singleFirstParamAsArray = firstParamAsArray && !Array.isArray(firstParamVal) && firstParamVal != null
@@ -338,7 +357,8 @@ function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='',
     const primitiveArray =  propsByName.length == 0 && !varArgs.length && firstParamAsArray && 
       argsByValue.reduce((acc,item)=> acc && isPrimitiveValue(item.val), true)
     const singleInArray = (parentParam?.type || '').indexOf('[]') != -1 && !path.match(/[0-9]$/)
-    return props[path] = { len, id, posInArray, argsByValue, propsByName, nameValuePattern, nameValueFold, singleVal, singleFunc, primitiveArray, singleInArray, singleArgAsArray, hasParamAsArray, lenOfValues, mixed: true}
+    return props[path] = { len, id, posInArray, argsByValue, propsByName, nameValuePattern, nameValueFold, singleVal, singleFunc, primitiveArray,
+      singleInArray, singleArgAsArray, hasParamAsArray, lenOfValues, mixed: true}
   }
 
   function calcArrayPos(index,array) {
@@ -366,10 +386,12 @@ function prettyPrintWithPositions(val, {colWidth=100, tabSize=2, initialPath='',
       }
       Object.keys(profileToUse).forEach(k=>{ if (k != '$' && k[0] == '$') delete profileToUse[k]})
     } 
-    const len = objProps.reduce((len,key) => len 
-      + calcValueProps(profileToUse[key],`${path}~${key}`).len + key.length + 3,2,{asIs: true})
+    const paramEntry = path.match(/~params~[0-9]+$/)
+    const len = objProps.reduce((len,key) => len
+      + calcValueProps(profileToUse[key],`${path}~${key}`, paramEntry ? {newLinesInCode: true} : undefined).len + key.length + 3,2,{asIs: true})
     const innerVals = objProps.map(prop=>({innerPath: prop}))
-    return openCloseProps(path, {token:'{'},{ token:'}'}, { len, simpleObj: true, innerVals})
+    const multiLineText = paramEntry && objProps.some(key => typeof profileToUse[key] == 'string' && profileToUse[key].includes('\n'))
+    return openCloseProps(path, {token:'{'},{ token:'}'}, { len, simpleObj: true, innerVals, multiLineText})
   }
 
   function calcArrayProps(array, path) {

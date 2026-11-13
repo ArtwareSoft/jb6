@@ -85,8 +85,10 @@ Tool('formatAndValidateTgpComp', {
         if (!comp?.$location) throw new Error(`fullCompId '${fullCompId}' not found`)
         const path = coreUtils.resolveWithImportMap(comp.$location.path, importMap, staticMappings) || comp.$location.path
         const src = await readFile(path, 'utf8'), from = lineColToOffset(src, comp.$location), end = lineColToOffset(src, comp.$location.to)
-        const {comp: parsedComp, compDef, error} = calcProfileActionMap(src.slice(from, end), {tgpModel, filePath: path, ctx: logCtx})
+        const {comp: parsedComp, compDef, error, unsupported} = calcProfileActionMap(src.slice(from, end), {tgpModel, filePath: path, ctx: logCtx})
         if (error || parsedComp?.syntaxError) throw new Error(error?.syntaxError || error || parsedComp.syntaxError)
+        if (unsupported.length) throw new Error(`${fullCompId} is not formatted: a profile holds literals, template literals, component calls and arrow functions, not ${
+          unsupported.join(' | ')}`)
         const formatted = coreUtils.prettyPrintComp(parsedComp, {tgpModel, filePath: path, initialPath: fullCompId, compDef})
         const changed = formatted != src.slice(from, end)
         if (changed) await writeFile(path, src.slice(0, from) + formatted + src.slice(end))

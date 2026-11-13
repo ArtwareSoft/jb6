@@ -5,7 +5,8 @@ import '@jb6/core/misc/resolve-types.js'
 import { coreUtils } from '@jb6/core'
 const { jb, systemParams, astNode, logException, logError, findCompDefById,
     resolveProfileTypes, compParams, compIdOfProfile, isPrimitiveValue, asArray, compByFullId, primitivesAst, splitDslType, resolveProfileTop } = coreUtils
-Object.assign(coreUtils, {astToTgpObj})
+const unsupportedAst = Symbol.for('unsupportedAst')
+Object.assign(coreUtils, {astToTgpObj, unsupportedAst})
 
 // acorn-loose mis-parses valid multiline destructures (drops `= dsls` init). Try strict acorn first, fall back to loose with a warning.
 const parseWithFallback = (src, opts, filePath) => { try { return parse(src, opts) } catch (e) {
@@ -181,7 +182,7 @@ function calcProfileActionMap(compText, {tgpType = 'comp<tgp>', tgpModel, filePa
         .map(x => x.action.split('!').pop())
         .reduce((longest, current) => current.length > longest.length ? current : longest, '');
 
-    return { text: compText, compId, comp: topComp, actionMap, path, dslTypeId, compDef }
+    return { text: compText, compId, comp: topComp, actionMap, path, dslTypeId, compDef, unsupported: topComp[unsupportedAst] }
 
     function calcActionMap(prof,path,ast) {
         const pathMatch = expectedPath.startsWith(path) || path.startsWith(expectedPath)
@@ -392,7 +393,9 @@ function closestComp(docText, cursorLine, cursorCol, filePath) {
 
 function astToTgpObj(node, code) {
 	if (!node) return undefined
-  return toObj(node)
+  const unsupported = [], res = toObj(node)
+  if (res && typeof res == 'object') res[unsupportedAst] = unsupported
+  return res
 
   function toObj(node) {
     switch (node.type) {
@@ -425,7 +428,7 @@ function astToTgpObj(node, code) {
         return attachNode({$: node.name || [node.object?.name,node.property?.name].join('.'), $unresolvedArgs: []})
       }
 
-      default: return undefined
+      default: unsupported.push(`${node.type} ${code ? code.slice(node.start, node.end) : ''}`.slice(0, 120))
     }
 
     function attachNode(res) {
