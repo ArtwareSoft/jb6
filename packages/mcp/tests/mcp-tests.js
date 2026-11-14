@@ -1,5 +1,6 @@
 import { dsls, ns, coreUtils } from '@jb6/core'
-import './mcp-testers.js'
+import { MockMcpHost } from './mcp-testers.js'
+import { renderReactCompToHtml } from '@jb6/mcp/mcp-utils.js'
 
 const {
   tgp: { Const},
@@ -12,6 +13,7 @@ const {
     prop: { prop },
   },
   mcp: { tool: { formatAndValidateTgpComp, safeEditTgpComp } },
+  react: { ReactComp, 'react-comp': { comp }, 'react-metadata': { mcpUi } }
 } = dsls
 const { json } = ns
 
@@ -172,4 +174,41 @@ Test('mcpReactTest.helloMcp.react', {
   HeavyTest: true,
   doNotRunInTests: true,
   impl: mcpReactTest('helloMcp', ()=>({ textToShowAfter: '--hello mcp--' }))
+})
+
+ReactComp('mcpUiTest.fullScreenCard', {
+  impl: comp({
+    hFunc: ({}, {react: {h}}) => () => h('div', {style: {height: '120px'}}, 'full screen card'),
+    metadata: mcpUi({ fullScreen: true })
+  })
+})
+
+Test('mcpUiTest.displayModeAndSize', {
+  HeavyTest: true,
+  doNotRunInTests: true,
+  impl: dataTest({
+    calculate: async () => {
+      const iframe = Object.assign(document.createElement('iframe'), { sandbox: 'allow-scripts allow-same-origin' })
+      iframe.style.cssText = 'width: 800px; height: 600px'
+      const host = new MockMcpHost(iframe, { hostContext: { displayMode: 'inline' } })
+      const { imports } = JSON.parse(document.querySelector('script[type=importmap]').textContent)
+      document.body.appendChild(iframe)
+      iframe.srcdoc = renderReactCompToHtml('mcpUiTest.fullScreenCard', { imports }, [import.meta.url], { origin: location.origin })
+      const wait = mSec => new Promise(resolve => setTimeout(resolve, mSec))
+      await host.waitForInit(5000)
+      await wait(500)
+      const modeAtStart = iframe.contentWindow.mcpDisplayMode
+      host.sendHostContext({ displayMode: 'inline' })
+      await wait(100)
+      const result = { requestedMode: host.messages.find(m => m.method == 'ui/request-display-mode')?.params.mode, modeAtStart,
+        modeAfterHostChange: iframe.contentWindow.mcpDisplayMode,
+        lastHeight: host.messages.filter(m => m.method == 'ui/notifications/size-changed').at(-1)?.params.height }
+      host.destroy()
+      iframe.remove()
+      return result
+    },
+    expectedResult: ({data}) => data.requestedMode == 'fullscreen' && data.modeAtStart == 'fullscreen' && data.modeAfterHostChange == 'inline'
+      && data.lastHeight >= 120 && data.lastHeight < 600,
+    timeout: 10000
+  })
 })

@@ -17,8 +17,9 @@ const {
  * @see https://github.com/modelcontextprotocol/ext-apps
  */
 export class MockMcpHost {
-  constructor(iframe) {
+  constructor(iframe, { hostContext = { theme: 'light' } } = {}) {
     this.iframe = iframe
+    this.hostContext = hostContext
     this.appCapabilities = null
     this.initialized = false
     this.messages = []
@@ -57,8 +58,11 @@ export class MockMcpHost {
             requests: ['tools/call'],
             notifications: ['ui/notifications/tool-input', 'ui/notifications/tool-result']
           },
-          hostContext: { theme: 'light' }
+          hostContext: this.hostContext
         })
+        break
+      case 'ui/request-display-mode':
+        this._sendResponse(data.id, { mode: data.params.mode })
         break
       case 'tools/call':
         // Mock tool call - respond with empty result
@@ -116,6 +120,10 @@ export class MockMcpHost {
       method: 'ui/notifications/tool-input',
       params
     }, '*')
+  }
+
+  sendHostContext(hostContext) {
+    this.iframe.contentWindow.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/host-context-changed', params: hostContext }, '*')
   }
 
   // Wait for iframe to complete initialization
