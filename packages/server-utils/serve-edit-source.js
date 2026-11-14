@@ -7,7 +7,7 @@ jb.serverUtils = jb.serverUtils || {}
 Object.assign(jb.serverUtils, { serveEditSource })
 
 function serveEditSource(app, {express}) {
-  let _staticMappings, _tgpModel
+  let _staticMappings
   app.post('/editSource', express.json(), async (req, res) => {
     try {
       const host = req.hostname || req.headers.host?.split(':')[0]
@@ -29,8 +29,8 @@ function serveEditSource(app, {express}) {
       if (validateTgpComp) {
         if (!newContent.includes(validateTgpComp)) return res.status(422).json({ error: 'validated component does not match edited file' })
         await import('@jb6/lang-service')
-        _tgpModel = _tgpModel || await coreUtils.calcTgpModelData({forRepo: repoRoot})
-        const { comp, error } = jb.langServiceUtils.calcProfileActionMap(validateTgpComp, {tgpModel: _tgpModel, filePath: fullPath})
+        const tgpModel = await coreUtils.calcTgpModelData({entryPointPaths: [fullPath]})
+        const { comp, error } = jb.langServiceUtils.calcProfileActionMap(validateTgpComp, {tgpModel, filePath: fullPath})
         if (!comp || error || comp.syntaxError)
           return res.status(422).json({ error: `Invalid TGP profile: ${error || comp?.syntaxError || 'parse failed'}` })
       }

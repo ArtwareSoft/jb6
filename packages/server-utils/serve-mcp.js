@@ -3,15 +3,17 @@ import { coreUtils, jb, dsls } from '@jb6/core'
 jb.serverUtils = jb.serverUtils || {}
 Object.assign(jb.serverUtils, { serveMcp, serveMcpViaCli, serveMcpViaVm })
 
+const statelessMcpRejectsGetAndDelete = app => ['get', 'delete'].forEach(method =>
+  app[method]('/mcp', (_, res) => res.status(405).json({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed' } })))
+
 async function serveMcp(app, { express }) {
   const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js')
   const { startMcpServer } = await import("@jb6/mcp/mcp-utils.js")
-  await import('@jb6/mcp/mcp-jb-tools.js')
-  await import('@jb6/mcp/mcp-fs-tools.js')
 
   // Pre-calculate import map once at startup
   await import('@jb6/core/misc/import-map-services.js')
   const { importMap } = await coreUtils.calcImportData()
+  statelessMcpRejectsGetAndDelete(app)
 
   app.post("/mcp", express.json({ type: "application/json" }), async (req, res) => {
     const transport = new StreamableHTTPServerTransport({
@@ -47,6 +49,7 @@ async function serveMcpViaCli(app, { express }) {
     await import('@jb6/mcp/mcp-fs-tools.js')
   }
 
+  statelessMcpRejectsGetAndDelete(app)
   app.get("/mcp-ui", async (req, res) => {
     try {
       const compId = req.query.compId
@@ -182,9 +185,7 @@ await coreUtils.writeServiceResult(result)
           const urlsToLoad = sourceFile ? [sourceFile] : []
 
           const { renderReactCompToHtml } = await import('@jb6/mcp/mcp-utils.js')
-          const metadata = typeof jbComp.impl.metadata === 'function' ? jbComp.impl.metadata() : jbComp.impl.metadata
-          const fullScreen = !!coreUtils.asArray(metadata).find(m => m.fullScreen)?.fullScreen
-          const html = renderReactCompToHtml(compId, importMap, urlsToLoad, { origin, fullScreen })
+          const html = renderReactCompToHtml(compId, importMap, urlsToLoad, { origin })
           const csp = { resourceDomains: [origin], connectDomains: [origin], baseUriDomains: [origin] }
           return sendJson({ jsonrpc: '2.0', id, result: { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: html, _meta: { ui: { csp } } }] } })
         }
@@ -235,6 +236,7 @@ async function serveMcpViaVm(app, { express, entryPointPaths, builtIn = {}, vers
 
   const importMapJson = JSON.stringify({imports: importMap.imports})
   const exclude = ['text', 'doclet']
+  statelessMcpRejectsGetAndDelete(app)
 
   const sendJsonRes = (res, data, req) => {
     if ((req.headers.accept || '').includes('text/event-stream')) {
@@ -305,9 +307,7 @@ async function serveMcpViaVm(app, { express, entryPointPaths, builtIn = {}, vers
             const sourceFile = jbComp?.$location?.path
             const fileUrl = sourceFile && coreUtils.absPathToImportUrl?.(sourceFile, ${importMapJson}.imports, ${JSON.stringify(staticMappings)})
             const urlsToLoad = fileUrl ? [fileUrl] : []
-            const metadata = typeof jbComp?.impl?.metadata === 'function' ? jbComp.impl.metadata() : jbComp?.impl?.metadata
-            const fullScreen = !!coreUtils.asArray(metadata).find(m => m.fullScreen)?.fullScreen
-            return renderReactCompToHtml('${compId}', ${importMapJson}, urlsToLoad, { origin: '${origin}', fullScreen })
+            return renderReactCompToHtml('${compId}', ${importMapJson}, urlsToLoad, { origin: '${origin}' })
           })()`)
           const csp = { resourceDomains: [origin], connectDomains: [origin], baseUriDomains: [origin] }
           return jsonrpc({ contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: html, _meta: { ui: { csp } } }] })

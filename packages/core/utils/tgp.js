@@ -49,8 +49,9 @@ function TgpTypeModifier(id, extraCompProps, tgpModel = jb) {
 
 const nsProxy = (ns) => new Proxy(() => 0, {
   get: (o,id) => {
-    const res = (...args) => ({ $: '__', $delayed: () => {
-      const comp = jb.nsRepo[ns][id]
+    const res = (...args) => ({ $: '__', $delayed: dslType => {
+      const [type, dsl] = dslType ? splitDslType(dslType) : []
+      const comp = jb.dsls[dsl]?.[type]?.[`${ns}.${id}`] || jb.nsRepo[ns][id]
       if (!comp) {
         debugger
         logError(`delayed ns profile. can not find profile ${ns}.${id}`)

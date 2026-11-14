@@ -16,7 +16,7 @@ const {
   }
 } = dsls
 
-async function runProbeStudio({ importMapsInCli, imports, staticMappings, topElem, urlsToLoad, cleanseProbResult }) {
+async function runProbeStudio({ importMapsInCli, imports, staticMappings, topElem, urlsToLoad, cleanseProbResult, actions }) {
   jb.coreRegistry.importMapsInCli = importMapsInCli
   const { h, hh, createRoot, loadLucid05 } = reactUtils
 
@@ -34,7 +34,7 @@ async function runProbeStudio({ importMapsInCli, imports, staticMappings, topEle
   const root = createRoot(topElem)
   const render = (c) => root.render(c)
   let status = ''
-  const ctx = new coreUtils.Ctx().setVars({ react: reactUtils, path })
+  const ctx = new coreUtils.Ctx().setVars({ react: reactUtils, path, actions })
   const { loadingView } = dsls.react['react-comp']
   const onStatus = (status) => render(hh(ctx, loadingView, { status }))
 
@@ -313,7 +313,7 @@ ReactComp('cmdErrorView', {
 
 const probeResultView = ReactComp('probeResultView', {
   impl: comp({
-    hFunc: (ctx, { probeRes, probePath, success, visits, totalTime, titleShort, allViews, react: { h, hh, useState } }) => () => {
+    hFunc: (ctx, { probeRes, probePath, success, visits, totalTime, titleShort, allViews, actions, react: { h, hh, useState } }) => () => {
       const [activeView, setActiveView] = useState(allViews.find(x => x.id == 'resultsView')?.id || allViews[0]?.id)
 
       const TabBtn = ({ id, abbr, isActive }) =>
@@ -330,6 +330,7 @@ const probeResultView = ReactComp('probeResultView', {
       )
 
       const headerRight = h('div:flex gap-1 items-center', {},
+        actions && hh(ctx, actions),
         ...allViews.map(v => h(TabBtn, { key: v.id, id: v.id, abbr: v.abbr, isActive: activeView === v.id })),
         h('a:text-xs px-1', { href: location.href }, h('L:RefreshCw', { className: 'w-3 h-3' }))
       )
@@ -458,7 +459,8 @@ function print(v) {
 const CM6_IMPORT = '@jb6/react/lib/codemirror6/codemirror6-bundle.mjs'
 
 function createCm6Editor(parent, text, extraExtensions = []) {
-  const { EditorState, EditorView, javascript, lineNumbers, syntaxHighlighting, defaultHighlightStyle, foldGutter, foldAll, unfoldAll, search, openSearchPanel, keymap } = jb.reactRepository.importCache[CM6_IMPORT]
+  const { EditorState, EditorView, javascript, lineNumbers, syntaxHighlighting, defaultHighlightStyle,
+    foldGutter, foldAll, unfoldAll, search, openSearchPanel, keymap } = jb.reactRepository.importCache[CM6_IMPORT]
   const view = new EditorView({
     parent,
     state: EditorState.create({

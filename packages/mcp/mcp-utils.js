@@ -14,7 +14,7 @@ TgpType('tool', 'mcp', {
   resultExample: `{ content: {type:"text", text:string}[], isError: boolean, _meta?: {ui: {resourceUri: string}} }`
 })
 
-export function renderReactCompToHtml(compId, importMap = {}, urlsToLoad = [], { origin = '', fullScreen = false } = {}) {
+export function renderReactCompToHtml(compId, importMap = {}, urlsToLoad = [], { origin = '' } = {}) {
   const fix = v => origin && v.startsWith('/') ? origin + v : v
   const imports = importMap.imports ? Object.fromEntries(Object.entries(importMap.imports).map(([k, v]) => [k, fix(v)])) : {}
   const importMapJson = JSON.stringify({ imports })
@@ -54,6 +54,7 @@ ${origin ? `<base href="${origin}/">` : ''}
         }
         if (data.method === 'ui/notifications/tool-result') this.ontoolresult?.(data.params)
         else if (data.method === 'ui/notifications/tool-input') this.ontoolinput?.(data.params)
+        else if (data.method === 'ui/notifications/host-context-changed') this.onhostcontext?.(data.params)
       }
       _sendRequest(method, params) {
         const id = ++requestId
@@ -84,36 +85,37 @@ ${origin ? `<base href="${origin}/">` : ''}
       root.render(h('div', {}, hh(rCtx, reactCmp)))
     }
 
-    await app.connect()
-    ${fullScreen ? "await app.requestDisplayMode('fullscreen')" : ''}
-
-    let currentMode = '${fullScreen ? 'fullscreen' : 'inline'}'
+    const { hostContext } = await app.connect() || {}
+    let currentMode = hostContext?.displayMode || 'inline'
     const fsBtn = document.createElement('button')
     fsBtn.className = 'fs-btn'
     fsBtn.title = 'Toggle fullscreen'
     const expandSvg = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8.5 1.5H12.5V5.5"/><path d="M5.5 12.5H1.5V8.5"/><path d="M12.5 1.5L8 6"/><path d="M1.5 12.5L6 8"/></svg>'
     const shrinkSvg = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12.5 1.5L8.5 5.5"/><path d="M8.5 1.5V5.5H12.5"/><path d="M1.5 12.5L5.5 8.5"/><path d="M5.5 12.5V8.5H1.5"/></svg>'
     const updateBtn = () => { fsBtn.innerHTML = currentMode === 'fullscreen' ? shrinkSvg : expandSvg; fsBtn.title = currentMode === 'fullscreen' ? 'Exit fullscreen' : 'Enter fullscreen' }
-    updateBtn()
-    fsBtn.onclick = async () => {
-      const newMode = currentMode === 'fullscreen' ? 'inline' : 'fullscreen'
-      try { const r = await app.requestDisplayMode(newMode); currentMode = r.mode || newMode; updateBtn() } catch(e) {}
-    }
+    const setMode = mode => { currentMode = globalThis.mcpDisplayMode = mode; updateBtn(); window.dispatchEvent(new CustomEvent('mcp-display-mode', { detail: mode })) }
+    const requestMode = globalThis.mcpRequestDisplayMode = async mode => { try { setMode((await app.requestDisplayMode(mode))?.mode || mode) } catch(e) {} }
+    app.onhostcontext = context => context?.displayMode && setMode(context.displayMode)
+    setMode(currentMode)
+    fsBtn.onclick = () => requestMode(currentMode === 'fullscreen' ? 'inline' : 'fullscreen')
     document.body.appendChild(fsBtn)
+    const jbComp = coreUtils.resolveCompArgs(dsls.react['react-comp']['${compId}']?.[coreUtils.asJbComp])
+    if (coreUtils.asArray(jbComp?.impl.metadata).some(meta => meta?.fullScreen)) requestMode('fullscreen')
 
     const parse = (params) => { try { return JSON.parse(params?.content?.find(c => c.type === 'text')?.text) } catch(e) {} }
 
     app.ontoolinput = (args) => { debugger; compArgs = args.arguments; if (compArgs) render(compArgs) }
     app.ontoolresult = (params) => { debugger; const data = parse(params); if (data) { ctx = ctx.setVars({llmInput: data}); if (compArgs) render(compArgs) } }
     render({})
-    new ResizeObserver(() => app.requestSize({ height: document.body.scrollHeight })).observe(document.body)
+    const show = document.getElementById('show')
+    new ResizeObserver(() => app.requestSize({ height: show.scrollHeight })).observe(show)
   </script>
 </body>
 </html>`
 }
 
 coreUtils.runMcpTool = runMcpTool
-export async function runMcpTool(name, args, toolComp) {
+export async function runMcpTool(name, args, toolComp, vars = {}) {
   const jbComp = dsls.react?.['react-comp']?.[name]?.[coreUtils.asJbComp]
   if (jbComp) {
     coreUtils.resolveCompArgs(jbComp)
@@ -121,13 +123,13 @@ export async function runMcpTool(name, args, toolComp) {
     const calcData = coreUtils.asArray(metadata).find(m => m.calcData)?.calcData
     if (calcData) {
       const mergedArgs = Object.fromEntries((toolComp.params || []).map(p => [p.id, (args || {})[p.id] ?? p.defaultValue]).filter(([,v]) => v != null))
-      const ctx = new coreUtils.Ctx().setJbCtx(new coreUtils.JBCtx({args: mergedArgs}))
+      const ctx = new coreUtils.Ctx().setVars(vars).setJbCtx(new coreUtils.JBCtx({args: mergedArgs}))
       const data = await ctx.run(calcData)
       const text = typeof data === 'string' ? data : JSON.stringify(data)
       return { content: [{ type: 'text', text }], _meta: { ui: { resourceUri: `ui://react-comp/${name}` } } }
     }
   }
-  return await new coreUtils.Ctx().run({$: toolComp, ...args})
+  return await new coreUtils.Ctx().setVars(vars).run({$: toolComp, ...args})
 }
 
 export async function startMcpServer(transport, { allTools, importMap } = {}) {
@@ -172,9 +174,7 @@ export async function startMcpServer(transport, { allTools, importMap } = {}) {
       const fileUrl = sourceFile && imports && coreUtils.absPathToImportUrl?.(sourceFile, imports, staticMappings)
       const urlsToLoad = fileUrl ? [fileUrl] : []
       const browserImportMap = imports ? { imports } : {}
-      const metadata = typeof jbComp.impl.metadata === 'function' ? jbComp.impl.metadata() : jbComp.impl.metadata
-      const fullScreen = !!coreUtils.asArray(metadata).find(m => m.fullScreen)?.fullScreen
-      const html = renderReactCompToHtml(compId, browserImportMap, urlsToLoad, { fullScreen })
+      const html = renderReactCompToHtml(compId, browserImportMap, urlsToLoad)
       return { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: html }] }
     }
     throw { code: -32002, message: `Resource not found: ${uri}` }

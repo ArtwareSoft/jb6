@@ -56,10 +56,11 @@ await coreUtils.writeServiceResult(await coreUtils.resolveDeveloperEntryPoint())
 
     if (configuredPath.includes('{gitUser}')) {
       const { promisify } = await import('node:util'), { execFile } = await import('node:child_process')
-      const { stdout } = await promisify(execFile)('git', ['config', 'user.email'], {cwd: repoRoot})
-      const gitUser = stdout.trim().split('@')[0]
-      if (!gitUser) throw new Error(`git user.email is not configured in ${repoRoot}`)
-      configuredPath = configuredPath.replaceAll('{gitUser}', gitUser)
+      const gitUser = await promisify(execFile)('git', ['config', 'user.email'], {cwd: repoRoot})
+        .then(({stdout}) => stdout.trim().split('@')[0], () => '')
+      const perUser = gitUser && pathJoin(repoRoot, configuredPath.replaceAll('{gitUser}', gitUser))
+      configuredPath = perUser && await exists(perUser) ? configuredPath.replaceAll('{gitUser}', gitUser)
+        : configuredPath.replaceAll('{gitUser}', 'default')   // no git identity or no per-user file -> entry-points-default.js
     }
 
     developerEntryPoint = pathJoin(repoRoot, configuredPath)
@@ -217,12 +218,9 @@ function createErrorResult(error, entryFiles = [], pkgJson = {}) {
   return { pkgJson, entryFiles, error, testFiles: [], llmGuideFiles: [] }
 }
 
-// Build the import list for running a SYNTHETIC comp (one that has no on-disk definition, e.g. a comp
-// defined inline in probe extraCode). We can't resolve its imports from the comp, so we import the
-// given entry files + the repo's entryFiles + ALL repo test files (where Const()/circuits may live).
 async function calcImportsForFiles(files, {repoRoot, ctx} = {}) {
   repoRoot = repoRoot || await calcRepoRoot({ctx})
-  const {entryFiles = [], testFiles = [], importMap, projectDir, error} = await calcImportData({forRepo: repoRoot}, ctx)
+  const {importMap, error} = await getStaticServeConfig(repoRoot)
   if (error) return { error }
   // files may be browser served-URL paths (comp.$location.path, e.g. '/wonder-admin/bi/bi-tests.js'); the CLI child imports by disk path.
   const diskFiles = files.map(f => ({ url: f, disk: urlToDisk(f, importMap?.staticMappings) }))
@@ -230,8 +228,8 @@ async function calcImportsForFiles(files, {repoRoot, ctx} = {}) {
   const unmapped = diskFiles.filter(f => f.disk[0] == '/' && !f.disk.startsWith(repoRoot))   // still a URL after mapping → child crashes ERR_MODULE_NOT_FOUND
   mapped.length && ctx?.vars?.cliLogger?.info?.({ t: 'urlToDisk', mapped }, {}, { ctx })
   unmapped.length && ctx?.vars?.cliLogger?.warn?.({ t: 'unmappedImport', unmapped, hint: 'no staticMappings urlPath matched - [eval1] child cannot import this' }, {}, { ctx })
-  const topLevelImports = unique([...entryFiles, ...diskFiles.map(f => f.disk), ...testFiles])
-  return { topLevelImports, projectDir: projectDir || repoRoot, importMapsInCli: importMap?.importMapsInCli, tgpModel: { testFiles } }
+  const topLevelImports = unique(diskFiles.map(f => f.disk))
+  return { topLevelImports, projectDir: repoRoot, importMapsInCli: importMap?.importMapsInCli }
 }
 
 async function packageJson(packageDir) {

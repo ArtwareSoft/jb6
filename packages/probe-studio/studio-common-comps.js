@@ -39,7 +39,8 @@ ReactComp('reactCompView', {
   impl: comp({
     hFunc: (ctx, {urlsToLoad, react: {h}}) => () => {
       const cmpId = ctx.data
-      const src = `/jb6_packages/react/react-comp-view.html?cmpId=${encodeURIComponent(cmpId)}&urlsToLoad=${encodeURIComponent(urlsToLoad)}`
+      const src = `/jb6_packages/react/react-comp-view.html?cmpId=${encodeURIComponent(cmpId)}`
+        + `&urlsToLoad=${encodeURIComponent(urlsToLoad)}&ctx-probeView=true`
       return h('div:w-full h-full flex flex-col', {},
         h('div:flex p-1', {},
           h('a:text-gray-500 hover:text-gray-800', { href: src, target: '_blank', title: 'Open in new tab' }, 
@@ -119,12 +120,12 @@ ReactComp('claude', {
         useEffect(() => {
           ;(async () => {
             const [{ Terminal }, { FitAddon }] = await Promise.all([
-              import('https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/+esm'),
-              import('https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/+esm')
+              import('@jb6/react/lib/xterm/xterm-5.5.0.mjs'),
+              import('@jb6/react/lib/xterm/addon-fit-0.10.0.mjs')
             ])
             const link = document.createElement('link')
             link.rel = 'stylesheet'
-            link.href = 'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css'
+            link.href = import.meta.resolve('@jb6/react/lib/xterm/xterm-5.5.0.css')
             document.head.appendChild(link)
 
             term.current = new Terminal({ cursorBlink: true, fontSize: 12 })

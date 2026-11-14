@@ -111,7 +111,7 @@ Test('mcpTest.probeWithLogger', {
 Test('mcpTest.formatCompNotFound', {
   HeavyTest: true,
   impl: dataTest({
-    calculate: async () => (await formatAndValidateTgpComp.$run({fullCompId: 'test<test>notThere', logger: 'langServiceLogger'})).content[0].text,
+    calculate: async () => (await formatAndValidateTgpComp.$run({fullCompIds: 'test<test>notThere', logger: 'langServiceLogger'})).content[0].text,
     expectedResult: and(contains(`fullCompId 'test<test>notThere' not found`), contains('formatCompError')),
     timeout: 5000
   })
@@ -122,9 +122,9 @@ Test('mcpTest.formatComp', {
   nodeOnly: true,
   impl: dataTest({
     calculate: async () => (await formatAndValidateTgpComp.$run({
-      fullCompId: 'test<test>mcpTest.formatCompNotFound', logger: 'langServiceLogger'
+      fullCompIds: 'test<test>mcpTest.formatCompNotFound,test<test>mcpTest.prettyPrintCompDef', logger: 'langServiceLogger'
     })).content[0].text,
-    expectedResult: and(contains('mcpTest.formatCompNotFound'), contains('"t": "formatComp"')),
+    expectedResult: and(contains('mcpTest.formatCompNotFound', 'mcpTest.prettyPrintCompDef'), contains('"t": "formatComp"')),
     timeout: 5000
   })
 })

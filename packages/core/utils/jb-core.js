@@ -32,7 +32,7 @@ const { RT_types, resolveCompArgs, resolveProfileArgs, asComp, calcExpression, i
 
 function run(profile, ctx = new Ctx(), settings = {}) {
     // changing context with data and vars
-    resolveDelayed(profile)
+    resolveDelayed(profile, ctx.jbCtx?.slotDslType)
     if (profile.vars != null && !settings.resolvedCtx)
         ctx = applyCtxEnrichers(profile.vars, ctx, settings)
     if (isPromise(ctx)) // handling a-synch vars
@@ -87,9 +87,9 @@ function toRTType(parentParam, value) {
     return value
 }
 
-function resolveDelayed(profile) {
+function resolveDelayed(profile, dslType) {
     if (profile?.$delayed) {
-        Object.assign(profile, profile.$delayed())
+        Object.assign(profile, profile.$delayed(dslType))
         delete profile.$delayed
         resolveProfileArgs(profile)
     }
@@ -107,7 +107,8 @@ class JBCtx {
         return new JBCtx({...this, path: `${this.path}~${index}`, profile: this.profile[index] })
     }
     innerParam(parentParam, profile) {
-        return new JBCtx({...this, path: `${this.path}~${parentParam.id}`, parentParam, profile: profile[parentParam.id]})
+        const slotDslType = parentParam.$dslType?.startsWith('$asParent') ? this.slotDslType : parentParam.$dslType
+        return new JBCtx({...this, path: `${this.path}~${parentParam.id}`, parentParam, slotDslType, profile: profile[parentParam.id]})
     }
     paramDefaultValue(path, parentParam) {
         return new JBCtx({...this, lexicalStack: [...(this.lexicalStack || []), this.path, path], path, parentParam, profile: parentParam.defaultValue})
@@ -141,7 +142,7 @@ class Ctx {
         return new Ctx({data: this.data, vars: this.vars, jbCtx})
     }
     run(profile) {
-        resolveDelayed(profile)
+        resolveDelayed(profile, this.jbCtx.slotDslType)
         return run(resolveProfileArgs(profile),this)
     }
     exp(exp,jstype) { 
@@ -167,12 +168,12 @@ class jbComp {
         return this._params
     }
     runProfile(profile, ctx = new Ctx(), settings) {
+        if (!this?.$resolvedInner)
+            resolveCompArgs(this)
         const compArgs = Object.fromEntries(this.calcParams().map(p =>[p.id, p.resolve(profile, ctx.setJbCtx(ctx.jbCtx.innerParam(p, profile)), settings)]))
         if (this.impl == null) return compArgs
         if (typeof this.impl == 'function')
             this.impl.compFunc = true
-        if (!this?.$resolvedInner)
-            resolveCompArgs(this)
         return run(this.impl, ctx.setJbCtx(ctx.jbCtx.newComp(this,compArgs)), settings)
     }
 }

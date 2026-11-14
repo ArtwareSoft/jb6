@@ -3,8 +3,7 @@ import { reactUtils } from '@jb6/react'
 
 const { tgp: { CtxEnricher } } = dsls
 
-const REVEAL_VERSION = '5.2.1'
-const cdn = path => `https://cdn.jsdelivr.net/npm/reveal.js@${REVEAL_VERSION}/dist/${path}`
+const vendored = path => new URL(`./lib/reveal-5.2.1/${path}`, import.meta.url).href
 
 CtxEnricher('loadReveal', {
   params: [
@@ -13,14 +12,15 @@ CtxEnricher('loadReveal', {
   impl: async (ctx, {}, {theme}) => {
     const { Reveal, css } = await reactUtils.loadReveal()
     const styleText = theme
-      ? await Promise.all([cdn('reveal.css'), cdn(`theme/${theme}.css`)].map(u => fetch(u).then(r => r.text()))).then(parts => parts.join('\n'))
+      ? await Promise.all([vendored('reveal.css'), vendored(`theme/${theme}.css`)].map(u => fetch(u).then(r => r.text()))).then(parts => parts.join('\n'))
       : css
     if (!document.getElementById('reveal-css'))
       document.head.appendChild(Object.assign(document.createElement('style'), { id: 'reveal-css', textContent: styleText }))
-    const mount = (hostEl, options) => {
+    const mount = (hostEl, { fullWidth, ...options } = {}) => {
       const deck = new Reveal(hostEl, { embedded: true, ...options })
       deck.initialize()
-      const resizeObserver = globalThis.ResizeObserver && new ResizeObserver(() => requestAnimationFrame(() => deck.layout()))
+      const resizeObserver = globalThis.ResizeObserver && new ResizeObserver(() => requestAnimationFrame(() => fullWidth && hostEl.clientHeight
+        ? deck.configure({ width: Math.max(1920, deck.getConfig().height * hostEl.clientWidth / hostEl.clientHeight) }) : deck.layout()))
       resizeObserver?.observe(hostEl)
 
       const decorate = () => deck.sync()

@@ -108,6 +108,35 @@ Test('coreTest.ns', {
   impl: dataTest(math2.abs({data: -2}), equals(2))
 })
 
+Data('math2.round', {
+  impl: ctx => Math.round(ctx.data)
+})
+
+Data('math2.round.down', {
+  impl: ctx => Math.floor(ctx.data)
+})
+
+Test('coreTest.nsKeepsCompOfLongerId', {
+  impl: dataTest(math2.round({data: 2.7}), equals(3))
+})
+
+Data('math2.twice', {
+  impl: ctx => ctx.data * 2
+})
+
+Component('math2.twice', {
+  type: 'boolean<common>',
+  impl: ctx => ctx.data > 2
+})
+
+Test('coreTest.nsResolvesByTypeOfSlot', {
+  impl: dataTest(math2.twice({data: 3}), equals(6))
+})
+
+Test('coreTest.nsResolvesByTypeOfParentSlot', {
+  impl: dataTest(dsls.tgp.any.If(true, math2.twice({data: 3})), equals(6))
+})
+
 Data('ns1.nsWithRun', {
   params: [
     {id: 'inp', as: 'string'}
@@ -621,5 +650,21 @@ Test('compFieldTest.sampleCtx', {
     setup: ctx => getCompField('data<common>compFieldTest.target', 'sampleCtx').reduce((ctx, enricher) => ctx.run(enricher), ctx),
     calculate: '%$a%,%$b%,%$c%',
     expectedResult: equals('1,2,3')
+  })
+})
+
+// a param default built by a macro (args as $unresolvedArgs) gets its args on the comp's first run, not only from the second
+const firstRunMacroDefault = Data('coreTest.firstRunMacroDefault', {
+  params: [
+    {id: 'o', as: 'single', defaultValue: obj(prop('k', '%$v%'))}
+  ],
+  impl: (ctx, {}, { o }) => o.k
+})
+
+Test('coreTest.macroDefaultOnFirstRun', {
+  impl: dataTest({
+    vars: [Var('v', 'val')],
+    calculate: ctx => firstRunMacroDefault.$runWithCtx(ctx),
+    expectedResult: equals('val')
   })
 })
