@@ -8,7 +8,7 @@ const {
     test: { dataTest, mcpToolTest, mcpHttpTest, mcpUiResourceTest, mcpReactTest }
   },
   common: { Data, Action, Boolean,
-    data: { pipe, pipeline, asIs, tgpModel, keys, join, filter }, 
+    data: { pipe, pipeline, asIs, tgpModel, keys, join, filter, playwrightHarvest },
     boolean: { equals, contains, notContains, and, not },
     prop: { prop },
   },
@@ -177,8 +177,18 @@ Test('mcpReactTest.helloMcp.react', {
 })
 
 ReactComp('mcpUiTest.fullScreenCard', {
+  description: '400px high in fullscreen, 120px inline: renders per the mcp-display-mode event of the MCP UI page',
   impl: comp({
-    hFunc: ({}, {react: {h}}) => () => h('div', {style: {height: '120px'}}, 'full screen card'),
+    hFunc: ({}, {react: {h, useState, useEffect}}) => () => {
+      const [mode, setMode] = useState(globalThis.mcpDisplayMode)
+      useEffect(() => {
+        const onMode = ({detail}) => setMode(detail)
+        addEventListener('mcp-display-mode', onMode)
+        setMode(globalThis.mcpDisplayMode)
+        return () => removeEventListener('mcp-display-mode', onMode)
+      }, [])
+      return h('div', {style: {height: mode == 'fullscreen' ? '400px' : '120px'}}, mode)
+    },
     metadata: mcpUi({ fullScreen: true })
   })
 })
@@ -187,7 +197,7 @@ Test('mcpUiTest.displayModeAndSize', {
   HeavyTest: true,
   doNotRunInTests: true,
   impl: dataTest({
-    calculate: async () => {
+    calculate: async (ctx, {mcpLogger}) => {
       const iframe = Object.assign(document.createElement('iframe'), { sandbox: 'allow-scripts allow-same-origin' })
       iframe.style.cssText = 'width: 800px; height: 600px'
       const host = new MockMcpHost(iframe, { hostContext: { displayMode: 'inline' } })
@@ -195,20 +205,37 @@ Test('mcpUiTest.displayModeAndSize', {
       document.body.appendChild(iframe)
       iframe.srcdoc = renderReactCompToHtml('mcpUiTest.fullScreenCard', { imports }, [import.meta.url], { origin: location.origin })
       const wait = mSec => new Promise(resolve => setTimeout(resolve, mSec))
+      const lastHeight = () => host.messages.filter(m => m.method == 'ui/notifications/size-changed').at(-1)?.params.height
       await host.waitForInit(5000)
       await wait(500)
-      const modeAtStart = iframe.contentWindow.mcpDisplayMode
+      const modeAtStart = iframe.contentWindow.mcpDisplayMode, fullScreenHeight = lastHeight()
       host.sendHostContext({ displayMode: 'inline' })
-      await wait(100)
+      await wait(300)
       const result = { requestedMode: host.messages.find(m => m.method == 'ui/request-display-mode')?.params.mode, modeAtStart,
-        modeAfterHostChange: iframe.contentWindow.mcpDisplayMode,
-        lastHeight: host.messages.filter(m => m.method == 'ui/notifications/size-changed').at(-1)?.params.height }
+        modeAfterHostChange: iframe.contentWindow.mcpDisplayMode, fullScreenHeight, inlineHeight: lastHeight() }
       host.destroy()
       iframe.remove()
+      mcpLogger?.info?.({t: 'mcpUiPage', ...result}, {}, {ctx})
       return result
     },
     expectedResult: ({data}) => data.requestedMode == 'fullscreen' && data.modeAtStart == 'fullscreen' && data.modeAfterHostChange == 'inline'
-      && data.lastHeight >= 120 && data.lastHeight < 600,
-    timeout: 10000
+      && data.fullScreenHeight >= 400 && data.inlineHeight >= 120 && data.inlineHeight < 400,
+    timeout: 10000,
+    logger: 'mcpLogger'
+  })
+})
+
+Test('mcpUiTest.displayModeAndSizeInChromium', {
+  description: 'runs mcpUiTest.displayModeAndSize in headless Chromium, where ResizeObserver fires (a hidden browser pane renders no frames)',
+  HeavyTest: true,
+  nodeOnly: true,
+  impl: dataTest({
+    calculate: playwrightHarvest({
+      url: 'http://localhost:8083/packages/testing/tests.html?modulePath=@jb6/mcp/tests/mcp-tests.js&test=mcpUiTest.displayModeAndSize&includeHeavy',
+      timeout: 15000
+    }),
+    expectedResult: ({data}) => (page => page?.requestedMode == 'fullscreen' && page.modeAfterHostChange == 'inline'
+      && page.fullScreenHeight >= 400 && page.inlineHeight >= 120 && page.inlineHeight < 400)(data.logs?.mcpLogger?.mcpLog?.find(e => e.t == 'mcpUiPage')),
+    timeout: 30000
   })
 })
