@@ -236,6 +236,24 @@ CompField('compField', { params: [{id: 'type', as: 'string'}] })
 // sampleCtx: sample ctx-enrichers used to exercise a comp (e.g. in probe/usages)
 CompField('sampleCtx', { impl: { $: 'comp-field<tgp>compField', type: 'ctx-enricher<tgp>[]' } })
 
+// basedOn: the comps and specs a comp is based on, each at the commit it was last reviewed against
+const BasedOn = TgpType('based-on', 'tgp', { typescript: '{ comp?, spec?, commit }' })
+CompField('basedOn', { impl: { $: 'comp-field<tgp>compField', type: 'based-on<tgp>[]' } })
+
+BasedOn('basedOnComp', {
+  params: [
+    {id: 'comp', as: 'string', mandatory: true, description: 'full id, e.g. cube<bi>salesCube'},
+    {id: 'commit', as: 'string', mandatory: true}
+  ]
+})
+
+BasedOn('basedOnSpec', {
+  params: [
+    {id: 'spec', as: 'string', mandatory: true, description: 'repo-relative path of the spec'},
+    {id: 'commit', as: 'string', mandatory: true}
+  ]
+})
+
 function parseCompFieldModifier(id) {
   const [base, field, order] = id.split('#')
   return { base, field, order: order ? +order : undefined }

@@ -653,6 +653,18 @@ Test('compFieldTest.sampleCtx', {
   })
 })
 
+const { tgp: { 'based-on': { basedOnComp, basedOnSpec } } } = dsls
+Data('basedOnTest.single', { basedOn: basedOnComp('data<common>compFieldTest.target', 'abc1234') })
+Data('basedOnTest.list', { basedOn: [basedOnComp('data<common>compFieldTest.target', 'abc1234'), basedOnSpec('packages/core/README.md', 'def5678')] })
+
+Test('basedOnTest.singleOrList', {
+  impl: dataTest({
+    calculate: ctx => ['single', 'list'].map(id => getCompField(`data<common>basedOnTest.${id}`, 'basedOn').map(basis => ctx.run(basis))
+      .map(({ comp, spec, commit }) => `${comp || spec}@${commit}`).join(',')).join('|'),
+    expectedResult: equals('data<common>compFieldTest.target@abc1234|data<common>compFieldTest.target@abc1234,packages/core/README.md@def5678')
+  })
+})
+
 // a param default built by a macro (args as $unresolvedArgs) gets its args on the comp's first run, not only from the second
 const firstRunMacroDefault = Data('coreTest.firstRunMacroDefault', {
   params: [
