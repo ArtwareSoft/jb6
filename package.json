@@ -50,6 +50,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@codemirror/lang-sql": "^6.10.0",
     "array-flatten": "^3.0.0"
   }
 }

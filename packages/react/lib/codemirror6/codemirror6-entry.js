@@ -4,6 +4,7 @@ export { syntaxHighlighting, foldGutter, foldAll, unfoldAll } from '@codemirror/
 export { defaultHighlightStyle } from '@codemirror/language'
 export { javascript } from '@codemirror/lang-javascript'
 export { html } from '@codemirror/lang-html'
+export { sql, PostgreSQL } from '@codemirror/lang-sql'
 export { lineNumbers, highlightActiveLineGutter } from '@codemirror/view'
 export { search, openSearchPanel } from '@codemirror/search'
 export { oneDark } from '@codemirror/theme-one-dark'

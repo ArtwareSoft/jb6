@@ -46,6 +46,8 @@ EditorView.findFromDOM = el => el?._cmView
 export const openSearchPanel = () => {}
 export const lineNumbers = () => ({})
 export const javascript = () => ({})
+export const sql = () => ({})
+export const PostgreSQL = {}
 export const search = () => ({})
 export const syntaxHighlighting = () => ({})
 export const defaultHighlightStyle = {}
