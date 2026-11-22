@@ -15,6 +15,7 @@ Test('reactTest', {
       {id: 'props', as: 'object' },
       {id: 'userActions', type: 'ui-action<react>'},
       {id: 'logger', as: 'string'},
+      {id: 'allowError', as: 'boolean', type: 'boolean<common>', dynamic: true, description: 'the comp is expected to log errors, e.g. data that is not in the bucket'},
       {id: 'setup', type: 'ctx-enricher<tgp>', dynamic: true},
       {id: 'timeout', as: 'number', defaultValue: 2000},
       {id: 'locationHref', as: 'string'},
@@ -23,6 +24,7 @@ Test('reactTest', {
         logger: '%$logger%',
         setup: '%$setup()%',
         timeout: '%$timeout%',
+        allowError: '%$allowError()%',
         calculate: async (ctx,{singleTest,uiLogger,uiHtmlLogger},{testedComp,userActions,props,locationHref}) => {
           const win = globalThis.window
           if (!win)

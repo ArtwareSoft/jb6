@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="importmap">JB_IMPORT_MAP</script>
+<style>
+  html, body { height: 100%; margin: 0; padding: 0; }
+</style>
+</head>
+
+<body>
+  <!-- the published twin of react-comp-view.html: same cmpId/urlsToLoad url, without the ctrl-J picker,
+       so it needs neither lang-service nor codemirror. this is the page to upload to a bucket/cdn. -->
+  <div id="show" style="height: 100vh;"></div>
+
+  <script type="module">
+    import '@jb6/react/lib/tailwindcss-3.4.17.js'
+    import { reactUtils } from '@jb6/react'
+    const { h, hh, loadLucid05 } = reactUtils
+    loadLucid05()
+    const urlParams = new URLSearchParams(window.location.search)
+
+    for (const file of (urlParams.get('urlsToLoad') || '').split(',').filter(Boolean))
+      await import(file)
+
+    const { reactCmp, props, ctx } = await reactUtils.runOnHost(urlParams.get('cmpId'), reactUtils.extendCtxWithUrl())
+    window.jbLoggers = ctx.vars
+    reactUtils.createRoot(document.getElementById('show')).render(hh(ctx, reactCmp, props))
+
+    if (urlParams.has('automation')) {
+      await import('@jb6/react/automation.js')
+      await reactUtils.startAutomation(ctx, window)
+    }
+  </script>
+</body>
+</html>

@@ -52,6 +52,36 @@ UiAction('click', {
     clickable(win, buttonText)?.dispatchEvent(new win.MouseEvent('click', {bubbles: true, cancelable: true}))})
 })
 
+UiAction('enterText', {
+  description: 'type into an input/textarea, found by placeholder, name, aria-label or id',
+  params: [
+    { id: 'text', as: 'string' },
+    { id: 'intoField', as: 'string' }
+  ],
+  impl: ({}, {}, {text, intoField}) => ({exec: ({vars: {win}}) => {
+    const element = textInput(win, intoField)
+    if (!element) return
+    const prototype = element.tagName == 'TEXTAREA' ? win.HTMLTextAreaElement.prototype : win.HTMLInputElement.prototype
+    Object.getOwnPropertyDescriptor(prototype, 'value').set.call(element, text)   // react tracks the dom value, a plain assignment is swallowed
+    element.dispatchEvent(new win.Event('input', {bubbles: true}))
+  }})
+})
+
+UiAction('pickOption', {
+  description: 'choose an option in a select, found by name, aria-label or id',
+  params: [
+    { id: 'option', as: 'string' },
+    { id: 'intoField', as: 'string' }
+  ],
+  impl: ({}, {}, {option, intoField}) => ({exec: ({vars: {win}}) => {
+    const element = [...win.document.querySelectorAll('select')]
+      .find(select => !intoField || [select.name, select.getAttribute('aria-label'), select.id].includes(intoField))
+    if (!element) return
+    Object.getOwnPropertyDescriptor(win.HTMLSelectElement.prototype, 'value').set.call(element, option)
+    element.dispatchEvent(new win.Event('change', {bubbles: true}))
+  }})
+})
+
 UiAction('longPress', {
   params: [
     { id: 'buttonText', as: 'string' },
@@ -116,6 +146,11 @@ function waitFor(ctx, subject, timeout, check) {
       resolve()
     }
   })
+}
+
+function textInput(win, field) {
+  const elements = [...win.document.querySelectorAll('input, textarea')]
+  return field ? elements.find(element => [element.placeholder, element.name, element.getAttribute('aria-label'), element.id].includes(field)) : elements[0]
 }
 
 function clickable(win, text) {

@@ -5,8 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./index.js",
-    "./min": "./jb-common.js",
-    "./essentials.js": "./essentials.js"
+    "./*.js": "./*.js",
+    "./min": "./jb-common.js"
   },
   "files": [
     "*.js"

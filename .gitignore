@@ -7,3 +7,4 @@ claude.log
 .llm-db/
 .probe-claude
 
+.local-bucket/

@@ -6,9 +6,10 @@ import { serverUtils } from '@jb6/server-utils'
 import '@jb6/server-utils/serve-mjpeg.js'
 import '@jb6/server-utils/serve-mcp.js'
 import '@jb6/server-utils/serve-edit-source.js'
+import '@jb6/server-utils/serve-bucket.js'
 
 const { calcRepoRoot }  = coreUtils
-const { serveImportMap, serveCli, serveCliStream, serveGotoSource, serveEditSource, serveMcpViaCli, serveMjpeg, serveFramesToMp4}  = serverUtils
+const { serveImportMap, serveCli, serveCliStream, serveGotoSource, serveEditSource, serveMcpViaCli, serveMjpeg, serveFramesToMp4, serveBucket}  = serverUtils
 
 export async function expressTestServices(app) {
   app.use(express.json({ limit: '10mb' }))
@@ -20,6 +21,7 @@ export async function expressTestServices(app) {
   serveCliStream(app)
   serveGotoSource(app)
   serveEditSource(app, {express})
+  serveBucket(app, {express, seedFiles: {'metadata/cities.json': 'packages/react/cities.json'}})
   //serveMjpeg(app)
   //serveFramesToMp4(app)
 
@@ -33,4 +35,7 @@ export async function expressTestServices(app) {
   })
 
   app.use('/hosts', express.static(path.join(repoRoot, 'hosts')))
+  // a dry run of scripts/upload-jb-react-to-bucket.sh stages here, so the exact artifact (page + rewritten
+  // import map) is browsable and harvestable before it is uploaded
+  app.use('/upload-stage', express.static(path.join(repoRoot, '.tmp/upload-stage')))
 }

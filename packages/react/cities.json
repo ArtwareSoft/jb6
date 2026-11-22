@@ -1,0 +1,152 @@
+[
+ {
+  "state": "Alabama",
+  "cities": [
+   "Birmingham",
+   "Montgomery"
+  ]
+ },
+ {
+  "state": "Arizona",
+  "cities": [
+   "Phoenix",
+   "Tucson"
+  ]
+ },
+ {
+  "state": "California",
+  "cities": [
+   "Los Angeles",
+   "San Francisco",
+   "San Diego",
+   "San Jose"
+  ]
+ },
+ {
+  "state": "Colorado",
+  "cities": [
+   "Denver",
+   "Colorado Springs",
+   "Boulder"
+  ]
+ },
+ {
+  "state": "Florida",
+  "cities": [
+   "Miami",
+   "Orlando",
+   "Tampa",
+   "Jacksonville"
+  ]
+ },
+ {
+  "state": "Georgia",
+  "cities": [
+   "Atlanta",
+   "Savannah"
+  ]
+ },
+ {
+  "state": "Illinois",
+  "cities": [
+   "Chicago",
+   "Springfield"
+  ]
+ },
+ {
+  "state": "Indiana",
+  "cities": [
+   "Indianapolis",
+   "Fort Wayne"
+  ]
+ },
+ {
+  "state": "Maryland",
+  "cities": [
+   "Baltimore",
+   "Annapolis"
+  ]
+ },
+ {
+  "state": "Massachusetts",
+  "cities": [
+   "Boston",
+   "Worcester"
+  ]
+ },
+ {
+  "state": "Michigan",
+  "cities": [
+   "Detroit",
+   "Grand Rapids"
+  ]
+ },
+ {
+  "state": "Missouri",
+  "cities": [
+   "Kansas City",
+   "St. Louis"
+  ]
+ },
+ {
+  "state": "New Jersey",
+  "cities": [
+   "Newark",
+   "Jersey City"
+  ]
+ },
+ {
+  "state": "New York",
+  "cities": [
+   "New York City",
+   "Buffalo",
+   "Rochester",
+   "Albany"
+  ]
+ },
+ {
+  "state": "North Carolina",
+  "cities": [
+   "Charlotte",
+   "Raleigh"
+  ]
+ },
+ {
+  "state": "Ohio",
+  "cities": [
+   "Columbus",
+   "Cleveland",
+   "Cincinnati"
+  ]
+ },
+ {
+  "state": "Pennsylvania",
+  "cities": [
+   "Philadelphia",
+   "Pittsburgh"
+  ]
+ },
+ {
+  "state": "Tennessee",
+  "cities": [
+   "Nashville",
+   "Memphis"
+  ]
+ },
+ {
+  "state": "Texas",
+  "cities": [
+   "Houston",
+   "Dallas",
+   "Austin",
+   "San Antonio"
+  ]
+ },
+ {
+  "state": "Washington",
+  "cities": [
+   "Seattle",
+   "Spokane"
+  ]
+ }
+]
